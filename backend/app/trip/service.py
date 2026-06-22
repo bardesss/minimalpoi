@@ -60,8 +60,8 @@ async def _worker_loop(app) -> None:
                 s = get_or_create_settings(sess)
                 interval = s.trip_sync_interval_seconds
                 enabled = s.trip_sync_enabled
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("sync worker settings read failed: %s", exc)
 
         # Sleep before running — cancellation during sleep is normal on shutdown.
         await asyncio.sleep(interval)
@@ -78,7 +78,7 @@ async def _worker_loop(app) -> None:
 
 def start_worker(app) -> None:
     """Create and store the background worker task on app.state."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     app.state.sync_worker = loop.create_task(_worker_loop(app))
 
 

@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -12,7 +13,6 @@ from .trip.service import start_worker, stop_worker
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    import asyncio
     db.init_db()
     start_worker(app)
     try:
