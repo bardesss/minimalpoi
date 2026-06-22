@@ -58,6 +58,6 @@ def fake_trip():
 
 
 @pytest.fixture
-def trip_client(fake_trip):
-    http = httpx.AsyncClient(transport=httpx.MockTransport(fake_trip.handler))
-    yield TripClient("https://trip.lan", "me", "pw", http), http
+async def trip_client(fake_trip):
+    async with httpx.AsyncClient(transport=httpx.MockTransport(fake_trip.handler)) as http:
+        yield TripClient("https://trip.lan", "me", "pw", http), http
