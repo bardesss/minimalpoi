@@ -4,9 +4,8 @@ A self-hosted, multi-user web app for collecting, enriching, and organizing
 points of interest (POIs) on a map, kept in two-way sync with a
 [TRIP](https://github.com/itskovacs/trip) instance.
 
-> **Status:** in active development. **Phases 1–2 complete** (backend foundation
-> + enrichment). Two-way TRIP sync, the web UI, and Docker packaging land in
-> later phases.
+> **Status:** in active development. **Phases 1–3 complete** (backend, enrichment,
+> two-way TRIP sync). The web UI and Docker packaging land in later phases.
 
 ## Features so far
 
@@ -22,6 +21,13 @@ points of interest (POIs) on a map, kept in two-way sync with a
   is returned so you can see what was auto-filled.
 - **Images**: enriched images are downloaded to `data/images/` on save and
   served locally; manual upload via `POST /api/images`.
+- **Two-way TRIP sync**: when an admin configures the TRIP connection (URL +
+  login, stored encrypted) and enables sync, categories and POIs are reconciled
+  with TRIP in both directions — creates, edits, and deletes propagate, with
+  snapshot-based change detection, a conflict policy (MinimalPOI-wins default),
+  and deletion tombstones. A background worker runs on an interval; `POST
+  /api/sync/now` triggers it on demand; `GET /api/sync/status` reports
+  error/conflict counts.
 - Admin **settings** with TRIP credentials encrypted at rest.
 
 _Coming next: two-way TRIP sync (Phase 3), the MapLibre web UI (Phase 4),
