@@ -2,10 +2,19 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
-from ..models import Team, TeamMember
+from ..models import Team, TeamMember, User, Role
 from ..schemas import TeamCreate, TeamRead
 
 router = APIRouter(prefix="/api/teams", tags=["teams"])
+
+
+def _validate_member_ids(session: SessionDep, member_ids: list[int]) -> None:
+    if not member_ids:
+        return
+    found = set(session.exec(select(User.id).where(User.id.in_(member_ids))).all())
+    missing = set(member_ids) - found
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Unknown user id(s): {sorted(missing)}")
 
 
 def _member_ids(session: SessionDep, team_id: int) -> list[int]:
@@ -37,6 +46,7 @@ def list_teams(session: SessionDep, _: CurrentUser) -> list[TeamRead]:
 
 @router.post("", response_model=TeamRead, status_code=status.HTTP_201_CREATED)
 def create_team(body: TeamCreate, session: SessionDep, user: CurrentUser) -> TeamRead:
+    _validate_member_ids(session, body.member_ids)
     team = Team(name=body.name, created_by=user.id)
     session.add(team)
     session.commit()
@@ -47,10 +57,13 @@ def create_team(body: TeamCreate, session: SessionDep, user: CurrentUser) -> Tea
 
 
 @router.patch("/{team_id}", response_model=TeamRead)
-def update_team(team_id: int, body: TeamCreate, session: SessionDep, _: CurrentUser) -> TeamRead:
+def update_team(team_id: int, body: TeamCreate, session: SessionDep, user: CurrentUser) -> TeamRead:
     team = session.get(Team, team_id)
     if not team:
         raise HTTPException(status_code=404, detail="Not found")
+    if team.created_by != user.id and user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    _validate_member_ids(session, body.member_ids)
     team.name = body.name
     session.add(team)
     _set_members(session, team_id, body.member_ids)
@@ -60,10 +73,12 @@ def update_team(team_id: int, body: TeamCreate, session: SessionDep, _: CurrentU
 
 
 @router.delete("/{team_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_team(team_id: int, session: SessionDep, _: CurrentUser) -> Response:
+def delete_team(team_id: int, session: SessionDep, user: CurrentUser) -> Response:
     team = session.get(Team, team_id)
     if not team:
         raise HTTPException(status_code=404, detail="Not found")
+    if team.created_by != user.id and user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Not allowed")
     for row in session.exec(select(TeamMember).where(TeamMember.team_id == team_id)).all():
         session.delete(row)
     session.delete(team)
