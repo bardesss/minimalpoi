@@ -16,6 +16,7 @@ async def test_fetch_returns_text_and_final_url():
     assert result.status_code == 200
     assert "hi" in result.text
     assert result.content_type.startswith("text/html")
+    assert result.final_url == "https://example.com/x"
 
 
 @pytest.mark.anyio
