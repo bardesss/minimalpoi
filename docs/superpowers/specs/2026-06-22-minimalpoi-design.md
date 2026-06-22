@@ -141,8 +141,8 @@ existence means "this user visited"; `team_id` records solo vs which team;
 ### Settings (singleton, admin-editable)
 `trip_base_url, trip_username, trip_password (encrypted at rest with the
 auto-generated app secret), trip_sync_enabled (bool), trip_sync_interval_seconds
-(default 300), trip_conflict_policy (manual | minimalpoi_wins | trip_wins,
-default manual), google_api_key (optional), nominatim_url (optional, defaults to
+(default 300), trip_conflict_policy (minimalpoi_wins | trip_wins | manual,
+default minimalpoi_wins), google_api_key (optional), nominatim_url (optional, defaults to
 public OSM Nominatim; swappable for a self-hosted instance), map_tile_url
 (default public OSM raster), default_map_center_lat, default_map_center_lng,
 default_map_zoom`
@@ -254,9 +254,9 @@ common case feels instant. One reconcile pass:
    - local only → `PUT` to TRIP.
    - TRIP only → update the local POI (mapped fields only).
    - **both → conflict**, resolved per `trip_conflict_policy`:
-     `minimalpoi_wins` (PUT local over TRIP), `trip_wins` (overwrite local), or
-     `manual` (default) → mark `trip_sync_status = conflict`, change neither
-     side, and surface it in the UI for the user to choose per place.
+     `minimalpoi_wins` (default — PUT the local values over TRIP), `trip_wins`
+     (overwrite local), or `manual` → mark `trip_sync_status = conflict`, change
+     neither side, and surface it in the UI for the user to choose per place.
 5. **Deletions:** a place deleted locally writes a `local` tombstone → `DELETE`
    in TRIP. A linked place absent from the TRIP pull writes a `trip` tombstone →
    delete locally. Tombstones stop either side from re-creating it from a stale
@@ -383,6 +383,6 @@ sync time and any errors.
   TRIP `visited`, rating → none) — deferred to keep the sync surface small.
 - Optional self-hosted tile server / offline basemap (config already supports a
   custom tile URL).
-- **Conflict policy default is `manual`** (surface conflicts, change nothing
-  automatically). Confirm during spec review if you'd prefer `minimalpoi_wins`
-  as the default instead.
+- **Conflict policy default is `minimalpoi_wins`** — when both sides changed a
+  place, MinimalPOI's values are pushed over TRIP's. `trip_wins` and `manual`
+  (flag for per-place review) remain selectable in settings.
