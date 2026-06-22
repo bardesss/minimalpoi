@@ -3,6 +3,8 @@ from urllib.parse import unquote, urlparse
 
 import httpx
 
+from .safety import UnsafeURLError, safe_get
+
 _AT = re.compile(r"@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)")
 _3D4D = re.compile(r"!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)")
 _PLACE = re.compile(r"/maps/place/([^/@?]+)")
@@ -41,11 +43,11 @@ def extract_place_name(url: str) -> str | None:
 async def resolve_shortlink(url: str, client: httpx.AsyncClient | None = None) -> str:
     owns = client is None
     if client is None:
-        client = httpx.AsyncClient(follow_redirects=True, timeout=10.0)
+        client = httpx.AsyncClient(follow_redirects=False, timeout=10.0)
     try:
-        resp = await client.get(url)
+        resp = await safe_get(client, url)
         return str(resp.url)
-    except httpx.HTTPError:
+    except (httpx.HTTPError, UnsafeURLError):
         return url
     finally:
         if owns:

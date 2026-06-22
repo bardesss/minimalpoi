@@ -1,6 +1,8 @@
 import httpx
 from sqlmodel import SQLModel
 
+from .safety import UnsafeURLError, safe_get
+
 USER_AGENT = "MinimalPOI/0.1 (+https://github.com/Bardesss/minimalpoi)"
 TIMEOUT_SECONDS = 10.0
 
@@ -16,13 +18,13 @@ async def fetch_url(url: str, client: httpx.AsyncClient | None = None) -> FetchR
     owns_client = client is None
     if client is None:
         client = httpx.AsyncClient(
-            follow_redirects=True,
+            follow_redirects=False,
             timeout=TIMEOUT_SECONDS,
             headers={"User-Agent": USER_AGENT},
         )
     try:
-        resp = await client.get(url)
-    except httpx.HTTPError:
+        resp = await safe_get(client, url)
+    except (httpx.HTTPError, UnsafeURLError):
         return None
     finally:
         if owns_client:

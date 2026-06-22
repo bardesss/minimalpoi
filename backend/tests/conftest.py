@@ -1,6 +1,11 @@
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _safe_resolver(monkeypatch):
+    monkeypatch.setattr("app.enrich.safety._resolve_ips", lambda host: ["93.184.216.34"])
+
+
 @pytest.fixture
 def data_dir(tmp_path, monkeypatch):
     """Point the app at an isolated temp data dir and reset cached config."""

@@ -41,9 +41,6 @@ def test_extract_place_name_strips_query():
 @pytest.mark.anyio
 async def test_resolve_shortlink_follows_redirect():
     def handler(request: httpx.Request) -> httpx.Response:
-        # When MockTransport with follow_redirects=True receives a request,
-        # httpx internally follows the redirect. We simulate by checking the request URL
-        # and returning appropriate responses.
         if "maps.app.goo.gl" in str(request.url):
             return httpx.Response(307, headers={"location": "https://www.google.com/maps/place/X/@1.0,2.0,17z"})
         else:
@@ -51,7 +48,7 @@ async def test_resolve_shortlink_follows_redirect():
 
     client = httpx.AsyncClient(
         transport=httpx.MockTransport(handler),
-        follow_redirects=True,
+        follow_redirects=False,
     )
     resolved = await gmaps.resolve_shortlink("https://maps.app.goo.gl/abc", client=client)
     await client.aclose()

@@ -4,6 +4,7 @@ from pathlib import Path
 import httpx
 
 from ..config import get_data_dir
+from .safety import UnsafeURLError, safe_get
 
 _CONTENT_SUFFIX = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif"}
 
@@ -29,9 +30,9 @@ async def localize(image_url: str | None, client: httpx.AsyncClient | None = Non
         return image_url
     owns = client is None
     if client is None:
-        client = httpx.AsyncClient(follow_redirects=True, timeout=10.0)
+        client = httpx.AsyncClient(follow_redirects=False, timeout=10.0)
     try:
-        resp = await client.get(image_url)
+        resp = await safe_get(client, image_url)
         resp.raise_for_status()
         cl_header = resp.headers.get("content-length")
         if cl_header is not None:
@@ -44,7 +45,7 @@ async def localize(image_url: str | None, client: httpx.AsyncClient | None = Non
         if len(content) > MAX_IMAGE_BYTES:
             return image_url
         ctype = resp.headers.get("content-type", "").split(";")[0].strip()
-    except httpx.HTTPError:
+    except (httpx.HTTPError, UnsafeURLError):
         return image_url  # non-fatal: keep the remote URL
     finally:
         if owns:
