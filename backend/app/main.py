@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from . import db
-from .routers import auth, teams, users
+from .routers import auth, categories, teams, users
 
 
 @asynccontextmanager
@@ -16,6 +16,7 @@ app = FastAPI(title="MinimalPOI", lifespan=lifespan)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(teams.router)
+app.include_router(categories.router)
 
 
 @app.get("/api/health")

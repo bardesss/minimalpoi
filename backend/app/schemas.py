@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlmodel import SQLModel
 
-from .models import Role
+from .models import Role, SyncStatus
 
 
 class SetupStatus(SQLModel):
@@ -45,3 +45,25 @@ class TeamRead(SQLModel):
     name: str
     created_by: int
     member_ids: list[int] = []
+
+
+class CategoryCreate(SQLModel):
+    name: str
+    color: str = "#4f46e5"
+    icon: str | None = None
+
+
+class CategoryUpdate(SQLModel):
+    name: str | None = None
+    color: str | None = None
+    icon: str | None = None
+
+
+class CategoryRead(SQLModel):
+    id: int
+    name: str
+    color: str
+    icon: str | None
+    created_by: int
+    trip_category_id: int | None
+    trip_sync_status: SyncStatus
