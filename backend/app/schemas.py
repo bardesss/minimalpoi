@@ -21,3 +21,15 @@ class UserRead(SQLModel):
     preferred_team_id: int | None
     disabled: bool
     created_at: datetime
+
+
+class UserCreate(SQLModel):
+    username: str
+    password: str
+    role: Role = Role.MEMBER
+
+
+class UserUpdate(SQLModel):
+    password: str | None = None
+    role: Role | None = None
+    disabled: bool | None = None
