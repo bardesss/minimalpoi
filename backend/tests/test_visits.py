@@ -41,6 +41,13 @@ def test_visit_missing_poi_404(client):
     assert client.get("/api/pois/9999/visits").status_code == 404
 
 
-def test_preferences_rejects_unknown_team(client):
+def test_preferences_rejects_non_member_team(client):
     client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
-    assert client.patch("/api/auth/me/preferences", json={"preferred_team_id": 9999}).status_code == 404
+    assert client.patch("/api/auth/me/preferences", json={"preferred_team_id": 9999}).status_code == 403
+
+
+def test_visit_rejects_non_member_team(client):
+    poi_id = _setup(client)
+    # create a team the admin is NOT a member of (empty member list)
+    team = client.post("/api/teams", json={"name": "others", "member_ids": []}).json()
+    assert client.put(f"/api/pois/{poi_id}/visit", json={"team_id": team["id"]}).status_code == 403

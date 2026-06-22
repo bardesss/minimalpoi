@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
-from ..models import Role, Team, User
+from ..models import Role, TeamMember, User
 from ..schemas import Credentials, PreferredTeamUpdate, SetupStatus, UserRead
 from ..security import create_access_token, hash_password, verify_password
 
@@ -70,8 +70,15 @@ def me(user: CurrentUser) -> User:
 def update_preferences(
     body: PreferredTeamUpdate, session: SessionDep, user: CurrentUser
 ) -> User:
-    if body.preferred_team_id is not None and not session.get(Team, body.preferred_team_id):
-        raise HTTPException(status_code=404, detail="Team not found")
+    if body.preferred_team_id is not None:
+        member = session.exec(
+            select(TeamMember).where(
+                TeamMember.team_id == body.preferred_team_id,
+                TeamMember.user_id == user.id,
+            )
+        ).first()
+        if not member:
+            raise HTTPException(status_code=403, detail="Not a member of that team")
     user.preferred_team_id = body.preferred_team_id
     session.add(user)
     session.commit()
