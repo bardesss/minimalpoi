@@ -14,8 +14,8 @@ points of interest (POIs) on a map, kept in two-way sync with a
   login, and `admin` / `member` roles (admins create accounts — no open signup).
 - One **shared** POI list (not per-user) with full CRUD and **duplicate
   detection** (by source link or name + proximity).
-- **Categories** (with color + TRIP-category mapping), **teams**, per-user
-  **visited** status (solo or with a team, plus a 1–5 rating), per-user
+- **Categories** (custom color + lucide icon), **teams**, per-user **visited**
+  status (solo or with a team you belong to, plus a 1–5 rating), per-user
   **wishlist**, and attributed **comment** threads.
 - Admin **settings** with TRIP credentials stored encrypted at rest.
 
