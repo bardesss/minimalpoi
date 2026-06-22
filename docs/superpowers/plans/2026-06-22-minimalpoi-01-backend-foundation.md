@@ -2356,6 +2356,73 @@ git commit -m "feat(backend): settings singleton with encrypted TRIP credentials
 
 ---
 
+### Task 14: Continuous integration (test on push/PR)
+
+**Files:**
+- Create: `.github/workflows/ci.yml`
+- Create: `.gitattributes` (normalize line endings so the repo is stable across Windows/Linux/CI)
+
+**Interfaces:**
+- Consumes: the `backend/` package and its `[dev]` extras (pytest, httpx).
+- Produces: a `backend-tests` GitHub Actions job that fails the build on any test failure. Extended with a frontend job in Plan 4.
+
+> Prerequisite: the repository must be pushed to GitHub for Actions to run. This task only adds the workflow file; pushing/creating the remote is a one-time manual step (e.g. `gh repo create`).
+
+- [ ] **Step 1: Create `.gitattributes`**
+
+```gitattributes
+* text=auto eol=lf
+*.png binary
+*.woff2 binary
+*.ico binary
+```
+
+- [ ] **Step 2: Create `.github/workflows/ci.yml`**
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        run: python -m pytest -v
+```
+
+- [ ] **Step 3: Validate the workflow YAML parses**
+
+Run (from repo root): `python -c "import yaml,sys; yaml.safe_load(open('.github/workflows/ci.yml')); print('ok')"`
+Expected: `ok` (no YAML error). If PyYAML is unavailable, instead confirm the file matches the block above exactly.
+
+- [ ] **Step 4: Reproduce the CI command locally to prove it's green**
+
+Run (from `backend/`): `python -m pytest -v`
+Expected: PASS (full suite green — the same command CI runs).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add .github/workflows/ci.yml .gitattributes
+git commit -m "ci: run backend test suite on push and PR"
+```
+
+---
+
 ## Self-Review
 
 **Spec coverage (Plan 1 scope):**
@@ -2372,7 +2439,8 @@ git commit -m "feat(backend): settings singleton with encrypted TRIP credentials
 - Wishlist → Task 11. ✅
 - Comments (attributed, author/admin delete) → Task 12. ✅
 - Settings singleton incl. encrypted TRIP creds, sync interval, conflict policy default `minimalpoi_wins`, map defaults, tile url, nominatim url → Task 13. ✅
-- *Deferred to later plans (correctly out of scope here):* enrichment (Plan 2), TRIP sync engine + client (Plan 3), frontend/static serving (Plan 4), GeoJSON + full backup/restore + Docker (Plan 5).
+- CI workflow (backend test suite on push/PR) → Task 14. ✅
+- *Deferred to later plans (correctly out of scope here):* enrichment (Plan 2), TRIP sync engine + client (Plan 3), frontend/static serving + CI frontend job (Plan 4), GeoJSON + full backup/restore + Docker + release-please/GHCR publishing (Plan 5).
 
 **Placeholder scan:** No TBD/TODO; every code step contains complete code. ✅
 
@@ -2386,5 +2454,5 @@ These will each get their own fully-detailed plan document when we reach them:
 
 - **Plan 2 — Enrichment service:** `POST /api/enrich {url}` returning a draft POI; link-type detection; Google Maps URL coordinate extraction + shortlink resolution; OpenGraph + JSON-LD parsing; optional Google Places (admin key); Nominatim fallback; local image download/upload to `data/images/`. Tested against saved HTML fixtures.
 - **Plan 3 — Two-way TRIP sync engine:** authenticated TRIP client (login/refresh/re-login), field mapping, snapshot-diff change detection, reconcile pass (create/import/update/delete), conflict policy, tombstone handling, loop prevention, background worker + on-change trigger, "Sync now", initial reconcile with duplicate-linking. Tested against a mocked TRIP API.
-- **Plan 4 — Frontend:** React + Vite + Tailwind + MapLibre, design ported from `/reference`; first-run setup + login; map + collapsible list + search/filters; place editor (map-pick coords, image upload, visited/rating/wishlist, comments); categories/teams admin; settings + conflict-resolution view; locally-bundled fonts/assets.
-- **Plan 5 — Backup/restore + packaging:** GeoJSON import/export; full JSON backup/restore (all tables + images); FastAPI static serving of the built frontend; Dockerfile + docker-compose with a single `data/` volume.
+- **Plan 4 — Frontend:** React + Vite + Tailwind + MapLibre, design ported from `/reference`; first-run setup + login; map + collapsible list + search/filters; place editor (map-pick coords, image upload, visited/rating/wishlist, comments); categories/teams admin; settings + conflict-resolution view; locally-bundled fonts/assets. **Extends `ci.yml`** with a frontend job (lint + `vitest` + `vite build`).
+- **Plan 5 — Backup/restore + packaging + release automation:** GeoJSON import/export; full JSON backup/restore (all tables + images); FastAPI static serving of the built frontend; multi-stage `Dockerfile` (build frontend → serve from backend) + `docker-compose.yml` with a single `data/` volume; **release-please** workflow (Conventional Commits → version bump + `CHANGELOG.md` + GitHub Release) and a release-triggered job that builds and pushes the image to **GHCR** (`ghcr.io/<owner>/minimalpoi`) using the built-in `GITHUB_TOKEN`.
