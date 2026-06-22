@@ -93,6 +93,8 @@ Responsibilities are split by domain concern. `models.py` and `schemas.py` are s
 name = "minimalpoi-backend"
 version = "0.1.0"
 requires-python = ">=3.12"
+license = "MIT"
+license-files = ["../LICENSE"]
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
