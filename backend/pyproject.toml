@@ -17,20 +17,20 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3",
-    # Starlette 1.3+ renamed its HTTP client dependency from httpx to httpx2.
-    # Use httpx2 to avoid StarletteDeprecationWarning in TestClient.
-    "httpx2>=2.0",
+    "httpx>=0.27",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-# Turn all warnings into errors so future regressions fail CI.
-# The one targeted ignore below is for the starlette/testclient.py deprecation
-# that fires when the legacy `httpx` package (not `httpx2`) is installed.
-# This is unavoidable from our code: the warning is raised inside third-party
-# starlette internals (starlette/testclient.py:47) before we can intercept it.
-# Remove this line once the venv is rebuilt with httpx2 installed.
+# All warnings are errors so regressions fail CI.
+# The single targeted ignore is for a StarletteDeprecationWarning raised inside
+# starlette.testclient (when imported with `httpx`) that nudges installing an
+# `httpx2` package. We intentionally keep the well-established `httpx` and do
+# NOT adopt `httpx2` (it has typosquat characteristics — a name mimicking the
+# popular `httpx` and a `0.0.0` version on the index) pending verification.
+# The warning fires inside third-party internals, so a narrow ignore is the
+# safe way to keep test output pristine without installing the lookalike.
 filterwarnings = [
     "error",
     "ignore:Using `httpx` with `starlette\\.testclient` is deprecated:UserWarning",
