@@ -12,3 +12,14 @@ def data_dir(tmp_path, monkeypatch):
     config.reset_config_cache()
     yield d
     config.reset_config_cache()
+
+
+@pytest.fixture
+def client(data_dir):
+    from app import db
+    db.reset_engine()
+    db.init_db()
+    from app.main import app
+    from starlette.testclient import TestClient
+    with TestClient(app) as c:
+        yield c
