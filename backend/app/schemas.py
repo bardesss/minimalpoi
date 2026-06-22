@@ -150,3 +150,16 @@ class PreferredTeamUpdate(SQLModel):
 class WishlistRead(SQLModel):
     poi_id: int
     user_id: int
+
+
+class CommentCreate(SQLModel):
+    text: str
+
+
+class CommentRead(SQLModel):
+    id: int
+    poi_id: int
+    user_id: int
+    username: str
+    text: str
+    created_at: datetime

@@ -109,3 +109,11 @@ class Wishlist(SQLModel, table=True):
     poi_id: int = Field(foreign_key="poi.id")
     user_id: int = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class Comment(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    poi_id: int = Field(foreign_key="poi.id")
+    user_id: int = Field(foreign_key="user.id")
+    text: str
+    created_at: datetime = Field(default_factory=utcnow)
