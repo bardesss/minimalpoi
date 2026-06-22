@@ -23,3 +23,4 @@ def client(data_dir):
     from starlette.testclient import TestClient
     with TestClient(app) as c:
         yield c
+    db.reset_engine()  # dispose the engine so SQLite connections are closed cleanly

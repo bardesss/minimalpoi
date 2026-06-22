@@ -10,6 +10,8 @@ engine = None
 def reset_engine() -> None:
     """(Re)build the engine against the current data dir. Used by tests."""
     global engine
+    if engine is not None:
+        engine.dispose()
     db_path = get_data_dir() / "minimalpoi.db"
     engine = create_engine(
         f"sqlite:///{db_path}",
