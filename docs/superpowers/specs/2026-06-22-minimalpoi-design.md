@@ -259,11 +259,17 @@ extra TRIP fields are out of scope).
 
 ## 10. Deployment
 
-- `docker-compose.yml` with one service; a volume for `data/` (SQLite +
-  `images/`). Environment: `SECRET_KEY` (JWT signing) only — the first admin is
-  created via the in-app setup screen, not env credentials. Runtime config
-  (TRIP URL/token, Google key, tile URL, map defaults) is editable in-app by an
-  admin.
+- `docker-compose.yml` with one service and a single volume for `data/`
+  (SQLite + `images/`). **No environment variables required** — just map a
+  volume and run.
+  - The **JWT signing key** is auto-generated on first boot and persisted to
+    `data/secret.key` (created with strict file permissions), then reused on
+    every subsequent start so existing sessions survive restarts. An optional
+    `SECRET_KEY` env var, if set, overrides the file (for users who prefer to
+    manage it externally).
+  - The first admin is created via the in-app setup screen.
+  - Runtime config (TRIP URL/token, Google key, tile URL, map defaults) is
+    editable in-app by an admin.
 - Frontend is built at image-build time and served as static files by FastAPI.
 - **Backup/restore:** a full JSON export of all data (POIs, categories, teams,
   visits, wishlist, comments, settings) and a matching import to rebuild a fresh
