@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from . import db
-from .routers import auth, categories, comments, pois, settings, teams, users, visits, wishlist
+from .enrich.images import images_dir
+from .routers import auth, categories, comments, enrich, images, pois, settings, teams, users, visits, wishlist
 
 
 @asynccontextmanager
@@ -22,6 +24,9 @@ app.include_router(visits.router)
 app.include_router(wishlist.router)
 app.include_router(comments.router)
 app.include_router(settings.router)
+app.include_router(enrich.router)
+app.include_router(images.router)
+app.mount("/images", StaticFiles(directory=str(images_dir())), name="images")
 
 
 @app.get("/api/health")

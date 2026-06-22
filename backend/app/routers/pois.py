@@ -3,6 +3,7 @@ from sqlmodel import select
 
 from ..dedup import find_duplicate
 from ..deps import CurrentUser, SessionDep
+from ..enrich.images import localize
 from ..models import POI, Comment, Tombstone, Visit, Wishlist, utcnow
 from ..schemas import DuplicateCheck, DuplicateResult, POICreate, POIRead, POIUpdate
 
@@ -15,8 +16,10 @@ def list_pois(session: SessionDep, _: CurrentUser) -> list[POI]:
 
 
 @router.post("", response_model=POIRead, status_code=status.HTTP_201_CREATED)
-def create_poi(body: POICreate, session: SessionDep, user: CurrentUser) -> POI:
-    poi = POI(**body.model_dump(), created_by=user.id)
+async def create_poi(body: POICreate, session: SessionDep, user: CurrentUser) -> POI:
+    data = body.model_dump()
+    data["image_url"] = await localize(data.get("image_url"))
+    poi = POI(**data, created_by=user.id)
     session.add(poi)
     session.commit()
     session.refresh(poi)
@@ -38,11 +41,14 @@ def get_poi(poi_id: int, session: SessionDep, _: CurrentUser) -> POI:
 
 
 @router.patch("/{poi_id}", response_model=POIRead)
-def update_poi(poi_id: int, body: POIUpdate, session: SessionDep, _: CurrentUser) -> POI:
+async def update_poi(poi_id: int, body: POIUpdate, session: SessionDep, _: CurrentUser) -> POI:
     poi = session.get(POI, poi_id)
     if not poi:
         raise HTTPException(status_code=404, detail="Not found")
-    for key, value in body.model_dump(exclude_unset=True).items():
+    data = body.model_dump(exclude_unset=True)
+    if "image_url" in data:
+        data["image_url"] = await localize(data["image_url"])
+    for key, value in data.items():
         setattr(poi, key, value)
     poi.updated_at = utcnow()
     session.add(poi)
