@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+
+# App data
+data/
+*.db
+*.sqlite3
+images/
+
+# Env / secrets
+.env
+.env.*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Decoded reference artifacts (generated while exploring the bundle)
+reference/_app_*.js
+reference/_template.html
