@@ -58,6 +58,15 @@ async def test_resolve_shortlink_follows_redirect():
     assert resolved == "https://www.google.com/maps/place/X/@1.0,2.0,17z"
 
 
+def test_extract_coords_prefers_3d4d_over_at():
+    url = "https://www.google.com/maps/place/X/@52.0,4.0,17z/data=!3d52.3676!4d4.9041"
+    assert gmaps.extract_coords(url) == (52.3676, 4.9041)
+
+
+def test_is_google_maps_rejects_crafted_url():
+    assert gmaps.is_google_maps("https://evil.example/?x=google.com/maps") is False
+
+
 @pytest.mark.anyio
 async def test_places_lookup_parses_first_result():
     def handler(request: httpx.Request) -> httpx.Response:

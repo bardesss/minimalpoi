@@ -46,6 +46,15 @@ def test_upload_requires_auth(client):
 
 
 @pytest.mark.anyio
+async def test_localize_rejects_oversized(data_dir):
+    big = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda r: httpx.Response(200, content=b"x", headers={"content-type": "image/jpeg", "content-length": str(50 * 1024 * 1024)})))
+    out = await images.localize("https://img.example/huge.jpg", client=big)
+    await big.aclose()
+    assert out == "https://img.example/huge.jpg"
+
+
+@pytest.mark.anyio
 async def test_localize_returns_original_on_http_error(data_dir):
     http = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(500, text="err")))
     out = await images.localize("https://img.example/missing.jpg", client=http)

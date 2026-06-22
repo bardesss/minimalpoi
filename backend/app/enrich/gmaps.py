@@ -1,5 +1,5 @@
 import re
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
 
 import httpx
 
@@ -10,12 +10,18 @@ _PLACE = re.compile(r"/maps/place/([^/@?]+)")
 PLACES_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json"
 
 
-def is_google_maps(url: str) -> bool:
-    return "google.com/maps" in url or "maps.app.goo.gl" in url or "goo.gl/maps" in url
-
-
 def is_shortlink(url: str) -> bool:
-    return "maps.app.goo.gl" in url or "goo.gl/maps" in url
+    p = urlparse(url)
+    host = (p.hostname or "").lower()
+    return host == "maps.app.goo.gl" or (host == "goo.gl" and p.path.startswith("/maps"))
+
+
+def is_google_maps(url: str) -> bool:
+    if is_shortlink(url):
+        return True
+    p = urlparse(url)
+    host = (p.hostname or "").lower()
+    return host in {"www.google.com", "google.com", "maps.google.com"} and p.path.startswith("/maps")
 
 
 def extract_coords(url: str) -> tuple[float, float] | None:

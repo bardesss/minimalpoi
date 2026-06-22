@@ -7,6 +7,8 @@ from ..config import get_data_dir
 
 _CONTENT_SUFFIX = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif"}
 
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
+
 
 def images_dir() -> Path:
     d = get_data_dir() / "images"
@@ -31,7 +33,16 @@ async def localize(image_url: str | None, client: httpx.AsyncClient | None = Non
     try:
         resp = await client.get(image_url)
         resp.raise_for_status()
+        cl_header = resp.headers.get("content-length")
+        if cl_header is not None:
+            try:
+                if int(cl_header) > MAX_IMAGE_BYTES:
+                    return image_url
+            except (ValueError, TypeError):
+                pass
         content = resp.content
+        if len(content) > MAX_IMAGE_BYTES:
+            return image_url
         ctype = resp.headers.get("content-type", "").split(";")[0].strip()
     except httpx.HTTPError:
         return image_url  # non-fatal: keep the remote URL
