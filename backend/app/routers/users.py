@@ -3,7 +3,7 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from ..deps import AdminUser, SessionDep
-from ..models import Role, User
+from ..models import Comment, Role, TeamMember, User, Visit, Wishlist
 from ..schemas import UserCreate, UserRead, UserUpdate
 from ..security import hash_password
 
@@ -39,6 +39,11 @@ def update_user(user_id: int, body: UserUpdate, session: SessionDep, _: AdminUse
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Not found")
+    if user.role == Role.ADMIN and _admin_count(session) <= 1:
+        demoting = body.role is not None and body.role != Role.ADMIN
+        disabling = body.disabled is True
+        if demoting or disabling:
+            raise HTTPException(status_code=400, detail="Cannot remove the last admin")
     if body.password is not None:
         user.password_hash = hash_password(body.password)
     if body.role is not None:
@@ -58,6 +63,11 @@ def delete_user(user_id: int, session: SessionDep, _: AdminUser) -> Response:
         raise HTTPException(status_code=404, detail="Not found")
     if user.role == Role.ADMIN and _admin_count(session) <= 1:
         raise HTTPException(status_code=400, detail="Cannot delete the last admin")
+    for model in (Visit, Wishlist, Comment):
+        for row in session.exec(select(model).where(model.user_id == user_id)).all():
+            session.delete(row)
+    for row in session.exec(select(TeamMember).where(TeamMember.user_id == user_id)).all():
+        session.delete(row)
     session.delete(user)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

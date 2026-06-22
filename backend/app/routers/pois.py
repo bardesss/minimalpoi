@@ -3,7 +3,7 @@ from sqlmodel import select
 
 from ..dedup import find_duplicate
 from ..deps import CurrentUser, SessionDep
-from ..models import POI, Tombstone, utcnow
+from ..models import POI, Comment, Tombstone, Visit, Wishlist, utcnow
 from ..schemas import DuplicateCheck, DuplicateResult, POICreate, POIRead, POIUpdate
 
 router = APIRouter(prefix="/api/pois", tags=["pois"])
@@ -56,6 +56,9 @@ def delete_poi(poi_id: int, session: SessionDep, _: CurrentUser) -> Response:
     poi = session.get(POI, poi_id)
     if not poi:
         raise HTTPException(status_code=404, detail="Not found")
+    for model in (Visit, Wishlist, Comment):
+        for row in session.exec(select(model).where(model.poi_id == poi_id)).all():
+            session.delete(row)
     if poi.trip_place_id is not None:
         session.add(Tombstone(entity_type="place", trip_id=poi.trip_place_id, origin="local"))
     session.delete(poi)

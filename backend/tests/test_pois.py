@@ -54,6 +54,30 @@ def test_duplicate_detection_by_proximity_and_url(client):
     assert far.json()["duplicate_id"] is None
 
 
+def test_delete_poi_cascades_children(client):
+    cat_id = _setup(client)
+    poi = client.post(
+        "/api/pois",
+        json={"name": "Cascade Test", "lat": 1.0, "lng": 2.0, "category_id": cat_id},
+    ).json()
+    poi_id = poi["id"]
+
+    # Add a visit, wishlist entry, and comment
+    assert client.put(f"/api/pois/{poi_id}/visit", json={}).status_code == 200
+    assert client.put(f"/api/pois/{poi_id}/wishlist").status_code == 200
+    assert client.post(f"/api/pois/{poi_id}/comments", json={"text": "nice"}).status_code == 201
+
+    assert client.delete(f"/api/pois/{poi_id}").status_code == 204
+
+    from sqlmodel import Session, select
+    from app import db
+    from app.models import Visit, Wishlist, Comment
+    with Session(db.engine) as session:
+        assert session.exec(select(Visit).where(Visit.poi_id == poi_id)).all() == []
+        assert session.exec(select(Wishlist).where(Wishlist.poi_id == poi_id)).all() == []
+        assert session.exec(select(Comment).where(Comment.poi_id == poi_id)).all() == []
+
+
 def test_delete_synced_poi_writes_tombstone(client):
     cat_id = _setup(client)
     poi = client.post(
