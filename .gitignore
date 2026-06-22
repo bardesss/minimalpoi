@@ -20,6 +20,9 @@ images/
 .env
 .env.*
 
+# Planning docs (specs/plans) — kept local, not published
+docs/
+
 # Editor / OS
 .DS_Store
 .idea/
