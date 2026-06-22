@@ -3,7 +3,7 @@ from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
 from ..models import Role, User
-from ..schemas import Credentials, SetupStatus, UserRead
+from ..schemas import Credentials, PreferredTeamUpdate, SetupStatus, UserRead
 from ..security import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -63,4 +63,15 @@ def logout(response: Response) -> dict:
 
 @router.get("/me", response_model=UserRead)
 def me(user: CurrentUser) -> User:
+    return user
+
+
+@router.patch("/me/preferences", response_model=UserRead)
+def update_preferences(
+    body: PreferredTeamUpdate, session: SessionDep, user: CurrentUser
+) -> User:
+    user.preferred_team_id = body.preferred_team_id
+    session.add(user)
+    session.commit()
+    session.refresh(user)
     return user

@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from enum import Enum
 
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Column, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -90,4 +90,14 @@ class Tombstone(SQLModel, table=True):
     entity_type: str  # "place" | "category"
     trip_id: int      # the TRIP id of the deleted place/category
     origin: str       # "local" | "trip"
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class Visit(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("poi_id", "user_id", name="uq_visit_poi_user"),)
+    id: int | None = Field(default=None, primary_key=True)
+    poi_id: int = Field(foreign_key="poi.id")
+    user_id: int = Field(foreign_key="user.id")
+    team_id: int | None = Field(default=None, foreign_key="team.id")
+    rating: int | None = Field(default=None)
     created_at: datetime = Field(default_factory=utcnow)

@@ -129,3 +129,19 @@ class DuplicateCheck(SQLModel):
 
 class DuplicateResult(SQLModel):
     duplicate_id: int | None
+
+
+class VisitUpsert(SQLModel):
+    team_id: int | None = None
+    rating: int | None = None
+
+
+class VisitRead(SQLModel):
+    poi_id: int
+    user_id: int
+    team_id: int | None
+    rating: int | None
+
+
+class PreferredTeamUpdate(SQLModel):
+    preferred_team_id: int | None = None
