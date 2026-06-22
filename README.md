@@ -4,23 +4,28 @@ A self-hosted, multi-user web app for collecting, enriching, and organizing
 points of interest (POIs) on a map, kept in two-way sync with a
 [TRIP](https://github.com/itskovacs/trip) instance.
 
-> **Status:** in active development. **Phase 1 (backend foundation & core API)
-> complete.** Enrichment, TRIP sync, the web UI, and Docker packaging land in
+> **Status:** in active development. **Phases 1–2 complete** (backend foundation
+> + enrichment). Two-way TRIP sync, the web UI, and Docker packaging land in
 > later phases.
 
-## Features so far (Phase 1)
+## Features so far
 
-- Multi-user accounts with a one-time first-run admin **setup**, JWT-cookie
-  login, and `admin` / `member` roles (admins create accounts — no open signup).
-- One **shared** POI list (not per-user) with full CRUD and **duplicate
-  detection** (by source link or name + proximity).
-- **Categories** (custom color + lucide icon), **teams**, per-user **visited**
-  status (solo or with a team you belong to, plus a 1–5 rating), per-user
-  **wishlist**, and attributed **comment** threads.
-- Admin **settings** with TRIP credentials stored encrypted at rest.
+- Multi-user accounts (first-run admin setup, JWT-cookie login, admin/member
+  roles, admin-created accounts).
+- One **shared** POI list with full CRUD and **duplicate detection**.
+- Categories (color + lucide icon), teams, per-user visited (team + 1–5 rating),
+  wishlist, and attributed comments.
+- **Link enrichment** (`POST /api/enrich`): paste a Google Maps, TripAdvisor, or
+  any website link and get a draft POI — coordinates from the Google Maps URL,
+  OpenGraph + JSON-LD for name/image/description/address/phone, optional Google
+  Places (admin key), and a Nominatim geocoding fallback. Per-field provenance
+  is returned so you can see what was auto-filled.
+- **Images**: enriched images are downloaded to `data/images/` on save and
+  served locally; manual upload via `POST /api/images`.
+- Admin **settings** with TRIP credentials encrypted at rest.
 
-_Coming next: link enrichment (Phase 2), two-way TRIP sync (Phase 3), the
-MapLibre web UI (Phase 4), backup/restore + Docker image (Phase 5)._
+_Coming next: two-way TRIP sync (Phase 3), the MapLibre web UI (Phase 4),
+backup/restore + Docker image (Phase 5)._
 
 ## Tech stack
 
