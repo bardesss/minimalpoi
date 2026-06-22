@@ -195,3 +195,16 @@ class SettingsUpdate(SQLModel):
     default_map_center_lng: float | None = None
     default_map_zoom: float | None = None
     cookie_secure: bool | None = None
+
+
+class POIDraft(SQLModel):
+    name: str | None = None
+    address: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    image_url: str | None = None
+    description: str | None = None
+    phone: str | None = None
+    website: str | None = None
+    source_url: str | None = None
+    field_sources: dict[str, str] = {}
