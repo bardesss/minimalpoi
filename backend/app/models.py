@@ -101,3 +101,11 @@ class Visit(SQLModel, table=True):
     team_id: int | None = Field(default=None, foreign_key="team.id")
     rating: int | None = Field(default=None)
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class Wishlist(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("poi_id", "user_id", name="uq_wishlist_poi_user"),)
+    id: int | None = Field(default=None, primary_key=True)
+    poi_id: int = Field(foreign_key="poi.id")
+    user_id: int = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=utcnow)
