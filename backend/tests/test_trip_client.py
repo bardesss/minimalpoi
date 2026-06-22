@@ -76,3 +76,46 @@ async def test_bad_credentials_raise():
     with pytest.raises(TripError):
         await tc._request("GET", "/api/places")
     await http.aclose()
+
+
+def _crud_server():
+    places = {1: {"id": 1, "name": "A", "lat": 1.0, "lng": 2.0, "place": "x",
+                  "category": {"id": 9, "name": "Food", "color": "#fff"}, "links": [], "image": None}}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        p = request.url.path
+        if p == "/api/auth/login":
+            return httpx.Response(200, json={"access_token": "good", "refresh_token": "r"})
+        if request.headers.get("authorization") != "Bearer good":
+            return httpx.Response(401)
+        if p == "/api/places" and request.method == "GET":
+            return httpx.Response(200, json=list(places.values()))
+        if p == "/api/places" and request.method == "POST":
+            import json as _j
+            body = _j.loads(request.content)
+            new = {"id": 2, **body, "category": {"id": 9, "name": "Food", "color": "#fff"}}
+            places[2] = new
+            return httpx.Response(200, json=new)
+        if p == "/api/places/1" and request.method == "PUT":
+            import json as _j
+            places[1].update(_j.loads(request.content))
+            return httpx.Response(200, json=places[1])
+        if p == "/api/places/1" and request.method == "DELETE":
+            places.pop(1, None)
+            return httpx.Response(200, json={"ok": True})
+        return httpx.Response(404)
+
+    return handler
+
+
+@pytest.mark.anyio
+async def test_place_crud_methods():
+    http = httpx.AsyncClient(transport=httpx.MockTransport(_crud_server()))
+    tc = TripClient("https://trip.lan", "me", "pw", http)
+    assert len(await tc.list_places()) == 1
+    created = await tc.create_place({"name": "B", "lat": 3.0, "lng": 4.0, "place": "y", "category_id": 9})
+    assert created["id"] == 2
+    updated = await tc.update_place(1, {"name": "A2"})
+    assert updated["name"] == "A2"
+    await tc.delete_place(1)
+    await http.aclose()

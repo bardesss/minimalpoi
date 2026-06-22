@@ -37,3 +37,27 @@ class TripClient:
         if resp.status_code >= 400:
             raise TripError(f"TRIP {method} {path} -> {resp.status_code}")
         return resp
+
+    async def list_places(self) -> list[dict]:
+        return (await self._request("GET", "/api/places")).json()
+
+    async def create_place(self, payload: dict) -> dict:
+        return (await self._request("POST", "/api/places", json=payload)).json()
+
+    async def update_place(self, place_id: int, payload: dict) -> dict:
+        return (await self._request("PUT", f"/api/places/{place_id}", json=payload)).json()
+
+    async def delete_place(self, place_id: int) -> None:
+        await self._request("DELETE", f"/api/places/{place_id}")
+
+    async def list_categories(self) -> list[dict]:
+        return (await self._request("GET", "/api/categories")).json()
+
+    async def create_category(self, payload: dict) -> dict:
+        return (await self._request("POST", "/api/categories", json=payload)).json()
+
+    async def update_category(self, category_id: int, payload: dict) -> dict:
+        return (await self._request("PUT", f"/api/categories/{category_id}", json=payload)).json()
+
+    async def delete_category(self, category_id: int) -> None:
+        await self._request("DELETE", f"/api/categories/{category_id}")
