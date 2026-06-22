@@ -117,3 +117,34 @@ class Comment(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id")
     text: str
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class Settings(SQLModel, table=True):
+    id: int | None = Field(default=1, primary_key=True)
+    trip_base_url: str | None = Field(default=None)
+    trip_username: str | None = Field(default=None)
+    trip_password_enc: str | None = Field(default=None)
+    trip_sync_enabled: bool = Field(default=False)
+    trip_sync_interval_seconds: int = Field(default=300)
+    trip_conflict_policy: str = Field(default="minimalpoi_wins")
+    google_api_key_enc: str | None = Field(default=None)
+    nominatim_url: str | None = Field(default="https://nominatim.openstreetmap.org")
+    map_tile_url: str = Field(
+        default="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+    )
+    default_map_center_lat: float = Field(default=52.3676)
+    default_map_center_lng: float = Field(default=4.9041)
+    default_map_zoom: float = Field(default=11.0)
+    # Set the `Secure` flag on the auth cookie. Default off so the app works
+    # over plain HTTP on a LAN / offline; enable when running behind TLS.
+    cookie_secure: bool = Field(default=False)
+
+
+def get_or_create_settings(session) -> "Settings":
+    row = session.get(Settings, 1)
+    if row is None:
+        row = Settings(id=1)
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+    return row

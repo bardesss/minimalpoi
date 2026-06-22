@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
-from ..models import Role, TeamMember, User
+from ..models import Role, TeamMember, User, get_or_create_settings
 from ..schemas import Credentials, PreferredTeamUpdate, SetupStatus, UserRead
 from ..security import create_access_token, hash_password, verify_password
 
@@ -11,13 +11,15 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 COOKIE_NAME = "access_token"
 
 
-def _set_auth_cookie(response: Response, username: str) -> None:
+def _set_auth_cookie(response: Response, username: str, session: SessionDep) -> None:
+    secure = get_or_create_settings(session).cookie_secure
     response.set_cookie(
         COOKIE_NAME,
         create_access_token(username),
         httponly=True,
         samesite="lax",
         path="/",
+        secure=secure,
     )
 
 
@@ -42,7 +44,7 @@ def setup(creds: Credentials, session: SessionDep, response: Response) -> User:
     session.add(user)
     session.commit()
     session.refresh(user)
-    _set_auth_cookie(response, user.username)
+    _set_auth_cookie(response, user.username, session)
     return user
 
 
@@ -51,13 +53,14 @@ def login(creds: Credentials, session: SessionDep, response: Response) -> User:
     user = session.exec(select(User).where(User.username == creds.username)).first()
     if not user or user.disabled or not verify_password(creds.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    _set_auth_cookie(response, user.username)
+    _set_auth_cookie(response, user.username, session)
     return user
 
 
 @router.post("/logout")
-def logout(response: Response) -> dict:
-    response.delete_cookie(COOKIE_NAME, path="/", samesite="lax")
+def logout(session: SessionDep, response: Response) -> dict:
+    secure = get_or_create_settings(session).cookie_secure
+    response.delete_cookie(COOKIE_NAME, path="/", samesite="lax", secure=secure)
     return {"status": "ok"}
 
 

@@ -163,3 +163,35 @@ class CommentRead(SQLModel):
     username: str
     text: str
     created_at: datetime
+
+
+class SettingsRead(SQLModel):
+    trip_base_url: str | None
+    trip_username: str | None
+    trip_password_set: bool
+    trip_sync_enabled: bool
+    trip_sync_interval_seconds: int
+    trip_conflict_policy: str
+    google_api_key_set: bool
+    nominatim_url: str | None
+    map_tile_url: str
+    default_map_center_lat: float
+    default_map_center_lng: float
+    default_map_zoom: float
+    cookie_secure: bool
+
+
+class SettingsUpdate(SQLModel):
+    trip_base_url: str | None = None
+    trip_username: str | None = None
+    trip_password: str | None = None
+    trip_sync_enabled: bool | None = None
+    trip_sync_interval_seconds: int | None = None
+    trip_conflict_policy: str | None = None
+    google_api_key: str | None = None
+    nominatim_url: str | None = None
+    map_tile_url: str | None = None
+    default_map_center_lat: float | None = None
+    default_map_center_lng: float | None = None
+    default_map_zoom: float | None = None
+    cookie_secure: bool | None = None
