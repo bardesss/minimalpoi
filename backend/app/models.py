@@ -58,3 +58,36 @@ class Category(SQLModel, table=True):
     trip_synced_snapshot: dict | None = Field(default=None, sa_column=Column(JSON))
     trip_synced_at: datetime | None = Field(default=None)
     trip_last_error: str | None = Field(default=None)
+
+
+class POI(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+    address: str | None = Field(default=None)
+    lat: float
+    lng: float
+    category_id: int | None = Field(default=None, foreign_key="category.id")
+    tags: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    notes: str | None = Field(default=None)
+    phone: str | None = Field(default=None)
+    email: str | None = Field(default=None)
+    website: str | None = Field(default=None)
+    image_url: str | None = Field(default=None)
+    source_url: str | None = Field(default=None)
+    created_by: int = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+    trip_place_id: int | None = Field(default=None)
+    trip_sync_status: SyncStatus = Field(default=SyncStatus.LOCAL_ONLY)
+    trip_synced_snapshot: dict | None = Field(default=None, sa_column=Column(JSON))
+    trip_synced_at: datetime | None = Field(default=None)
+    trip_last_error: str | None = Field(default=None)
+
+
+class Tombstone(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    entity_type: str  # "place" | "category"
+    trip_id: int      # the TRIP id of the deleted place/category
+    origin: str       # "local" | "trip"
+    created_at: datetime = Field(default_factory=utcnow)

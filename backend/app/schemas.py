@@ -67,3 +67,65 @@ class CategoryRead(SQLModel):
     created_by: int
     trip_category_id: int | None
     trip_sync_status: SyncStatus
+
+
+class POICreate(SQLModel):
+    name: str
+    address: str | None = None
+    lat: float
+    lng: float
+    category_id: int | None = None
+    tags: list[str] = []
+    notes: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    website: str | None = None
+    image_url: str | None = None
+    source_url: str | None = None
+
+
+class POIUpdate(SQLModel):
+    name: str | None = None
+    address: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    category_id: int | None = None
+    tags: list[str] | None = None
+    notes: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    website: str | None = None
+    image_url: str | None = None
+    source_url: str | None = None
+
+
+class POIRead(SQLModel):
+    id: int
+    name: str
+    address: str | None
+    lat: float
+    lng: float
+    category_id: int | None
+    tags: list[str]
+    notes: str | None
+    phone: str | None
+    email: str | None
+    website: str | None
+    image_url: str | None
+    source_url: str | None
+    created_by: int
+    created_at: datetime
+    updated_at: datetime
+    trip_place_id: int | None
+    trip_sync_status: SyncStatus
+
+
+class DuplicateCheck(SQLModel):
+    name: str
+    lat: float | None = None
+    lng: float | None = None
+    source_url: str | None = None
+
+
+class DuplicateResult(SQLModel):
+    duplicate_id: int | None
