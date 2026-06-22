@@ -39,8 +39,6 @@ async def test_logs_in_then_authorizes():
 @pytest.mark.anyio
 async def test_relogin_on_401():
     # First token is stale; server only accepts 'good'. Simulate by handing a bad token first.
-    calls = {"n": 0}
-
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/api/auth/login":
             return httpx.Response(200, json={"access_token": "good", "refresh_token": "r"})
@@ -55,6 +53,19 @@ async def test_relogin_on_401():
     resp = await tc._request("GET", "/api/places")
     await http.aclose()
     assert resp.json()["ok"] is True
+
+
+@pytest.mark.anyio
+async def test_persistent_401_raises():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/auth/login":
+            return httpx.Response(200, json={"access_token": "tok", "refresh_token": "r"})
+        return httpx.Response(401)  # token never accepted
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    tc = TripClient("https://trip.lan", "me", "pw", http)
+    with pytest.raises(TripError):
+        await tc._request("GET", "/api/places")
+    await http.aclose()
 
 
 @pytest.mark.anyio
