@@ -85,6 +85,101 @@ async def _sync_one_category(session, client, cat, trip_by_id) -> None:
     session.add(cat)
 
 
+async def reconcile_places(session: Session, client: TripClient) -> None:
+    from ..models import POI
+    try:
+        trip_list = await client.list_places()
+    except TripError:
+        return
+    trip_by_id = {p["id"]: p for p in trip_list}
+    cat_by_trip = {
+        c.trip_category_id: c for c in session.exec(select(Category)).all()
+        if c.trip_category_id is not None
+    }
+    tombstoned = {
+        t.trip_id for t in session.exec(
+            select(Tombstone).where(Tombstone.entity_type == "place")
+        ).all()
+    }
+    linked_ids = {p.trip_place_id for p in session.exec(select(POI)).all() if p.trip_place_id}
+
+    # Import TRIP-only places.
+    for tid, tplace in trip_by_id.items():
+        if tid in linked_ids or tid in tombstoned:
+            continue
+        local_cat = cat_by_trip.get((tplace.get("category") or {}).get("id"))
+        fields = mapping.trip_place_to_poi_fields(tplace, local_cat.id if local_cat else None)
+        poi = POI(created_by=_sync_uid(session), trip_place_id=tid,
+                  trip_synced_snapshot=snapshot.place_snapshot_trip(tplace, local_cat.trip_category_id if local_cat else None),
+                  trip_synced_at=_now(), trip_sync_status=SyncStatus.SYNCED,
+                  **{k: v for k, v in fields.items() if v is not None})
+        session.add(poi)
+    session.commit()
+
+    for poi in session.exec(select(POI)).all():
+        if poi.created_by is None:
+            continue
+        try:
+            await _sync_one_place(session, client, poi, trip_by_id, cat_by_trip)
+        except TripError as exc:
+            poi.trip_sync_status = SyncStatus.ERROR
+            poi.trip_last_error = str(exc)
+            session.add(poi)
+    session.commit()
+
+
+async def _sync_one_place(session, client, poi, trip_by_id, cat_by_trip):
+    from ..models import Category
+    cat = session.get(Category, poi.category_id) if poi.category_id else None
+    trip_cat_id = cat.trip_category_id if cat else None
+    if poi.trip_place_id is None:
+        if trip_cat_id is None:
+            poi.trip_sync_status = SyncStatus.PENDING  # category not synced yet; defer
+            session.add(poi)
+            return
+        payload = mapping.poi_to_trip_payload(poi, trip_cat_id, include_image=True)
+        created = await client.create_place(payload)
+        poi.trip_place_id = created["id"]
+        _mark_synced(poi, snapshot.place_snapshot_local(poi, trip_cat_id))
+    else:
+        tplace = trip_by_id.get(poi.trip_place_id)
+        if tplace is None:
+            return
+        local_snap = snapshot.place_snapshot_local(poi, trip_cat_id)
+        trip_snap = snapshot.place_snapshot_trip(tplace, trip_cat_id)
+        local_diff = snapshot.local_changed(poi.updated_at, poi.trip_synced_at)
+        trip_diff = snapshot.trip_changed(poi.trip_synced_snapshot, trip_snap)
+        if local_diff and not trip_diff:
+            await client.update_place(poi.trip_place_id, mapping.poi_to_trip_payload(poi, trip_cat_id, include_image=True))
+            _mark_synced(poi, local_snap)
+        elif trip_diff and not local_diff:
+            _apply_trip_to_poi(session, poi, tplace, cat_by_trip)
+            _mark_synced(poi, trip_snap)
+        elif local_diff and trip_diff:
+            await _resolve_place_conflict(session, client, poi, tplace, cat_by_trip, local_snap, trip_snap, trip_cat_id)
+    session.add(poi)
+
+
+def _apply_trip_to_poi(session, poi, tplace, cat_by_trip):
+    local_cat = cat_by_trip.get((tplace.get("category") or {}).get("id"))
+    fields = mapping.trip_place_to_poi_fields(tplace, local_cat.id if local_cat else poi.category_id)
+    for key, value in fields.items():
+        setattr(poi, key, value)
+
+
+async def _resolve_place_conflict(session, client, poi, tplace, cat_by_trip, local_snap, trip_snap, trip_cat_id):
+    from ..models import get_or_create_settings
+    policy = get_or_create_settings(session).trip_conflict_policy
+    if policy == "trip_wins":
+        _apply_trip_to_poi(session, poi, tplace, cat_by_trip)
+        _mark_synced(poi, trip_snap)
+    elif policy == "manual":
+        poi.trip_sync_status = SyncStatus.CONFLICT
+    else:  # minimalpoi_wins
+        await client.update_place(poi.trip_place_id, mapping.poi_to_trip_payload(poi, trip_cat_id, include_image=True))
+        _mark_synced(poi, local_snap)
+
+
 def _mark_synced(entity, snap):
     entity.trip_synced_snapshot = snap
     entity.trip_synced_at = _now()
