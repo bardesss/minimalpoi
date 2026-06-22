@@ -1,0 +1,37 @@
+[project]
+name = "minimalpoi-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["../LICENSE"]
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlmodel>=0.0.22",
+    "pyjwt>=2.9",
+    "bcrypt>=4.2",
+    "cryptography>=43",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.27",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+# All warnings are errors so regressions fail CI.
+# The single targeted ignore is for a StarletteDeprecationWarning raised inside
+# starlette.testclient (when imported with `httpx`) that nudges installing an
+# `httpx2` package. We intentionally keep the well-established `httpx` and do
+# NOT adopt `httpx2` (it has typosquat characteristics — a name mimicking the
+# popular `httpx` and a `0.0.0` version on the index) pending verification.
+# The warning fires inside third-party internals, so a narrow ignore is the
+# safe way to keep test output pristine without installing the lookalike.
+filterwarnings = [
+    "error",
+    "ignore:Using `httpx` with `starlette\\.testclient` is deprecated:UserWarning",
+]
