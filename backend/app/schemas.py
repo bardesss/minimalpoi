@@ -207,4 +207,4 @@ class POIDraft(SQLModel):
     phone: str | None = None
     website: str | None = None
     source_url: str | None = None
-    field_sources: dict[str, str] = {}
+    field_sources: dict[str, str] = Field(default_factory=dict)

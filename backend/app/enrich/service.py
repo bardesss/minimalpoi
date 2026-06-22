@@ -62,7 +62,6 @@ async def enrich(url: str, session: Session, client=None) -> POIDraft:
         if query:
             coords = await nominatim_geocode(query, settings.nominatim_url or "https://nominatim.openstreetmap.org", client=client)
             if coords:
-                draft.lat, draft.lng = coords
-                draft.field_sources["lat"] = "nominatim"
-                draft.field_sources["lng"] = "nominatim"
+                _set(draft, "lat", coords[0], "nominatim")
+                _set(draft, "lng", coords[1], "nominatim")
     return draft
