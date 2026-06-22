@@ -246,9 +246,12 @@ extra TRIP fields are out of scope).
 ## 9. Auth & multi-user
 
 - Username/password login; session via signed **JWT in an httpOnly cookie**.
-- **First run** seeds an initial admin (env-provided credentials). There is no
-  self-registration — all other accounts are created by an admin in user
-  management (and can be disabled).
+- **First run:** when no users exist, the app shows a one-time **setup screen**
+  to create the first **admin** account (username + password) in the UI — no
+  env-provided credentials. Once an admin exists, the setup screen is disabled
+  and visiting it redirects to login.
+- There is no self-registration — all other accounts are created by an admin in
+  user management (and can be disabled).
 - **Shared data:** all authenticated users see and edit the one shared POI list,
   categories, and teams. `created_by` is recorded for attribution.
 - **Roles:** `member` (manage POIs/categories/teams, mark visited, comment,
@@ -257,9 +260,10 @@ extra TRIP fields are out of scope).
 ## 10. Deployment
 
 - `docker-compose.yml` with one service; a volume for `data/` (SQLite +
-  `images/`). Environment: `SECRET_KEY` (JWT signing), initial admin
-  username/password. Runtime config (TRIP URL/token, Google key, tile URL, map
-  defaults) is editable in-app by an admin.
+  `images/`). Environment: `SECRET_KEY` (JWT signing) only — the first admin is
+  created via the in-app setup screen, not env credentials. Runtime config
+  (TRIP URL/token, Google key, tile URL, map defaults) is editable in-app by an
+  admin.
 - Frontend is built at image-build time and served as static files by FastAPI.
 - **Backup/restore:** a full JSON export of all data (POIs, categories, teams,
   visits, wishlist, comments, settings) and a matching import to rebuild a fresh
@@ -274,7 +278,8 @@ extra TRIP fields are out of scope).
     failure → retry), including auto-push-once and bulk push, plus field-mapping
     unit tests.
   - Duplicate detection (source-url and name+proximity matches).
-  - Auth/roles, admin-only account creation, POI/Visit/Wishlist/Comment/Team
+  - First-run setup (create first admin; setup disabled once an admin exists),
+    auth/roles, admin-only account creation, POI/Visit/Wishlist/Comment/Team
     CRUD, GeoJSON import/export, and full backup/restore round-trip.
 - **Frontend:** component tests for the place editor, enrich flow, map-pick
   coordinates, image upload, visited+rating, wishlist toggle, and comments,
