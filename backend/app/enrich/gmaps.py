@@ -5,7 +5,7 @@ import httpx
 
 _AT = re.compile(r"@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)")
 _3D4D = re.compile(r"!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)")
-_PLACE = re.compile(r"/maps/place/([^/@]+)")
+_PLACE = re.compile(r"/maps/place/([^/@?]+)")
 
 PLACES_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json"
 

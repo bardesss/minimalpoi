@@ -34,6 +34,10 @@ def test_extract_place_name():
     assert gmaps.extract_place_name("https://www.google.com/maps/place/Caf%C3%A9+Modern/@52,4") == "Café Modern"
 
 
+def test_extract_place_name_strips_query():
+    assert gmaps.extract_place_name("https://www.google.com/maps/place/Caf%C3%A9+Modern?hl=en") == "Café Modern"
+
+
 @pytest.mark.anyio
 async def test_resolve_shortlink_follows_redirect():
     def handler(request: httpx.Request) -> httpx.Response:
@@ -51,7 +55,7 @@ async def test_resolve_shortlink_follows_redirect():
     )
     resolved = await gmaps.resolve_shortlink("https://maps.app.goo.gl/abc", client=client)
     await client.aclose()
-    assert "@1.0,2.0" in resolved
+    assert resolved == "https://www.google.com/maps/place/X/@1.0,2.0,17z"
 
 
 @pytest.mark.anyio
