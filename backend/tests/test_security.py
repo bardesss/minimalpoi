@@ -20,3 +20,8 @@ def test_jwt_rejects_garbage(data_dir):
 def test_jwt_rejects_expired(data_dir):
     token = security.create_access_token("alice", expires_minutes=-1)
     assert security.decode_access_token(token) is None
+
+
+def test_verify_password_handles_malformed_hash(data_dir):
+    assert security.verify_password("password", "not-a-valid-hash") is False
+    assert security.verify_password("password", "") is False
