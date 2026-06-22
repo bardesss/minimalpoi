@@ -73,3 +73,53 @@ async def test_conflict_manual_flags(client, trip_client, fake_trip):
         assert poi.trip_sync_status == SyncStatus.CONFLICT
     await http.aclose()
     assert fake_trip.places[tid]["name"] == "TripName"  # neither side changed
+
+
+async def _synced_category(session, tc):
+    session.add(Category(name="Food", color="#fff", created_by=1))
+    session.commit()
+    await reconcile_categories(session, tc)
+    return session.exec(select(Category)).first()
+
+
+@pytest.mark.anyio
+async def test_local_category_delete_propagates(client, trip_client, fake_trip):
+    tc, http = trip_client
+    with Session(db.engine) as session:
+        cat = await _synced_category(session, tc)
+        tid = cat.trip_category_id
+        session.add(Tombstone(entity_type="category", trip_id=tid, origin="local"))
+        session.delete(cat); session.commit()
+        await reconcile_categories(session, tc)
+    await http.aclose()
+    assert tid not in fake_trip.categories
+    with Session(db.engine) as session:
+        assert session.exec(select(Tombstone).where(
+            Tombstone.entity_type == "category", Tombstone.trip_id == tid)).first() is None
+
+
+@pytest.mark.anyio
+async def test_trip_category_delete_removes_local(client, trip_client, fake_trip):
+    tc, http = trip_client
+    with Session(db.engine) as session:
+        cat = await _synced_category(session, tc)
+        tid = cat.trip_category_id
+        fake_trip.categories.pop(tid)
+        await reconcile_categories(session, tc)
+        assert session.exec(select(Category).where(Category.trip_category_id == tid)).first() is None
+    await http.aclose()
+
+
+@pytest.mark.anyio
+async def test_category_conflict_minimalpoi_wins(client, trip_client, fake_trip):
+    tc, http = trip_client
+    with Session(db.engine) as session:
+        cat = await _synced_category(session, tc)
+        tid = cat.trip_category_id
+        cat.color = "#localcolor"; session.add(cat); session.commit()   # local change
+        fake_trip.categories[tid]["color"] = "#tripcolor"               # trip change
+        await reconcile_categories(session, tc)
+        session.refresh(cat)
+        assert cat.trip_sync_status == SyncStatus.SYNCED
+    await http.aclose()
+    assert fake_trip.categories[tid]["color"] == "#localcolor"          # MinimalPOI won
