@@ -40,3 +40,10 @@ def test_jsonld_localbusiness_partial():
 
 def test_jsonld_empty_when_absent():
     assert parse_jsonld(_read("no_metadata.html")) == {}
+
+
+def test_jsonld_graph_and_image_dict():
+    data = parse_jsonld(_read("jsonld_graph.html"))
+    assert data["name"] == "Graph Cafe"
+    assert data["image"] == "https://img.example/g.jpg"
+    assert data["lat"] == 51.5

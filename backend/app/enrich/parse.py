@@ -10,6 +10,7 @@ class _MetaScriptParser(HTMLParser):
         self.og: dict[str, str] = {}
         self._ld_scripts: list[str] = []
         self._in_ld = False
+        self._current: list[str] = []
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -19,14 +20,18 @@ class _MetaScriptParser(HTMLParser):
                 self.og[prop[3:]] = a["content"]
         if tag == "script" and a.get("type") == "application/ld+json":
             self._in_ld = True
+            self._current = []
 
     def handle_endtag(self, tag):
-        if tag == "script":
+        if tag == "script" and self._in_ld:
+            if self._current:
+                self._ld_scripts.append("".join(self._current))
             self._in_ld = False
+            self._current = []
 
     def handle_data(self, data):
-        if self._in_ld and data.strip():
-            self._ld_scripts.append(data)
+        if self._in_ld:
+            self._current.append(data)
 
 
 def _parse(html: str) -> _MetaScriptParser:
