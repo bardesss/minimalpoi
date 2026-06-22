@@ -37,11 +37,27 @@ async def reconcile_categories(session: Session, client: TripClient) -> None:
             session.delete(cat)
     session.commit()
 
-    # Import TRIP-only categories.
+    # Link unlinked local categories to TRIP categories with the same name (initial-sync dedup).
+    def _norm_name(s): return "".join(ch for ch in (s or "").lower() if ch.isalnum())
     linked_ids = {
         c.trip_category_id for c in session.exec(select(Category)).all()
         if c.trip_category_id is not None
     }
+    unlinked_local_cats = [c for c in session.exec(select(Category)).all() if c.trip_category_id is None]
+    unlinked_trip_cat_ids = set(trip_by_id) - linked_ids - tombstoned
+    for lcat in unlinked_local_cats:
+        for tid in list(unlinked_trip_cat_ids):
+            tcat = trip_by_id[tid]
+            if _norm_name(lcat.name) == _norm_name(tcat.get("name")):
+                lcat.trip_category_id = tid
+                _mark_synced(lcat, snapshot.category_snapshot_trip(tcat))
+                session.add(lcat)
+                unlinked_trip_cat_ids.discard(tid)
+                linked_ids.add(tid)
+                break
+    session.commit()
+
+    # Import TRIP-only categories.
     for tid, tcat in trip_by_id.items():
         if tid in linked_ids or tid in tombstoned:
             continue
@@ -142,6 +158,25 @@ async def reconcile_places(session: Session, client: TripClient) -> None:
     session.commit()
 
     linked_ids = {p.trip_place_id for p in session.exec(select(POI)).all() if p.trip_place_id}
+
+    # Link unlinked local POIs to TRIP places with same name within 150m (initial-sync dedup).
+    from ..dedup import haversine_m
+    def _norm(s): return "".join(ch for ch in (s or "").lower() if ch.isalnum())
+    unlinked_local = [p for p in session.exec(select(POI)).all() if p.trip_place_id is None]
+    unlinked_trip_ids = set(trip_by_id) - linked_ids - tombstoned
+    for poi in unlinked_local:
+        for tid in list(unlinked_trip_ids):
+            tplace = trip_by_id[tid]
+            if _norm(poi.name) == _norm(tplace.get("name")) and \
+               haversine_m(poi.lat, poi.lng, tplace.get("lat", 0), tplace.get("lng", 0)) <= 150:
+                poi.trip_place_id = tid
+                local_cat = cat_by_trip.get((tplace.get("category") or {}).get("id"))
+                _mark_synced(poi, snapshot.place_snapshot_trip(tplace, local_cat.trip_category_id if local_cat else None))
+                session.add(poi)
+                unlinked_trip_ids.discard(tid)
+                linked_ids.add(tid)
+                break
+    session.commit()
 
     # Import TRIP-only places.
     imported_ids: set[int] = set()
