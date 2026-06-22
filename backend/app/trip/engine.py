@@ -6,6 +6,7 @@ from .client import TripClient, TripError
 
 
 async def reconcile_categories(session: Session, client: TripClient) -> None:
+    from ..models import Category
     try:
         trip_list = await client.list_categories()
     except TripError:
@@ -16,6 +17,25 @@ async def reconcile_categories(session: Session, client: TripClient) -> None:
             select(Tombstone).where(Tombstone.entity_type == "category")
         ).all()
     }
+
+    # Propagate local deletions (tombstones with origin="local") to TRIP.
+    for tomb in session.exec(
+        select(Tombstone).where(Tombstone.entity_type == "category", Tombstone.origin == "local")
+    ).all():
+        try:
+            if tomb.trip_id in trip_by_id:
+                await client.delete_category(tomb.trip_id)
+            session.delete(tomb)  # done — both sides agree it's gone
+        except TripError:
+            pass  # retry next pass
+    session.commit()
+
+    # Detect TRIP-side deletions: a linked Category whose trip id vanished from the pull.
+    for cat in session.exec(select(Category)).all():
+        if cat.trip_category_id and cat.trip_category_id not in trip_by_id and cat.trip_synced_at is not None:
+            session.add(Tombstone(entity_type="category", trip_id=cat.trip_category_id, origin="trip"))
+            session.delete(cat)
+    session.commit()
 
     # Import TRIP-only categories.
     linked_ids = {
@@ -101,6 +121,26 @@ async def reconcile_places(session: Session, client: TripClient) -> None:
             select(Tombstone).where(Tombstone.entity_type == "place")
         ).all()
     }
+
+    # Propagate local deletions (tombstones with origin="local") to TRIP.
+    for tomb in session.exec(
+        select(Tombstone).where(Tombstone.entity_type == "place", Tombstone.origin == "local")
+    ).all():
+        try:
+            if tomb.trip_id in trip_by_id:
+                await client.delete_place(tomb.trip_id)
+            session.delete(tomb)  # done — both sides agree it's gone
+        except TripError:
+            pass  # retry next pass
+    session.commit()
+
+    # Detect TRIP-side deletions: a linked POI whose trip id vanished from the pull.
+    for poi in session.exec(select(POI)).all():
+        if poi.trip_place_id and poi.trip_place_id not in trip_by_id and poi.trip_synced_at is not None:
+            session.add(Tombstone(entity_type="place", trip_id=poi.trip_place_id, origin="trip"))
+            session.delete(poi)
+    session.commit()
+
     linked_ids = {p.trip_place_id for p in session.exec(select(POI)).all() if p.trip_place_id}
 
     # Import TRIP-only places.
