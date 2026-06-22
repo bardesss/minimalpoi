@@ -17,6 +17,10 @@ def _resolve_ips(host: str) -> list[str]:
     return [info[4][0] for info in infos]
 
 
+# NOTE: validate-then-connect has a residual DNS-rebinding/TOCTOU window —
+# the host is resolved here, then httpx resolves again on the actual GET, so a
+# very-short-TTL attacker-controlled DNS answer could differ. Closing this fully
+# needs an IP-pinned transport; accepted as a documented limitation.
 def assert_safe_url(url: str) -> None:
     parsed = urlparse(url)
     if parsed.scheme not in ALLOWED_SCHEMES:
@@ -39,7 +43,7 @@ async def safe_get(client: httpx.AsyncClient, url: str) -> httpx.Response:
     current = url
     for _ in range(MAX_REDIRECTS + 1):
         assert_safe_url(current)
-        resp = await client.get(current)
+        resp = await client.get(current, follow_redirects=False)
         if resp.is_redirect and "location" in resp.headers:
             current = urljoin(current, resp.headers["location"])
             continue
