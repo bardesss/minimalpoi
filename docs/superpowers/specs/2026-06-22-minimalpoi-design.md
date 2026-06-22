@@ -6,15 +6,16 @@
 ## 1. Summary
 
 MinimalPOI is a self-hosted, multi-user web app for collecting, enriching, and
-organizing points of interest (POIs) on a map, with one-click / automatic push
-to a [TRIP](https://github.com/itskovacs/trip) instance.
+organizing points of interest (POIs) on a map, kept in **continuous two-way
+sync** with a [TRIP](https://github.com/itskovacs/trip) instance.
 
 Multiple people log in and contribute to **one shared POI list**. You add a POI
 manually or by pasting a link (Google Maps, TripAdvisor, or any website); the
 backend enriches it by reading that link (OpenGraph, JSON-LD, embedded
 coordinates, optional Google Places). Each user can mark places **visited**
 (solo or with a **team**) and leave attributed **comments**. When an admin has
-configured the TRIP connection, new POIs are pushed to TRIP automatically.
+configured the TRIP connection, POIs are synced bidirectionally with TRIP:
+creates, edits, and deletes flow both ways.
 
 The visual design is ported faithfully from the Claude-generated reference in
 `/reference/POI Manager (MapLibre) - standalone.html` (the "Places manager").
@@ -28,16 +29,17 @@ The visual design is ported faithfully from the Claude-generated reference in
 - Teams (e.g. "family") so a visit can be logged as solo or with a team.
 - Per-user rating on visited places and a per-user "want to go" wishlist.
 - Pick/fix a POI's location by clicking the map; manual image upload.
-- Duplicate detection when adding to the shared list.
-- Automatic push of new POIs to a configured TRIP instance, plus a bulk
-  "push all unsynced" action.
+- Duplicate detection when adding to the shared list (and against TRIP).
+- **Continuous two-way sync with TRIP**: creates, field updates, and deletes
+  propagate in both directions, with conflict detection/resolution.
 - Full backup/restore of all data (POIs, comments, visits, teams, wishlist).
 - Runs self-hosted in a single Docker container. All app assets bundled
   locally (no CDN / Google Fonts) so the app's core works offline on a LAN.
 
 ### Non-goals (v1 — YAGNI)
 - Trip / itinerary planning, bookings, packing lists (TRIP already does this).
-- Two-way sync with TRIP; updating/deleting places in TRIP.
+- Syncing MinimalPOI-only concepts (tags, comments, visits, wishlist, ratings)
+  to TRIP — these stay local; only the shared place fields sync.
 - GPX routes / waypoint routing.
 - The extra TRIP place fields: favorite, price, duration, allowdog, restroom.
 - OIDC / SSO, mobile apps, async job queue, multiple TRIP targets.
@@ -56,7 +58,7 @@ The visual design is ported faithfully from the Claude-generated reference in
 ┌───────────────────────────────────────────────────────────┐
 │  Browser — React + Vite + Tailwind + MapLibre (bundled)    │
 │  map · list/search · place editor · visited · comments ·    │
-│  categories · teams · settings/admin                        │
+│  categories · teams · settings/admin · sync/conflicts       │
 └───────────────────────────┬───────────────────────────────┘
                             │ REST (JSON) + httpOnly JWT cookie
 ┌───────────────────────────▼───────────────────────────────┐
@@ -64,14 +66,15 @@ The visual design is ported faithfully from the Claude-generated reference in
 │  • Auth (accounts, roles, shared data)                      │
 │  • POI / Category / Team / Visit / Comment CRUD             │
 │  • Enrichment service (link → structured draft POI)         │
-│  • TRIP push client (POST /api/by_token/place)              │
-│  • GeoJSON import / export                                   │
-│  • SQLite via SQLModel; uploaded/enriched images on disk    │
+│  • TRIP sync engine (background worker + on-change push)     │
+│    – TRIP client: login/JWT, GET/POST/PUT/DELETE /api/places │
+│  • GeoJSON import/export · full backup/restore               │
+│  • SQLite via SQLModel; uploaded/enriched images on disk     │
 └──────┬───────────────┬──────────────┬─────────────────────┘
        ▼               ▼              ▼
-  Pasted link      Nominatim     TRIP instance
-  (OG/JSON-LD,     (optional     (X-Api-Token)
-   gmaps coords)   geocode)
+  Pasted link      Nominatim     TRIP instance  ◀── poll (in) ──┐
+  (OG/JSON-LD,     (optional     (authenticated  ── push (out) ─┘
+   gmaps coords)   geocode)       /api/auth/login + /api/places)
        ▲
   Google Places API (optional, admin key)
 ```
@@ -110,9 +113,16 @@ on push), created_by`
 email, website, image_url (enriched/uploaded), source_url (pasted link),
 created_by, created_at, updated_at`
 
-TRIP sync state (embedded): `trip_sync_status (none|synced|error),
-trip_place_id (nullable), trip_last_pushed_at (nullable), trip_last_error
-(nullable)`
+TRIP sync state (embedded — see §6 for how these drive sync):
+`trip_place_id (nullable), trip_sync_status (local_only | synced | pending |
+conflict | error), trip_synced_snapshot (JSON of the mapped TRIP fields as of
+the last successful sync — used to detect TRIP-side edits, since TRIP exposes
+no modified timestamp), trip_synced_at (nullable), trip_last_error (nullable)`
+
+### Tombstone (deletion record, for sync)
+`id, trip_place_id, origin (local | trip), created_at` — records that a synced
+place was deleted on one side so the sync engine deletes it on the other side
+**once** and never re-creates it from a stale read.
 
 ### Visit (per-user visited status)
 `id, poi_id, user_id, team_id (nullable — null = solo), rating (nullable int
@@ -129,11 +139,18 @@ existence means "this user visited"; `team_id` records solo vs which team;
 `id, poi_id, user_id, text, created_at`
 
 ### Settings (singleton, admin-editable)
-`trip_base_url, trip_api_token, trip_autopush (bool, default true when
-configured), google_api_key (optional), nominatim_url (optional, defaults to
+`trip_base_url, trip_username, trip_password (encrypted at rest with the
+auto-generated app secret), trip_sync_enabled (bool), trip_sync_interval_seconds
+(default 300), trip_conflict_policy (manual | minimalpoi_wins | trip_wins,
+default manual), google_api_key (optional), nominatim_url (optional, defaults to
 public OSM Nominatim; swappable for a self-hosted instance), map_tile_url
 (default public OSM raster), default_map_center_lat, default_map_center_lng,
 default_map_zoom`
+
+> TRIP auth uses the **authenticated** API (`POST /api/auth/login` →
+> access+refresh JWT), not the create-only `X-Api-Token`. The full CRUD API
+> (`GET/POST/PUT/DELETE /api/places`) is what makes two-way sync possible.
+> Credentials are stored encrypted and never returned to the browser.
 
 ## 5. Enrichment pipeline
 
@@ -169,29 +186,28 @@ Downloaded images are stored locally under `images/` and referenced by
 `image_url`. A user can also **upload their own image** ("Choose file") to
 replace the enriched one; uploads are stored the same way.
 
-## 6. TRIP integration & push
+## 6. TRIP integration & two-way sync
 
-- **Settings (admin):** TRIP base URL + API token. "Test connection" calls
-  `GET /api/by_token/categories` and lists available TRIP categories.
+MinimalPOI keeps the shared POI list in **continuous bidirectional sync** with
+the configured TRIP account. The TRIP account is effectively the second replica
+of the same data: places created/edited/deleted on either side converge.
+
+### TRIP client
+
+- **Auth:** `POST /api/auth/login` with the stored `trip_username`/`trip_password`
+  → access + refresh JWT, held in memory by the backend; access token refreshed
+  via `POST /api/auth/refresh`, full re-login on `401`. "Test connection" in
+  settings verifies the login and lists TRIP categories.
+- **Endpoints used:** `GET /api/places` (list — returns this account's places),
+  `POST /api/places` (create), `PUT /api/places/{id}` (update),
+  `DELETE /api/places/{id}` (delete), plus `GET /api/categories`.
 - **Category mapping:** each MinimalPOI category stores `trip_category_name`
-  (TRIP requires an existing, case-sensitive category name).
-- **Auto-push:** when TRIP is configured and `trip_autopush` is on (default),
-  a newly-saved POI is pushed in the background. Because TRIP's API is
-  **create-only** (no update/upsert):
-  - Push **once** on the first successful save → store `trip_place_id`, set
-    `trip_sync_status = synced`.
-  - Editing a synced POI does **not** auto-re-push (that would duplicate in
-    TRIP). Re-push is a manual, explicitly-warned action
-    ("Push again — this creates a duplicate place in TRIP").
-  - On failure (unmapped category, TRIP unreachable, etc.) set
-    `trip_sync_status = error` + `trip_last_error`, show a retry badge. Local
-    save is never blocked by a push failure.
-- **Bulk push:** a "Push all unsynced to TRIP" action pushes every POI whose
-  `trip_sync_status` is `none` or `error` (covers auto-push being off, or a
-  backlog of failed/created-before-config POIs), reporting per-POI results.
-- **Endpoint:** `POST /api/by_token/place`, header `X-Api-Token: <token>`.
+  (TRIP requires an existing, case-sensitive category). Inbound places whose
+  TRIP category has no mapping are assigned to a configurable default category;
+  outbound POIs whose category isn't mapped surface a fixable error (never a
+  silent failure).
 
-### Field mapping (MinimalPOI → TRIP)
+### Field mapping (the synced fields)
 
 | MinimalPOI            | TRIP field    |
 |-----------------------|---------------|
@@ -203,8 +219,64 @@ replace the enriched one; uploads are stored the same way.
 | notes                 | `description` |
 | website, phone, email | `links` (array; phone/email as `tel:` / `mailto:`) |
 
-Tags, visits, and comments are **local-only** (TRIP has no equivalent and the
-extra TRIP fields are out of scope).
+Only these fields participate in sync. **Tags, comments, visits, wishlist, and
+ratings are MinimalPOI-only** and are never sent to TRIP nor overwritten by an
+inbound update. TRIP-only fields (price, duration, favorite, etc.) are left
+untouched on update (we `PUT` only the mapped fields).
+
+### Identity & change detection
+
+- A POI is linked to its TRIP place by **`trip_place_id`**.
+- **Local edits** are detected by `updated_at` advancing past `trip_synced_at`.
+- **TRIP edits** are detected by **snapshot diff**: TRIP exposes no modified
+  timestamp, so on each poll we compare the place's current mapped fields to
+  `trip_synced_snapshot` (the values stored at the last successful sync). A
+  difference means TRIP changed.
+- After any successful sync of a POI, `trip_synced_snapshot` and
+  `trip_synced_at` are rewritten to the just-synced values — this is what
+  **prevents feedback loops** (our own write is never seen as a remote change).
+
+### Sync engine (background worker + on-change)
+
+A single background worker runs every `trip_sync_interval_seconds` (default
+5 min); local saves/deletes also enqueue an **immediate** outbound sync so the
+common case feels instant. One reconcile pass:
+
+1. **Pull** `GET /api/places` into a snapshot keyed by `trip_place_id`.
+2. For each TRIP place **not** linked locally and **not** tombstoned → **import**
+   (create a local POI, mapping fields + category; `created_by` = the sync
+   system user).
+3. For each local POI with no `trip_place_id` and not tombstoned → **create** in
+   TRIP (`POST`), store the returned id.
+4. For each **linked** POI, classify with the two flags
+   (local-changed, trip-changed):
+   - neither → nothing.
+   - local only → `PUT` to TRIP.
+   - TRIP only → update the local POI (mapped fields only).
+   - **both → conflict**, resolved per `trip_conflict_policy`:
+     `minimalpoi_wins` (PUT local over TRIP), `trip_wins` (overwrite local), or
+     `manual` (default) → mark `trip_sync_status = conflict`, change neither
+     side, and surface it in the UI for the user to choose per place.
+5. **Deletions:** a place deleted locally writes a `local` tombstone → `DELETE`
+   in TRIP. A linked place absent from the TRIP pull writes a `trip` tombstone →
+   delete locally. Tombstones stop either side from re-creating it from a stale
+   read; they can be cleared once both sides confirm absence.
+
+Per-POI `trip_sync_status` (`local_only`/`pending`/`synced`/`conflict`/`error`)
+and `trip_last_error` are shown as badges. Failures (TRIP down, unmapped
+category, auth) never block local use; the POI stays usable and retries next
+pass. A manual **"Sync now"** triggers an immediate pass; settings show last
+sync time and any errors.
+
+### Bootstrapping & safety
+
+- First enable does a full reconcile. To avoid accidental mass-duplication when
+  both sides already hold the same places, the initial pass runs the same
+  **duplicate detection** as §5 (match by name + proximity) and **links**
+  matches instead of creating new ones (the user reviews proposed links before
+  the first sync commits).
+- All sync mutations are logged; a dry-run summary is available before the first
+  reconcile.
 
 ## 7. Visited & teams
 
@@ -229,12 +301,15 @@ extra TRIP fields are out of scope).
   **clicking the map** (the reference "Waypoint"); the image can be **uploaded**
   ("Choose file") to override the enriched one. Actions: Save, Delete, mark
   **Visited** (with team/solo) and set a 1–5 **rating**, toggle **want-to-go**,
-  and TRIP sync status/retry. A **comments** section shows attributed notes from
+  and a **TRIP sync badge** (synced / pending / conflict / error). When a POI is
+  in `conflict`, the editor shows both sides' values side by side with "keep
+  mine" / "take TRIP" actions. A **comments** section shows attributed notes from
   all users with an add-comment box.
 - **Categories:** manage name + color + TRIP-category mapping.
 - **Teams:** create teams and manage members.
 - **Settings / Admin** (admin only): base map tile URL, map defaults, TRIP
-  connection (URL/token/test/auto-push toggle) + "Push all unsynced to TRIP",
+  connection (URL + username/password, "Test connection", sync enable +
+  interval, conflict policy, "Sync now", last-sync status and a conflicts list),
   optional Google API key, user management (create/disable accounts),
   GeoJSON import/export ("Bulk import or export your places"), and **full
   backup/restore** (JSON of all data).
@@ -255,7 +330,9 @@ extra TRIP fields are out of scope).
 - **Shared data:** all authenticated users see and edit the one shared POI list,
   categories, and teams. `created_by` is recorded for attribution.
 - **Roles:** `member` (manage POIs/categories/teams, mark visited, comment,
-  push) and `admin` (everything + settings + user management).
+  resolve conflicts) and `admin` (everything + settings, TRIP sync config, user
+  management). Inbound (TRIP-created) POIs are attributed to a reserved **sync
+  system user** so attribution stays meaningful.
 
 ## 10. Deployment
 
@@ -268,8 +345,9 @@ extra TRIP fields are out of scope).
     `SECRET_KEY` env var, if set, overrides the file (for users who prefer to
     manage it externally).
   - The first admin is created via the in-app setup screen.
-  - Runtime config (TRIP URL/token, Google key, tile URL, map defaults) is
-    editable in-app by an admin.
+  - Runtime config (TRIP URL/credentials, sync settings, Google key, tile URL,
+    map defaults) is editable in-app by an admin. The TRIP password is encrypted
+    at rest with the app secret.
 - Frontend is built at image-build time and served as static files by FastAPI.
 - **Backup/restore:** a full JSON export of all data (POIs, categories, teams,
   visits, wishlist, comments, settings) and a matching import to rebuild a fresh
@@ -280,21 +358,31 @@ extra TRIP fields are out of scope).
 - **Backend:**
   - Enrichment parsers against **saved HTML fixtures** (Google Maps URL coord
     extraction, TripAdvisor + generic OpenGraph/JSON-LD).
-  - TRIP push client against a **mocked TRIP API** (success, unmapped category,
-    failure → retry), including auto-push-once and bulk push, plus field-mapping
-    unit tests.
+  - TRIP client against a **mocked TRIP API**: login + token refresh + re-login
+    on 401, and field-mapping unit tests.
+  - **Sync engine** against the mock — the matrix that matters most:
+    local-only create → POST; TRIP-only create → import; local edit → PUT;
+    TRIP edit (snapshot diff) → local update; both edited → conflict per each
+    policy; local delete → DELETE + tombstone; TRIP delete → local delete +
+    tombstone; **no feedback loop** (our own write isn't re-detected); unmapped
+    category and TRIP-down → error + retry, no data loss; initial reconcile
+    links duplicates instead of doubling them.
   - Duplicate detection (source-url and name+proximity matches).
   - First-run setup (create first admin; setup disabled once an admin exists),
     auth/roles, admin-only account creation, POI/Visit/Wishlist/Comment/Team
     CRUD, GeoJSON import/export, and full backup/restore round-trip.
 - **Frontend:** component tests for the place editor, enrich flow, map-pick
-  coordinates, image upload, visited+rating, wishlist toggle, and comments,
-  with a mocked API.
+  coordinates, image upload, visited+rating, wishlist toggle, comments, and the
+  conflict-resolution view, with a mocked API.
 
 ## 12. Open items / future
 
-- Optional: push the app-native visited to TRIP's `visited` field (deferred —
-  extra TRIP fields are currently out of scope).
+- Optional: sync more fields if TRIP later exposes a modified timestamp (would
+  let us replace snapshot-diff with cheaper timestamp comparison).
+- Optional: map MinimalPOI-only concepts onto TRIP's extra fields (visited →
+  TRIP `visited`, rating → none) — deferred to keep the sync surface small.
 - Optional self-hosted tile server / offline basemap (config already supports a
   custom tile URL).
-- Two-way TRIP sync and place updates (blocked by TRIP's create-only API).
+- **Conflict policy default is `manual`** (surface conflicts, change nothing
+  automatically). Confirm during spec review if you'd prefer `minimalpoi_wins`
+  as the default instead.
