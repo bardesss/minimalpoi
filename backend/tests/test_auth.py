@@ -29,3 +29,16 @@ def test_login_rejects_bad_password(client):
     client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
     client.post("/api/auth/logout")
     assert client.post("/api/auth/login", json={"username": "admin", "password": "nope"}).status_code == 401
+
+
+def test_login_rejects_disabled_user(client):
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    from sqlmodel import Session, select
+    from app import db
+    from app.models import User
+    from app.security import hash_password
+    with Session(db.engine) as session:
+        session.add(User(username="bob", password_hash=hash_password("pw"), disabled=True))
+        session.commit()
+    client.post("/api/auth/logout")
+    assert client.post("/api/auth/login", json={"username": "bob", "password": "pw"}).status_code == 401

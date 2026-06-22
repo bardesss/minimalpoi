@@ -22,7 +22,7 @@ def _set_auth_cookie(response: Response, username: str) -> None:
 
 
 def _any_user_exists(session: SessionDep) -> bool:
-    return session.exec(select(User)).first() is not None
+    return session.exec(select(User.id)).first() is not None
 
 
 @router.get("/setup-status", response_model=SetupStatus)
@@ -57,7 +57,7 @@ def login(creds: Credentials, session: SessionDep, response: Response) -> User:
 
 @router.post("/logout")
 def logout(response: Response) -> dict:
-    response.delete_cookie(COOKIE_NAME, path="/")
+    response.delete_cookie(COOKIE_NAME, path="/", samesite="lax")
     return {"status": "ok"}
 
 
