@@ -37,3 +37,17 @@ def test_upload_endpoint(client):
     resp = client.post("/api/images", files={"file": ("p.png", b"\x89PNG", "image/png")})
     assert resp.status_code == 201
     assert resp.json()["url"].startswith("/images/")
+
+
+def test_upload_requires_auth(client):
+    # no setup/login -> unauthenticated
+    resp = client.post("/api/images", files={"file": ("p.png", b"x", "image/png")})
+    assert resp.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_localize_returns_original_on_http_error(data_dir):
+    http = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(500, text="err")))
+    out = await images.localize("https://img.example/missing.jpg", client=http)
+    await http.aclose()
+    assert out == "https://img.example/missing.jpg"

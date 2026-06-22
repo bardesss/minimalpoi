@@ -30,6 +30,7 @@ async def localize(image_url: str | None, client: httpx.AsyncClient | None = Non
         client = httpx.AsyncClient(follow_redirects=True, timeout=10.0)
     try:
         resp = await client.get(image_url)
+        resp.raise_for_status()
         content = resp.content
         ctype = resp.headers.get("content-type", "").split(";")[0].strip()
     except httpx.HTTPError:
