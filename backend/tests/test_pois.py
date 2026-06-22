@@ -52,3 +52,30 @@ def test_duplicate_detection_by_proximity_and_url(client):
     far = client.post("/api/pois/check-duplicate",
                       json={"name": "Other Place", "lat": 48.0, "lng": 2.0})
     assert far.json()["duplicate_id"] is None
+
+
+def test_delete_synced_poi_writes_tombstone(client):
+    cat_id = _setup(client)
+    poi = client.post(
+        "/api/pois",
+        json={"name": "Synced Place", "lat": 1.0, "lng": 2.0, "category_id": cat_id},
+    ).json()
+
+    # Simulate a synced POI by setting trip_place_id directly in the DB.
+    from sqlmodel import Session, select
+    from app import db
+    from app.models import POI, Tombstone
+    with Session(db.engine) as session:
+        p = session.get(POI, poi["id"])
+        p.trip_place_id = 555
+        session.add(p)
+        session.commit()
+
+    assert client.delete(f"/api/pois/{poi['id']}").status_code == 204
+
+    with Session(db.engine) as session:
+        tombstones = session.exec(select(Tombstone)).all()
+        assert len(tombstones) == 1
+        assert tombstones[0].entity_type == "place"
+        assert tombstones[0].trip_id == 555
+        assert tombstones[0].origin == "local"
