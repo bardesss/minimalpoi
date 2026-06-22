@@ -26,7 +26,12 @@ The visual design is ported faithfully from the Claude-generated reference in
 - Add a POI manually or by pasting a link; enrich automatically.
 - Shared multi-user POI library with per-user **visited** status and comments.
 - Teams (e.g. "family") so a visit can be logged as solo or with a team.
-- Automatic push of new POIs to a configured TRIP instance.
+- Per-user rating on visited places and a per-user "want to go" wishlist.
+- Pick/fix a POI's location by clicking the map; manual image upload.
+- Duplicate detection when adding to the shared list.
+- Automatic push of new POIs to a configured TRIP instance, plus a bulk
+  "push all unsynced" action.
+- Full backup/restore of all data (POIs, comments, visits, teams, wishlist).
 - Runs self-hosted in a single Docker container. All app assets bundled
   locally (no CDN / Google Fonts) so the app's core works offline on a LAN.
 
@@ -37,6 +42,8 @@ The visual design is ported faithfully from the Claude-generated reference in
 - The extra TRIP place fields: favorite, price, duration, allowdog, restroom.
 - OIDC / SSO, mobile apps, async job queue, multiple TRIP targets.
 - Per-user (siloed) POI lists — the list is shared by all users.
+- Self-registration / invite links — accounts are created by an admin only.
+- Bulk multi-link paste, pin clustering, activity feed, notifications.
 
 > **Offline note:** Reading a pasted link and loading map tiles inherently
 > require internet — that is expected and understood. "No online dependencies"
@@ -108,9 +115,15 @@ trip_place_id (nullable), trip_last_pushed_at (nullable), trip_last_error
 (nullable)`
 
 ### Visit (per-user visited status)
-`id, poi_id, user_id, team_id (nullable — null = solo), created_at`
+`id, poi_id, user_id, team_id (nullable — null = solo), rating (nullable int
+1–5), created_at`
 **Unique (poi_id, user_id)** — one visited record per user per place. The row's
-existence means "this user visited"; `team_id` records solo vs which team.
+existence means "this user visited"; `team_id` records solo vs which team;
+`rating` is that user's optional 1–5 score for the place.
+
+### Wishlist (per-user "want to go")
+`id, poi_id, user_id, created_at`
+**Unique (poi_id, user_id)** — one wishlist flag per user per place.
 
 ### Comment (attributed per-user note)
 `id, poi_id, user_id, text, created_at`
@@ -127,6 +140,11 @@ default_map_zoom`
 Endpoint: `POST /enrich {url}` — **synchronous** (paste link → spinner →
 returns a **draft** POI the user reviews/edits before saving). Manual add uses
 the same editor with an empty draft.
+
+**Duplicate detection:** before saving (manual or enriched), the backend checks
+the shared list for a likely duplicate — same `source_url`, or a close
+name match within a small distance of the same lat/lng — and the editor warns
+the user, offering to open the existing POI instead of creating a new one.
 
 Resolution chain:
 1. **Detect link type** from the URL.
@@ -148,7 +166,8 @@ Resolution chain:
    single fetch (no crawling).
 
 Downloaded images are stored locally under `images/` and referenced by
-`image_url`.
+`image_url`. A user can also **upload their own image** ("Choose file") to
+replace the enriched one; uploads are stored the same way.
 
 ## 6. TRIP integration & push
 
@@ -167,6 +186,9 @@ Downloaded images are stored locally under `images/` and referenced by
   - On failure (unmapped category, TRIP unreachable, etc.) set
     `trip_sync_status = error` + `trip_last_error`, show a retry badge. Local
     save is never blocked by a push failure.
+- **Bulk push:** a "Push all unsynced to TRIP" action pushes every POI whose
+  `trip_sync_status` is `none` or `error` (covers auto-push being off, or a
+  backlog of failed/created-before-config POIs), reporting per-POI results.
 - **Endpoint:** `POST /api/by_token/place`, header `X-Api-Token: <token>`.
 
 ### Field mapping (MinimalPOI → TRIP)
@@ -198,19 +220,24 @@ extra TRIP fields are out of scope).
 ## 8. UI / screens (ported from the reference)
 
 - **Main view:** collapsible left list panel — search ("places or addresses"),
-  category filter, visited filter, "N places shown" — beside a MapLibre map with
-  colored category pins and "Fit map to results".
+  category filter, visited filter, wishlist filter, "N places shown" — beside a
+  MapLibre map with colored category pins and "Fit map to results".
 - **Add:** a prominent "Paste a link" input (Google Maps / TripAdvisor /
   website) that enriches and opens the **place editor**; plus "Add manually".
 - **Place editor (modal):** Name, Address, Latitude, Longitude, Category, Tags,
-  Notes, Phone, Email, Website, image preview. Actions: Save, Delete, mark
-  Visited (with team/solo), and TRIP sync status/retry. A **comments** section
-  shows attributed notes from all users with an add-comment box.
+  Notes, Phone, Email, Website, image preview. Coordinates can be set/fixed by
+  **clicking the map** (the reference "Waypoint"); the image can be **uploaded**
+  ("Choose file") to override the enriched one. Actions: Save, Delete, mark
+  **Visited** (with team/solo) and set a 1–5 **rating**, toggle **want-to-go**,
+  and TRIP sync status/retry. A **comments** section shows attributed notes from
+  all users with an add-comment box.
 - **Categories:** manage name + color + TRIP-category mapping.
 - **Teams:** create teams and manage members.
 - **Settings / Admin** (admin only): base map tile URL, map defaults, TRIP
-  connection (URL/token/test/auto-push toggle), optional Google API key, user
-  management, and GeoJSON import/export ("Bulk import or export your places").
+  connection (URL/token/test/auto-push toggle) + "Push all unsynced to TRIP",
+  optional Google API key, user management (create/disable accounts),
+  GeoJSON import/export ("Bulk import or export your places"), and **full
+  backup/restore** (JSON of all data).
 - **User settings** (any user): preferred visit context (team or solo), password.
 - **Theme:** "Light / minimal" — indigo `#4f46e5` on warm-grays
   (`#f1f0ee` / `#46413a` / `#9a958f`), category accent colors (amber/purple/
@@ -219,7 +246,9 @@ extra TRIP fields are out of scope).
 ## 9. Auth & multi-user
 
 - Username/password login; session via signed **JWT in an httpOnly cookie**.
-- **First run** seeds an initial admin (env-provided credentials).
+- **First run** seeds an initial admin (env-provided credentials). There is no
+  self-registration — all other accounts are created by an admin in user
+  management (and can be disabled).
 - **Shared data:** all authenticated users see and edit the one shared POI list,
   categories, and teams. `created_by` is recorded for attribution.
 - **Roles:** `member` (manage POIs/categories/teams, mark visited, comment,
@@ -232,6 +261,9 @@ extra TRIP fields are out of scope).
   username/password. Runtime config (TRIP URL/token, Google key, tile URL, map
   defaults) is editable in-app by an admin.
 - Frontend is built at image-build time and served as static files by FastAPI.
+- **Backup/restore:** a full JSON export of all data (POIs, categories, teams,
+  visits, wishlist, comments, settings) and a matching import to rebuild a fresh
+  instance. Image files are included/referenced so a restore is complete.
 
 ## 11. Testing
 
@@ -239,10 +271,14 @@ extra TRIP fields are out of scope).
   - Enrichment parsers against **saved HTML fixtures** (Google Maps URL coord
     extraction, TripAdvisor + generic OpenGraph/JSON-LD).
   - TRIP push client against a **mocked TRIP API** (success, unmapped category,
-    failure → retry), and field-mapping unit tests.
-  - Auth/roles, POI/Visit/Comment/Team CRUD, GeoJSON import/export.
-- **Frontend:** component tests for the place editor, enrich flow, visited
-  toggle, and comments, with a mocked API.
+    failure → retry), including auto-push-once and bulk push, plus field-mapping
+    unit tests.
+  - Duplicate detection (source-url and name+proximity matches).
+  - Auth/roles, admin-only account creation, POI/Visit/Wishlist/Comment/Team
+    CRUD, GeoJSON import/export, and full backup/restore round-trip.
+- **Frontend:** component tests for the place editor, enrich flow, map-pick
+  coordinates, image upload, visited+rating, wishlist toggle, and comments,
+  with a mocked API.
 
 ## 12. Open items / future
 
