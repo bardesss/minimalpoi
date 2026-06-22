@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
 
-from ..models import Category, SyncStatus, Tombstone
+from ..models import POI, Category, SyncStatus, Tombstone
 from . import mapping, snapshot
 from .client import TripClient, TripError
 
@@ -34,6 +34,9 @@ async def reconcile_categories(session: Session, client: TripClient) -> None:
     for cat in session.exec(select(Category)).all():
         if cat.trip_category_id and cat.trip_category_id not in trip_by_id and cat.trip_synced_at is not None:
             session.add(Tombstone(entity_type="category", trip_id=cat.trip_category_id, origin="trip"))
+            for p in session.exec(select(POI).where(POI.category_id == cat.id)).all():
+                p.category_id = None
+                session.add(p)
             session.delete(cat)
     session.commit()
 

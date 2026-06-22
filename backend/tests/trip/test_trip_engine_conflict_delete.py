@@ -123,3 +123,41 @@ async def test_category_conflict_minimalpoi_wins(client, trip_client, fake_trip)
         assert cat.trip_sync_status == SyncStatus.SYNCED
     await http.aclose()
     assert fake_trip.categories[tid]["color"] == "#localcolor"          # MinimalPOI won
+
+
+@pytest.mark.anyio
+async def test_inbound_trip_edit_applies_and_idempotent(client, trip_client, fake_trip):
+    tc, http = trip_client
+    with Session(db.engine) as session:
+        poi = await _synced_poi(session, tc, fake_trip)
+        tid = poi.trip_place_id
+        poi.notes = "LOCAL NOTE"; session.add(poi); session.commit()
+        await reconcile_places(session, tc)  # baseline so notes is synced
+        # Now TRIP edits the name only (no local change):
+        fake_trip.places[tid]["name"] = "TripRenamed"
+        await reconcile_places(session, tc)
+        session.refresh(poi)
+        assert poi.name == "TripRenamed"      # inbound applied
+        assert poi.trip_sync_status == SyncStatus.SYNCED
+        # idempotent: second pass makes no change to TRIP
+        before = dict(fake_trip.places[tid])
+        await reconcile_places(session, tc)
+        assert fake_trip.places[tid] == before
+    await http.aclose()
+
+
+@pytest.mark.anyio
+async def test_conflict_trip_wins(client, trip_client, fake_trip):
+    tc, http = trip_client
+    with Session(db.engine) as session:
+        get_or_create_settings(session).trip_conflict_policy = "trip_wins"; session.commit()
+        poi = await _synced_poi(session, tc, fake_trip)
+        tid = poi.trip_place_id
+        from app.models import utcnow
+        poi.name = "LocalName"; poi.updated_at = utcnow(); session.add(poi); session.commit()
+        fake_trip.places[tid]["name"] = "TripName"
+        await reconcile_places(session, tc)
+        session.refresh(poi)
+        assert poi.name == "TripName"   # trip won
+        assert poi.trip_sync_status == SyncStatus.SYNCED
+    await http.aclose()
