@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlmodel import SQLModel
+from sqlmodel import Field, SQLModel
 
 from .models import Role, SyncStatus
 
@@ -133,7 +133,7 @@ class DuplicateResult(SQLModel):
 
 class VisitUpsert(SQLModel):
     team_id: int | None = None
-    rating: int | None = None
+    rating: int | None = Field(default=None, ge=1, le=5)
 
 
 class VisitRead(SQLModel):

@@ -40,6 +40,8 @@ def upsert_visit(poi_id: int, body: VisitUpsert, session: SessionDep, user: Curr
 
 @router.get("/{poi_id}/visits", response_model=list[VisitRead])
 def list_visits(poi_id: int, session: SessionDep, _: CurrentUser) -> list[Visit]:
+    if not session.get(POI, poi_id):
+        raise HTTPException(status_code=404, detail="Not found")
     return session.exec(select(Visit).where(Visit.poi_id == poi_id)).all()
 
 

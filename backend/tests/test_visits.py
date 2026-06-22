@@ -28,3 +28,19 @@ def test_visit_uses_preferred_team_default(client):
     # un-visit
     assert client.delete(f"/api/pois/{poi_id}/visit").status_code == 204
     assert client.get(f"/api/pois/{poi_id}/visits").json() == []
+
+
+def test_visit_rating_out_of_range_rejected(client):
+    poi_id = _setup(client)
+    assert client.put(f"/api/pois/{poi_id}/visit", json={"rating": 99}).status_code == 422
+
+
+def test_visit_missing_poi_404(client):
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    assert client.put("/api/pois/9999/visit", json={}).status_code == 404
+    assert client.get("/api/pois/9999/visits").status_code == 404
+
+
+def test_preferences_rejects_unknown_team(client):
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    assert client.patch("/api/auth/me/preferences", json={"preferred_team_id": 9999}).status_code == 404
