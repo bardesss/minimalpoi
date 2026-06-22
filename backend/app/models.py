@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from enum import Enum
 
 from sqlalchemy import JSON, Column, UniqueConstraint
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel, select
 
 
 def utcnow() -> datetime:
@@ -138,6 +138,19 @@ class Settings(SQLModel, table=True):
     # Set the `Secure` flag on the auth cookie. Default off so the app works
     # over plain HTTP on a LAN / offline; enable when running behind TLS.
     cookie_secure: bool = Field(default=False)
+
+
+SYNC_USERNAME = "__trip_sync__"
+
+
+def sync_system_user(session) -> "User":
+    user = session.exec(select(User).where(User.username == SYNC_USERNAME)).first()
+    if user is None:
+        user = User(username=SYNC_USERNAME, password_hash="!", role=Role.MEMBER, disabled=True)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+    return user
 
 
 def get_or_create_settings(session) -> "Settings":

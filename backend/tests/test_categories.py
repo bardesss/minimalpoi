@@ -44,3 +44,12 @@ def test_delete_synced_category_writes_tombstone(client):
         assert tombstones[0].entity_type == "category"
         assert tombstones[0].trip_id == 999
         assert tombstones[0].origin == "local"
+
+
+def test_delete_category_nulls_referencing_pois(client):
+    _setup_admin(client)
+    cat = client.post("/api/categories", json={"name": "Food", "color": "#fff"}).json()
+    poi = client.post("/api/pois", json={"name": "X", "lat": 1.0, "lng": 2.0, "category_id": cat["id"]}).json()
+    assert client.delete(f"/api/categories/{cat['id']}").status_code == 204
+    got = client.get(f"/api/pois/{poi['id']}").json()
+    assert got["category_id"] is None

@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
-from ..models import Category, Tombstone
+from ..models import POI, Category, Tombstone
 from ..schemas import CategoryCreate, CategoryRead, CategoryUpdate
 
 router = APIRouter(prefix="/api/categories", tags=["categories"])
@@ -50,6 +50,9 @@ def delete_category(category_id: int, session: SessionDep, _: CurrentUser) -> Re
         raise HTTPException(status_code=404, detail="Not found")
     if cat.trip_category_id is not None:
         session.add(Tombstone(entity_type="category", trip_id=cat.trip_category_id, origin="local"))
+    for p in session.exec(select(POI).where(POI.category_id == cat.id)).all():
+        p.category_id = None
+        session.add(p)
     session.delete(cat)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

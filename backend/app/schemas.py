@@ -197,6 +197,13 @@ class SettingsUpdate(SQLModel):
     cookie_secure: bool | None = None
 
 
+class SyncStatusRead(SQLModel):
+    enabled: bool
+    last_run: datetime | None
+    error_count: int
+    conflict_count: int
+
+
 class EnrichRequest(SQLModel):
     url: str
 
