@@ -104,6 +104,7 @@ async def reconcile_places(session: Session, client: TripClient) -> None:
     linked_ids = {p.trip_place_id for p in session.exec(select(POI)).all() if p.trip_place_id}
 
     # Import TRIP-only places.
+    imported_ids: set[int] = set()
     for tid, tplace in trip_by_id.items():
         if tid in linked_ids or tid in tombstoned:
             continue
@@ -114,10 +115,13 @@ async def reconcile_places(session: Session, client: TripClient) -> None:
                   trip_synced_at=_now(), trip_sync_status=SyncStatus.SYNCED,
                   **{k: v for k, v in fields.items() if v is not None})
         session.add(poi)
+        imported_ids.add(tid)
     session.commit()
 
     for poi in session.exec(select(POI)).all():
         if poi.created_by is None:
+            continue
+        if poi.trip_place_id in imported_ids:
             continue
         try:
             await _sync_one_place(session, client, poi, trip_by_id, cat_by_trip)
