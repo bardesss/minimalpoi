@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Response, status
-from sqlmodel import select
+from sqlalchemy import func
+from sqlmodel import Session, select
 
 from ..deps import AdminUser, SessionDep
 from ..models import Role, User
@@ -9,8 +10,8 @@ from ..security import hash_password
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
-def _admin_count(session: SessionDep) -> int:
-    return len(session.exec(select(User).where(User.role == Role.ADMIN)).all())
+def _admin_count(session: Session) -> int:
+    return session.exec(select(func.count()).select_from(User).where(User.role == Role.ADMIN)).one()
 
 
 @router.get("", response_model=list[UserRead])
