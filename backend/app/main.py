@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from . import db
-from .routers import auth, categories, comments, pois, settings, teams, users, visits, wishlist
+from .routers import auth, categories, comments, enrich, pois, settings, teams, users, visits, wishlist
 
 
 @asynccontextmanager
@@ -22,6 +22,7 @@ app.include_router(visits.router)
 app.include_router(wishlist.router)
 app.include_router(comments.router)
 app.include_router(settings.router)
+app.include_router(enrich.router)
 
 
 @app.get("/api/health")

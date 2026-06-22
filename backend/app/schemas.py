@@ -197,6 +197,10 @@ class SettingsUpdate(SQLModel):
     cookie_secure: bool | None = None
 
 
+class EnrichRequest(SQLModel):
+    url: str
+
+
 class POIDraft(SQLModel):
     name: str | None = None
     address: str | None = None
