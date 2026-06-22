@@ -33,3 +33,15 @@ class UserUpdate(SQLModel):
     password: str | None = None
     role: Role | None = None
     disabled: bool | None = None
+
+
+class TeamCreate(SQLModel):
+    name: str
+    member_ids: list[int] = []
+
+
+class TeamRead(SQLModel):
+    id: int
+    name: str
+    created_by: int
+    member_ids: list[int] = []

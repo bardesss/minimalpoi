@@ -21,3 +21,15 @@ class User(SQLModel, table=True):
     preferred_team_id: int | None = Field(default=None)
     disabled: bool = Field(default=False)
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class Team(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+    created_by: int = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class TeamMember(SQLModel, table=True):
+    team_id: int = Field(foreign_key="team.id", primary_key=True)
+    user_id: int = Field(foreign_key="user.id", primary_key=True)
