@@ -9,7 +9,7 @@ import { AuthProvider } from "./auth/AuthContext";
 
 function renderApp(initialPath = "/") {
   return render(
-    <MemoryRouter initialEntries={[initialPath]}>
+    <MemoryRouter initialEntries={[initialPath]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <App />
       </AuthProvider>

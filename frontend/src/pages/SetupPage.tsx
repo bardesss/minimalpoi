@@ -16,7 +16,7 @@ export default function SetupPage() {
     setError(null);
     try {
       await setupRequest(username, password);
-      // setup sets the auth cookie; refresh context state via signIn-less reload
+      // call signIn to hydrate auth context after setup completes
       await signIn(username, password);
       navigate("/", { replace: true });
     } catch (err) {
