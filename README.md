@@ -30,12 +30,12 @@ points of interest (POIs) on a map, kept in two-way sync with a
   error/conflict counts.
 - Admin **settings** with TRIP credentials encrypted at rest.
 
-_Coming next: two-way TRIP sync (Phase 3), the MapLibre web UI (Phase 4),
-backup/restore + Docker image (Phase 5)._
+_Coming next: the MapLibre web UI (Phase 4), then backup/restore + Docker
+image (Phase 5)._
 
 ## Tech stack
 
-Python 3.12 · FastAPI · SQLModel (SQLite) · React + Vite + MapLibre (Phase 4).
+Python 3.12 · FastAPI · SQLModel (SQLite) · React + Vite + TypeScript + MapLibre.
 
 ## Run the backend (development)
 
@@ -51,6 +51,34 @@ Run the tests:
 ```bash
 cd backend
 python -m pytest -v
+```
+
+## Run the web UI (development)
+
+The frontend is a React + Vite app served on **port 7676**. In development it
+proxies `/api` and `/images` to the backend on `:8000`, so run both:
+
+```bash
+# terminal 1 — backend API
+cd backend && uvicorn app.main:app --reload
+
+# terminal 2 — web UI at http://127.0.0.1:7676
+cd frontend && npm install && npm run dev
+```
+
+Run the frontend tests:
+
+```bash
+cd frontend && npm test
+```
+
+## Production build
+
+`cd frontend && npm run build` emits `frontend/dist`, which the backend serves
+automatically — run the whole app from one process on port 7676:
+
+```bash
+cd backend && uvicorn app.main:app --port 7676
 ```
 
 ## Configuration
