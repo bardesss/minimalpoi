@@ -30,8 +30,8 @@ points of interest (POIs) on a map, kept in two-way sync with a
   error/conflict counts.
 - Admin **settings** with TRIP credentials encrypted at rest.
 
-_Coming next: two-way TRIP sync (Phase 3), the MapLibre web UI (Phase 4),
-backup/restore + Docker image (Phase 5)._
+_Coming next: the MapLibre web UI (Phase 4), then backup/restore + Docker
+image (Phase 5)._
 
 ## Tech stack
 
