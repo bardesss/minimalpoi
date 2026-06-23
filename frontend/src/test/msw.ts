@@ -1,7 +1,8 @@
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
+import type { UserRead } from "../types/api";
 
-const adminUser = {
+const adminUser: UserRead = {
   id: 1,
   username: "admin",
   role: "admin",

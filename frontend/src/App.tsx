@@ -16,6 +16,10 @@ export default function App() {
       .catch(() => setNeedsSetup(false));
   }, []);
 
+  // Block the initial render only for guarded routes while the first-run check
+  // is in flight. /login and /setup need no setup-status to paint, so they
+  // render immediately; if the instance actually needs setup, the redirect
+  // below still fires once the status resolves.
   if (needsSetup === null && location.pathname !== "/login" && location.pathname !== "/setup") {
     return <p>Loading…</p>;
   }
