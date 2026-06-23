@@ -21,7 +21,9 @@ test("returns parsed JSON on 200 and sends credentials", async () => {
   expect(result).toEqual({ id: 1, username: "ada" });
   const call = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
   expect(call[0]).toBe("/api/auth/me");
-  expect(call[1]).toMatchObject({ credentials: "include" });
+  const init = call[1] as RequestInit;
+  expect(init).toMatchObject({ credentials: "include" });
+  expect((init.headers as Headers).get("Accept")).toBe("application/json");
 });
 
 test("throws ApiError with status on 401", async () => {
@@ -29,6 +31,7 @@ test("throws ApiError with status on 401", async () => {
   await expect(apiFetch("/api/auth/me")).rejects.toMatchObject({
     name: "ApiError",
     status: 401,
+    message: "Invalid credentials",
   });
 });
 
