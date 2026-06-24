@@ -13,7 +13,7 @@ export function renderWithProviders(ui: ReactElement, opts?: { client?: QueryCli
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={client}>
-        <MemoryRouter>
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>{children}</AuthProvider>
         </MemoryRouter>
       </QueryClientProvider>
