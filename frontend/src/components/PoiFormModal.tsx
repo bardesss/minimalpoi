@@ -82,9 +82,11 @@ export default function PoiFormModal({
     }
   }
 
+  const isAdd = mode === "add";
+
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(26,24,22,.42)", backdropFilter: "blur(2px)", display: "flex", alignItems: "center", justifyContent: "center", animation: "fadeIn .16s ease" }}>
-      <div role="dialog" aria-modal="true" className="poi-scroll" style={{ width: 540, maxWidth: "100%", maxHeight: "90vh", overflowY: "auto", background: "#fff", borderRadius: theme.radius.modal, boxShadow: theme.shadow.modal, animation: "popIn .2s ease" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: isAdd ? "transparent" : "rgba(26,24,22,.42)", backdropFilter: isAdd ? "none" : "blur(2px)", pointerEvents: isAdd ? "none" : "auto", display: "flex", alignItems: "center", justifyContent: "center", animation: "fadeIn .16s ease" }}>
+      <div role="dialog" aria-modal={isAdd ? false : true} className="poi-scroll" style={{ width: 540, maxWidth: "100%", maxHeight: "90vh", overflowY: "auto", background: "#fff", borderRadius: theme.radius.modal, boxShadow: theme.shadow.modal, animation: "popIn .2s ease", pointerEvents: "auto" }}>
         <div style={{ position: "sticky", top: 0, background: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 24px 16px", zIndex: 2 }}>
           <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: "-.02em" }}>{mode === "add" ? "Add a new place" : "Edit place"}</h2>
           <button type="button" aria-label="Close" onClick={onClose} style={{ width: 30, height: 30, borderRadius: theme.radius.icon, border: "none", background: "#f5f4f2", color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
