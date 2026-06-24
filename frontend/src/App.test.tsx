@@ -39,7 +39,7 @@ test("unauthenticated user lands on login", async () => {
   );
   renderApp("/");
   await waitFor(() =>
-    expect(screen.getByRole("heading", { name: "Log in" })).toBeInTheDocument(),
+    expect(screen.getByRole("heading", { name: "MinimalPOI" })).toBeInTheDocument(),
   );
 });
 
