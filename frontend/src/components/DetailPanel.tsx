@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Category, Poi } from "../types/api";
 import { dangerButtonStyle, primaryButtonStyle, theme, tintFromColor } from "../theme";
+import { safeImageCss, safeLinkHref } from "../lib/safeUrl";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
@@ -20,9 +21,11 @@ export default function DetailPanel({
   const [confirming, setConfirming] = useState(false);
   const color = category?.color ?? theme.color.fallbackPin;
   const tint = tintFromColor(color);
+  const heroImage = safeImageCss(poi.image_url);
+  const websiteHref = safeLinkHref(poi.website);
   return (
     <div className="poi-scroll" style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 368, zIndex: 800, background: "#fff", boxShadow: theme.shadow.detail, overflowY: "auto", animation: "slideIn .22s ease" }}>
-      <div style={{ position: "relative", height: 208, background: poi.image_url ? `center/cover no-repeat url(${poi.image_url}), ${tint}` : tint }}>
+      <div style={{ position: "relative", height: 208, background: heroImage ? `center/cover no-repeat url("${heroImage}"), ${tint}` : tint }}>
         <div style={{ position: "absolute", inset: 0, background: theme.gradient.detailHero }} />
         <button type="button" aria-label="Close" onClick={onClose} style={{ position: "absolute", top: 14, right: 14, width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.92)", boxShadow: "0 2px 8px rgba(0,0,0,.18)", cursor: "pointer", fontSize: 16 }}>×</button>
         <span style={{ position: "absolute", left: 18, bottom: 14, padding: "4px 12px", borderRadius: theme.radius.pill, background: color, color: "#fff", fontWeight: 700, fontSize: 12 }}>{category?.name ?? "Uncategorized"}</span>
@@ -35,7 +38,9 @@ export default function DetailPanel({
         {(poi.phone || poi.website || poi.email) && (
           <div style={{ borderRadius: theme.radius.card, border: `1px solid ${theme.color.borderSubtle}`, background: theme.color.pageBg, overflow: "hidden", marginBottom: 16 }}>
             {poi.phone && <div style={{ padding: "11px 14px", fontSize: 13, fontWeight: 500 }}>{poi.phone}</div>}
-            {poi.website && <a href={poi.website} target="_blank" rel="noreferrer" style={{ display: "block", padding: "11px 14px", fontSize: 13, fontWeight: 600, color: theme.color.link, textDecoration: "none" }}>{poi.website.replace(/^https?:\/\//, "")}</a>}
+            {poi.website && (websiteHref
+              ? <a href={websiteHref} target="_blank" rel="noreferrer" style={{ display: "block", padding: "11px 14px", fontSize: 13, fontWeight: 600, color: theme.color.link, textDecoration: "none" }}>{poi.website.replace(/^https?:\/\//, "")}</a>
+              : <div style={{ padding: "11px 14px", fontSize: 13, fontWeight: 600, color: theme.color.textBody }}>{poi.website.replace(/^https?:\/\//, "")}</div>)}
             {poi.email && <a href={`mailto:${poi.email}`} style={{ display: "block", padding: "11px 14px", fontSize: 13, fontWeight: 500, color: theme.color.textBody, textDecoration: "none" }}>{poi.email}</a>}
           </div>
         )}
