@@ -2,14 +2,17 @@ import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
-import { useCategories, usePois, useSettings } from "../queries/hooks";
+import { useCategories, useCreatePoi, useDeletePoi, usePois, useSettings, useUpdatePoi, useCheckDuplicate } from "../queries/hooks";
 import { filterPois } from "../lib/filterPois";
-import type { Category } from "../types/api";
+import type { Category, Poi, PoiCreate } from "../types/api";
 import { theme } from "../theme";
 import { boundsOf } from "../map/bounds";
 import Sidebar from "./Sidebar/Sidebar";
 import MapView from "./MapView";
 import Legend from "./Legend";
+import DetailPanel from "./DetailPanel";
+import AddFab from "./AddFab";
+import PoiFormModal, { type PoiFormInitial } from "./PoiFormModal";
 
 export default function AppShell() {
   const { user, signOut } = useAuth();
@@ -18,12 +21,20 @@ export default function AppShell() {
   const categoriesQuery = useCategories();
   const settingsQuery = useSettings();
 
+  const createPoi = useCreatePoi();
+  const updatePoi = useUpdatePoi();
+  const deletePoi = useDeletePoi();
+  const checkDuplicate = useCheckDuplicate();
+
   const mapRef = useRef<MlMap | null>(null);
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [searchText, setSearchText] = useState("");
   const [activeCategoryIds, setActiveCategoryIds] = useState<number[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [formState, setFormState] = useState<{ mode: "add" | "edit"; initial: PoiFormInitial | null } | null>(null);
+  const [addCoords, setAddCoords] = useState<{ lng: number; lat: number } | null>(null);
+  const [duplicateId, setDuplicateId] = useState<number | null>(null);
 
   const categories = categoriesQuery.data ?? [];
   const categoriesById = useMemo(
@@ -40,6 +51,9 @@ export default function AppShell() {
     for (const p of filtered) if (p.category_id != null) acc[p.category_id] = (acc[p.category_id] ?? 0) + 1;
     return acc;
   }, [filtered]);
+
+  const selectedPoi = (poisQuery.data ?? []).find((p) => p.id === selectedId) ?? null;
+  const addMode = formState?.mode === "add";
 
   async function onLogout() {
     await signOut();
@@ -60,6 +74,50 @@ export default function AppShell() {
   function fitToResults() {
     const b = boundsOf(filtered);
     if (b && mapRef.current) mapRef.current.fitBounds(b, { padding: 60, maxZoom: 15, duration: 600 });
+  }
+
+  function openAdd() {
+    const c = mapRef.current?.getCenter();
+    setDuplicateId(null);
+    setAddCoords(c ? { lng: c.lng, lat: c.lat } : null);
+    setFormState({ mode: "add", initial: null });
+  }
+
+  function openEdit(poi: Poi) {
+    setDuplicateId(null);
+    setFormState({
+      mode: "edit",
+      initial: { name: poi.name, address: poi.address, lat: poi.lat, lng: poi.lng, category_id: poi.category_id, tags: poi.tags, notes: poi.notes, phone: poi.phone, email: poi.email, website: poi.website },
+    });
+  }
+
+  function closeForm() {
+    setFormState(null);
+    setAddCoords(null);
+    setDuplicateId(null);
+  }
+
+  async function submitForm(payload: PoiCreate) {
+    if (formState?.mode === "edit" && selectedId != null) {
+      await updatePoi.mutateAsync({ id: selectedId, body: payload });
+      closeForm();
+      return;
+    }
+    const created = await createPoi.mutateAsync(payload);
+    closeForm();
+    setSelectedId(created.id);
+    mapRef.current?.flyTo({ center: [created.lng, created.lat], zoom: 15, duration: 600 });
+  }
+
+  async function runDuplicateCheck(body: { name: string; lat: number; lng: number }) {
+    const res = await checkDuplicate.mutateAsync(body);
+    setDuplicateId(res.duplicate_id);
+  }
+
+  async function confirmDelete() {
+    if (selectedId == null) return;
+    await deletePoi.mutateAsync(selectedId);
+    setSelectedId(null);
   }
 
   return (
@@ -93,8 +151,8 @@ export default function AppShell() {
             settings={settingsQuery.data}
             selectedId={selectedId}
             onSelect={selectPoi}
-            onMapClick={() => {}}
-            addMode={false}
+            onMapClick={(lng, lat) => setAddCoords({ lng, lat })}
+            addMode={addMode}
             mapRef={mapRef}
           />
         )}
@@ -121,6 +179,28 @@ export default function AppShell() {
           >
             » {filtered.length} places
           </button>
+        )}
+        {selectedPoi && (
+          <DetailPanel
+            poi={selectedPoi}
+            category={selectedPoi.category_id != null ? categoriesById[selectedPoi.category_id] : undefined}
+            onClose={() => setSelectedId(null)}
+            onEdit={() => openEdit(selectedPoi)}
+            onDelete={confirmDelete}
+          />
+        )}
+        <AddFab onClick={openAdd} />
+        {formState && (
+          <PoiFormModal
+            mode={formState.mode}
+            initial={formState.initial}
+            categories={categories}
+            coords={addCoords}
+            onSubmit={submitForm}
+            onClose={closeForm}
+            onCheckDuplicate={runDuplicateCheck}
+            duplicateId={duplicateId}
+          />
         )}
       </main>
     </div>

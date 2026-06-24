@@ -6,7 +6,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { renderWithProviders } from "../test/utils";
+import { server, samplePois } from "../test/msw";
 import AppShell from "./AppShell";
 
 const mapPropsSpy = vi.fn();
@@ -48,5 +50,51 @@ describe("AppShell", () => {
     await user.click(screen.getByRole("button", { name: /nature/i, pressed: false }));
     expect(screen.queryByText("Café Modern")).not.toBeInTheDocument();
     expect(screen.getByText("Vondelpark")).toBeInTheDocument();
+  });
+
+  it("creates a place and selects it", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post("/api/pois", async ({ request }) => {
+        const body = (await request.json()) as { name: string; lat: number; lng: number };
+        return HttpResponse.json({ ...samplePois[0], id: 99, name: body.name, lat: body.lat, lng: body.lng }, { status: 201 });
+      }),
+      http.get("/api/pois", () => HttpResponse.json([...samplePois, { ...samplePois[0], id: 99, name: "Created Place" }])),
+    );
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    await user.click(screen.getByRole("button", { name: /add place/i })); // FAB
+    await user.type(screen.getByLabelText(/^name$/i), "Created Place");
+    await user.type(screen.getByLabelText(/latitude/i), "52.37");
+    await user.type(screen.getByLabelText(/longitude/i), "4.9");
+    await user.click(screen.getByRole("button", { name: /^add place$/i })); // submit
+    // After creation the invalidated GET returns "Created Place"; it appears in sidebar + detail panel
+    expect((await screen.findAllByText("Created Place")).length).toBeGreaterThan(0);
+  });
+
+  it("deletes a place and closes the detail panel", async () => {
+    const user = userEvent.setup();
+    let deleted = false;
+    server.use(
+      http.delete("/api/pois/:id", () => {
+        deleted = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+      http.get("/api/pois", () =>
+        HttpResponse.json(deleted ? [samplePois[1]] : samplePois),
+      ),
+    );
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    // Open detail panel by clicking the card in the sidebar
+    await user.click(screen.getByRole("button", { name: /café modern/i }));
+    // Wait for the detail panel heading to appear
+    expect(await screen.findByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
+    // Click Delete (first click shows confirm)
+    await user.click(screen.getByRole("button", { name: /^delete$/i }));
+    // Click Confirm delete
+    await user.click(screen.getByRole("button", { name: /confirm delete/i }));
+    // Detail panel should close
+    expect(screen.queryByRole("heading", { name: "Café Modern" })).not.toBeInTheDocument();
   });
 });

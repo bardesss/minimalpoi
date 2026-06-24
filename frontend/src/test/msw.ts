@@ -44,6 +44,7 @@ export const handlers = [
   http.get("/api/pois", () => HttpResponse.json(samplePois)),
   http.get("/api/categories", () => HttpResponse.json(sampleCategories)),
   http.get("/api/settings", () => HttpResponse.json(sampleSettings)),
+  http.post("/api/pois/check-duplicate", () => HttpResponse.json({ duplicate_id: null })),
 ];
 
 export const server = setupServer(...handlers);
