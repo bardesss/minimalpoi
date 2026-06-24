@@ -17,6 +17,14 @@ describe("DetailPanel", () => {
     expect(websiteLink).toHaveAttribute("href", "https://place.nl");
   });
 
+  it("renders a javascript: website as plain text, not a link (stored-XSS guard)", () => {
+    render(<DetailPanel poi={{ ...poi, website: "javascript:alert(document.cookie)" }} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+    // The dangerous value is shown as text but is NOT rendered as an anchor.
+    expect(screen.getByText("javascript:alert(document.cookie)")).toBeInTheDocument();
+    const dangerousLink = screen.queryAllByRole("link").find((l) => l.getAttribute("href")?.startsWith("javascript:"));
+    expect(dangerousLink).toBeUndefined();
+  });
+
   it("requires a second click to confirm delete", async () => {
     const onDelete = vi.fn();
     render(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={onDelete} />);

@@ -1,6 +1,7 @@
 // frontend/src/components/Sidebar/PoiCard.tsx
 import type { Category, Poi } from "../../types/api";
 import { theme, tintFromColor } from "../../theme";
+import { safeImageCss } from "../../lib/safeUrl";
 
 export function cityFromAddress(address: string | null): string {
   if (!address) return "";
@@ -21,6 +22,7 @@ export default function PoiCard({
 }) {
   const color = category?.color ?? theme.color.fallbackPin;
   const tint = tintFromColor(color);
+  const thumb = safeImageCss(poi.image_url);
   const city = cityFromAddress(poi.address);
   return (
     <button
@@ -41,7 +43,7 @@ export default function PoiCard({
       <div
         style={{
           height: 78,
-          background: poi.image_url ? `center/cover no-repeat url(${poi.image_url}), ${tint}` : tint,
+          background: thumb ? `center/cover no-repeat url("${thumb}"), ${tint}` : tint,
           position: "relative",
         }}
       >
