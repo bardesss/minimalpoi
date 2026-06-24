@@ -5,7 +5,7 @@ def _setup_admin(client):
 def test_settings_defaults_and_secret_handling(client):
     _setup_admin(client)
     got = client.get("/api/settings").json()
-    assert got["map_tile_url"]  # has a default
+    assert got["map_tile_url"] == "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
     assert got["trip_conflict_policy"] == "minimalpoi_wins"
     assert got["trip_password_set"] is False
 
