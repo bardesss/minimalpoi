@@ -1,12 +1,10 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+// Use the shared MSW server from test/msw (its lifecycle is managed globally by
+// test/setup.ts). A second local setupServer() here would double-intercept each
+// request and consume its body twice → "Body is unusable" stderr noise.
+import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
-import { setupServer } from "msw/node";
+import { server } from "../test/msw";
 import { checkDuplicate, createPoi, deletePoi, getPois, updatePoi } from "./pois";
-
-const server = setupServer();
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
 
 describe("pois api", () => {
   it("lists pois", async () => {
