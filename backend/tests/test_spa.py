@@ -80,7 +80,13 @@ def test_spa_active_branch_ordering(tmp_path, monkeypatch):
             spa = c.get("/some/client/route")
             assert spa.status_code == 200
             assert "text/html" in spa.headers["content-type"]
-            assert "SPA" in spa.text
+            if dist_existed_before:
+                # A real build is present — assert the served body is that index.html.
+                expected_index = (real_dist / "index.html").read_text(encoding="utf-8")
+                assert spa.text == expected_index
+            else:
+                # We created the minimal fixture above; assert its marker.
+                assert "SPA" in spa.text
     finally:
         # Remove the temporary dist tree (only if we created it).
         if not dist_existed_before and real_dist.exists():

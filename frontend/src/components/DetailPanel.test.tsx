@@ -1,0 +1,35 @@
+import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type { Category, Poi } from "../types/api";
+import DetailPanel from "./DetailPanel";
+
+const poi: Poi = { id: 1, name: "Café Modern", address: "Street 12, Amsterdam", lat: 52.37012, lng: 4.90011, category_id: 1, tags: ["popular", "outdoor"], notes: "Nice spot", phone: "+31 20 300 1234", email: "info@place.nl", website: "https://place.nl", image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "s" };
+const cat: Category = { id: 1, name: "Restaurants", color: "#E1574C", icon: "utensils", created_by: 1, trip_category_id: null, trip_sync_status: "s" };
+
+describe("DetailPanel", () => {
+  it("renders fields, tags and the website link", () => {
+    render(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+    expect(screen.getByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
+    expect(screen.getByText(/52.37012/)).toBeInTheDocument();
+    expect(screen.getByText("popular")).toBeInTheDocument();
+    const websiteLink = screen.getAllByRole("link").find((link) => link.textContent === "place.nl");
+    expect(websiteLink).toHaveAttribute("href", "https://place.nl");
+  });
+
+  it("requires a second click to confirm delete", async () => {
+    const onDelete = vi.fn();
+    render(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={onDelete} />);
+    await userEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+    expect(onDelete).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: /confirm delete/i }));
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("fires onEdit", async () => {
+    const onEdit = vi.fn();
+    render(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={onEdit} onDelete={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: /edit place/i }));
+    expect(onEdit).toHaveBeenCalled();
+  });
+});

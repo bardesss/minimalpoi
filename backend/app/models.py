@@ -130,7 +130,7 @@ class Settings(SQLModel, table=True):
     google_api_key_enc: str | None = Field(default=None)
     nominatim_url: str | None = Field(default="https://nominatim.openstreetmap.org")
     map_tile_url: str = Field(
-        default="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        default="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
     )
     default_map_center_lat: float = Field(default=52.3676)
     default_map_center_lng: float = Field(default=4.9041)

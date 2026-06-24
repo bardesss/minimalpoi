@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { getSetupStatus } from "./api/auth";
 import RequireAuth from "./auth/RequireAuth";
-import HomePage from "./pages/HomePage";
+import AppShell from "./components/AppShell";
 import LoginPage from "./pages/LoginPage";
 import SetupPage from "./pages/SetupPage";
 
@@ -35,7 +35,7 @@ export default function App() {
         path="/"
         element={
           <RequireAuth>
-            <HomePage />
+            <AppShell />
           </RequireAuth>
         }
       />

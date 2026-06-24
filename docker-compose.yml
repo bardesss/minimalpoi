@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    ports:
+      - "7676:7676"
+    environment:
+      - MINIMALPOI_DATA_DIR=/data
+      # - SECRET_KEY=change-me   # optional; otherwise auto-generated into /data/secret.key
+    volumes:
+      - minimalpoi-data:/data
+    restart: unless-stopped
+
+volumes:
+  minimalpoi-data:

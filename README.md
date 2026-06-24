@@ -4,8 +4,8 @@ A self-hosted, multi-user web app for collecting, enriching, and organizing
 points of interest (POIs) on a map, kept in two-way sync with a
 [TRIP](https://github.com/itskovacs/trip) instance.
 
-> **Status:** in active development. **Phases 1–3 complete** (backend, enrichment,
-> two-way TRIP sync). The web UI and Docker packaging land in later phases.
+> **Status:** in active development. **Phases 1–4 complete** (backend, enrichment,
+> two-way TRIP sync, MapLibre web UI). Docker packaging included.
 
 ## Features so far
 
@@ -29,9 +29,15 @@ points of interest (POIs) on a map, kept in two-way sync with a
   /api/sync/now` triggers it on demand; `GET /api/sync/status` reports
   error/conflict counts.
 - Admin **settings** with TRIP credentials encrypted at rest.
+- **Web UI**: interactive MapLibre map with clustered, category-colored pins;
+  left panel to browse, search, and filter POIs by text and category; click a
+  pin or card to open a detail panel; create / edit / delete POIs (add by
+  clicking the map to drop coordinates, duplicate warning on save, delete
+  confirmation); basemap driven by the admin `map_tile_url` setting (Carto
+  Voyager default). Desktop-focused.
 
-_Coming next: the MapLibre web UI (Phase 4), then backup/restore + Docker
-image (Phase 5)._
+_Coming next: import/export + enrichment UI, admin/settings UI,
+visited/wishlist/comments UI, backup/restore._
 
 ## Tech stack
 
@@ -90,9 +96,26 @@ manage it yourself.
 
 ## Deployment
 
-A single-container Docker image and `docker-compose.yml` (map one `data/`
-volume, no env vars) arrive in Phase 5. Until then, run the backend directly
-as shown above.
+### docker-compose (recommended)
+
+```bash
+docker compose up --build        # or add -d to run in background
+```
+
+App is at **http://localhost:7676**. All state (SQLite DB, secret key, uploaded
+images) persists in the named volume `minimalpoi-data` mapped to `/data` inside
+the container. `SECRET_KEY` is optional — it is auto-generated and stored in the
+volume on first start.
+
+### Plain docker
+
+```bash
+docker build -t minimalpoi .
+docker run -p 7676:7676 -v minimalpoi-data:/data minimalpoi
+```
+
+`MINIMALPOI_DATA_DIR=/data` is set in the image; the volume persists data across
+restarts.
 
 ## License
 
