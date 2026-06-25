@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.0](https://github.com/Bardesss/minimalpoi/compare/v0.3.0...v0.4.0) (2026-06-25)
+
+
+### Features
+
+* **images:** add Pillow process_image (WebP, resize, validate) ([030c3a7](https://github.com/Bardesss/minimalpoi/commit/030c3a7f5fca5edeaab293327440d72fb47f85a0))
+* **images:** compress + resize to WebP on save ([e001767](https://github.com/Bardesss/minimalpoi/commit/e001767e4d930967debb98ea3a4f7c6d070d5790))
+* **images:** process + validate uploads, 415 on unsupported ([ae6805c](https://github.com/Bardesss/minimalpoi/commit/ae6805c03b220bb1893029151e9580cf2b8cf149))
+* **images:** process enriched images to WebP, keep remote URL on reject ([334592e](https://github.com/Bardesss/minimalpoi/commit/334592e9d9626bafb3dc2c06680fe8cae0dc60a1))
+
+
+### Bug Fixes
+
+* **images:** bound decode size (pixel-dimension guard + upload byte cap) ([3e7f415](https://github.com/Bardesss/minimalpoi/commit/3e7f415098a9be59b3dc891059e3b8affe648673))
+
 ## [0.3.0](https://github.com/Bardesss/minimalpoi/compare/v0.2.0...v0.3.0) (2026-06-25)
 
 
