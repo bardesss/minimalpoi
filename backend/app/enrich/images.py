@@ -1,7 +1,9 @@
+import io
 import secrets
 from pathlib import Path
 
 import httpx
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from ..config import get_data_dir
 from .safety import UnsafeURLError, safe_get
@@ -9,6 +11,37 @@ from .safety import UnsafeURLError, safe_get
 _CONTENT_SUFFIX = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif"}
 
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
+MAX_DIMENSION = 1280
+WEBP_QUALITY = 72
+_ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
+
+
+class UnsupportedImageError(Exception):
+    """Raised when bytes are not a supported, static raster image."""
+
+
+def process_image(data: bytes) -> bytes:
+    """Decode, validate, EXIF-orient, downscale, and re-encode as WebP.
+
+    Accepts only static JPEG/PNG/WebP; raises UnsupportedImageError otherwise.
+    """
+    try:
+        img = Image.open(io.BytesIO(data))
+        img.load()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        raise UnsupportedImageError("not a decodable image") from exc
+    if img.format not in _ALLOWED_FORMATS or getattr(img, "is_animated", False):
+        raise UnsupportedImageError(f"unsupported image format: {img.format}")
+    img = ImageOps.exif_transpose(img)
+    if img.mode in ("RGBA", "LA") or "transparency" in img.info:
+        img = img.convert("RGBA")
+    else:
+        img = img.convert("RGB")
+    if max(img.width, img.height) > MAX_DIMENSION:
+        img.thumbnail((MAX_DIMENSION, MAX_DIMENSION), Image.Resampling.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="WEBP", quality=WEBP_QUALITY, method=6)
+    return buf.getvalue()
 
 
 def images_dir() -> Path:

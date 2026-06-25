@@ -13,6 +13,7 @@ dependencies = [
     "cryptography>=43",
     "python-multipart>=0.0.9",
     "httpx>=0.27",
+    "pillow>=11",
 ]
 
 [project.optional-dependencies]

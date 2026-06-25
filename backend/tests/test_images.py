@@ -1,7 +1,33 @@
+import io
+
 import httpx
 import pytest
+from PIL import Image
 
 from app.enrich import images
+
+
+def _img_bytes(fmt: str, w: int, h: int, mode: str = "RGB", animated: bool = False) -> bytes:
+    buf = io.BytesIO()
+    if animated:
+        f1 = Image.new(mode, (w, h))
+        f2 = Image.new(mode, (w, h))
+        f1.save(buf, format=fmt, save_all=True, append_images=[f2], duration=100, loop=0)
+    else:
+        # Use semi-transparent fill for alpha modes so WebP preserves the alpha channel
+        # (libwebp 1.6+ strips all-opaque alpha; partial alpha forces RGBA encoding)
+        fill = 0 if mode == "P" else (10, 20, 30, 200) if mode in ("RGBA", "LA") else (10, 20, 30)
+        Image.new(mode, (w, h), fill).save(buf, format=fmt)
+    return buf.getvalue()
+
+
+def _jpeg_with_orientation(w: int, h: int, orientation: int) -> bytes:
+    img = Image.new("RGB", (w, h), (10, 20, 30))
+    exif = img.getexif()
+    exif[0x0112] = orientation  # 0x0112 = Orientation tag
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", exif=exif)
+    return buf.getvalue()
 
 
 @pytest.fixture
@@ -60,3 +86,48 @@ async def test_localize_returns_original_on_http_error(data_dir):
     out = await images.localize("https://img.example/missing.jpg", client=http)
     await http.aclose()
     assert out == "https://img.example/missing.jpg"
+
+
+def test_process_image_downscales_and_reencodes_webp():
+    out = images.process_image(_img_bytes("JPEG", 3000, 2000))
+    reopened = Image.open(io.BytesIO(out))
+    assert reopened.format == "WEBP"
+    assert reopened.size[0] == 1280  # longest side capped
+    # aspect preserved (2000/3000), tolerant of ±1px rounding
+    assert abs(reopened.size[1] / reopened.size[0] - 2000 / 3000) < 0.01
+
+
+def test_process_image_does_not_upscale():
+    out = images.process_image(_img_bytes("PNG", 400, 300))
+    reopened = Image.open(io.BytesIO(out))
+    assert reopened.format == "WEBP"
+    assert reopened.size == (400, 300)
+
+
+def test_process_image_preserves_alpha():
+    out = images.process_image(_img_bytes("PNG", 100, 100, mode="RGBA"))
+    reopened = Image.open(io.BytesIO(out))
+    assert reopened.format == "WEBP"
+    assert reopened.mode == "RGBA"
+
+
+def test_process_image_applies_exif_orientation():
+    # 100x60 landscape, orientation 6 => displayed rotated to 60x100 portrait.
+    out = images.process_image(_jpeg_with_orientation(100, 60, 6))
+    reopened = Image.open(io.BytesIO(out))
+    assert reopened.size == (60, 100)
+
+
+def test_process_image_rejects_static_gif():
+    with pytest.raises(images.UnsupportedImageError):
+        images.process_image(_img_bytes("GIF", 50, 50, mode="P"))
+
+
+def test_process_image_rejects_animated_gif():
+    with pytest.raises(images.UnsupportedImageError):
+        images.process_image(_img_bytes("GIF", 50, 50, mode="P", animated=True))
+
+
+def test_process_image_rejects_non_image():
+    with pytest.raises(images.UnsupportedImageError):
+        images.process_image(b"not an image at all")
