@@ -53,3 +53,16 @@ def test_admin_can_manage_any_team(client):
 def test_create_team_rejects_unknown_member(client):
     client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
     assert client.post("/api/teams", json={"name": "x", "member_ids": [9999]}).status_code == 400
+
+
+def test_team_candidates_lists_id_and_username(client):
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/users", json={"username": "bob", "password": "pw", "role": "member"})
+    cands = client.get("/api/teams/candidates").json()
+    names = {c["username"] for c in cands}
+    assert {"admin", "bob"} <= names
+    assert all(set(c.keys()) == {"id", "username"} for c in cands)
+
+
+def test_team_candidates_requires_auth(client):
+    assert client.get("/api/teams/candidates").status_code == 401

@@ -7,6 +7,8 @@ import ConnectionsSection from "./settings/ConnectionsSection";
 import DataSection from "./settings/DataSection";
 import MapSection from "./settings/MapSection";
 import TagsSection from "./settings/TagsSection";
+import TeamsSection from "./settings/TeamsSection";
+import UsersSection from "./settings/UsersSection";
 
 interface SectionDef {
   key: string;
@@ -18,6 +20,8 @@ interface SectionDef {
 const SECTIONS: SectionDef[] = [
   { key: "connections", label: "Connections", adminOnly: true, Component: ConnectionsSection },
   { key: "map", label: "Map", adminOnly: true, Component: MapSection },
+  { key: "users", label: "Users", adminOnly: true, Component: UsersSection },
+  { key: "teams", label: "Teams", adminOnly: false, Component: TeamsSection },
   { key: "categories", label: "Categories", adminOnly: false, Component: CategoriesSection },
   { key: "tags", label: "Tags", adminOnly: false, Component: TagsSection },
   { key: "data", label: "Data & backups", adminOnly: false, Component: DataSection },

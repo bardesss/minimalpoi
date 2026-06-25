@@ -19,4 +19,11 @@ describe("AboutSection", () => {
     renderWithProviders(<AboutSection />);
     expect(await screen.findByText(/up to date/i)).toBeInTheDocument();
   });
+
+  it("links to the GitHub repo", async () => {
+    server.use(http.get("/api/version", () => HttpResponse.json({ current: "0.5.1", latest: null, update_available: false })));
+    renderWithProviders(<AboutSection />);
+    const link = await screen.findByRole("link", { name: /view on github/i });
+    expect(link).toHaveAttribute("href", "https://github.com/Bardesss/minimalpoi");
+  });
 });

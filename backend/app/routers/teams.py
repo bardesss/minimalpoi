@@ -3,7 +3,7 @@ from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
 from ..models import Team, TeamMember, User, Role
-from ..schemas import TeamCreate, TeamRead
+from ..schemas import TeamCandidate, TeamCreate, TeamRead
 
 router = APIRouter(prefix="/api/teams", tags=["teams"])
 
@@ -42,6 +42,11 @@ def _set_members(session: SessionDep, team_id: int, member_ids: list[int]) -> No
 def list_teams(session: SessionDep, _: CurrentUser) -> list[TeamRead]:
     teams = session.exec(select(Team)).all()
     return [_to_read(session, t) for t in teams]
+
+
+@router.get("/candidates", response_model=list[TeamCandidate])
+def team_candidates(session: SessionDep, _: CurrentUser) -> list[TeamCandidate]:
+    return [TeamCandidate(id=u.id, username=u.username) for u in session.exec(select(User)).all()]
 
 
 @router.post("", response_model=TeamRead, status_code=status.HTTP_201_CREATED)

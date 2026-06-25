@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "../test/msw";
 import { makeClient } from "../test/utils";
-import { useCreatePoi, useEnrich, useImportPois, usePois, useTags } from "./hooks";
+import { useCreatePoi, useEnrich, useImportPois, usePois, useTags, useUsers, useTeams } from "./hooks";
 
 function wrapper(client = makeClient()) {
   return ({ children }: { children: ReactNode }) => (
@@ -77,5 +77,19 @@ describe("data hooks", () => {
     const { result } = renderHook(() => useTags(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual([{ tag: "food", count: 2 }]);
+  });
+
+  it("useUsers loads the user list", async () => {
+    server.use(http.get("/api/users", () => HttpResponse.json([{ id: 1, username: "admin", role: "admin", preferred_team_id: null, disabled: false, created_at: "2026-06-25T00:00:00Z" }])));
+    const { result } = renderHook(() => useUsers(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0].username).toBe("admin");
+  });
+
+  it("useTeams loads the team list", async () => {
+    server.use(http.get("/api/teams", () => HttpResponse.json([{ id: 1, name: "Crew", created_by: 1, member_ids: [1] }])));
+    const { result } = renderHook(() => useTeams(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0].name).toBe("Crew");
   });
 });
