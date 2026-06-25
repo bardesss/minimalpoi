@@ -73,6 +73,7 @@ export default function PoiFormModal({
   }, [coords, mode]);
 
   const isAdd = mode === "add";
+  const safeImage = safeImageCss(imageUrl);
 
   async function runEnrich() {
     if (!onEnrich || enrichUrlText.trim() === "") return;
@@ -152,8 +153,8 @@ export default function PoiFormModal({
                   Filled {filledCount} fields from {enrichHost} — review before saving.
                 </div>
               )}
-              {safeImageCss(imageUrl) && (
-                <div aria-label="Image preview" style={{ width: 96, height: 64, borderRadius: theme.radius.input, backgroundImage: `url(${safeImageCss(imageUrl)})`, backgroundSize: "cover", backgroundPosition: "center", border: `1px solid ${theme.color.borderCard}` }} />
+              {safeImage && (
+                <div aria-label="Image preview" style={{ width: 96, height: 64, borderRadius: theme.radius.input, backgroundImage: `url(${safeImage})`, backgroundSize: "cover", backgroundPosition: "center", border: `1px solid ${theme.color.borderCard}` }} />
               )}
             </div>
           )}
