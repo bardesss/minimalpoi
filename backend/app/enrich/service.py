@@ -6,7 +6,7 @@ from ..schemas import POIDraft
 from . import gmaps
 from .fetch import fetch_url
 from .geocode import nominatim_geocode
-from .parse import parse_jsonld, parse_opengraph
+from .parse import parse_geo, parse_jsonld, parse_opengraph, parse_twitter
 
 
 def _set(draft: POIDraft, field: str, value, source: str) -> None:
@@ -55,6 +55,13 @@ async def enrich(url: str, session: Session, client=None) -> POIDraft:
             _set(draft, "name", og.get("title"), "opengraph")
             _set(draft, "image_url", og.get("image"), "opengraph")
             _set(draft, "description", og.get("description"), "opengraph")
+            tw = parse_twitter(result.text)
+            _set(draft, "name", tw.get("title"), "twitter")
+            _set(draft, "image_url", tw.get("image"), "twitter")
+            _set(draft, "description", tw.get("description"), "twitter")
+            geo = parse_geo(result.text)
+            _set(draft, "lat", geo.get("lat"), "og")
+            _set(draft, "lng", geo.get("lng"), "og")
 
     # Coordinate fallback via Nominatim if still missing.
     if (draft.lat is None or draft.lng is None):
