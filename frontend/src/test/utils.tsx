@@ -3,6 +3,7 @@ import { render } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ToastProvider } from "../components/Toast";
 
 export function makeClient(): QueryClient {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -14,7 +15,9 @@ export function renderWithProviders(ui: ReactElement, opts?: { client?: QueryCli
     return (
       <QueryClientProvider client={client}>
         <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </AuthProvider>
         </MemoryRouter>
       </QueryClientProvider>
     );

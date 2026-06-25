@@ -1,19 +1,34 @@
 import { useState } from "react";
 import { useDeleteTag, useRenameTag, useTags } from "../../queries/hooks";
+import { useToast } from "../Toast";
 import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../theme";
 
 export default function TagsSection() {
   const tags = useTags().data ?? [];
   const renameTag = useRenameTag();
   const deleteTag = useDeleteTag();
+  const { notify } = useToast();
   const [editing, setEditing] = useState<string | null>(null);
   const [value, setValue] = useState("");
 
   function startRename(tag: string) { setEditing(tag); setValue(tag); }
   async function save() {
     if (editing == null || value.trim() === "") return;
-    await renameTag.mutateAsync({ oldTag: editing, newTag: value.trim() });
-    setEditing(null);
+    try {
+      await renameTag.mutateAsync({ oldTag: editing, newTag: value.trim() });
+      setEditing(null);
+      notify("Tag renamed");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Rename failed", "error");
+    }
+  }
+
+  function remove(tag: string) {
+    if (!confirm(`Delete the "${tag}" tag from all places?`)) return;
+    deleteTag.mutate(tag, {
+      onSuccess: () => notify("Tag deleted"),
+      onError: (e) => notify(e instanceof Error ? e.message : "Delete failed", "error"),
+    });
   }
 
   if (tags.length === 0) return <p style={{ fontSize: 13, color: theme.color.textSecondary }}>No tags yet. Tags you add to places show up here.</p>;
@@ -33,7 +48,7 @@ export default function TagsSection() {
               <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700 }}>{t.tag}</span>
               <span style={{ fontSize: 12, color: theme.color.textSecondary, fontFamily: theme.font.mono }}>{t.count}</span>
               <button type="button" aria-label={`Rename ${t.tag}`} onClick={() => startRename(t.tag)} style={{ ...ghostButtonStyle, padding: "6px 12px" }}>Rename</button>
-              <button type="button" aria-label={`Delete ${t.tag}`} onClick={() => { if (confirm(`Delete the "${t.tag}" tag from all places?`)) deleteTag.mutate(t.tag); }} style={{ ...dangerButtonStyle, padding: "6px 12px" }}>Delete</button>
+              <button type="button" aria-label={`Delete ${t.tag}`} onClick={() => remove(t.tag)} style={{ ...dangerButtonStyle, padding: "6px 12px" }}>Delete</button>
             </>
           )}
         </div>

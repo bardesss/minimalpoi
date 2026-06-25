@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useFullSettings, useUpdateSettings } from "../../queries/hooks";
+import { useToast } from "../Toast";
 import type { SettingsUpdate } from "../../types/api";
 import { inputStyle, primaryButtonStyle, theme } from "../../theme";
 
@@ -9,6 +10,7 @@ const nn = (s: string) => (s.trim() === "" ? null : s.trim());
 export default function ConnectionsSection() {
   const settings = useFullSettings();
   const update = useUpdateSettings();
+  const { notify } = useToast();
   const s = settings.data;
   const [baseUrl, setBaseUrl] = useState("");
   const [username, setUsername] = useState("");
@@ -42,7 +44,10 @@ export default function ConnectionsSection() {
     };
     if (password !== "") patch.trip_password = password;
     if (googleKey !== "") patch.google_api_key = googleKey;
-    update.mutate(patch, { onSuccess: () => { setPassword(""); setGoogleKey(""); } });
+    update.mutate(patch, {
+      onSuccess: () => { setPassword(""); setGoogleKey(""); notify("Connections saved"); },
+      onError: (e) => notify(e instanceof Error ? e.message : "Save failed", "error"),
+    });
   }
 
   return (

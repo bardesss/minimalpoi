@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useCategories, useCreateCategory, useDeleteCategory, useUpdateCategory } from "../../queries/hooks";
+import { useToast } from "../Toast";
 import { CategoryIcon } from "../../lib/categoryIcon";
 import type { Category } from "../../types/api";
 import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../theme";
@@ -20,6 +21,7 @@ export default function CategoriesSection() {
   const createCat = useCreateCategory();
   const updateCat = useUpdateCategory();
   const deleteCat = useDeleteCategory();
+  const { notify } = useToast();
   const [draft, setDraft] = useState<Draft | null>(null);
 
   function startAdd() { setDraft({ ...EMPTY }); }
@@ -28,9 +30,22 @@ export default function CategoriesSection() {
   async function save() {
     if (!draft || draft.name.trim() === "") return;
     const body = { name: draft.name.trim(), color: draft.color, icon: draft.icon };
-    if (draft.id == null) await createCat.mutateAsync(body);
-    else await updateCat.mutateAsync({ id: draft.id, body });
-    setDraft(null);
+    try {
+      if (draft.id == null) await createCat.mutateAsync(body);
+      else await updateCat.mutateAsync({ id: draft.id, body });
+      setDraft(null);
+      notify("Category saved");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Save failed", "error");
+    }
+  }
+
+  function remove(c: Category) {
+    if (!confirm(`Delete "${c.name}"? Places keep existing but become uncategorized.`)) return;
+    deleteCat.mutate(c.id, {
+      onSuccess: () => notify("Category deleted"),
+      onError: (e) => notify(e instanceof Error ? e.message : "Delete failed", "error"),
+    });
   }
 
   return (
@@ -43,7 +58,7 @@ export default function CategoriesSection() {
             </span>
             <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700 }}>{c.name}</span>
             <button type="button" onClick={() => startEdit(c)} style={{ ...ghostButtonStyle, padding: "6px 12px" }}>Edit</button>
-            <button type="button" aria-label={`Delete ${c.name}`} onClick={() => { if (confirm(`Delete "${c.name}"? Places keep existing but become uncategorized.`)) deleteCat.mutate(c.id); }} style={{ ...dangerButtonStyle, padding: "6px 12px" }}>Delete</button>
+            <button type="button" aria-label={`Delete ${c.name}`} onClick={() => remove(c)} style={{ ...dangerButtonStyle, padding: "6px 12px" }}>Delete</button>
           </div>
         ))}
       </div>

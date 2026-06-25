@@ -31,5 +31,6 @@ describe("ConnectionsSection", () => {
     await waitFor(() => expect(patched).not.toBeNull());
     expect(patched).toMatchObject({ google_api_key: "newkey" });
     expect(patched).not.toHaveProperty("trip_password"); // untouched secret not sent
+    expect(await screen.findByText(/connections saved/i)).toBeInTheDocument(); // save feedback
   });
 });
