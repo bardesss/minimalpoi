@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.7.0](https://github.com/Bardesss/minimalpoi/compare/v0.6.0...v0.7.0) (2026-06-25)
+
+
+### Features
+
+* **teams:** GET /api/teams/candidates (id+username, any user) ([d06bafe](https://github.com/Bardesss/minimalpoi/commit/d06bafea236f8373cac691c7bd4210f704fde6cd))
+* **web:** add 'View on GitHub' link to the About settings tab ([fba67b1](https://github.com/Bardesss/minimalpoi/commit/fba67b1330df9747e9f22976443d184d3d24883f))
+* **web:** data layer for users, teams, preferred team ([5292113](https://github.com/Bardesss/minimalpoi/commit/529211320eeb05624adae432389995095b2a1f61))
+* **web:** manage teams + preferred-team selector in Settings (with toast feedback) ([f736d86](https://github.com/Bardesss/minimalpoi/commit/f736d86b6746012436dd20fcc457b89be9cac8fd))
+* **web:** manage users (create/role/disable/delete) in Settings with toast feedback ([0d5d83f](https://github.com/Bardesss/minimalpoi/commit/0d5d83fdef9a1cedb033df3396327784aa490a76))
+
+
+### Bug Fixes
+
+* **web:** new team auto-includes its creator as a member ([7018214](https://github.com/Bardesss/minimalpoi/commit/70182144bffa04ea79eabaac3bc6afbdb7e33728))
+
 ## [0.6.0](https://github.com/Bardesss/minimalpoi/compare/v0.5.1...v0.6.0) (2026-06-25)
 
 
