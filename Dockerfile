@@ -29,7 +29,8 @@ RUN pip install --no-cache-dir \
     "bcrypt>=4.2" \
     "cryptography>=43" \
     "python-multipart>=0.0.9" \
-    "httpx>=0.27"
+    "httpx>=0.27" \
+    "pillow>=11"
 
 # Copy backend source
 COPY backend/ /app/backend/
