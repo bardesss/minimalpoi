@@ -30,7 +30,7 @@ async def _fetch_latest(client: httpx.AsyncClient | None = None) -> str | None:
         resp.raise_for_status()
         tag = resp.json().get("tag_name")
         return tag.lstrip("v") if isinstance(tag, str) else None
-    except (httpx.HTTPError, ValueError, KeyError):
+    except (httpx.HTTPError, ValueError, KeyError, AttributeError, TypeError):
         return None
     finally:
         if owns:
@@ -39,11 +39,12 @@ async def _fetch_latest(client: httpx.AsyncClient | None = None) -> str | None:
 
 async def _cached_latest() -> str | None:
     now = time.monotonic()
-    if _cache["latest"] is None or now - _cache["at"] > _CACHE_TTL:
-        fetched = await _fetch_latest()
-        if fetched is not None:
-            _cache["latest"] = fetched
-            _cache["at"] = now
+    if _cache["at"] != 0.0 and now - _cache["at"] <= _CACHE_TTL:
+        return _cache["latest"]
+    fetched = await _fetch_latest()
+    if fetched is not None:
+        _cache["latest"] = fetched
+    _cache["at"] = now  # stamp even on failure → don't re-hit GitHub until the TTL elapses
     return _cache["latest"]
 
 

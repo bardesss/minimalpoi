@@ -1,4 +1,30 @@
+import pytest
 from app.routers import version as ver
+
+
+@pytest.fixture
+def anyio_backend():
+    return "asyncio"
+
+
+@pytest.mark.anyio
+async def test_cached_latest_throttles_repeated_failures(monkeypatch):
+    ver._cache["latest"] = None
+    ver._cache["at"] = 0.0
+    calls = {"n": 0}
+
+    async def failing():
+        calls["n"] += 1
+        return None
+
+    monkeypatch.setattr(ver, "_fetch_latest", failing)
+    try:
+        await ver._cached_latest()  # first call fetches (and fails)
+        await ver._cached_latest()  # within TTL → must NOT fetch again
+        assert calls["n"] == 1
+    finally:
+        ver._cache["latest"] = None
+        ver._cache["at"] = 0.0
 
 
 def _setup(client):
