@@ -107,9 +107,7 @@ images) persists in the named volume `minimalpoi-data` mapped to `/data` inside
 the container. `SECRET_KEY` is optional — it is auto-generated and stored in the
 volume on first start.
 
-To run against local source instead of the published image, edit
-`docker-compose.yml` (comment `image:`, uncomment `build: .`) and run
-`docker compose up -d --build`.
+> **No release yet or first run?** The published image only exists after the first release is cut and its GHCR package is made public. Until then, build locally instead: edit `docker-compose.yml` (comment `image:`, uncomment `build: .`) and run `docker compose up -d --build`.
 
 ### Plain docker
 
