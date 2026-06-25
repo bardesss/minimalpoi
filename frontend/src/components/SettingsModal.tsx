@@ -2,7 +2,9 @@ import { useState, type ComponentType } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { theme } from "../theme";
 import CategoriesSection from "./settings/CategoriesSection";
+import ConnectionsSection from "./settings/ConnectionsSection";
 import DataSection from "./settings/DataSection";
+import MapSection from "./settings/MapSection";
 import TagsSection from "./settings/TagsSection";
 
 interface SectionDef {
@@ -13,6 +15,8 @@ interface SectionDef {
 }
 
 const SECTIONS: SectionDef[] = [
+  { key: "connections", label: "Connections", adminOnly: true, Component: ConnectionsSection },
+  { key: "map", label: "Map", adminOnly: true, Component: MapSection },
   { key: "categories", label: "Categories", adminOnly: false, Component: CategoriesSection },
   { key: "tags", label: "Tags", adminOnly: false, Component: TagsSection },
   { key: "data", label: "Data & backups", adminOnly: false, Component: DataSection },
