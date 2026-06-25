@@ -1,139 +1,93 @@
-# MinimalPOI
+# 📍 MinimalPOI
 
-A self-hosted, multi-user web app for collecting, enriching, and organizing
-points of interest (POIs) on a map, kept in two-way sync with a
-[TRIP](https://github.com/itskovacs/trip) instance.
+**A self-hosted, multi-user map for collecting, enriching, and organizing your points of interest.**
 
-> **Status:** in active development. **Phases 1–4 complete** (backend, enrichment,
-> two-way TRIP sync, MapLibre web UI). Docker packaging included.
+Drop a pin, paste a link to auto-fill the details, and keep all your favorite places — restaurants, trails, shops, anything — on one shared, searchable map that you fully own.
 
-## Features so far
+![License](https://img.shields.io/badge/license-MIT-blue) ![Container](https://img.shields.io/badge/image-ghcr.io-2496ED?logo=docker&logoColor=white) ![Backend](https://img.shields.io/badge/FastAPI-Python%203.12-009688?logo=fastapi&logoColor=white) ![Frontend](https://img.shields.io/badge/React%20%2B%20Vite-MapLibre-61DAFB?logo=react&logoColor=black)
 
-- Multi-user accounts (first-run admin setup, JWT-cookie login, admin/member
-  roles, admin-created accounts).
-- One **shared** POI list with full CRUD and **duplicate detection**.
-- Categories (color + lucide icon), teams, per-user visited (team + 1–5 rating),
-  wishlist, and attributed comments.
-- **Link enrichment** (`POST /api/enrich`): paste a Google Maps, TripAdvisor, or
-  any website link and get a draft POI — coordinates from the Google Maps URL,
-  OpenGraph + JSON-LD for name/image/description/address/phone, optional Google
-  Places (admin key), and a Nominatim geocoding fallback. Per-field provenance
-  is returned so you can see what was auto-filled.
-- **Images**: enriched images are downloaded to `data/images/` on save and
-  served locally; manual upload via `POST /api/images`.
-- **Two-way TRIP sync**: when an admin configures the TRIP connection (URL +
-  login, stored encrypted) and enables sync, categories and POIs are reconciled
-  with TRIP in both directions — creates, edits, and deletes propagate, with
-  snapshot-based change detection, a conflict policy (MinimalPOI-wins default),
-  and deletion tombstones. A background worker runs on an interval; `POST
-  /api/sync/now` triggers it on demand; `GET /api/sync/status` reports
-  error/conflict counts.
-- Admin **settings** with TRIP credentials encrypted at rest.
-- **Web UI**: interactive MapLibre map with clustered, category-colored pins;
-  left panel to browse, search, and filter POIs by text and category; click a
-  pin or card to open a detail panel; create / edit / delete POIs (add by
-  clicking the map to drop coordinates, duplicate warning on save, delete
-  confirmation); basemap driven by the admin `map_tile_url` setting (Carto
-  Voyager default). Desktop-focused.
+---
 
-_Coming next: import/export + enrichment UI, admin/settings UI,
-visited/wishlist/comments UI, backup/restore._
+## ✨ Features
 
-## Tech stack
+- 🗺️ **Interactive map** — a MapLibre map with category-colored pins. Search and filter by text or category, click a pin or list card to open its details, and click anywhere on the map to drop a new place. Duplicate detection warns you before you save the same spot twice.
+- 🔗 **Enrich from a link** — paste a Google Maps or website URL and MinimalPOI auto-fills the name, coordinates, address, phone, image, and description (OpenGraph + JSON-LD + Twitter Card, with an optional Google Places key and a Nominatim geocoding fallback). Every auto-filled field shows where it came from.
+- 💾 **Import & export** — bulk-import places from **GeoJSON or CSV** (with server-side duplicate detection and automatic category matching), and export your whole collection as a **GeoJSON backup** — all from the in-app **Data & backups** panel.
+- 🏷️ **Categories & organization** — a shared place list with full create/edit/delete, categories with custom color and icon, and tags.
+- 👥 **Multi-user** — first-run admin setup, secure cookie login, admin/member roles, and teams. Each user gets **visited** marks (with a 1–5 rating), a **wishlist**, and attributed **comments**.
+- 🖼️ **Local images** — enriched images are downloaded and served from your own server; manual upload is supported too.
+- 🔁 **Optional TRIP sync** — connect a [TRIP](https://github.com/itskovacs/trip) instance and MinimalPOI keeps categories and places reconciled **both ways** (creates, edits, and deletes propagate, with a configurable conflict policy). Entirely optional — enable it only if you use TRIP.
+- 🐳 **Self-hosted & simple** — ships as a single multi-arch Docker image (amd64 + arm64), stores everything in SQLite on one volume, and needs **no external services** to run.
 
-Python 3.12 · FastAPI · SQLModel (SQLite) · React + Vite + TypeScript + MapLibre.
+---
 
-## Run the backend (development)
+## 🚀 Deploy
+
+MinimalPOI runs as one container on **port 7676**. All state (database, images, signing key) lives in a single `/data` volume.
+
+### Option A — Docker (recommended)
 
 ```bash
-cd backend
-pip install -e ".[dev]"
-uvicorn app.main:app --reload
-# API at http://127.0.0.1:8000 ; docs at http://127.0.0.1:8000/docs
+docker run -d \
+  --name minimalpoi \
+  -p 7676:7676 \
+  -v minimalpoi-data:/data \
+  --restart unless-stopped \
+  ghcr.io/bardesss/minimalpoi:latest
 ```
 
-Run the tests:
+### Option B — docker compose
 
 ```bash
-cd backend
-python -m pytest -v
+docker compose up -d
 ```
 
-## Run the web UI (development)
+Then open **http://localhost:7676** and create your admin account on the first-run setup screen. 🎉
 
-The frontend is a React + Vite app served on **port 7676**. In development it
-proxies `/api` and `/images` to the backend on `:8000`, so run both:
+> 💡 **Pin a version** instead of `latest` for reproducible deploys, e.g. `ghcr.io/bardesss/minimalpoi:0.1`.
+
+> ⚠️ **No published image yet?** Until the first release is cut and its GHCR package is made public, build from source instead: in `docker-compose.yml` comment the `image:` line and uncomment `build: .`, then run `docker compose up -d --build`.
+
+### ⚙️ Configuration
+
+**No environment variables are required.** Everything persists in the `/data` volume (`minimalpoi.db`, uploaded images, and an auto-generated `secret.key`). Set `SECRET_KEY` yourself only if you'd rather manage the signing key.
+
+---
+
+## 🔄 Releases
+
+Versioning and image publishing are automated:
+
+1. Changes land on `main` using [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, …).
+2. [release-please](https://github.com/googleapis/release-please) maintains a **release PR** that bumps the version and updates [`CHANGELOG.md`](CHANGELOG.md).
+3. Merging that PR tags the release and publishes a multi-arch image to `ghcr.io/bardesss/minimalpoi` (tags `X.Y.Z`, `X.Y`, `X`, and `latest`).
+
+> 🔓 **One-time:** after the first release, set the GHCR package to **public** (GitHub → Packages → minimalpoi → Package settings) so the image pulls without authentication.
+
+---
+
+## 🛠️ Development
 
 ```bash
-# terminal 1 — backend API
-cd backend && uvicorn app.main:app --reload
+# Backend API on :8000
+cd backend && pip install -e ".[dev]" && uvicorn app.main:app --reload
 
-# terminal 2 — web UI at http://127.0.0.1:7676
+# Web UI on :7676 (proxies /api and /images to :8000)
 cd frontend && npm install && npm run dev
 ```
 
-Run the frontend tests:
+Interactive API docs are at **http://127.0.0.1:8000/docs**.
 
-```bash
-cd frontend && npm test
-```
+For a production-style single process, `cd frontend && npm run build` emits `frontend/dist`, which the backend serves automatically on port 7676.
 
-## Production build
+<sub>Tests: `python -m pytest` (backend) · `npm test` (frontend).</sub>
 
-`cd frontend && npm run build` emits `frontend/dist`, which the backend serves
-automatically — run the whole app from one process on port 7676:
+---
 
-```bash
-cd backend && uvicorn app.main:app --port 7676
-```
+## 🧰 Tech stack
 
-## Configuration
+**Backend:** Python 3.12 · FastAPI · SQLModel (SQLite) — **Frontend:** React · Vite · TypeScript · MapLibre GL
 
-**No environment variables are required.** All state lives in a `data/`
-directory (`data/minimalpoi.db`, `data/secret.key`). The JWT signing key is
-generated on first start and persisted; set `SECRET_KEY` only if you want to
-manage it yourself.
+## 📄 License
 
-## Deployment
-
-### docker-compose (recommended)
-
-```bash
-docker compose up -d        # pulls ghcr.io/bardesss/minimalpoi:latest
-```
-
-App is at **http://localhost:7676**. All state (SQLite DB, secret key, uploaded
-images) persists in the named volume `minimalpoi-data` mapped to `/data` inside
-the container. `SECRET_KEY` is optional — it is auto-generated and stored in the
-volume on first start.
-
-> **No release yet or first run?** The published image only exists after the first release is cut and its GHCR package is made public. Until then, build locally instead: edit `docker-compose.yml` (comment `image:`, uncomment `build: .`) and run `docker compose up -d --build`.
-
-### Plain docker
-
-```bash
-docker run -d -p 7676:7676 -v minimalpoi-data:/data ghcr.io/bardesss/minimalpoi:latest
-```
-
-`MINIMALPOI_DATA_DIR=/data` is set in the image; the named volume persists data
-across restarts. Pin a specific version instead of `latest` with a semver tag,
-e.g. `ghcr.io/bardesss/minimalpoi:0.1`.
-
-## Releases
-
-Versioning and publishing are automated:
-
-1. Merge feature PRs using Conventional Commits (`feat:`, `fix:`, …).
-2. [release-please](https://github.com/googleapis/release-please) keeps an open
-   **release PR** that bumps the version and updates [`CHANGELOG.md`](CHANGELOG.md).
-3. Merging that PR tags the release and publishes a multi-arch
-   (`linux/amd64`, `linux/arm64`) image to
-   `ghcr.io/bardesss/minimalpoi` (tags `X.Y.Z`, `X.Y`, `X`, `latest`).
-
-> **One-time:** after the first release, set the GHCR package visibility to
-> **public** in the GitHub UI (Packages → minimalpoi → Package settings) so the
-> image can be pulled without authentication.
-
-## License
-
-[MIT](LICENSE).
+[MIT](LICENSE)
