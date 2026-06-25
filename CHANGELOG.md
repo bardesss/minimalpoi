@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1](https://github.com/Bardesss/minimalpoi/compare/v0.5.0...v0.5.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* **sync:** stop category deletes cascading to TRIP; guard empty pulls ([63312af](https://github.com/Bardesss/minimalpoi/commit/63312af1da733afa24ecf7bd18807c29724a291b))
+* **sync:** stop category deletes cascading to TRIP; guard empty pulls ([5cbc5c7](https://github.com/Bardesss/minimalpoi/commit/5cbc5c750ca9844a0038c694809b9c74f8f1364d))
+
 ## [0.5.0](https://github.com/Bardesss/minimalpoi/compare/v0.4.1...v0.5.0) (2026-06-25)
 
 
