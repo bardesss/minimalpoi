@@ -241,3 +241,8 @@ class TagInfo(SQLModel):
 class TagRename(SQLModel):
     old: str
     new: str
+
+
+class TeamCandidate(SQLModel):
+    id: int
+    username: str
