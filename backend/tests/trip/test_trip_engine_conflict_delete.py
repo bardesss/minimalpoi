@@ -33,13 +33,36 @@ async def test_local_delete_propagates(client, trip_client, fake_trip):
 
 @pytest.mark.anyio
 async def test_trip_delete_removes_local(client, trip_client, fake_trip):
+    """A place deleted on TRIP is removed locally — when the pull still returns the
+    other synced places (a non-empty pull, so the deletion guard allows it)."""
+    tc, http = trip_client
+    with Session(db.engine) as session:
+        session.add(Category(name="Food", color="#fff", created_by=1)); session.commit()
+        await reconcile_categories(session, tc)
+        cat = session.exec(select(Category)).first()
+        session.add(POI(name="Cafe", lat=1.0, lng=2.0, address="A", category_id=cat.id, created_by=1))
+        session.add(POI(name="Bar", lat=3.0, lng=4.0, address="B", category_id=cat.id, created_by=1))
+        session.commit()
+        await reconcile_places(session, tc)
+        gone_tid = session.exec(select(POI)).all()[0].trip_place_id
+        fake_trip.places.pop(gone_tid)  # one deleted on TRIP; the other remains
+        await reconcile_places(session, tc)
+        assert session.exec(select(POI).where(POI.trip_place_id == gone_tid)).first() is None
+        assert len(session.exec(select(POI)).all()) == 1  # the other survived
+    await http.aclose()
+
+
+@pytest.mark.anyio
+async def test_empty_place_pull_keeps_local(client, trip_client, fake_trip):
+    """An empty places pull (transient error / scoping / auth) must NOT delete
+    synced POIs — guarding against the mass-wipe that destroyed real data."""
     tc, http = trip_client
     with Session(db.engine) as session:
         poi = await _synced_poi(session, tc, fake_trip)
         tid = poi.trip_place_id
-        fake_trip.places.pop(tid)  # deleted on TRIP side
+        fake_trip.places.clear()  # pull now returns []
         await reconcile_places(session, tc)
-        assert session.exec(select(POI).where(POI.trip_place_id == tid)).first() is None
+        assert session.exec(select(POI).where(POI.trip_place_id == tid)).first() is not None
     await http.aclose()
 
 
@@ -83,7 +106,10 @@ async def _synced_category(session, tc):
 
 
 @pytest.mark.anyio
-async def test_local_category_delete_propagates(client, trip_client, fake_trip):
+async def test_local_category_delete_is_local_only(client, trip_client, fake_trip):
+    """Deleting a category locally must NOT delete it on TRIP — that cascade-deletes
+    the category's places (the data-loss bug). The category stays on TRIP; the
+    origin='local' tombstone persists so it doesn't re-import."""
     tc, http = trip_client
     with Session(db.engine) as session:
         cat = await _synced_category(session, tc)
@@ -92,21 +118,42 @@ async def test_local_category_delete_propagates(client, trip_client, fake_trip):
         session.delete(cat); session.commit()
         await reconcile_categories(session, tc)
     await http.aclose()
-    assert tid not in fake_trip.categories
+    assert tid in fake_trip.categories  # NOT deleted on TRIP (no cascade)
     with Session(db.engine) as session:
+        # tombstone persists -> category is not re-imported
         assert session.exec(select(Tombstone).where(
-            Tombstone.entity_type == "category", Tombstone.trip_id == tid)).first() is None
+            Tombstone.entity_type == "category", Tombstone.trip_id == tid)).first() is not None
+        assert session.exec(select(Category).where(Category.trip_category_id == tid)).first() is None
 
 
 @pytest.mark.anyio
 async def test_trip_category_delete_removes_local(client, trip_client, fake_trip):
+    """A category deleted on TRIP is removed locally when the pull still returns
+    other categories (non-empty pull)."""
+    tc, http = trip_client
+    with Session(db.engine) as session:
+        session.add(Category(name="Food", color="#fff", created_by=1))
+        session.add(Category(name="Nature", color="#0f0", created_by=1))
+        session.commit()
+        await reconcile_categories(session, tc)
+        gone_tid = session.exec(select(Category)).all()[0].trip_category_id
+        fake_trip.categories.pop(gone_tid)  # one deleted on TRIP; the other remains
+        await reconcile_categories(session, tc)
+        assert session.exec(select(Category).where(Category.trip_category_id == gone_tid)).first() is None
+        assert len(session.exec(select(Category)).all()) == 1
+    await http.aclose()
+
+
+@pytest.mark.anyio
+async def test_empty_category_pull_keeps_local(client, trip_client, fake_trip):
+    """An empty categories pull must NOT delete synced categories."""
     tc, http = trip_client
     with Session(db.engine) as session:
         cat = await _synced_category(session, tc)
         tid = cat.trip_category_id
-        fake_trip.categories.pop(tid)
+        fake_trip.categories.clear()  # pull now returns []
         await reconcile_categories(session, tc)
-        assert session.exec(select(Category).where(Category.trip_category_id == tid)).first() is None
+        assert session.exec(select(Category).where(Category.trip_category_id == tid)).first() is not None
     await http.aclose()
 
 

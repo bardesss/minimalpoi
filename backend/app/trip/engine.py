@@ -18,27 +18,25 @@ async def reconcile_categories(session: Session, client: TripClient) -> None:
         ).all()
     }
 
-    # Propagate local deletions (tombstones with origin="local") to TRIP.
-    for tomb in session.exec(
-        select(Tombstone).where(Tombstone.entity_type == "category", Tombstone.origin == "local")
-    ).all():
-        try:
-            if tomb.trip_id in trip_by_id:
-                await client.delete_category(tomb.trip_id)
-            session.delete(tomb)  # done — both sides agree it's gone
-        except TripError:
-            pass  # retry next pass
-    session.commit()
+    # NOTE: local category deletions are intentionally NOT propagated to TRIP.
+    # Deleting a category in TRIP cascade-deletes all of its places, so a local
+    # category delete must never reach TRIP (that path destroyed real data). The
+    # origin="local" category tombstone is kept (it feeds `tombstoned` above) only
+    # to stop the now-locally-deleted category from re-importing.
 
-    # Detect TRIP-side deletions: a linked Category whose trip id vanished from the pull.
-    for cat in session.exec(select(Category)).all():
-        if cat.trip_category_id and cat.trip_category_id not in trip_by_id and cat.trip_synced_at is not None:
-            session.add(Tombstone(entity_type="category", trip_id=cat.trip_category_id, origin="trip"))
-            for p in session.exec(select(POI).where(POI.category_id == cat.id)).all():
-                p.category_id = None
-                session.add(p)
-            session.delete(cat)
-    session.commit()
+    # Detect TRIP-side deletions: a linked Category whose trip id vanished from the
+    # pull. Guarded by `if trip_list` — an empty pull is almost always transient
+    # (error/scoping/auth), not a real mass-delete, and acting on it would wipe
+    # every synced item at once.
+    if trip_list:
+        for cat in session.exec(select(Category)).all():
+            if cat.trip_category_id and cat.trip_category_id not in trip_by_id and cat.trip_synced_at is not None:
+                session.add(Tombstone(entity_type="category", trip_id=cat.trip_category_id, origin="trip"))
+                for p in session.exec(select(POI).where(POI.category_id == cat.id)).all():
+                    p.category_id = None
+                    session.add(p)
+                session.delete(cat)
+        session.commit()
 
     # Link unlinked local categories to TRIP categories with the same name (initial-sync dedup).
     def _norm_name(s): return "".join(ch for ch in (s or "").lower() if ch.isalnum())
@@ -154,11 +152,14 @@ async def reconcile_places(session: Session, client: TripClient) -> None:
     session.commit()
 
     # Detect TRIP-side deletions: a linked POI whose trip id vanished from the pull.
-    for poi in session.exec(select(POI)).all():
-        if poi.trip_place_id and poi.trip_place_id not in trip_by_id and poi.trip_synced_at is not None:
-            session.add(Tombstone(entity_type="place", trip_id=poi.trip_place_id, origin="trip"))
-            session.delete(poi)
-    session.commit()
+    # Guarded by `if trip_list` — never act on an empty pull (transient error /
+    # scoping / auth), which would otherwise delete every synced POI at once.
+    if trip_list:
+        for poi in session.exec(select(POI)).all():
+            if poi.trip_place_id and poi.trip_place_id not in trip_by_id and poi.trip_synced_at is not None:
+                session.add(Tombstone(entity_type="place", trip_id=poi.trip_place_id, origin="trip"))
+                session.delete(poi)
+        session.commit()
 
     linked_ids = {p.trip_place_id for p in session.exec(select(POI)).all() if p.trip_place_id}
 
