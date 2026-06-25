@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
-import { useCategories, useCreatePoi, useDeletePoi, usePois, useSettings, useUpdatePoi, useCheckDuplicate } from "../queries/hooks";
+import { useCategories, useCreatePoi, useDeletePoi, useEnrich, usePois, useSettings, useUpdatePoi, useCheckDuplicate } from "../queries/hooks";
 import { filterPois } from "../lib/filterPois";
 import type { Category, Poi, PoiCreate } from "../types/api";
 import { theme } from "../theme";
@@ -26,6 +26,7 @@ export default function AppShell() {
   const updatePoi = useUpdatePoi();
   const deletePoi = useDeletePoi();
   const checkDuplicate = useCheckDuplicate();
+  const enrich = useEnrich();
 
   const mapRef = useRef<MlMap | null>(null);
 
@@ -203,6 +204,7 @@ export default function AppShell() {
             onClose={closeForm}
             onCheckDuplicate={runDuplicateCheck}
             duplicateId={duplicateId}
+            onEnrich={(url) => enrich.mutateAsync(url)}
           />
         )}
         {dataModalOpen && <DataModal onClose={() => setDataModalOpen(false)} />}

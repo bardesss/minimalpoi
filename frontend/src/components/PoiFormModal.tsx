@@ -1,6 +1,7 @@
 // frontend/src/components/PoiFormModal.tsx
 import { useEffect, useState } from "react";
-import type { Category, PoiCreate } from "../types/api";
+import type { Category, PoiCreate, PoiDraft } from "../types/api";
+import { safeImageCss } from "../lib/safeUrl";
 import { ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, textareaStyle, theme } from "../theme";
 
 export function splitTags(text: string): string[] {
@@ -32,6 +33,7 @@ export default function PoiFormModal({
   onClose,
   onCheckDuplicate,
   duplicateId,
+  onEnrich,
 }: {
   mode: "add" | "edit";
   initial: PoiFormInitial | null;
@@ -41,6 +43,7 @@ export default function PoiFormModal({
   onClose: () => void;
   onCheckDuplicate: (body: { name: string; lat: number; lng: number }) => void;
   duplicateId: number | null;
+  onEnrich?: (url: string) => Promise<PoiDraft>;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [categoryId, setCategoryId] = useState<string>(initial?.category_id != null ? String(initial.category_id) : "");
@@ -53,6 +56,14 @@ export default function PoiFormModal({
   const [website, setWebsite] = useState(initial?.website ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
 
+  const [enrichUrlText, setEnrichUrlText] = useState("");
+  const [enriching, setEnriching] = useState(false);
+  const [enrichError, setEnrichError] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [fieldSources, setFieldSources] = useState<Record<string, string>>({});
+  const [enrichHost, setEnrichHost] = useState<string | null>(null);
+  const [filledCount, setFilledCount] = useState(0);
+
   // Click-to-place / map-center updates flow in via `coords` (add mode only).
   useEffect(() => {
     if (mode === "add" && coords) {
@@ -61,8 +72,43 @@ export default function PoiFormModal({
     }
   }, [coords, mode]);
 
+  const isAdd = mode === "add";
+
+  async function runEnrich() {
+    if (!onEnrich || enrichUrlText.trim() === "") return;
+    setEnriching(true);
+    setEnrichError(null);
+    try {
+      const draft = await onEnrich(enrichUrlText.trim());
+      if (draft.name != null) setName(draft.name);
+      if (draft.address != null) setAddress(draft.address);
+      if (draft.lat != null) setLat(String(draft.lat));
+      if (draft.lng != null) setLng(String(draft.lng));
+      if (draft.phone != null) setPhone(draft.phone);
+      if (draft.website != null) setWebsite(draft.website);
+      if (draft.description != null) setNotes(draft.description);
+      setImageUrl(draft.image_url);
+      setFieldSources(draft.field_sources);
+      setFilledCount(Object.keys(draft.field_sources).length);
+      try {
+        setEnrichHost(new URL(enrichUrlText.trim()).host);
+      } catch {
+        setEnrichHost(null);
+      }
+    } catch {
+      setEnrichError("Couldn't read that link — fill the form manually.");
+    } finally {
+      setEnriching(false);
+    }
+  }
+
+  const caption = (field: string) =>
+    fieldSources[field] ? (
+      <span style={{ fontFamily: theme.font.mono, fontSize: 11, color: theme.color.textPlaceholder }}>from {fieldSources[field]}</span>
+    ) : null;
+
   function submit() {
-    onSubmit({
+    const payload: PoiCreate = {
       name: name.trim(),
       address: nn(address),
       lat: Number(lat),
@@ -73,7 +119,9 @@ export default function PoiFormModal({
       phone: nn(phone),
       email: nn(email),
       website: nn(website),
-    });
+    };
+    if (isAdd) payload.image_url = imageUrl;
+    onSubmit(payload);
   }
 
   function maybeCheckDuplicate() {
@@ -81,8 +129,6 @@ export default function PoiFormModal({
       onCheckDuplicate({ name: name.trim(), lat: Number(lat), lng: Number(lng) });
     }
   }
-
-  const isAdd = mode === "add";
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: isAdd ? "transparent" : "rgba(26,24,22,.42)", backdropFilter: isAdd ? "none" : "blur(2px)", pointerEvents: isAdd ? "none" : "auto", display: "flex", alignItems: "center", justifyContent: "center", animation: "fadeIn .16s ease" }}>
@@ -93,6 +139,25 @@ export default function PoiFormModal({
         </div>
 
         <div style={{ padding: "0 24px 8px", display: "flex", flexDirection: "column", gap: 14 }}>
+          {isAdd && onEnrich && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <label style={label} htmlFor="poi-enrich-url">Enrich from URL</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input id="poi-enrich-url" style={inputStyle} value={enrichUrlText} onChange={(e) => setEnrichUrlText(e.target.value)} placeholder="Paste a Google Maps or website link" />
+                <button type="button" onClick={runEnrich} disabled={enriching} style={{ ...ghostButtonStyle, whiteSpace: "nowrap" }}>{enriching ? "Enriching…" : "Enrich"}</button>
+              </div>
+              {enrichError && <div role="status" style={{ fontSize: 12, color: theme.color.dangerText }}>{enrichError}</div>}
+              {filledCount > 0 && enrichHost && (
+                <div role="status" style={{ fontSize: 12, color: theme.color.deepIndigoText, background: theme.color.tintBg, border: `1px solid ${theme.color.tintBorder}`, borderRadius: theme.radius.input, padding: "8px 10px" }}>
+                  Filled {filledCount} fields from {enrichHost} — review before saving.
+                </div>
+              )}
+              {safeImageCss(imageUrl) && (
+                <div aria-label="Image preview" style={{ width: 96, height: 64, borderRadius: theme.radius.input, backgroundImage: `url(${safeImageCss(imageUrl)})`, backgroundSize: "cover", backgroundPosition: "center", border: `1px solid ${theme.color.borderCard}` }} />
+              )}
+            </div>
+          )}
+
           {duplicateId != null && (
             <div role="status" style={{ padding: "10px 12px", borderRadius: theme.radius.input, background: theme.color.tintBg, border: `1px solid ${theme.color.tintBorder}`, color: theme.color.deepIndigoText, fontSize: 12.5 }}>
               This looks like a possible duplicate of an existing place. You can still save it.
@@ -102,6 +167,7 @@ export default function PoiFormModal({
           <div>
             <label style={label} htmlFor="poi-name">Name</label>
             <input id="poi-name" style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} onBlur={maybeCheckDuplicate} placeholder="e.g. Café Modern" />
+            {caption("name")}
           </div>
 
           <div style={{ display: "flex", gap: 12 }}>
@@ -121,16 +187,19 @@ export default function PoiFormModal({
           <div>
             <label style={label} htmlFor="poi-address">Address</label>
             <input id="poi-address" style={inputStyle} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street 12, Amsterdam" />
+            {caption("address")}
           </div>
 
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <label style={label} htmlFor="poi-lat">Latitude</label>
               <input id="poi-lat" style={monoInputStyle} value={lat} onChange={(e) => setLat(e.target.value)} onBlur={maybeCheckDuplicate} placeholder="52.3676" />
+              {caption("lat")}
             </div>
             <div style={{ flex: 1 }}>
               <label style={label} htmlFor="poi-lng">Longitude</label>
               <input id="poi-lng" style={monoInputStyle} value={lng} onChange={(e) => setLng(e.target.value)} onBlur={maybeCheckDuplicate} placeholder="4.9041" />
+              {caption("lng")}
             </div>
           </div>
           <p style={{ margin: "-6px 0 0", fontSize: 11.5, color: theme.color.textPlaceholder }}>Click anywhere on the map to drop the coordinates here.</p>
@@ -139,6 +208,7 @@ export default function PoiFormModal({
             <div style={{ flex: 1 }}>
               <label style={label} htmlFor="poi-phone">Phone</label>
               <input id="poi-phone" style={inputStyle} value={phone} onChange={(e) => setPhone(e.target.value)} />
+              {caption("phone")}
             </div>
             <div style={{ flex: 1 }}>
               <label style={label} htmlFor="poi-email">Email</label>
@@ -149,6 +219,7 @@ export default function PoiFormModal({
           <div>
             <label style={label} htmlFor="poi-website">Website</label>
             <input id="poi-website" style={inputStyle} value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" />
+            {caption("website")}
           </div>
 
           <div>
