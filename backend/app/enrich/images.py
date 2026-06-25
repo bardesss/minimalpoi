@@ -9,6 +9,7 @@ from ..config import get_data_dir
 from .safety import UnsafeURLError, safe_get
 
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
+MAX_IMAGE_PIXELS = 50_000_000  # reject images that would decode to a huge bitmap (DoS guard)
 MAX_DIMENSION = 1280
 WEBP_QUALITY = 72
 _ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
@@ -25,8 +26,13 @@ def process_image(data: bytes) -> bytes:
     """
     try:
         img = Image.open(io.BytesIO(data))
-        img.load()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        raise UnsupportedImageError("not a decodable image") from exc
+    if img.width * img.height > MAX_IMAGE_PIXELS:
+        raise UnsupportedImageError(f"image exceeds {MAX_IMAGE_PIXELS} pixels")
+    try:
+        img.load()
+    except (OSError, Image.DecompressionBombError) as exc:
         raise UnsupportedImageError("not a decodable image") from exc
     if img.format not in _ALLOWED_FORMATS or getattr(img, "is_animated", False):
         raise UnsupportedImageError(f"unsupported image format: {img.format}")

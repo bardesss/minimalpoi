@@ -159,3 +159,17 @@ def test_process_image_rejects_animated_gif():
 def test_process_image_rejects_non_image():
     with pytest.raises(images.UnsupportedImageError):
         images.process_image(b"not an image at all")
+
+
+def test_process_image_rejects_huge_dimensions(monkeypatch):
+    monkeypatch.setattr(images, "MAX_IMAGE_PIXELS", 100)
+    with pytest.raises(images.UnsupportedImageError):
+        images.process_image(_img_bytes("PNG", 200, 150))  # 30000 px > 100
+
+
+def test_upload_rejects_oversized(client, monkeypatch):
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    import app.routers.images as imgrouter
+    monkeypatch.setattr(imgrouter, "MAX_IMAGE_BYTES", 10)
+    resp = client.post("/api/images", files={"file": ("p.png", _img_bytes("PNG", 200, 150), "image/png")})
+    assert resp.status_code == 413
