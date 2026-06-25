@@ -44,12 +44,26 @@ def test_save_bytes_writes_file_and_returns_local_url(data_dir):
 
 @pytest.mark.anyio
 async def test_localize_downloads_remote(data_dir):
+    jpeg = _img_bytes("JPEG", 200, 150)
     http = httpx.AsyncClient(transport=httpx.MockTransport(
-        lambda r: httpx.Response(200, content=b"IMGDATA", headers={"content-type": "image/jpeg"})))
+        lambda r: httpx.Response(200, content=jpeg, headers={"content-type": "image/jpeg"})))
     local = await images.localize("https://img.example/x.jpg", client=http)
     await http.aclose()
     assert local.startswith("/images/")
-    assert local.endswith(".jpg")
+    assert local.endswith(".webp")
+    name = local.rsplit("/", 1)[-1]
+    with Image.open(images.images_dir() / name) as img:
+        assert img.format == "WEBP"
+
+
+@pytest.mark.anyio
+async def test_localize_keeps_remote_url_for_gif(data_dir):
+    gif = _img_bytes("GIF", 50, 50, mode="P")
+    http = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda r: httpx.Response(200, content=gif, headers={"content-type": "image/gif"})))
+    out = await images.localize("https://img.example/anim.gif", client=http)
+    await http.aclose()
+    assert out == "https://img.example/anim.gif"
 
 
 @pytest.mark.anyio

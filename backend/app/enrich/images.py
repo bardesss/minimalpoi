@@ -8,8 +8,6 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from ..config import get_data_dir
 from .safety import UnsafeURLError, safe_get
 
-_CONTENT_SUFFIX = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif"}
-
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_DIMENSION = 1280
 WEBP_QUALITY = 72
@@ -77,11 +75,13 @@ async def localize(image_url: str | None, client: httpx.AsyncClient | None = Non
         content = resp.content
         if len(content) > MAX_IMAGE_BYTES:
             return image_url
-        ctype = resp.headers.get("content-type", "").split(";")[0].strip()
     except (httpx.HTTPError, UnsafeURLError):
         return image_url  # non-fatal: keep the remote URL
     finally:
         if owns:
             await client.aclose()
-    suffix = _CONTENT_SUFFIX.get(ctype, ".jpg")
-    return save_bytes(content, suffix)
+    try:
+        webp = process_image(content)
+    except UnsupportedImageError:
+        return image_url  # unsupported/animated/non-image: keep the remote URL
+    return save_bytes(webp, ".webp")
