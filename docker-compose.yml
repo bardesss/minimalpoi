@@ -1,6 +1,9 @@
 services:
   app:
-    build: .
+    image: ghcr.io/bardesss/minimalpoi:latest
+    # For local development against source instead of the published image,
+    # comment out `image:` above and uncomment:
+    # build: .
     ports:
       - "7676:7676"
     environment:
