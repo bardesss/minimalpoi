@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useImportPois } from "../queries/hooks";
 import { exportPois } from "../api/portability";
 import { triggerDownload } from "../lib/download";
@@ -19,7 +19,6 @@ const rowHint = { margin: "2px 0 0", fontSize: 12, color: theme.color.textSecond
 
 export default function DataModal({ onClose }: { onClose: () => void }) {
   const importPois = useImportPois();
-  const fileRef = useRef<HTMLInputElement | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -61,7 +60,7 @@ export default function DataModal({ onClose }: { onClose: () => void }) {
               <p style={rowHint}>Upload a GeoJSON or CSV file. Likely duplicates are skipped.</p>
             </div>
             <div>
-              <input ref={fileRef} id="data-import-file" type="file" accept=".json,.geojson,.csv" onChange={onFile} style={{ display: "none" }} />
+              <input id="data-import-file" type="file" accept=".json,.geojson,.csv" onChange={onFile} style={{ display: "none" }} />
               <label htmlFor="data-import-file" style={{ ...ghostButtonStyle, display: "inline-block" }}>
                 {importPois.isPending ? "Importing…" : "Choose file"}
               </label>

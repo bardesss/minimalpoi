@@ -1,10 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "../test/msw";
 import { renderWithProviders } from "../test/utils";
 import DataModal from "./DataModal";
+
+afterEach(() => vi.restoreAllMocks());
 
 describe("DataModal", () => {
   it("imports a file and shows the summary", async () => {
@@ -36,6 +38,5 @@ describe("DataModal", () => {
     await userEvent.click(screen.getByRole("button", { name: /export geojson/i }));
     await waitFor(() => expect(click).toHaveBeenCalledOnce());
     expect(createUrl).toHaveBeenCalledOnce();
-    vi.restoreAllMocks();
   });
 });
