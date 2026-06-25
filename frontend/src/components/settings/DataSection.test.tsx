@@ -2,20 +2,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { server } from "../test/msw";
-import { renderWithProviders } from "../test/utils";
-import DataModal from "./DataModal";
+import { server } from "../../test/msw";
+import { renderWithProviders } from "../../test/utils";
+import DataSection from "./DataSection";
 
 afterEach(() => vi.restoreAllMocks());
 
-describe("DataModal", () => {
+describe("DataSection", () => {
   it("imports a file and shows the summary", async () => {
     server.use(
       http.post("/api/pois/import", () =>
         HttpResponse.json({ created: 3, skipped: 1, errors: [{ row: 2, reason: "missing name" }], created_ids: [1, 2, 3] }),
       ),
     );
-    renderWithProviders(<DataModal onClose={() => {}} />);
+    renderWithProviders(<DataSection />);
     const file = new File(["name,lat,lng\nA,1,2\n"], "places.csv", { type: "text/csv" });
     await userEvent.upload(screen.getByLabelText(/choose file/i), file);
     await waitFor(() => expect(screen.getByText(/3 added/i)).toBeInTheDocument());
@@ -34,7 +34,7 @@ describe("DataModal", () => {
         }),
       ),
     );
-    renderWithProviders(<DataModal onClose={() => {}} />);
+    renderWithProviders(<DataSection />);
     await userEvent.click(screen.getByRole("button", { name: /export geojson/i }));
     await waitFor(() => expect(click).toHaveBeenCalledOnce());
     expect(createUrl).toHaveBeenCalledOnce();

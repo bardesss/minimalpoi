@@ -13,7 +13,7 @@ import Legend from "./Legend";
 import DetailPanel from "./DetailPanel";
 import AddFab from "./AddFab";
 import PoiFormModal, { type PoiFormInitial } from "./PoiFormModal";
-import DataModal from "./DataModal";
+import SettingsModal from "./SettingsModal";
 
 export default function AppShell() {
   const { user, signOut } = useAuth();
@@ -35,7 +35,7 @@ export default function AppShell() {
   const [activeCategoryIds, setActiveCategoryIds] = useState<number[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [formState, setFormState] = useState<{ mode: "add" | "edit"; initial: PoiFormInitial | null } | null>(null);
-  const [dataModalOpen, setDataModalOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [addCoords, setAddCoords] = useState<{ lng: number; lat: number } | null>(null);
   const [duplicateId, setDuplicateId] = useState<number | null>(null);
 
@@ -145,7 +145,7 @@ export default function AppShell() {
         username={user?.username ?? ""}
         role={user?.role ?? "member"}
         onLogout={onLogout}
-        onOpenData={() => setDataModalOpen(true)}
+        onOpenSettings={() => setSettingsModalOpen(true)}
       />
       <main style={{ flex: 1, position: "relative", background: theme.color.mapBg }}>
         {settingsQuery.data && (
@@ -207,7 +207,7 @@ export default function AppShell() {
             onEnrich={(url) => enrich.mutateAsync(url)}
           />
         )}
-        {dataModalOpen && <DataModal onClose={() => setDataModalOpen(false)} />}
+        {settingsModalOpen && <SettingsModal onClose={() => setSettingsModalOpen(false)} />}
       </main>
     </div>
   );
