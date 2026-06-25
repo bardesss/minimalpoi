@@ -39,6 +39,20 @@ test("redirects to setup on first run", async () => {
   );
 });
 
+test("after first-run setup, lands on the app (not bounced back to setup)", async () => {
+  server.use(
+    http.get("/api/auth/setup-status", () => HttpResponse.json({ needs_setup: true })),
+    http.get("/api/auth/me", () => HttpResponse.json({ detail: "Not authenticated" }, { status: 401 })),
+  );
+  renderApp("/setup");
+  await screen.findByRole("heading", { name: "Create the admin account" });
+  await userEvent.type(screen.getByLabelText("Username"), "admin");
+  await userEvent.type(screen.getByLabelText("Password"), "good");
+  await userEvent.click(screen.getByRole("button", { name: "Create account" }));
+  // Regression: a stale needs_setup=true used to bounce the new admin back to /setup.
+  expect(await screen.findByText("Café Modern")).toBeInTheDocument();
+});
+
 test("unauthenticated user lands on login", async () => {
   server.use(
     http.get("/api/auth/me", () => HttpResponse.json({ detail: "Not authenticated" }, { status: 401 })),

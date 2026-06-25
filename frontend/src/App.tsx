@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { getSetupStatus } from "./api/auth";
+import { useAuth } from "./auth/AuthContext";
 import RequireAuth from "./auth/RequireAuth";
 import AppShell from "./components/AppShell";
 import LoginPage from "./pages/LoginPage";
@@ -9,6 +10,7 @@ import SetupPage from "./pages/SetupPage";
 export default function App() {
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
   const location = useLocation();
+  const { user } = useAuth();
 
   useEffect(() => {
     getSetupStatus()
@@ -23,7 +25,10 @@ export default function App() {
   if (needsSetup === null && location.pathname !== "/login" && location.pathname !== "/setup") {
     return <p>Loading…</p>;
   }
-  if (needsSetup && location.pathname !== "/setup") {
+  // Only force first-run setup when no admin exists yet. An authenticated user
+  // means setup is already done, so don't bounce them back to /setup even if the
+  // once-fetched needs_setup value is now stale (e.g. right after completing setup).
+  if (needsSetup && !user && location.pathname !== "/setup") {
     return <Navigate to="/setup" replace />;
   }
 
