@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.enrich.parse import parse_jsonld, parse_opengraph
+from app.enrich.parse import parse_geo, parse_jsonld, parse_opengraph, parse_twitter
 
 FIX = Path(__file__).parent / "fixtures"
 
@@ -47,3 +47,31 @@ def test_jsonld_graph_and_image_dict():
     assert data["name"] == "Graph Cafe"
     assert data["image"] == "https://img.example/g.jpg"
     assert data["lat"] == 51.5
+
+
+def test_twitter_card_extracts_title_image_description():
+    tw = parse_twitter(_read("twitter_card.html"))
+    assert tw["title"] == "Twitter Bistro"
+    assert tw["image"] == "https://img.example/tw.jpg"
+    assert tw["description"] == "A cozy spot."
+
+
+def test_twitter_empty_when_absent():
+    assert parse_twitter(_read("no_metadata.html")) == {}
+
+
+def test_parse_geo_from_place_location():
+    geo = parse_geo(_read("og_place_geo.html"))
+    assert geo["lat"] == 48.8566
+    assert geo["lng"] == 2.3522
+
+
+def test_parse_geo_empty_when_absent():
+    assert parse_geo(_read("no_metadata.html")) == {}
+
+
+def test_jsonld_recognizes_museum_type():
+    data = parse_jsonld(_read("jsonld_museum.html"))
+    assert data["name"] == "City Museum"
+    assert data["lat"] == 52.0
+    assert data["lng"] == 4.0

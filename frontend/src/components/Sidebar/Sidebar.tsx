@@ -27,6 +27,7 @@ export interface SidebarProps {
   username: string;
   role: string;
   onLogout: () => void;
+  onOpenData: () => void;
 }
 
 export default function Sidebar(props: SidebarProps) {
@@ -49,7 +50,7 @@ export default function Sidebar(props: SidebarProps) {
       <CategoryChips categories={props.categories} activeIds={props.activeCategoryIds} onToggle={props.onToggleCategory} onClear={props.onClearCategories} />
       <ResultsMeta count={props.pois.length} onFit={props.onFit} />
       <PoiList pois={props.pois} categoriesById={props.categoriesById} selectedId={props.selectedId} onSelect={props.onSelect} isLoading={props.isLoading} isError={props.isError} onRetry={props.onRetry} />
-      <AccountFooter username={props.username} role={props.role} onLogout={props.onLogout} />
+      <AccountFooter username={props.username} role={props.role} onLogout={props.onLogout} onOpenData={props.onOpenData} />
     </aside>
   );
 }

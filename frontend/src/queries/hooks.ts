@@ -3,6 +3,8 @@ import { getCategories } from "../api/categories";
 import { checkDuplicate, createPoi, deletePoi, getPois, updatePoi } from "../api/pois";
 import { getSettings } from "../api/settings";
 import type { PoiCreate, PoiUpdate } from "../types/api";
+import { enrichUrl } from "../api/enrich";
+import { importPois } from "../api/portability";
 
 export function usePois() {
   return useQuery({ queryKey: ["pois"], queryFn: getPois });
@@ -42,4 +44,16 @@ export function useDeletePoi() {
 
 export function useCheckDuplicate() {
   return useMutation({ mutationFn: checkDuplicate });
+}
+
+export function useEnrich() {
+  return useMutation({ mutationFn: (url: string) => enrichUrl(url) });
+}
+
+export function useImportPois() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => importPois(file),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pois"] }),
+  });
 }

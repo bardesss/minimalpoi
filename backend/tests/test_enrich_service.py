@@ -54,3 +54,29 @@ async def test_enrich_never_raises_on_dead_link(client):
     await http.aclose()
     assert draft.source_url == "https://dead.example/x"
     assert draft.name is None
+
+
+@pytest.mark.anyio
+async def test_enrich_twitter_fallback(client):
+    html = (FIX / "twitter_card.html").read_text(encoding="utf-8")
+    http = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda r: httpx.Response(200, text=html, headers={"content-type": "text/html"})))
+    with Session(db.engine) as session:
+        draft = await enrich("https://tw.example/p", session, client=http)
+    await http.aclose()
+    assert draft.name == "Twitter Bistro"
+    assert draft.image_url == "https://img.example/tw.jpg"
+    assert draft.description == "A cozy spot."
+    assert draft.field_sources["name"] == "twitter"
+
+
+@pytest.mark.anyio
+async def test_enrich_og_place_geo_coords(client):
+    html = (FIX / "og_place_geo.html").read_text(encoding="utf-8")
+    http = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda r: httpx.Response(200, text=html, headers={"content-type": "text/html"})))
+    with Session(db.engine) as session:
+        draft = await enrich("https://geo.example/p", session, client=http)
+    await http.aclose()
+    assert draft.lat == 48.8566 and draft.lng == 2.3522
+    assert draft.field_sources["lat"] == "og"

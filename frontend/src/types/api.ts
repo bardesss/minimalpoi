@@ -71,3 +71,28 @@ export type PoiUpdate = Partial<PoiCreate>;
 export interface DuplicateResult {
   duplicate_id: number | null;
 }
+
+export interface PoiDraft {
+  name: string | null;
+  address: string | null;
+  lat: number | null;
+  lng: number | null;
+  image_url: string | null;
+  description: string | null;
+  phone: string | null;
+  website: string | null;
+  source_url: string | null;
+  field_sources: Record<string, string>;
+}
+
+export interface ImportRowError {
+  row: number;
+  reason: string;
+}
+
+export interface ImportResult {
+  created: number;
+  skipped: number;
+  errors: ImportRowError[];
+  created_ids: number[];
+}

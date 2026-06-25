@@ -1,13 +1,19 @@
 import json
 from html.parser import HTMLParser
 
-_RELEVANT_TYPES = {"Restaurant", "LocalBusiness", "Place", "Hotel", "TouristAttraction"}
+_RELEVANT_TYPES = {
+    "Restaurant", "LocalBusiness", "Place", "Hotel", "TouristAttraction",
+    "Museum", "Store", "Park", "CafeOrCoffeeShop", "BarOrPub",
+    "TouristDestination", "FoodEstablishment", "Organization",
+}
 
 
 class _MetaScriptParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.og: dict[str, str] = {}
+        self.twitter: dict[str, str] = {}
+        self.place: dict[str, str] = {}
         self._ld_scripts: list[str] = []
         self._in_ld = False
         self._current: list[str] = []
@@ -15,9 +21,16 @@ class _MetaScriptParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
         if tag == "meta":
+            content = a.get("content")
             prop = a.get("property", "")
-            if prop.startswith("og:") and a.get("content"):
-                self.og[prop[3:]] = a["content"]
+            name = a.get("name", "")
+            if content:
+                if prop.startswith("og:"):
+                    self.og[prop[3:]] = content
+                elif prop.startswith("place:"):
+                    self.place[prop] = content
+                if name.startswith("twitter:"):
+                    self.twitter[name[8:]] = content
         if tag == "script" and a.get("type") == "application/ld+json":
             self._in_ld = True
             self._current = []
@@ -42,6 +55,22 @@ def _parse(html: str) -> _MetaScriptParser:
 
 def parse_opengraph(html: str) -> dict[str, str]:
     return _parse(html).og
+
+
+def parse_twitter(html: str) -> dict[str, str]:
+    return _parse(html).twitter
+
+
+def parse_geo(html: str) -> dict:
+    p = _parse(html)
+    lat = p.og.get("latitude") or p.place.get("place:location:latitude")
+    lng = p.og.get("longitude") or p.place.get("place:location:longitude")
+    try:
+        if lat is not None and lng is not None:
+            return {"lat": float(lat), "lng": float(lng)}
+    except (TypeError, ValueError):
+        pass
+    return {}
 
 
 def _iter_ld_objects(scripts: list[str]):
