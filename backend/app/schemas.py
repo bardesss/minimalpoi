@@ -219,3 +219,15 @@ class POIDraft(SQLModel):
     website: str | None = None
     source_url: str | None = None
     field_sources: dict[str, str] = Field(default_factory=dict)
+
+
+class ImportRowError(SQLModel):
+    row: int
+    reason: str
+
+
+class ImportResult(SQLModel):
+    created: int
+    skipped: int
+    errors: list[ImportRowError] = []
+    created_ids: list[int] = []
