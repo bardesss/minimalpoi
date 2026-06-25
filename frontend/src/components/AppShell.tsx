@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
-import { useCategories, useCreatePoi, useDeletePoi, useEnrich, usePois, useSettings, useUpdatePoi, useCheckDuplicate } from "../queries/hooks";
+import { useCategories, useCreatePoi, useDeletePoi, useEnrich, usePois, useSettings, useUpdatePoi, useCheckDuplicate, useVersion } from "../queries/hooks";
 import { filterPois } from "../lib/filterPois";
 import type { Category, Poi, PoiCreate } from "../types/api";
 import { theme } from "../theme";
@@ -27,6 +27,7 @@ export default function AppShell() {
   const deletePoi = useDeletePoi();
   const checkDuplicate = useCheckDuplicate();
   const enrich = useEnrich();
+  const version = useVersion();
 
   const mapRef = useRef<MlMap | null>(null);
 
@@ -146,6 +147,7 @@ export default function AppShell() {
         role={user?.role ?? "member"}
         onLogout={onLogout}
         onOpenSettings={() => setSettingsModalOpen(true)}
+        updateAvailable={version.data?.update_available ?? false}
       />
       <main style={{ flex: 1, position: "relative", background: theme.color.mapBg }}>
         {settingsQuery.data && (

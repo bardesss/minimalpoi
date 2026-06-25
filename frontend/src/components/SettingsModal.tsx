@@ -1,6 +1,7 @@
 import { useState, type ComponentType } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { theme } from "../theme";
+import AboutSection from "./settings/AboutSection";
 import CategoriesSection from "./settings/CategoriesSection";
 import ConnectionsSection from "./settings/ConnectionsSection";
 import DataSection from "./settings/DataSection";
@@ -20,6 +21,7 @@ const SECTIONS: SectionDef[] = [
   { key: "categories", label: "Categories", adminOnly: false, Component: CategoriesSection },
   { key: "tags", label: "Tags", adminOnly: false, Component: TagsSection },
   { key: "data", label: "Data & backups", adminOnly: false, Component: DataSection },
+  { key: "about", label: "About", adminOnly: false, Component: AboutSection },
 ];
 
 export default function SettingsModal({ onClose }: { onClose: () => void }) {

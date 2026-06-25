@@ -141,3 +141,9 @@ export interface CategoryCreate {
 }
 
 export type CategoryUpdate = Partial<CategoryCreate>;
+
+export interface VersionInfo {
+  current: string;
+  latest: string | null;
+  update_available: boolean;
+}

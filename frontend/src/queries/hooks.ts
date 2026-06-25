@@ -6,6 +6,7 @@ import { deleteTag, getTags, renameTag } from "../api/tags";
 import type { CategoryCreate, CategoryUpdate, PoiCreate, PoiUpdate, SettingsUpdate } from "../types/api";
 import { enrichUrl } from "../api/enrich";
 import { importPois } from "../api/portability";
+import { getVersion } from "../api/version";
 
 export function usePois() {
   return useQuery({ queryKey: ["pois"], queryFn: getPois });
@@ -128,4 +129,8 @@ export function useDeleteTag() {
       qc.invalidateQueries({ queryKey: ["pois"] });
     },
   });
+}
+
+export function useVersion() {
+  return useQuery({ queryKey: ["version"], queryFn: getVersion, staleTime: 60 * 60 * 1000 });
 }
