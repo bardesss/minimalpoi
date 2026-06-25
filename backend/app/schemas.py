@@ -231,3 +231,13 @@ class ImportResult(SQLModel):
     skipped: int
     errors: list[ImportRowError] = []
     created_ids: list[int] = []
+
+
+class TagInfo(SQLModel):
+    tag: str
+    count: int
+
+
+class TagRename(SQLModel):
+    old: str
+    new: str
