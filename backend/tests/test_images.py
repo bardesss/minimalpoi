@@ -60,9 +60,23 @@ async def test_localize_passthrough_for_local_and_none(data_dir):
 
 def test_upload_endpoint(client):
     client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
-    resp = client.post("/api/images", files={"file": ("p.png", b"\x89PNG", "image/png")})
+    png = _img_bytes("PNG", 200, 150)
+    resp = client.post("/api/images", files={"file": ("p.png", png, "image/png")})
     assert resp.status_code == 201
-    assert resp.json()["url"].startswith("/images/")
+    assert resp.json()["url"].endswith(".webp")
+
+
+def test_upload_rejects_gif(client):
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    gif = _img_bytes("GIF", 50, 50, mode="P")
+    resp = client.post("/api/images", files={"file": ("a.gif", gif, "image/gif")})
+    assert resp.status_code == 415
+
+
+def test_upload_rejects_non_image(client):
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    resp = client.post("/api/images", files={"file": ("x.png", b"not an image", "image/png")})
+    assert resp.status_code == 415
 
 
 def test_upload_requires_auth(client):

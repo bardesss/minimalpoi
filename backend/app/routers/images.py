@@ -1,19 +1,19 @@
-from pathlib import Path
-
-from fastapi import APIRouter, UploadFile, status
+from fastapi import APIRouter, HTTPException, UploadFile, status
 
 from ..deps import CurrentUser
-from ..enrich.images import save_bytes
+from ..enrich.images import UnsupportedImageError, process_image, save_bytes
 
 router = APIRouter(prefix="/api/images", tags=["images"])
-
-_ALLOWED_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def upload_image(file: UploadFile, _: CurrentUser) -> dict:
-    suffix = Path(file.filename or "").suffix.lower()
-    if suffix not in _ALLOWED_SUFFIXES:
-        suffix = ".bin"
     data = await file.read()
-    return {"url": save_bytes(data, suffix)}
+    try:
+        webp = process_image(data)
+    except UnsupportedImageError:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Unsupported or invalid image (JPEG, PNG, or WebP only)",
+        )
+    return {"url": save_bytes(webp, ".webp")}
