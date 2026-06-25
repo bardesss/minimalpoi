@@ -4,6 +4,7 @@ import { ApiError } from "../api/client";
 import { setup as setupRequest } from "../api/auth";
 import { useAuth } from "../auth/AuthContext";
 import { inputStyle, primaryButtonStyle, theme } from "../theme";
+import BrandLogo from "../components/BrandLogo";
 
 export default function SetupPage() {
   const navigate = useNavigate();
@@ -33,7 +34,7 @@ export default function SetupPage() {
         style={{ width: 360, background: theme.color.surface0, border: `1px solid ${theme.color.borderSubtle}`, borderRadius: theme.radius.modal, padding: "28px 26px", display: "flex", flexDirection: "column", gap: 14, boxShadow: theme.shadow.legend }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-          <div style={{ width: 32, height: 32, borderRadius: theme.radius.logo, background: theme.gradient.brand, boxShadow: "0 3px 10px rgba(79,70,229,.4)" }} />
+          <BrandLogo size={32} />
           <h1 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: "-.02em" }}>Create the admin account</h1>
         </div>
         <label htmlFor="setup-username" style={{ fontSize: 12, fontWeight: 700, color: theme.color.textBody }}>Username</label>

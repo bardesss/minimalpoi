@@ -44,5 +44,7 @@ jobs:
             ghcr.io/bardesss/minimalpoi:${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}
             ghcr.io/bardesss/minimalpoi:${{ steps.release.outputs.major }}
             ghcr.io/bardesss/minimalpoi:latest
+          build-args: |
+            VERSION=${{ steps.release.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
