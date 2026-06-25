@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useFullSettings, useUpdateSettings } from "../../queries/hooks";
+import { useToast } from "../Toast";
 import type { SettingsUpdate } from "../../types/api";
 import { inputStyle, primaryButtonStyle, theme } from "../../theme";
 
@@ -8,6 +9,7 @@ const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marg
 export default function MapSection() {
   const settings = useFullSettings();
   const update = useUpdateSettings();
+  const { notify } = useToast();
   const s = settings.data;
   const [tileUrl, setTileUrl] = useState("");
   const [lat, setLat] = useState("");
@@ -37,7 +39,10 @@ export default function MapSection() {
     if (lat.trim() !== "" && Number.isFinite(latN)) patch.default_map_center_lat = latN;
     if (lng.trim() !== "" && Number.isFinite(lngN)) patch.default_map_center_lng = lngN;
     if (zoom.trim() !== "" && Number.isFinite(zoomN)) patch.default_map_zoom = zoomN;
-    update.mutate(patch);
+    update.mutate(patch, {
+      onSuccess: () => notify("Map settings saved"),
+      onError: (e) => notify(e instanceof Error ? e.message : "Save failed", "error"),
+    });
   }
 
   return (
