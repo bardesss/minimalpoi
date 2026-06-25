@@ -30,6 +30,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
   const visible = SECTIONS.filter((s) => !s.adminOnly || isAdmin);
   const [activeKey, setActiveKey] = useState(visible[0]?.key ?? "data");
   const active = visible.find((s) => s.key === activeKey) ?? visible[0];
+  if (!active) return null;
   const Active = active.Component;
 
   return (

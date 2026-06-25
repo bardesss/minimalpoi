@@ -29,11 +29,14 @@ export default function MapSection() {
   function submit() {
     const patch: SettingsUpdate = {
       map_tile_url: tileUrl.trim(),
-      default_map_center_lat: Number(lat),
-      default_map_center_lng: Number(lng),
-      default_map_zoom: Number(zoom),
       cookie_secure: cookieSecure,
     };
+    const latN = Number(lat);
+    const lngN = Number(lng);
+    const zoomN = Number(zoom);
+    if (lat.trim() !== "" && Number.isFinite(latN)) patch.default_map_center_lat = latN;
+    if (lng.trim() !== "" && Number.isFinite(lngN)) patch.default_map_center_lng = lngN;
+    if (zoom.trim() !== "" && Number.isFinite(zoomN)) patch.default_map_zoom = zoomN;
     update.mutate(patch);
   }
 
