@@ -96,3 +96,48 @@ export interface ImportResult {
   errors: ImportRowError[];
   created_ids: number[];
 }
+
+export interface Settings {
+  trip_base_url: string | null;
+  trip_username: string | null;
+  trip_password_set: boolean;
+  trip_sync_enabled: boolean;
+  trip_sync_interval_seconds: number;
+  trip_conflict_policy: string;
+  google_api_key_set: boolean;
+  nominatim_url: string | null;
+  map_tile_url: string;
+  default_map_center_lat: number;
+  default_map_center_lng: number;
+  default_map_zoom: number;
+  cookie_secure: boolean;
+}
+
+export interface SettingsUpdate {
+  trip_base_url?: string | null;
+  trip_username?: string | null;
+  trip_password?: string | null;
+  trip_sync_enabled?: boolean;
+  trip_sync_interval_seconds?: number;
+  trip_conflict_policy?: string;
+  google_api_key?: string | null;
+  nominatim_url?: string | null;
+  map_tile_url?: string;
+  default_map_center_lat?: number;
+  default_map_center_lng?: number;
+  default_map_zoom?: number;
+  cookie_secure?: boolean;
+}
+
+export interface TagInfo {
+  tag: string;
+  count: number;
+}
+
+export interface CategoryCreate {
+  name: string;
+  color?: string;
+  icon?: string | null;
+}
+
+export type CategoryUpdate = Partial<CategoryCreate>;

@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "../test/msw";
 import { makeClient } from "../test/utils";
-import { useCreatePoi, useEnrich, useImportPois, usePois } from "./hooks";
+import { useCreatePoi, useEnrich, useImportPois, usePois, useTags } from "./hooks";
 
 function wrapper(client = makeClient()) {
   return ({ children }: { children: ReactNode }) => (
@@ -70,5 +70,12 @@ describe("data hooks", () => {
     const mut = renderHook(() => useImportPois(), { wrapper: wrapper(client) });
     await mut.result.current.mutateAsync(new File(["x"], "p.csv", { type: "text/csv" }));
     await waitFor(() => expect(getCount).toBeGreaterThanOrEqual(2));
+  });
+
+  it("useTags loads tags", async () => {
+    server.use(http.get("/api/tags", () => HttpResponse.json([{ tag: "food", count: 2 }])));
+    const { result } = renderHook(() => useTags(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([{ tag: "food", count: 2 }]);
   });
 });
