@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/Bardesss/minimalpoi/compare/v0.4.0...v0.4.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* **web:** don't bounce authenticated user back to /setup ([efa77ce](https://github.com/Bardesss/minimalpoi/commit/efa77ce7b89493fd4c7a71adcf2340b3bc43b069))
+* **web:** don't redirect authenticated user back to /setup ([a47d2ba](https://github.com/Bardesss/minimalpoi/commit/a47d2ba0258a043d498d8db0f466dfec3038e222))
+
 ## [0.4.0](https://github.com/Bardesss/minimalpoi/compare/v0.3.0...v0.4.0) (2026-06-25)
 
 
