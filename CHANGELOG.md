@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0](https://github.com/Bardesss/minimalpoi/compare/v0.5.1...v0.6.0) (2026-06-25)
+
+
+### Features
+
+* **web:** toast feedback on settings save actions ([e20bf87](https://github.com/Bardesss/minimalpoi/commit/e20bf8754a09068bcc5a58c8dc2cba86cd9e5200))
+* **web:** toast feedback on settings save actions ([5f2923e](https://github.com/Bardesss/minimalpoi/commit/5f2923e5299b5c3e6db928f8fe3ca876a7e45b79))
+
 ## [0.5.1](https://github.com/Bardesss/minimalpoi/compare/v0.5.0...v0.5.1) (2026-06-25)
 
 
