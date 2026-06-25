@@ -17,6 +17,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+ARG VERSION=dev
+ENV MINIMALPOI_VERSION=$VERSION
+
 # Install runtime dependencies explicitly.
 # Keep this list in sync with [project].dependencies in backend/pyproject.toml.
 # (We do NOT use `pip install ./backend` because pyproject.toml references
