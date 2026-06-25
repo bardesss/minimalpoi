@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.5.0](https://github.com/Bardesss/minimalpoi/compare/v0.4.1...v0.5.0) (2026-06-25)
+
+
+### Features
+
+* **tags:** list/rename/delete tags API ([daf4723](https://github.com/Bardesss/minimalpoi/commit/daf4723833ede3c8bd638cb8fbb36d15dc346f22))
+* **version:** /api/version with GitHub update check; bake version into image ([6a50b55](https://github.com/Bardesss/minimalpoi/commit/6a50b5576ba42b569d5a61943ceb78ceed2b42a5))
+* **web:** About section with version + update-available indicator ([34cbef8](https://github.com/Bardesss/minimalpoi/commit/34cbef82d802545d308b64dd623453b8d841494d))
+* **web:** admin Connections + Map settings sections with member gating ([6385563](https://github.com/Bardesss/minimalpoi/commit/638556342f5d5a36f0f1596fada6da9df2eb835f))
+* **web:** brand-matched MapPin favicon ([de2fc3f](https://github.com/Bardesss/minimalpoi/commit/de2fc3f59eda993b5c7dbbb192d3b42673380f0f))
+* **web:** data layer for full settings, category CRUD, tags ([4dbbb1a](https://github.com/Bardesss/minimalpoi/commit/4dbbb1a4f8b68655caa69d3602018e6b594ec987))
+* **web:** manage categories (color + icon) in Settings ([dae061b](https://github.com/Bardesss/minimalpoi/commit/dae061bd17f8141b2b1d96030981a6e2399ab6fc))
+* **web:** manage tags (rename/merge/delete) in Settings ([0062418](https://github.com/Bardesss/minimalpoi/commit/0062418f1ae89d32103a6b1ebac14b6c4dd2c7d8))
+* **web:** MapPin brand logo ([22a5f35](https://github.com/Bardesss/minimalpoi/commit/22a5f35ce43ced47964997abe03c18fcd3d92cdd))
+* **web:** unified Settings modal with Data & backups section ([6bda9aa](https://github.com/Bardesss/minimalpoi/commit/6bda9aac3bffa777831b988322158aaf062c58e8))
+
+
+### Bug Fixes
+
+* **version:** fail-silent on non-dict JSON + throttle update check to TTL on failure ([6e451eb](https://github.com/Bardesss/minimalpoi/commit/6e451eb89b5ffff9d879b74f6e6d9febfdf121aa))
+* **web:** MapSection omits cleared numeric fields; guard empty Settings nav ([94aee2f](https://github.com/Bardesss/minimalpoi/commit/94aee2f694339a687914608e62c7b01672adcf08))
+
 ## [0.4.1](https://github.com/Bardesss/minimalpoi/compare/v0.4.0...v0.4.1) (2026-06-25)
 
 
