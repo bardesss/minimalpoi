@@ -99,7 +99,7 @@ manage it yourself.
 ### docker-compose (recommended)
 
 ```bash
-docker compose up --build        # or add -d to run in background
+docker compose up -d        # pulls ghcr.io/bardesss/minimalpoi:latest
 ```
 
 App is at **http://localhost:7676**. All state (SQLite DB, secret key, uploaded
@@ -107,15 +107,34 @@ images) persists in the named volume `minimalpoi-data` mapped to `/data` inside
 the container. `SECRET_KEY` is optional — it is auto-generated and stored in the
 volume on first start.
 
+To run against local source instead of the published image, edit
+`docker-compose.yml` (comment `image:`, uncomment `build: .`) and run
+`docker compose up -d --build`.
+
 ### Plain docker
 
 ```bash
-docker build -t minimalpoi .
-docker run -p 7676:7676 -v minimalpoi-data:/data minimalpoi
+docker run -d -p 7676:7676 -v minimalpoi-data:/data ghcr.io/bardesss/minimalpoi:latest
 ```
 
-`MINIMALPOI_DATA_DIR=/data` is set in the image; the volume persists data across
-restarts.
+`MINIMALPOI_DATA_DIR=/data` is set in the image; the named volume persists data
+across restarts. Pin a specific version instead of `latest` with a semver tag,
+e.g. `ghcr.io/bardesss/minimalpoi:0.1`.
+
+## Releases
+
+Versioning and publishing are automated:
+
+1. Merge feature PRs using Conventional Commits (`feat:`, `fix:`, …).
+2. [release-please](https://github.com/googleapis/release-please) keeps an open
+   **release PR** that bumps the version and updates [`CHANGELOG.md`](CHANGELOG.md).
+3. Merging that PR tags the release and publishes a multi-arch
+   (`linux/amd64`, `linux/arm64`) image to
+   `ghcr.io/bardesss/minimalpoi` (tags `X.Y.Z`, `X.Y`, `X`, `latest`).
+
+> **One-time:** after the first release, set the GHCR package visibility to
+> **public** in the GitHub UI (Packages → minimalpoi → Package settings) so the
+> image can be pulled without authentication.
 
 ## License
 
