@@ -1,6 +1,7 @@
 import { useState, type ComponentType } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { theme } from "../theme";
+import CategoriesSection from "./settings/CategoriesSection";
 import DataSection from "./settings/DataSection";
 
 interface SectionDef {
@@ -11,6 +12,7 @@ interface SectionDef {
 }
 
 const SECTIONS: SectionDef[] = [
+  { key: "categories", label: "Categories", adminOnly: false, Component: CategoriesSection },
   { key: "data", label: "Data & backups", adminOnly: false, Component: DataSection },
 ];
 
