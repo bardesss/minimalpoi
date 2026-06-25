@@ -147,3 +147,32 @@ export interface VersionInfo {
   latest: string | null;
   update_available: boolean;
 }
+
+export interface UserCreate {
+  username: string;
+  password: string;
+  role: Role;
+}
+
+export interface UserUpdate {
+  password?: string;
+  role?: Role;
+  disabled?: boolean;
+}
+
+export interface Team {
+  id: number;
+  name: string;
+  created_by: number;
+  member_ids: number[];
+}
+
+export interface TeamCreate {
+  name: string;
+  member_ids: number[];
+}
+
+export interface TeamCandidate {
+  id: number;
+  username: string;
+}
