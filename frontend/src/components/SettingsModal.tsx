@@ -3,6 +3,7 @@ import { useAuth } from "../auth/AuthContext";
 import { theme } from "../theme";
 import CategoriesSection from "./settings/CategoriesSection";
 import DataSection from "./settings/DataSection";
+import TagsSection from "./settings/TagsSection";
 
 interface SectionDef {
   key: string;
@@ -13,6 +14,7 @@ interface SectionDef {
 
 const SECTIONS: SectionDef[] = [
   { key: "categories", label: "Categories", adminOnly: false, Component: CategoriesSection },
+  { key: "tags", label: "Tags", adminOnly: false, Component: TagsSection },
   { key: "data", label: "Data & backups", adminOnly: false, Component: DataSection },
 ];
 
