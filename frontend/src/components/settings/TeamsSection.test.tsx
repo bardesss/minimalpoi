@@ -23,6 +23,6 @@ describe("TeamsSection", () => {
     await userEvent.type(screen.getByLabelText(/team name/i), "Scouts");
     await userEvent.click(screen.getByLabelText(/member bob/i));
     await userEvent.click(screen.getByRole("button", { name: /^save$/i }));
-    await waitFor(() => expect(created).toMatchObject({ name: "Scouts", member_ids: [2] }));
+    await waitFor(() => expect(created).toMatchObject({ name: "Scouts", member_ids: [1, 2] }));
   });
 });

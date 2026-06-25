@@ -89,7 +89,7 @@ export default function TeamsSection() {
           </div>
         </div>
       ) : (
-        <button type="button" onClick={() => setDraft({ id: null, name: "", memberIds: [] })} style={{ ...ghostButtonStyle, alignSelf: "flex-start" }}>+ Add team</button>
+        <button type="button" onClick={() => setDraft({ id: null, name: "", memberIds: me ? [me.id] : [] })} style={{ ...ghostButtonStyle, alignSelf: "flex-start" }}>+ Add team</button>
       )}
 
       <div style={{ borderTop: `1px solid ${theme.color.borderSubtle}`, paddingTop: 14 }}>
