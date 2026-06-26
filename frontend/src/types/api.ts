@@ -27,6 +27,8 @@ export interface Poi {
   id: number;
   name: string;
   address: string | null;
+  city: string | null;
+  country_code: string | null;
   lat: number;
   lng: number;
   category_id: number | null;
@@ -56,6 +58,8 @@ export interface PoiCreate {
   lat: number;
   lng: number;
   address?: string | null;
+  city?: string | null;
+  country_code?: string | null;
   category_id?: number | null;
   tags?: string[];
   notes?: string | null;
@@ -75,6 +79,8 @@ export interface DuplicateResult {
 export interface PoiDraft {
   name: string | null;
   address: string | null;
+  city: string | null;
+  country_code: string | null;
   lat: number | null;
   lng: number | null;
   image_url: string | null;

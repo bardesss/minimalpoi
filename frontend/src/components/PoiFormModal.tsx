@@ -11,6 +11,8 @@ export function splitTags(text: string): string[] {
 export interface PoiFormInitial {
   name: string;
   address: string | null;
+  city: string | null;
+  country_code: string | null;
   lat: number;
   lng: number;
   category_id: number | null;
@@ -49,6 +51,10 @@ export default function PoiFormModal({
   const [categoryId, setCategoryId] = useState<string>(initial?.category_id != null ? String(initial.category_id) : "");
   const [tagsText, setTagsText] = useState(initial?.tags.join(", ") ?? "");
   const [address, setAddress] = useState(initial?.address ?? "");
+  // City + country code are not edited directly; they ride along from
+  // enrichment (or the existing place in edit mode) so the card can show them.
+  const [city, setCity] = useState<string | null>(initial?.city ?? null);
+  const [countryCode, setCountryCode] = useState<string | null>(initial?.country_code ?? null);
   const [lat, setLat] = useState(initial ? String(initial.lat) : coords ? String(coords.lat) : "");
   const [lng, setLng] = useState(initial ? String(initial.lng) : coords ? String(coords.lng) : "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
@@ -83,6 +89,8 @@ export default function PoiFormModal({
       const draft = await onEnrich(enrichUrlText.trim());
       if (draft.name != null) setName(draft.name);
       if (draft.address != null) setAddress(draft.address);
+      if (draft.city != null) setCity(draft.city);
+      if (draft.country_code != null) setCountryCode(draft.country_code);
       if (draft.lat != null) setLat(String(draft.lat));
       if (draft.lng != null) setLng(String(draft.lng));
       if (draft.phone != null) setPhone(draft.phone);
@@ -112,6 +120,8 @@ export default function PoiFormModal({
     const payload: PoiCreate = {
       name: name.trim(),
       address: nn(address),
+      city,
+      country_code: countryCode,
       lat: Number(lat),
       lng: Number(lng),
       category_id: categoryId === "" ? null : Number(categoryId),

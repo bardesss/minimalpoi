@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Poi } from "../types/api";
 import { filterPois } from "./filterPois";
 
-const mk = (over: Partial<Poi>): Poi => ({ id: 0, name: "", address: null, lat: 0, lng: 0, category_id: null, tags: [], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "synced", ...over });
+const mk = (over: Partial<Poi>): Poi => ({ id: 0, name: "", address: null, city: null, country_code: null, lat: 0, lng: 0, category_id: null, tags: [], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "synced", ...over });
 
 describe("filterPois", () => {
   const pois = [

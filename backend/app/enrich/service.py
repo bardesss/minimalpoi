@@ -46,6 +46,8 @@ async def enrich(url: str, session: Session, client=None) -> POIDraft:
                     if details:
                         _set(draft, "phone", to_e164(details.get("phone")), "places")
                         _set(draft, "website", details.get("website"), "places")
+                        _set(draft, "city", details.get("city"), "places")
+                        _set(draft, "country_code", details.get("country_code"), "places")
                         ref = details.get("photo_reference")
                         if ref:
                             photo = await gmaps.resolve_photo_url(ref, google_key, client=client)

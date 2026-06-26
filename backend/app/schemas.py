@@ -72,6 +72,8 @@ class CategoryRead(SQLModel):
 class POICreate(SQLModel):
     name: str
     address: str | None = None
+    city: str | None = None
+    country_code: str | None = None
     lat: float
     lng: float
     category_id: int | None = None
@@ -87,6 +89,8 @@ class POICreate(SQLModel):
 class POIUpdate(SQLModel):
     name: str | None = None
     address: str | None = None
+    city: str | None = None
+    country_code: str | None = None
     lat: float | None = None
     lng: float | None = None
     category_id: int | None = None
@@ -103,6 +107,8 @@ class POIRead(SQLModel):
     id: int
     name: str
     address: str | None
+    city: str | None
+    country_code: str | None
     lat: float
     lng: float
     category_id: int | None
@@ -227,6 +233,8 @@ class EnrichRequest(SQLModel):
 class POIDraft(SQLModel):
     name: str | None = None
     address: str | None = None
+    city: str | None = None
+    country_code: str | None = None
     lat: float | None = None
     lng: float | None = None
     image_url: str | None = None

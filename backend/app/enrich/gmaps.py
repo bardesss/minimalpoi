@@ -107,10 +107,12 @@ async def places_lookup(query: str, api_key: str, client: httpx.AsyncClient | No
 
 
 async def place_details(place_id: str, api_key: str, client: httpx.AsyncClient | None = None) -> dict | None:
-    """Fetch phone / website / a photo reference for a place_id (Place Details).
+    """Fetch phone / website / photo / city / country for a place_id.
 
-    Returns `{phone?, website?, photo_reference?}`; phone prefers the
-    international (E.164-ish) form so it normalizes cleanly. None on any error.
+    Returns `{phone?, website?, photo_reference?, city?, country_code?}`; phone
+    prefers the international (E.164-ish) form so it normalizes cleanly. City and
+    country come from structured `address_components` (country is the ISO
+    3166-1 alpha-2 code). None on any error.
     """
     owns = client is None
     if client is None:
@@ -118,7 +120,7 @@ async def place_details(place_id: str, api_key: str, client: httpx.AsyncClient |
     try:
         resp = await client.get(DETAILS_URL, params={
             "place_id": place_id,
-            "fields": "international_phone_number,formatted_phone_number,website,photos",
+            "fields": "international_phone_number,formatted_phone_number,website,photos,address_component",
             "key": api_key,
         })
         data = resp.json()
@@ -137,7 +139,32 @@ async def place_details(place_id: str, api_key: str, client: httpx.AsyncClient |
     photos = result.get("photos") or []
     if photos and isinstance(photos[0].get("photo_reference"), str):
         out["photo_reference"] = photos[0]["photo_reference"]
+    city, country = _city_country(result.get("address_components") or [])
+    if city:
+        out["city"] = city
+    if country:
+        out["country_code"] = country
     return out or None
+
+
+def _city_country(components: list) -> tuple[str | None, str | None]:
+    """Pull a display city + ISO country code from Google address_components.
+
+    City prefers `locality`, then `postal_town` (UK) / admin-area fallbacks so
+    places without a locality (villages, regions) still get a sensible label.
+    """
+    def pick(*types: str) -> dict | None:
+        for t in types:
+            for c in components:
+                if t in (c.get("types") or []):
+                    return c
+        return None
+
+    city_c = pick("locality", "postal_town", "administrative_area_level_2", "administrative_area_level_1")
+    country_c = pick("country")
+    city = city_c.get("long_name") if city_c and isinstance(city_c.get("long_name"), str) else None
+    country = country_c.get("short_name") if country_c and isinstance(country_c.get("short_name"), str) else None
+    return city, country
 
 
 async def resolve_photo_url(

@@ -5,7 +5,7 @@ import type { Category, Poi } from "../types/api";
 import { renderWithProviders } from "../test/utils";
 import DetailPanel from "./DetailPanel";
 
-const poi: Poi = { id: 1, name: "Café Modern", address: "Street 12, Amsterdam", lat: 52.37012, lng: 4.90011, category_id: 1, tags: ["popular", "outdoor"], notes: "Nice spot", phone: "+31 20 300 1234", email: "info@place.nl", website: "https://place.nl", image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "s" };
+const poi: Poi = { id: 1, name: "Café Modern", address: "Street 12, Amsterdam", city: "Amsterdam", country_code: "NL", lat: 52.37012, lng: 4.90011, category_id: 1, tags: ["popular", "outdoor"], notes: "Nice spot", phone: "+31 20 300 1234", email: "info@place.nl", website: "https://place.nl", image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "s" };
 const cat: Category = { id: 1, name: "Restaurants", color: "#E1574C", icon: "utensils", created_by: 1, trip_category_id: null, trip_sync_status: "s" };
 
 describe("DetailPanel", () => {

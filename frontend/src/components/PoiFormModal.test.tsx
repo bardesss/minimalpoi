@@ -35,14 +35,14 @@ describe("PoiFormModal", () => {
   });
 
   it("shows edit-mode title and save label", () => {
-    render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
     expect(screen.getByRole("heading", { name: /edit place/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save changes/i })).toBeInTheDocument();
   });
 });
 
 const draft: PoiDraft = {
-  name: "Enriched Spot", address: "1 Main St", lat: 52.1, lng: 4.2,
+  name: "Enriched Spot", address: "1 Main St", city: null, country_code: null, lat: 52.1, lng: 4.2,
   image_url: "https://img.example/p.jpg", description: "Lovely.",
   phone: "+31 1", website: "https://e.example", source_url: "https://e.example",
   field_sources: { name: "jsonld", lat: "og" },
@@ -72,7 +72,7 @@ describe("PoiFormModal enrich", () => {
   });
 
   it("does not render the enrich row in edit mode", () => {
-    render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
     expect(screen.queryByLabelText(/enrich from url/i)).not.toBeInTheDocument();
   });
 });

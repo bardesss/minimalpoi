@@ -129,6 +129,10 @@ async def test_place_details_parses_phone_website_photo():
                 "formatted_phone_number": "020 308 0090",
                 "website": "https://cafe.example",
                 "photos": [{"photo_reference": "PHOTOREF"}],
+                "address_components": [
+                    {"long_name": "Amsterdam", "short_name": "Amsterdam", "types": ["locality", "political"]},
+                    {"long_name": "Netherlands", "short_name": "NL", "types": ["country", "political"]},
+                ],
             },
             "status": "OK",
         })
@@ -141,7 +145,25 @@ async def test_place_details_parses_phone_website_photo():
         "phone": "+31 20 308 0090",
         "website": "https://cafe.example",
         "photo_reference": "PHOTOREF",
+        "city": "Amsterdam",
+        "country_code": "NL",
     }
+
+
+def test_city_country_prefers_locality_and_iso_code():
+    components = [
+        {"long_name": "1234 AB", "short_name": "1234 AB", "types": ["postal_code"]},
+        {"long_name": "Haarlem", "short_name": "Haarlem", "types": ["locality", "political"]},
+        {"long_name": "Noord-Holland", "short_name": "NH", "types": ["administrative_area_level_1"]},
+        {"long_name": "Netherlands", "short_name": "NL", "types": ["country", "political"]},
+    ]
+    assert gmaps._city_country(components) == ("Haarlem", "NL")
+    # Falls back to postal_town when there's no locality (common in the UK).
+    uk = [
+        {"long_name": "London", "short_name": "London", "types": ["postal_town"]},
+        {"long_name": "United Kingdom", "short_name": "GB", "types": ["country", "political"]},
+    ]
+    assert gmaps._city_country(uk) == ("London", "GB")
 
 
 @pytest.mark.anyio

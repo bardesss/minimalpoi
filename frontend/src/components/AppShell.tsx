@@ -91,7 +91,7 @@ export default function AppShell() {
     setDuplicateId(null);
     setFormState({
       mode: "edit",
-      initial: { name: poi.name, address: poi.address, lat: poi.lat, lng: poi.lng, category_id: poi.category_id, tags: poi.tags, notes: poi.notes, phone: poi.phone, email: poi.email, website: poi.website },
+      initial: { name: poi.name, address: poi.address, city: poi.city, country_code: poi.country_code, lat: poi.lat, lng: poi.lng, category_id: poi.category_id, tags: poi.tags, notes: poi.notes, phone: poi.phone, email: poi.email, website: poi.website },
     });
   }
 
