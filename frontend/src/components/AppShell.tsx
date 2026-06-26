@@ -7,7 +7,11 @@ import { filterPois } from "../lib/filterPois";
 import type { Category, Poi, PoiCreate } from "../types/api";
 import { theme } from "../theme";
 import { boundsOf } from "../map/bounds";
+import { useIsMobile } from "../lib/useMediaQuery";
 import Sidebar from "./Sidebar/Sidebar";
+import SidebarContent from "./Sidebar/SidebarContent";
+import AccountFooter from "./Sidebar/AccountFooter";
+import BottomSheet from "./BottomSheet";
 import MapView from "./MapView";
 import Legend from "./Legend";
 import DetailPanel from "./DetailPanel";
@@ -18,6 +22,7 @@ import SettingsModal from "./SettingsModal";
 export default function AppShell() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const poisQuery = usePois();
   const categoriesQuery = useCategories();
   const settingsQuery = useSettings();
@@ -128,29 +133,31 @@ export default function AppShell() {
 
   return (
     <div style={{ display: "flex", height: "100vh", width: "100vw", background: theme.color.pageBg }}>
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onCollapse={() => setSidebarCollapsed(true)}
-        search={searchText}
-        onSearch={setSearchText}
-        categories={categories}
-        activeCategoryIds={activeCategoryIds}
-        onToggleCategory={toggleCategory}
-        onClearCategories={() => setActiveCategoryIds([])}
-        pois={filtered}
-        categoriesById={categoriesById}
-        selectedId={selectedId}
-        onSelect={selectPoi}
-        isLoading={poisQuery.isLoading}
-        isError={poisQuery.isError}
-        onRetry={() => poisQuery.refetch()}
-        onFit={fitToResults}
-        username={user?.username ?? ""}
-        role={user?.role ?? "member"}
-        onLogout={onLogout}
-        onOpenSettings={() => setSettingsModalOpen(true)}
-        updateAvailable={version.data?.update_available ?? false}
-      />
+      {!isMobile && (
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onCollapse={() => setSidebarCollapsed(true)}
+          search={searchText}
+          onSearch={setSearchText}
+          categories={categories}
+          activeCategoryIds={activeCategoryIds}
+          onToggleCategory={toggleCategory}
+          onClearCategories={() => setActiveCategoryIds([])}
+          pois={filtered}
+          categoriesById={categoriesById}
+          selectedId={selectedId}
+          onSelect={selectPoi}
+          isLoading={poisQuery.isLoading}
+          isError={poisQuery.isError}
+          onRetry={() => poisQuery.refetch()}
+          onFit={fitToResults}
+          username={user?.username ?? ""}
+          role={user?.role ?? "member"}
+          onLogout={onLogout}
+          onOpenSettings={() => setSettingsModalOpen(true)}
+          updateAvailable={version.data?.update_available ?? false}
+        />
+      )}
       <main style={{ flex: 1, position: "relative", background: theme.color.mapBg }}>
         {settingsQuery.data && (
           <MapView
@@ -164,8 +171,8 @@ export default function AppShell() {
             mapRef={mapRef}
           />
         )}
-        <Legend categories={categories} counts={counts} />
-        {sidebarCollapsed && (
+        {!isMobile && <Legend categories={categories} counts={counts} />}
+        {!isMobile && sidebarCollapsed && (
           <button
             type="button"
             onClick={() => setSidebarCollapsed(false)}
@@ -195,9 +202,10 @@ export default function AppShell() {
             onClose={() => setSelectedId(null)}
             onEdit={() => openEdit(selectedPoi)}
             onDelete={confirmDelete}
+            mobile={isMobile}
           />
         )}
-        <AddFab onClick={openAdd} />
+        {!(isMobile && selectedPoi) && <AddFab onClick={openAdd} mobile={isMobile} />}
         {formState && (
           <PoiFormModal
             mode={formState.mode}
@@ -215,6 +223,34 @@ export default function AppShell() {
         )}
         {settingsModalOpen && <SettingsModal onClose={() => setSettingsModalOpen(false)} />}
       </main>
+      {isMobile && (
+        <BottomSheet label="Places" initial="half">
+          <SidebarContent
+            search={searchText}
+            onSearch={setSearchText}
+            categories={categories}
+            activeCategoryIds={activeCategoryIds}
+            onToggleCategory={toggleCategory}
+            onClearCategories={() => setActiveCategoryIds([])}
+            pois={filtered}
+            categoriesById={categoriesById}
+            selectedId={selectedId}
+            onSelect={selectPoi}
+            isLoading={poisQuery.isLoading}
+            isError={poisQuery.isError}
+            onRetry={() => poisQuery.refetch()}
+            onFit={fitToResults}
+            mobile
+          />
+          <AccountFooter
+            username={user?.username ?? ""}
+            role={user?.role ?? "member"}
+            onLogout={onLogout}
+            onOpenSettings={() => setSettingsModalOpen(true)}
+            updateAvailable={version.data?.update_available ?? false}
+          />
+        </BottomSheet>
+      )}
     </div>
   );
 }

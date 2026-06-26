@@ -6,20 +6,26 @@ export default function CategoryChips({
   activeIds,
   onToggle,
   onClear,
+  scroll = false,
 }: {
   categories: Category[];
   activeIds: number[];
   onToggle: (id: number) => void;
   onClear: () => void;
+  /** Mobile: lay chips out in a single horizontally scrollable row. */
+  scroll?: boolean;
 }) {
+  const layout = scroll
+    ? ({ flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch" } as const)
+    : ({ flexWrap: "wrap" } as const);
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 7, padding: "12px 20px" }}>
-      <button type="button" onClick={onClear} style={chip(activeIds.length === 0, theme.color.primary)}>All</button>
+    <div className={scroll ? "no-scrollbar" : undefined} style={{ display: "flex", gap: 7, padding: "12px 20px", ...layout }}>
+      <button type="button" onClick={onClear} style={chip(activeIds.length === 0, theme.color.primary, scroll)}>All</button>
       {categories.map((c) => {
         const active = activeIds.includes(c.id);
         return (
-          <button key={c.id} type="button" onClick={() => onToggle(c.id)} style={chip(active, c.color)} aria-pressed={active}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: active ? "#fff" : c.color, display: "inline-block" }} />
+          <button key={c.id} type="button" onClick={() => onToggle(c.id)} style={chip(active, c.color, scroll)} aria-pressed={active}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: active ? "#fff" : c.color, display: "inline-block", flex: "none" }} />
             {c.name}
           </button>
         );
@@ -28,20 +34,22 @@ export default function CategoryChips({
   );
 }
 
-function chip(active: boolean, color: string) {
+function chip(active: boolean, color: string, scroll = false) {
   return {
     display: "inline-flex",
     alignItems: "center",
     gap: 6,
-    padding: "6px 11px",
+    padding: scroll ? "9px 14px" : "6px 11px",
     borderRadius: theme.radius.pill,
     border: `1px solid ${active ? color : theme.color.borderStd}`,
     background: active ? color : "#fff",
     color: active ? "#fff" : theme.color.textMuted,
     fontFamily: theme.font.ui,
-    fontSize: 12,
+    fontSize: scroll ? 13 : 12,
     fontWeight: 600,
     cursor: "pointer",
+    whiteSpace: "nowrap" as const,
+    flex: "none" as const,
     transition: "all .12s",
   } as const;
 }

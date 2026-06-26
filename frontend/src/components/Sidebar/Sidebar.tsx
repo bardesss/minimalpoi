@@ -1,10 +1,7 @@
 import type { Category, Poi } from "../../types/api";
 import { theme } from "../../theme";
 import AccountFooter from "./AccountFooter";
-import CategoryChips from "./CategoryChips";
-import PoiList from "./PoiList";
-import ResultsMeta from "./ResultsMeta";
-import SearchBox from "./SearchBox";
+import SidebarContent from "./SidebarContent";
 import SidebarHeader from "./SidebarHeader";
 
 export interface SidebarProps {
@@ -47,10 +44,22 @@ export default function Sidebar(props: SidebarProps) {
       }}
     >
       <SidebarHeader onCollapse={props.onCollapse} />
-      <SearchBox value={props.search} onChange={props.onSearch} />
-      <CategoryChips categories={props.categories} activeIds={props.activeCategoryIds} onToggle={props.onToggleCategory} onClear={props.onClearCategories} />
-      <ResultsMeta count={props.pois.length} onFit={props.onFit} />
-      <PoiList pois={props.pois} categoriesById={props.categoriesById} selectedId={props.selectedId} onSelect={props.onSelect} isLoading={props.isLoading} isError={props.isError} onRetry={props.onRetry} />
+      <SidebarContent
+        search={props.search}
+        onSearch={props.onSearch}
+        categories={props.categories}
+        activeCategoryIds={props.activeCategoryIds}
+        onToggleCategory={props.onToggleCategory}
+        onClearCategories={props.onClearCategories}
+        pois={props.pois}
+        categoriesById={props.categoriesById}
+        selectedId={props.selectedId}
+        onSelect={props.onSelect}
+        isLoading={props.isLoading}
+        isError={props.isError}
+        onRetry={props.onRetry}
+        onFit={props.onFit}
+      />
       <AccountFooter username={props.username} role={props.role} onLogout={props.onLogout} onOpenSettings={props.onOpenSettings} updateAvailable={props.updateAvailable} />
     </aside>
   );

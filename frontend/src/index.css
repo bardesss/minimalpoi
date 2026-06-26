@@ -25,7 +25,23 @@ body {
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes popIn   { from { transform: scale(.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
 .maplibregl-map { background: #eef1f4; font-family: 'Manrope', sans-serif; }
 .maplibregl-ctrl-group { border-radius: 8px !important; border: none; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.14); }
 .maplibregl-ctrl-group button { width: 30px; height: 30px; }
 .maplibregl-ctrl-attrib { font-size: 10px; }
+
+/* Horizontal scroll strips (category chips on mobile): hide the scrollbar. */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@media (max-width: 768px) {
+  /* Larger, finger-friendly map controls; keep zoom clear of the bottom sheet. */
+  .maplibregl-ctrl-group button { width: 38px; height: 38px; }
+  .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
