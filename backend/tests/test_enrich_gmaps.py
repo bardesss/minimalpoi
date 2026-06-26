@@ -71,6 +71,7 @@ async def test_places_lookup_parses_first_result():
             "results": [{
                 "name": "Café Modern",
                 "formatted_address": "Street 12, Amsterdam",
+                "place_id": "PID123",
                 "geometry": {"location": {"lat": 52.3676, "lng": 4.9041}},
             }],
             "status": "OK",
@@ -79,4 +80,44 @@ async def test_places_lookup_parses_first_result():
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     out = await gmaps.places_lookup("Cafe Modern", api_key="k", client=client)
     await client.aclose()
-    assert out == {"name": "Café Modern", "address": "Street 12, Amsterdam", "lat": 52.3676, "lng": 4.9041}
+    assert out == {
+        "name": "Café Modern", "address": "Street 12, Amsterdam",
+        "place_id": "PID123", "lat": 52.3676, "lng": 4.9041,
+    }
+
+
+@pytest.mark.anyio
+async def test_place_details_parses_phone_website_photo():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={
+            "result": {
+                "international_phone_number": "+31 20 308 0090",
+                "formatted_phone_number": "020 308 0090",
+                "website": "https://cafe.example",
+                "photos": [{"photo_reference": "PHOTOREF"}],
+            },
+            "status": "OK",
+        })
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    out = await gmaps.place_details("PID123", api_key="k", client=client)
+    await client.aclose()
+    # Prefers the international (E.164-ish) form so it normalizes cleanly.
+    assert out == {
+        "phone": "+31 20 308 0090",
+        "website": "https://cafe.example",
+        "photo_reference": "PHOTOREF",
+    }
+
+
+@pytest.mark.anyio
+async def test_resolve_photo_url_reads_redirect_without_following():
+    def handler(request: httpx.Request) -> httpx.Response:
+        # The key must be sent to Google but never appear in the returned URL.
+        assert "key=k" in str(request.url)
+        return httpx.Response(302, headers={"location": "https://lh3.googleusercontent.com/p/AF1"})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler), follow_redirects=True)
+    out = await gmaps.resolve_photo_url("PHOTOREF", api_key="k", client=client)
+    await client.aclose()
+    assert out == "https://lh3.googleusercontent.com/p/AF1"

@@ -2,6 +2,7 @@ from sqlmodel import Session
 
 from ..crypto import decrypt
 from ..models import get_or_create_settings
+from ..phone import to_e164
 from ..schemas import POIDraft
 from . import gmaps
 from .fetch import fetch_url
@@ -39,6 +40,16 @@ async def enrich(url: str, session: Session, client=None) -> POIDraft:
                 _set(draft, "address", places.get("address"), "places")
                 _set(draft, "lat", places.get("lat"), "places")
                 _set(draft, "lng", places.get("lng"), "places")
+                place_id = places.get("place_id")
+                if place_id:
+                    details = await gmaps.place_details(place_id, google_key, client=client)
+                    if details:
+                        _set(draft, "phone", to_e164(details.get("phone")), "places")
+                        _set(draft, "website", details.get("website"), "places")
+                        ref = details.get("photo_reference")
+                        if ref:
+                            photo = await gmaps.resolve_photo_url(ref, google_key, client=client)
+                            _set(draft, "image_url", photo, "places")
     else:
         result = await fetch_url(target, client=client)
         if result and result.text:
