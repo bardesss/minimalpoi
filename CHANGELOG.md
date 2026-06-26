@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/Bardesss/minimalpoi/compare/v0.8.0...v0.9.0) (2026-06-26)
+
+
+### Features
+
+* **web:** show visited/wishlist/comments on the DetailPanel ([c49d111](https://github.com/Bardesss/minimalpoi/commit/c49d11156b26296f2162425b36238d10460b4dce))
+
 ## [0.8.0](https://github.com/Bardesss/minimalpoi/compare/v0.7.1...v0.8.0) (2026-06-26)
 
 
