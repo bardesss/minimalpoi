@@ -1,5 +1,11 @@
 # ── Stage 1: build the Vite SPA ──────────────────────────────────────────────
-FROM node:20-alpine AS frontend
+# Pin this stage to the native build platform ($BUILDPLATFORM, e.g. amd64 on
+# the CI runner) so the Node/Vite build never runs under QEMU emulation when
+# targeting linux/arm64. The output is static JS/HTML/CSS — architecture-
+# independent — so building it once natively and copying into each arch's
+# runtime image is safe, and it keeps the multi-arch build from hanging for
+# hours on the emulated `npm run build`.
+FROM --platform=$BUILDPLATFORM node:20-alpine AS frontend
 
 WORKDIR /app/frontend
 
