@@ -38,6 +38,40 @@ def test_extract_place_name_strips_query():
     assert gmaps.extract_place_name("https://www.google.com/maps/place/Caf%C3%A9+Modern?hl=en") == "Café Modern"
 
 
+def test_unwrap_consent_recovers_maps_url():
+    consent = (
+        "https://consent.google.com/ml?continue="
+        "https://www.google.com/maps/place/TACO%2BLINDO%2BWest/@52.38,4.85,3z&gl=NL"
+    )
+    assert gmaps.unwrap_consent(consent) == "https://www.google.com/maps/place/TACO+LINDO+West/@52.38,4.85,3z"
+    # Non-consent URLs pass through untouched.
+    assert gmaps.unwrap_consent("https://www.google.com/maps/place/X") == "https://www.google.com/maps/place/X"
+
+
+def test_extract_place_name_consent_double_encoded():
+    # Name encoded by Maps as "TACO+LINDO+West", then percent-encoded for the
+    # consent `continue=` param so each "+" arrives as "%2B".
+    url = "https://www.google.com/maps/place/TACO%2BLINDO%2BWest/@52.38,4.85,3z"
+    assert gmaps.extract_place_name(url) == "TACO LINDO West"
+
+
+@pytest.mark.anyio
+async def test_resolve_shortlink_unwraps_consent_gate():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "maps.app.goo.gl" in str(request.url):
+            return httpx.Response(307, headers={"location": (
+                "https://consent.google.com/ml?continue="
+                "https://www.google.com/maps/place/TACO%2BLINDO%2BWest/@52.38,4.85,3z"
+            )})
+        return httpx.Response(200, request=request)
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler), follow_redirects=False)
+    resolved = await gmaps.resolve_shortlink("https://maps.app.goo.gl/abc", client=client)
+    await client.aclose()
+    assert resolved == "https://www.google.com/maps/place/TACO+LINDO+West/@52.38,4.85,3z"
+    assert gmaps.extract_place_name(resolved) == "TACO LINDO West"
+
+
 @pytest.mark.anyio
 async def test_resolve_shortlink_follows_redirect():
     def handler(request: httpx.Request) -> httpx.Response:

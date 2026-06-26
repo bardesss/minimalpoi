@@ -1,5 +1,5 @@
 import re
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 import httpx
 
@@ -28,6 +28,23 @@ def is_google_maps(url: str) -> bool:
     return host in {"www.google.com", "google.com", "maps.google.com"} and p.path.startswith("/maps")
 
 
+def unwrap_consent(url: str) -> str:
+    """Recover the real Maps URL from a Google consent gate.
+
+    In the EU, short links resolve to `consent.google.com/ml?continue=<encoded>`,
+    where the actual maps URL is URL-encoded in the `continue` param. Without
+    unwrapping, coords/name extraction reads a doubly-encoded URL (e.g. spaces
+    arrive as `%2B`). Returns the unwrapped URL, or the input unchanged.
+    """
+    p = urlparse(url)
+    if (p.hostname or "").lower() != "consent.google.com":
+        return url
+    cont = parse_qs(p.query).get("continue")
+    if cont and cont[0]:
+        return unquote(cont[0])
+    return url
+
+
 def extract_coords(url: str) -> tuple[float, float] | None:
     m = _3D4D.search(url) or _AT.search(url)
     if not m:
@@ -39,7 +56,10 @@ def extract_place_name(url: str) -> str | None:
     m = _PLACE.search(url)
     if not m:
         return None
-    return unquote(m.group(1).replace("+", " ")).strip() or None
+    # Unquote first, then turn the Maps space-encoding (`+`) into spaces. Doing
+    # it the other way leaves `%2B`-encoded names (from a consent redirect)
+    # decoding to a literal "+" — e.g. "TACO+LINDO+West".
+    return unquote(m.group(1)).replace("+", " ").strip() or None
 
 
 async def resolve_shortlink(url: str, client: httpx.AsyncClient | None = None) -> str:
@@ -48,7 +68,7 @@ async def resolve_shortlink(url: str, client: httpx.AsyncClient | None = None) -
         client = httpx.AsyncClient(follow_redirects=False, timeout=10.0)
     try:
         resp = await safe_get(client, url)
-        return str(resp.url)
+        return unwrap_consent(str(resp.url))
     except (httpx.HTTPError, UnsafeURLError):
         return url
     finally:
