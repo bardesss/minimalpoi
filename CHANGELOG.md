@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.1](https://github.com/Bardesss/minimalpoi/compare/v0.7.0...v0.7.1) (2026-06-26)
+
+
+### Bug Fixes
+
+* **4c-followups:** cap import upload size; defer object-URL revoke ([311d43e](https://github.com/Bardesss/minimalpoi/commit/311d43e7a2a766183386ad96302e7030f4642c5f))
+* **4c:** cap import upload size; defer object-URL revoke ([8126060](https://github.com/Bardesss/minimalpoi/commit/812606068b1ddb928ce70afdbd96aa6c6cb0eba7))
+
 ## [0.7.0](https://github.com/Bardesss/minimalpoi/compare/v0.6.0...v0.7.0) (2026-06-25)
 
 
