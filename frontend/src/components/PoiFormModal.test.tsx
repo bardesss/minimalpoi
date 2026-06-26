@@ -35,14 +35,14 @@ describe("PoiFormModal", () => {
   });
 
   it("shows edit-mode title and save label", () => {
-    render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
     expect(screen.getByRole("heading", { name: /edit place/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save changes/i })).toBeInTheDocument();
   });
 });
 
 const draft: PoiDraft = {
-  name: "Enriched Spot", address: "1 Main St", lat: 52.1, lng: 4.2,
+  name: "Enriched Spot", address: "1 Main St", city: null, country_code: null, lat: 52.1, lng: 4.2,
   image_url: "https://img.example/p.jpg", description: "Lovely.",
   phone: "+31 1", website: "https://e.example", source_url: "https://e.example",
   field_sources: { name: "jsonld", lat: "og" },
@@ -71,8 +71,37 @@ describe("PoiFormModal enrich", () => {
     expect(screen.getByLabelText(/^name$/i)).toBeEnabled();
   });
 
+  it("searches places, picks one, fills the form, and submits city/country", async () => {
+    const onSearchPlaces = vi.fn().mockResolvedValue([
+      { place_id: "PID1", name: "Taco Lindo West", address: "B St 2, Haarlem, Netherlands", lat: null, lng: null },
+    ]);
+    const onPickPlace = vi.fn().mockResolvedValue({
+      name: "Taco Lindo West", address: "B St 2, Haarlem, Netherlands", city: "Haarlem", country_code: "NL",
+      lat: 52.38, lng: 4.85, image_url: null, description: null, phone: null, website: "https://taco.example",
+      source_url: null, field_sources: { name: "places", country_code: "places" },
+    });
+    const onSubmit = vi.fn();
+    render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={onSubmit} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} onSearchPlaces={onSearchPlaces} onPickPlace={onPickPlace} />);
+    await userEvent.type(screen.getByLabelText(/search places/i), "taco lindo");
+    await userEvent.click(screen.getByRole("button", { name: /^search$/i }));
+    const result = await screen.findByText("Taco Lindo West");
+    await userEvent.click(result);
+    await screen.findByDisplayValue("Taco Lindo West");
+    expect(screen.getByLabelText(/^website$/i)).toHaveValue("https://taco.example");
+    await userEvent.click(screen.getByRole("button", { name: /add place/i }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: "Taco Lindo West", city: "Haarlem", country_code: "NL" }));
+  });
+
+  it("shows a hint when search fails (e.g. no Google key)", async () => {
+    const onSearchPlaces = vi.fn().mockRejectedValue(new Error("400"));
+    render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} onSearchPlaces={onSearchPlaces} onPickPlace={vi.fn()} />);
+    await userEvent.type(screen.getByLabelText(/search places/i), "taco");
+    await userEvent.click(screen.getByRole("button", { name: /^search$/i }));
+    await screen.findByText(/google api key in settings/i);
+  });
+
   it("does not render the enrich row in edit mode", () => {
-    render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
     expect(screen.queryByLabelText(/enrich from url/i)).not.toBeInTheDocument();
   });
 });

@@ -2,12 +2,10 @@
 import type { Category, Poi } from "../../types/api";
 import { theme, tintFromColor } from "../../theme";
 import { safeImageCss } from "../../lib/safeUrl";
+import { cityFromAddress, countryCodeFromAddress } from "../../lib/country";
+import Flag from "../Flag";
 
-export function cityFromAddress(address: string | null): string {
-  if (!address) return "";
-  const parts = address.split(",");
-  return parts[parts.length - 1].trim();
-}
+export { cityFromAddress } from "../../lib/country";
 
 export default function PoiCard({
   poi,
@@ -23,7 +21,9 @@ export default function PoiCard({
   const color = category?.color ?? theme.color.fallbackPin;
   const tint = tintFromColor(color);
   const thumb = safeImageCss(poi.image_url);
-  const city = cityFromAddress(poi.address);
+  // Prefer the precise enrichment fields; fall back to parsing the address.
+  const city = poi.city ?? cityFromAddress(poi.address);
+  const countryCode = poi.country_code ?? countryCodeFromAddress(poi.address);
   return (
     <button
       type="button"
@@ -52,7 +52,12 @@ export default function PoiCard({
       <div style={{ padding: "9px 11px 11px", display: "flex", flexDirection: "column", gap: 3 }}>
         <span style={{ fontSize: 13.5, fontWeight: 700, color: theme.color.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{poi.name}</span>
         <span style={{ fontSize: 11, fontWeight: 600, color: theme.color.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{category?.name ?? "Uncategorized"}</span>
-        {city && <span style={{ fontSize: 11, color: theme.color.textPlaceholder, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{city}</span>}
+        {(city || countryCode) && (
+          <span style={{ fontSize: 11, color: theme.color.textPlaceholder, display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+            {city && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{city}</span>}
+            <Flag code={countryCode} />
+          </span>
+        )}
       </div>
     </button>
   );

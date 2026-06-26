@@ -64,6 +64,8 @@ class POI(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
     address: str | None = Field(default=None)
+    city: str | None = Field(default=None)
+    country_code: str | None = Field(default=None)
     lat: float
     lng: float
     category_id: int | None = Field(default=None, foreign_key="category.id")

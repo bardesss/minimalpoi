@@ -17,8 +17,8 @@ export const sampleCategories: Category[] = [
 ];
 
 export const samplePois: Poi[] = [
-  { id: 1, name: "Café Modern", address: "Street 12, Amsterdam", lat: 52.37, lng: 4.9, category_id: 1, tags: ["popular"], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "2026-06-23T00:00:00Z", updated_at: "2026-06-23T00:00:00Z", trip_place_id: null, trip_sync_status: "synced" },
-  { id: 2, name: "Vondelpark", address: "Vondelpark, Amsterdam", lat: 52.358, lng: 4.868, category_id: 2, tags: ["outdoor"], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "2026-06-23T00:00:00Z", updated_at: "2026-06-23T00:00:00Z", trip_place_id: null, trip_sync_status: "synced" },
+  { id: 1, name: "Café Modern", address: "Street 12, Amsterdam", city: "Amsterdam", country_code: "NL", lat: 52.37, lng: 4.9, category_id: 1, tags: ["popular"], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "2026-06-23T00:00:00Z", updated_at: "2026-06-23T00:00:00Z", trip_place_id: null, trip_sync_status: "synced" },
+  { id: 2, name: "Vondelpark", address: "Vondelpark, Amsterdam", city: "Amsterdam", country_code: "NL", lat: 52.358, lng: 4.868, category_id: 2, tags: ["outdoor"], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "2026-06-23T00:00:00Z", updated_at: "2026-06-23T00:00:00Z", trip_place_id: null, trip_sync_status: "synced" },
 ];
 
 export const sampleSettings: MapSettings = {

@@ -46,6 +46,8 @@ async def enrich(url: str, session: Session, client=None) -> POIDraft:
                     if details:
                         _set(draft, "phone", to_e164(details.get("phone")), "places")
                         _set(draft, "website", details.get("website"), "places")
+                        _set(draft, "city", details.get("city"), "places")
+                        _set(draft, "country_code", details.get("country_code"), "places")
                         ref = details.get("photo_reference")
                         if ref:
                             photo = await gmaps.resolve_photo_url(ref, google_key, client=client)
@@ -74,6 +76,34 @@ async def enrich(url: str, session: Session, client=None) -> POIDraft:
             _set(draft, "lat", geo.get("lat"), "og")
             _set(draft, "lng", geo.get("lng"), "og")
 
+    return await _finalize(draft, settings, session, client)
+
+
+async def enrich_place(place_id: str, session: Session, client=None) -> POIDraft:
+    """Build a draft from a chosen Places search result (search-and-pick)."""
+    draft = POIDraft(source_url=None, field_sources={})
+    settings = get_or_create_settings(session)
+    google_key = decrypt(settings.google_api_key_enc) if settings.google_api_key_enc else None
+    if not google_key:
+        return draft
+    details = await gmaps.place_by_id(place_id, google_key, client=client)
+    if details:
+        _set(draft, "name", details.get("name"), "places")
+        _set(draft, "address", details.get("address"), "places")
+        _set(draft, "lat", details.get("lat"), "places")
+        _set(draft, "lng", details.get("lng"), "places")
+        _set(draft, "phone", to_e164(details.get("phone")), "places")
+        _set(draft, "website", details.get("website"), "places")
+        _set(draft, "city", details.get("city"), "places")
+        _set(draft, "country_code", details.get("country_code"), "places")
+        ref = details.get("photo_reference")
+        if ref:
+            photo = await gmaps.resolve_photo_url(ref, google_key, client=client)
+            _set(draft, "image_url", photo, "places")
+    return await _finalize(draft, settings, session, client)
+
+
+async def _finalize(draft: POIDraft, settings, session: Session, client) -> POIDraft:
     # Coordinate fallback via Nominatim if still missing.
     if (draft.lat is None or draft.lng is None):
         query = ", ".join(p for p in (draft.name, draft.address) if p)
