@@ -62,6 +62,12 @@ if (_dist / "index.html").exists():
 
     @app.get("/{full_path:path}")
     def spa_fallback(full_path: str) -> FileResponse:
-        # Registered last: all API and static routes above match first; only
-        # unmatched client-side routes fall through to the SPA entry point.
+        # Registered last: all API and static routes above match first.
+        # Serve real files that sit at the dist root (favicon.svg, robots.txt,
+        # …) directly; everything else falls through to the SPA entry point so
+        # client-side routes still resolve on a hard refresh.
+        if full_path:
+            candidate = (_dist / full_path).resolve()
+            if _dist.resolve() in candidate.parents and candidate.is_file():
+                return FileResponse(str(candidate))
         return FileResponse(str(_dist / "index.html"))
