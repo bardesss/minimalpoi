@@ -12,6 +12,24 @@ def test_haversine_known_distance():
     assert 600 < d < 1100
 
 
+def test_create_normalizes_phone_to_e164(client):
+    _setup(client)
+    poi = client.post(
+        "/api/pois",
+        json={"name": "X", "lat": 52.3, "lng": 4.9, "phone": "+31 20 308 0090"},
+    ).json()
+    assert poi["phone"] == "+31203080090"
+
+
+def test_update_normalizes_phone_and_keeps_unparseable(client):
+    _setup(client)
+    pid = client.post("/api/pois", json={"name": "X", "lat": 52.3, "lng": 4.9}).json()["id"]
+    # International form normalizes...
+    assert client.patch(f"/api/pois/{pid}", json={"phone": "+1 (212) 736-3100"}).json()["phone"] == "+12127363100"
+    # ...a bare national number (no country code) is kept as typed, never rejected.
+    assert client.patch(f"/api/pois/{pid}", json={"phone": "020 308 0090"}).json()["phone"] == "020 308 0090"
+
+
 def test_poi_crud(client):
     cat_id = _setup(client)
     created = client.post(

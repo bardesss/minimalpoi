@@ -7,6 +7,7 @@ from ..dedup import find_duplicate
 from ..deps import CurrentUser, SessionDep
 from ..enrich.images import localize
 from ..models import POI, Category, Comment, Tombstone, Visit, Wishlist, utcnow
+from ..phone import to_e164
 from ..portability import parse_csv, parse_geojson, pois_to_geojson
 from ..schemas import (
     DuplicateCheck,
@@ -33,6 +34,7 @@ def list_pois(session: SessionDep, _: CurrentUser) -> list[POI]:
 async def create_poi(body: POICreate, session: SessionDep, user: CurrentUser) -> POI:
     data = body.model_dump()
     data["image_url"] = await localize(data.get("image_url"))
+    data["phone"] = to_e164(data.get("phone"))
     poi = POI(**data, created_by=user.id)
     session.add(poi)
     session.commit()
@@ -108,7 +110,7 @@ async def import_pois(session: SessionDep, user: CurrentUser, file: UploadFile =
             category_id=category_id,
             tags=row.get("tags") or [],
             notes=row.get("notes"),
-            phone=row.get("phone"),
+            phone=to_e164(row.get("phone")),
             email=row.get("email"),
             website=row.get("website"),
             image_url=row.get("image_url"),
@@ -157,6 +159,8 @@ async def update_poi(poi_id: int, body: POIUpdate, session: SessionDep, _: Curre
     data = body.model_dump(exclude_unset=True)
     if "image_url" in data:
         data["image_url"] = await localize(data["image_url"])
+    if "phone" in data:
+        data["phone"] = to_e164(data["phone"])
     for key, value in data.items():
         setattr(poi, key, value)
     poi.updated_at = utcnow()
