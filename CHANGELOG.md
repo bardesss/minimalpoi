@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.0](https://github.com/Bardesss/minimalpoi/compare/v0.10.1...v0.11.0) (2026-06-26)
+
+
+### Features
+
+* **web:** worldwide phone input (country picker -&gt; E.164) + formatted display ([3a2bd46](https://github.com/Bardesss/minimalpoi/commit/3a2bd461ae5bc24062d9c63d1dc634a8ddeca5f1))
+* **web:** worldwide phone input + formatted display ([922fe45](https://github.com/Bardesss/minimalpoi/commit/922fe458e9a71a600ead04fb54fac5d17413a23a))
+
 ## [0.10.1](https://github.com/Bardesss/minimalpoi/compare/v0.10.0...v0.10.1) (2026-06-26)
 
 
