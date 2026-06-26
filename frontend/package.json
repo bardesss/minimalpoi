@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.1",
+    "libphonenumber-js": "^1.13.7",
     "lucide-react": "^0.400.0",
     "maplibre-gl": "^4.7.1",
     "react": "^18.3.1",
