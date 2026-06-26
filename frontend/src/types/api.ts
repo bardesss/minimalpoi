@@ -176,3 +176,27 @@ export interface TeamCandidate {
   id: number;
   username: string;
 }
+
+export interface SyncStatus {
+  enabled: boolean;
+  last_run: string | null;
+  error_count: number;
+  conflict_count: number;
+}
+
+export interface SyncConflict {
+  entity_type: "place" | "category";
+  id: number;
+  name: string;
+  trip_id: number | null;
+  status: "conflict" | "error";
+  last_error: string | null;
+}
+
+export type SyncResolution = "local" | "trip";
+
+export interface SyncResolve {
+  entity_type: "place" | "category";
+  id: number;
+  resolution: SyncResolution;
+}
