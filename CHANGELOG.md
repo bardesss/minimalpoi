@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.13.0](https://github.com/Bardesss/minimalpoi/compare/v0.12.1...v0.13.0) (2026-06-26)
+
+
+### Features
+
+* **frontend:** responsive mobile layout (map-first bottom sheet) ([fdd3735](https://github.com/Bardesss/minimalpoi/commit/fdd37355b415155ebc3e667ee9ab46f28fa626c9))
+* **frontend:** responsive mobile layout (map-first bottom sheet) ([2f264af](https://github.com/Bardesss/minimalpoi/commit/2f264af6638ded25979ca34e19b32eb7636f56e3))
+
+
+### Bug Fixes
+
+* **test:** guard matchMedia stub for node-env test files ([0109f5c](https://github.com/Bardesss/minimalpoi/commit/0109f5c0f425405de3ab99bb60c9a7e6e4a41a1e))
+
 ## [0.12.1](https://github.com/Bardesss/minimalpoi/compare/v0.12.0...v0.12.1) (2026-06-26)
 
 
