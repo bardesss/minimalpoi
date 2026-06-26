@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Category, Poi } from "../types/api";
+import { renderWithProviders } from "../test/utils";
 import DetailPanel from "./DetailPanel";
 
 const poi: Poi = { id: 1, name: "Café Modern", address: "Street 12, Amsterdam", lat: 52.37012, lng: 4.90011, category_id: 1, tags: ["popular", "outdoor"], notes: "Nice spot", phone: "+31 20 300 1234", email: "info@place.nl", website: "https://place.nl", image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "s" };
@@ -9,7 +10,7 @@ const cat: Category = { id: 1, name: "Restaurants", color: "#E1574C", icon: "ute
 
 describe("DetailPanel", () => {
   it("renders fields, tags and the website link", () => {
-    render(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />);
     expect(screen.getByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
     expect(screen.getByText(/52.37012/)).toBeInTheDocument();
     expect(screen.getByText("popular")).toBeInTheDocument();
@@ -18,7 +19,7 @@ describe("DetailPanel", () => {
   });
 
   it("renders a javascript: website as plain text, not a link (stored-XSS guard)", () => {
-    render(<DetailPanel poi={{ ...poi, website: "javascript:alert(document.cookie)" }} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+    renderWithProviders(<DetailPanel poi={{ ...poi, website: "javascript:alert(document.cookie)" }} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />);
     // The dangerous value is shown as text but is NOT rendered as an anchor.
     expect(screen.getByText("javascript:alert(document.cookie)")).toBeInTheDocument();
     const dangerousLink = screen.queryAllByRole("link").find((l) => l.getAttribute("href")?.startsWith("javascript:"));
@@ -27,7 +28,7 @@ describe("DetailPanel", () => {
 
   it("requires a second click to confirm delete", async () => {
     const onDelete = vi.fn();
-    render(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={onDelete} />);
+    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={onDelete} />);
     await userEvent.click(screen.getByRole("button", { name: /^delete$/i }));
     expect(onDelete).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: /confirm delete/i }));
@@ -36,7 +37,7 @@ describe("DetailPanel", () => {
 
   it("fires onEdit", async () => {
     const onEdit = vi.fn();
-    render(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={onEdit} onDelete={() => {}} />);
+    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={onEdit} onDelete={() => {}} />);
     await userEvent.click(screen.getByRole("button", { name: /edit place/i }));
     expect(onEdit).toHaveBeenCalled();
   });

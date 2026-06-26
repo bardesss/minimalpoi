@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Category, Poi } from "../types/api";
 import { dangerButtonStyle, primaryButtonStyle, theme, tintFromColor } from "../theme";
 import { safeImageCss, safeLinkHref } from "../lib/safeUrl";
+import PoiActions from "./PoiActions";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
@@ -62,6 +63,8 @@ export default function DetailPanel({
             <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: theme.color.textBody }}>{poi.notes}</p>
           </div>
         )}
+
+        <PoiActions poiId={poi.id} />
       </div>
       <div style={{ display: "flex", gap: 9, padding: "14px 18px", borderTop: `1px solid ${theme.color.borderSubtle}` }}>
         <button type="button" onClick={onEdit} style={{ ...primaryButtonStyle, flex: 1 }}>Edit place</button>
