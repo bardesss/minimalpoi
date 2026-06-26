@@ -46,6 +46,13 @@ export const handlers = [
   http.get("/api/settings", () => HttpResponse.json(sampleSettings)),
   http.post("/api/pois/check-duplicate", () => HttpResponse.json({ duplicate_id: null })),
   http.get("/api/version", () => HttpResponse.json({ current: "dev", latest: null, update_available: false })),
+  http.get("/api/pois/:id/visits", () => HttpResponse.json([])),
+  http.get("/api/pois/:id/wishlist", () => HttpResponse.json([])),
+  http.get("/api/pois/:id/comments", () => HttpResponse.json([])),
+  // Background list fetches from the Settings sections; default to empty so any
+  // component mounting them (without an explicit override) never 404s.
+  http.get("/api/teams", () => HttpResponse.json([])),
+  http.get("/api/teams/candidates", () => HttpResponse.json([])),
 ];
 
 export const server = setupServer(...handlers);

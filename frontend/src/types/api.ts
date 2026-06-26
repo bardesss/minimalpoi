@@ -177,6 +177,36 @@ export interface TeamCandidate {
   username: string;
 }
 
+export interface Visit {
+  poi_id: number;
+  user_id: number;
+  team_id: number | null;
+  rating: number | null;
+}
+
+export interface VisitUpsert {
+  team_id?: number | null;
+  rating?: number | null;
+}
+
+export interface Wishlist {
+  poi_id: number;
+  user_id: number;
+}
+
+export interface Comment {
+  id: number;
+  poi_id: number;
+  user_id: number;
+  username: string;
+  text: string;
+  created_at: string;
+}
+
+export interface CommentCreate {
+  text: string;
+}
+
 export interface SyncStatus {
   enabled: boolean;
   last_run: string | null;

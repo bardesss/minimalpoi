@@ -3,7 +3,8 @@ import { createCategory, deleteCategory, getCategories, updateCategory } from ".
 import { checkDuplicate, createPoi, deletePoi, getPois, updatePoi } from "../api/pois";
 import { getFullSettings, getSettings, updateSettings } from "../api/settings";
 import { deleteTag, getTags, renameTag } from "../api/tags";
-import type { CategoryCreate, CategoryUpdate, PoiCreate, PoiUpdate, SettingsUpdate, SyncResolve, UserCreate, UserUpdate, TeamCreate } from "../types/api";
+import type { CategoryCreate, CategoryUpdate, CommentCreate, PoiCreate, PoiUpdate, SettingsUpdate, SyncResolve, UserCreate, UserUpdate, TeamCreate, VisitUpsert } from "../types/api";
+import { addComment, addWishlist, deleteComment, deleteVisit, getComments, getVisits, getWishlist, removeWishlist, upsertVisit } from "../api/poiActions";
 import { getConflicts, getSyncStatus, resolveConflict, syncNow } from "../api/sync";
 import { enrichUrl } from "../api/enrich";
 import { importPois } from "../api/portability";
@@ -204,6 +205,60 @@ export function useSetPreferredTeam() {
   return useMutation({
     mutationFn: (preferredTeamId: number | null) => setPreferredTeam(preferredTeamId),
     onSuccess: () => refreshUser(),
+  });
+}
+
+export function useVisits(poiId: number) {
+  return useQuery({ queryKey: ["visits", poiId], queryFn: () => getVisits(poiId) });
+}
+export function useUpsertVisit(poiId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: VisitUpsert) => upsertVisit(poiId, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["visits", poiId] }),
+  });
+}
+export function useDeleteVisit(poiId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => deleteVisit(poiId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["visits", poiId] }),
+  });
+}
+
+export function useWishlist(poiId: number) {
+  return useQuery({ queryKey: ["wishlist", poiId], queryFn: () => getWishlist(poiId) });
+}
+export function useAddWishlist(poiId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => addWishlist(poiId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["wishlist", poiId] }),
+  });
+}
+export function useRemoveWishlist(poiId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => removeWishlist(poiId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["wishlist", poiId] }),
+  });
+}
+
+export function useComments(poiId: number) {
+  return useQuery({ queryKey: ["comments", poiId], queryFn: () => getComments(poiId) });
+}
+export function useAddComment(poiId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CommentCreate) => addComment(poiId, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", poiId] }),
+  });
+}
+export function useDeleteComment(poiId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (commentId: number) => deleteComment(poiId, commentId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", poiId] }),
   });
 }
 
