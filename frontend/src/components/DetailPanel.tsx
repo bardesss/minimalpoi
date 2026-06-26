@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Category, Poi } from "../types/api";
 import { dangerButtonStyle, primaryButtonStyle, theme, tintFromColor } from "../theme";
 import { safeImageCss, safeLinkHref } from "../lib/safeUrl";
+import { formatPhoneDisplay } from "../lib/phone";
 import PoiActions from "./PoiActions";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
@@ -38,7 +39,7 @@ export default function DetailPanel({
 
         {(poi.phone || poi.website || poi.email) && (
           <div style={{ borderRadius: theme.radius.card, border: `1px solid ${theme.color.borderSubtle}`, background: theme.color.pageBg, overflow: "hidden", marginBottom: 16 }}>
-            {poi.phone && <div style={{ padding: "11px 14px", fontSize: 13, fontWeight: 500 }}>{poi.phone}</div>}
+            {poi.phone && <div style={{ padding: "11px 14px", fontSize: 13, fontWeight: 500 }}>{formatPhoneDisplay(poi.phone)}</div>}
             {poi.website && (websiteHref
               ? <a href={websiteHref} target="_blank" rel="noreferrer" style={{ display: "block", padding: "11px 14px", fontSize: 13, fontWeight: 600, color: theme.color.link, textDecoration: "none" }}>{poi.website.replace(/^https?:\/\//, "")}</a>
               : <div style={{ padding: "11px 14px", fontSize: 13, fontWeight: 600, color: theme.color.textBody }}>{poi.website.replace(/^https?:\/\//, "")}</div>)}

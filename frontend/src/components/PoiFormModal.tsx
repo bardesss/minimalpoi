@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { Category, PlaceSearchResult, PoiCreate, PoiDraft } from "../types/api";
 import { safeImageCss } from "../lib/safeUrl";
 import { ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, textareaStyle, theme } from "../theme";
+import PhoneInput from "./PhoneInput";
 
 export function splitTags(text: string): string[] {
   return text.split(/[,;|]/).map((t) => t.trim()).filter(Boolean);
@@ -296,7 +297,7 @@ export default function PoiFormModal({
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <label style={label} htmlFor="poi-phone">Phone</label>
-              <input id="poi-phone" style={inputStyle} value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <PhoneInput id="poi-phone" value={phone} onChange={setPhone} />
               {caption("phone")}
             </div>
             <div style={{ flex: 1 }}>

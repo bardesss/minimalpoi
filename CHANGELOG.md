@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.11.0](https://github.com/Bardesss/minimalpoi/compare/v0.10.1...v0.11.0) (2026-06-26)
+
+
+### Features
+
+* **web:** worldwide phone input (country picker -&gt; E.164) + formatted display ([3a2bd46](https://github.com/Bardesss/minimalpoi/commit/3a2bd461ae5bc24062d9c63d1dc634a8ddeca5f1))
+* **web:** worldwide phone input + formatted display ([922fe45](https://github.com/Bardesss/minimalpoi/commit/922fe458e9a71a600ead04fb54fac5d17413a23a))
+
+## [0.10.1](https://github.com/Bardesss/minimalpoi/compare/v0.10.0...v0.10.1) (2026-06-26)
+
+
+### Bug Fixes
+
+* **docker:** install phonenumbers so the container starts ([ceb5efd](https://github.com/Bardesss/minimalpoi/commit/ceb5efd77fc3f201742e9435351ebf31067f7ca8))
+* **docker:** install phonenumbers so the container starts (v0.10.0 boot crash) ([a31a04f](https://github.com/Bardesss/minimalpoi/commit/a31a04f536513679f6dccd354b43bb91ef9655f4))
+
 ## [0.10.0](https://github.com/Bardesss/minimalpoi/compare/v0.9.0...v0.10.0) (2026-06-26)
 
 
