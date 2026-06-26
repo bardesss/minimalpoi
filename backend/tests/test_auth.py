@@ -25,6 +25,15 @@ def test_setup_flow_and_auth(client):
     assert client.get("/api/auth/me").json()["role"] == "admin"
 
 
+def test_auth_cookie_is_persistent(client):
+    # The login/setup cookie must carry Max-Age so the browser keeps it across
+    # restarts; a bare session cookie forced a re-login on every reopen.
+    resp = client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    set_cookie = resp.headers["set-cookie"]
+    assert "access_token=" in set_cookie
+    assert "Max-Age=" in set_cookie
+
+
 def test_login_rejects_bad_password(client):
     client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
     client.post("/api/auth/logout")

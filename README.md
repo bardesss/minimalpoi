@@ -10,11 +10,14 @@ Drop a pin, paste a link to auto-fill the details, and keep all your favorite pl
 
 ## ✨ Features
 
-- 🗺️ **Interactive map** — a MapLibre map with category-colored pins. Search and filter by text or category, click a pin or list card to open its details, and click anywhere on the map to drop a new place. Duplicate detection warns you before you save the same spot twice.
+- 🗺️ **Interactive map** — a MapLibre map with category-colored pins. Search and filter by text or category, click a pin or list card (which shows the place's city and country flag) to open its details, and click anywhere on the map to drop a new place. Duplicate detection warns you before you save the same spot twice.
+- 📱 **Works on mobile** — a responsive, map-first layout: on phones the place list, filters, and detail open as draggable bottom sheets over a full-screen map.
 - 🔗 **Enrich from a link** — paste a Google Maps or website URL and MinimalPOI auto-fills the name, coordinates, address, phone, image, and description (OpenGraph + JSON-LD + Twitter Card, with an optional Google Places key and a Nominatim geocoding fallback). Every auto-filled field shows where it came from.
+- 🔎 **Search Google Places** — rather than pasting a link, search Google Places by name (with a key configured) and pick a result to fill a new place in one step.
+- 📞 **Worldwide phone numbers** — a country-picker phone field normalizes entries to E.164 and shows them nicely formatted.
 - 💾 **Import & export** — bulk-import places from **GeoJSON or CSV** (with server-side duplicate detection and automatic category matching), and export your whole collection as a **GeoJSON backup** — all from the in-app **Data & backups** panel.
 - 🏷️ **Categories & organization** — a shared place list with full create/edit/delete, categories with custom color and icon, and tags.
-- 👥 **Multi-user** — first-run admin setup, secure cookie login, admin/member roles, and teams. Each user gets **visited** marks (with a 1–5 rating), a **wishlist**, and attributed **comments**.
+- 👥 **Multi-user** — first-run admin setup, secure cookie login (sessions persist across restarts for 30 days by default), admin/member roles, and teams. Each user gets **visited** marks (with a 1–5 rating), a **wishlist**, and attributed **comments**.
 - 🖼️ **Local images** — enriched images are downloaded and served from your own server; manual upload is supported too.
 - 🔁 **Optional TRIP sync** — connect a [TRIP](https://github.com/itskovacs/trip) instance and MinimalPOI keeps categories and places reconciled **both ways** (creates, edits, and deletes propagate, with a configurable conflict policy). Entirely optional — enable it only if you use TRIP.
 - 🐳 **Self-hosted & simple** — ships as a single multi-arch Docker image (amd64 + arm64), stores everything in SQLite on one volume, and needs **no external services** to run.
@@ -50,7 +53,12 @@ Then open **http://localhost:7676** and create your admin account on the first-r
 
 ### ⚙️ Configuration
 
-**No environment variables are required.** Everything persists in the `/data` volume (`minimalpoi.db`, uploaded images, and an auto-generated `secret.key`). Set `SECRET_KEY` yourself only if you'd rather manage the signing key.
+**No environment variables are required.** Everything persists in the `/data` volume (`minimalpoi.db`, uploaded images, and an auto-generated `secret.key`).
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SECRET_KEY` | auto-generated in `/data/secret.key` | Signing key for login cookies — set it yourself only if you'd rather manage it. |
+| `SESSION_LIFETIME_DAYS` | `30` | How long a login stays valid before you have to sign in again. |
 
 ---
 
