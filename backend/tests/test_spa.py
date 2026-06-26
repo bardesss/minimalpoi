@@ -58,6 +58,11 @@ def test_spa_active_branch_ordering(tmp_path, monkeypatch):
         (real_dist / "index.html").write_text(
             "<!doctype html><html><body>SPA</body></html>", encoding="utf-8"
         )
+        # A root-level static asset (Vite copies public/ here) — must be served
+        # as the real file, not shadowed by the SPA catch-all.
+        (real_dist / "favicon.svg").write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg"></svg>', encoding="utf-8"
+        )
 
     # Initialise the DB before reload so lifespan startup succeeds.
     db_module.reset_engine()
@@ -75,6 +80,17 @@ def test_spa_active_branch_ordering(tmp_path, monkeypatch):
             assert health.status_code == 200
             assert health.json() == {"status": "ok"}
             assert "application/json" in health.headers["content-type"]
+
+            # (a2) A real file at the dist root (favicon.svg) must be served
+            # as that file, NOT shadowed by the SPA catch-all (regression).
+            fav = c.get("/favicon.svg")
+            assert fav.status_code == 200
+            assert "image/svg" in fav.headers["content-type"]
+            assert "<svg" in fav.text
+
+            # (a3) A traversal attempt must not escape dist; it falls back to
+            # the SPA index rather than leaking a file from outside.
+            assert "text/html" in c.get("/../app/main.py").headers["content-type"]
 
             # (b) Unknown client-side route must get the SPA index.
             spa = c.get("/some/client/route")

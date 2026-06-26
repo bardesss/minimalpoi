@@ -2,6 +2,26 @@ def _setup_admin(client):
     client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
 
 
+def test_sync_system_user_is_hidden_and_protected(client):
+    import app.db as _db
+    from sqlmodel import Session, select
+
+    from app.models import SYNC_USERNAME, User, sync_system_user
+
+    _setup_admin(client)
+    with Session(_db.engine) as s:
+        sync_system_user(s)  # lazily created when TRIP sync first runs
+        sid = s.exec(select(User).where(User.username == SYNC_USERNAME)).first().id
+
+    # Hidden from the admin users list and the team-candidate picker.
+    assert all(u["username"] != SYNC_USERNAME for u in client.get("/api/users").json())
+    assert all(c["username"] != SYNC_USERNAME for c in client.get("/api/teams/candidates").json())
+
+    # Protected from edit/delete so TRIP-import attribution can't be broken.
+    assert client.patch(f"/api/users/{sid}", json={"role": "admin"}).status_code == 403
+    assert client.delete(f"/api/users/{sid}").status_code == 403
+
+
 def test_admin_can_manage_users(client):
     _setup_admin(client)
 
