@@ -4,6 +4,7 @@ from sqlmodel import select
 from ..deps import CurrentUser, SessionDep
 from ..models import Role, TeamMember, User, get_or_create_settings
 from ..schemas import Credentials, PreferredTeamUpdate, SetupStatus, UserRead
+from ..config import get_session_lifetime_days
 from ..security import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -13,9 +14,13 @@ COOKIE_NAME = "access_token"
 
 def _set_auth_cookie(response: Response, username: str, session: SessionDep) -> None:
     secure = get_or_create_settings(session).cookie_secure
+    # Set max_age so the browser keeps the cookie across restarts; without it the
+    # cookie is a session cookie and is dropped when the tab/app closes (which
+    # forced a re-login on every reopen, especially on mobile).
     response.set_cookie(
         COOKIE_NAME,
         create_access_token(username),
+        max_age=get_session_lifetime_days() * 24 * 60 * 60,
         httponly=True,
         samesite="lax",
         path="/",

@@ -10,6 +10,26 @@ def get_data_dir() -> Path:
     return d
 
 
+DEFAULT_SESSION_LIFETIME_DAYS = 30
+
+
+def get_session_lifetime_days() -> int:
+    """How long a login stays valid, for both the JWT and its cookie.
+
+    Configurable via SESSION_LIFETIME_DAYS; falls back to the default for any
+    missing or non-positive value. Read fresh each call so it can be changed
+    without a restart (and overridden per-test).
+    """
+    raw = os.environ.get("SESSION_LIFETIME_DAYS")
+    if raw is None:
+        return DEFAULT_SESSION_LIFETIME_DAYS
+    try:
+        days = int(raw)
+    except ValueError:
+        return DEFAULT_SESSION_LIFETIME_DAYS
+    return days if days > 0 else DEFAULT_SESSION_LIFETIME_DAYS
+
+
 @lru_cache(maxsize=1)
 def get_secret_key() -> str:
     env = os.environ.get("SECRET_KEY")
