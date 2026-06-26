@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.1](https://github.com/Bardesss/minimalpoi/compare/v0.10.0...v0.10.1) (2026-06-26)
+
+
+### Bug Fixes
+
+* **docker:** install phonenumbers so the container starts ([ceb5efd](https://github.com/Bardesss/minimalpoi/commit/ceb5efd77fc3f201742e9435351ebf31067f7ca8))
+* **docker:** install phonenumbers so the container starts (v0.10.0 boot crash) ([a31a04f](https://github.com/Bardesss/minimalpoi/commit/a31a04f536513679f6dccd354b43bb91ef9655f4))
+
 ## [0.10.0](https://github.com/Bardesss/minimalpoi/compare/v0.9.0...v0.10.0) (2026-06-26)
 
 
