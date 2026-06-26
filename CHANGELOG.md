@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.10.0](https://github.com/Bardesss/minimalpoi/compare/v0.9.0...v0.10.0) (2026-06-26)
+
+
+### Features
+
+* **enrich:** richer Google enrichment (phone, website, photo) ([f844c63](https://github.com/Bardesss/minimalpoi/commit/f844c6303676c8b292be9072a2424ced449c220a))
+* **phone:** normalize POI phone numbers to E.164 (worldwide) ([02d069c](https://github.com/Bardesss/minimalpoi/commit/02d069ca698d928528b024f295b887fc2385336d))
+
+
+### Bug Fixes
+
+* **db:** backfill missing nullable columns on existing databases ([1782c48](https://github.com/Bardesss/minimalpoi/commit/1782c48b499eebda1510137f54c83c3869d1c6cf))
+* **users:** hide and protect the reserved __trip_sync__ system account ([df55074](https://github.com/Bardesss/minimalpoi/commit/df550740011a704109ed572ac321b85f0dbf1cbe))
+* **web:** serve dist-root static files (favicon.svg) instead of index.html ([50f8b73](https://github.com/Bardesss/minimalpoi/commit/50f8b73be7ca9380df64c137b46b03c714e88966))
+
 ## [0.9.0](https://github.com/Bardesss/minimalpoi/compare/v0.8.0...v0.9.0) (2026-06-26)
 
 
