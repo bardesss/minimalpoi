@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "../test/msw";
 import { makeClient } from "../test/utils";
-import { useCreatePoi, useEnrich, useImportPois, usePois, useTags, useUsers, useTeams } from "./hooks";
+import { useComments, useCreatePoi, useEnrich, useImportPois, usePois, useTags, useUsers, useTeams, useVisits } from "./hooks";
 
 function wrapper(client = makeClient()) {
   return ({ children }: { children: ReactNode }) => (
@@ -91,5 +91,19 @@ describe("data hooks", () => {
     const { result } = renderHook(() => useTeams(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.[0].name).toBe("Crew");
+  });
+
+  it("useVisits loads visits for a poi", async () => {
+    server.use(http.get("/api/pois/1/visits", () => HttpResponse.json([{ poi_id: 1, user_id: 1, team_id: null, rating: 4 }])));
+    const { result } = renderHook(() => useVisits(1), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0].rating).toBe(4);
+  });
+
+  it("useComments loads comments for a poi", async () => {
+    server.use(http.get("/api/pois/1/comments", () => HttpResponse.json([{ id: 1, poi_id: 1, user_id: 1, username: "admin", text: "hi", created_at: "2026-06-26T00:00:00Z" }])));
+    const { result } = renderHook(() => useComments(1), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0].text).toBe("hi");
   });
 });
