@@ -20,6 +20,9 @@ from ..schemas import (
 
 router = APIRouter(prefix="/api/pois", tags=["pois"])
 
+# Cap import uploads so a single request can't exhaust memory.
+MAX_IMPORT_BYTES = 10 * 1024 * 1024  # 10 MiB
+
 
 @router.get("", response_model=list[POIRead])
 def list_pois(session: SessionDep, _: CurrentUser) -> list[POI]:
@@ -45,7 +48,13 @@ def check_duplicate(body: DuplicateCheck, session: SessionDep, _: CurrentUser) -
 
 @router.post("/import", response_model=ImportResult)
 async def import_pois(session: SessionDep, user: CurrentUser, file: UploadFile = File(...)) -> ImportResult:
-    text = (await file.read()).decode("utf-8", errors="replace")
+    raw = await file.read()
+    if len(raw) > MAX_IMPORT_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large (max {MAX_IMPORT_BYTES // (1024 * 1024)} MiB)",
+        )
+    text = raw.decode("utf-8", errors="replace")
     name = (file.filename or "").lower()
     if name.endswith(".csv"):
         rows = parse_csv(text)
