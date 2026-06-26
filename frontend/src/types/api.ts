@@ -76,6 +76,14 @@ export interface DuplicateResult {
   duplicate_id: number | null;
 }
 
+export interface PlaceSearchResult {
+  place_id: string;
+  name: string;
+  address: string | null;
+  lat: number | null;
+  lng: number | null;
+}
+
 export interface PoiDraft {
   name: string | null;
   address: string | null;

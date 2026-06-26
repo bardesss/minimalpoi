@@ -121,6 +121,73 @@ async def test_places_lookup_parses_first_result():
 
 
 @pytest.mark.anyio
+async def test_place_search_returns_candidates():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={
+            "results": [
+                {"name": "Taco Lindo", "formatted_address": "A St 1, Amsterdam, Netherlands",
+                 "place_id": "PID1", "geometry": {"location": {"lat": 52.1, "lng": 4.2}}},
+                {"name": "Taco Lindo West", "formatted_address": "B St 2, Haarlem", "place_id": "PID2"},
+                {"name": "no place_id"},  # skipped — no place_id
+            ],
+            "status": "OK",
+        })
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    out = await gmaps.place_search("taco lindo", api_key="k", client=client)
+    await client.aclose()
+    assert out == [
+        {"place_id": "PID1", "name": "Taco Lindo", "address": "A St 1, Amsterdam, Netherlands", "lat": 52.1, "lng": 4.2},
+        {"place_id": "PID2", "name": "Taco Lindo West", "address": "B St 2, Haarlem"},
+    ]
+
+
+@pytest.mark.anyio
+async def test_place_search_empty_on_error():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500)
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    out = await gmaps.place_search("x", api_key="k", client=client)
+    await client.aclose()
+    assert out == []
+
+
+@pytest.mark.anyio
+async def test_place_by_id_returns_full_draft_fields():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={
+            "result": {
+                "name": "Taco Lindo West",
+                "formatted_address": "B St 2, 2011 AB Haarlem, Netherlands",
+                "geometry": {"location": {"lat": 52.38, "lng": 4.85}},
+                "international_phone_number": "+31 23 555 0000",
+                "website": "https://taco.example",
+                "photos": [{"photo_reference": "REF"}],
+                "address_components": [
+                    {"long_name": "Haarlem", "short_name": "Haarlem", "types": ["locality"]},
+                    {"long_name": "Netherlands", "short_name": "NL", "types": ["country"]},
+                ],
+            },
+            "status": "OK",
+        })
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    out = await gmaps.place_by_id("PID2", api_key="k", client=client)
+    await client.aclose()
+    assert out == {
+        "name": "Taco Lindo West",
+        "address": "B St 2, 2011 AB Haarlem, Netherlands",
+        "lat": 52.38, "lng": 4.85,
+        "phone": "+31 23 555 0000",
+        "website": "https://taco.example",
+        "photo_reference": "REF",
+        "city": "Haarlem",
+        "country_code": "NL",
+    }
+
+
+@pytest.mark.anyio
 async def test_place_details_parses_phone_website_photo():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={

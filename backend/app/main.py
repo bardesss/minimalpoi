@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import db
 from .enrich.images import images_dir
-from .routers import auth, categories, comments, enrich, images, pois, settings, tags, teams, users, version, visits, wishlist
+from .routers import auth, categories, comments, enrich, images, places, pois, settings, tags, teams, users, version, visits, wishlist
 from .routers import sync as sync_router_module
 from .trip.service import start_worker, stop_worker
 
@@ -44,6 +44,7 @@ app.include_router(wishlist.router)
 app.include_router(comments.router)
 app.include_router(settings.router)
 app.include_router(enrich.router)
+app.include_router(places.router)
 app.include_router(images.router)
 app.include_router(tags.router)
 app.include_router(sync_router_module.router)

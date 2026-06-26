@@ -7,6 +7,7 @@ import type { CategoryCreate, CategoryUpdate, CommentCreate, PoiCreate, PoiUpdat
 import { addComment, addWishlist, deleteComment, deleteVisit, getComments, getVisits, getWishlist, removeWishlist, upsertVisit } from "../api/poiActions";
 import { getConflicts, getSyncStatus, resolveConflict, syncNow } from "../api/sync";
 import { enrichUrl } from "../api/enrich";
+import { getPlaceDraft, searchPlaces } from "../api/places";
 import { importPois } from "../api/portability";
 import { getVersion } from "../api/version";
 import { createUser, deleteUser, getUsers, updateUser } from "../api/users";
@@ -55,6 +56,14 @@ export function useCheckDuplicate() {
 
 export function useEnrich() {
   return useMutation({ mutationFn: (url: string) => enrichUrl(url) });
+}
+
+export function useSearchPlaces() {
+  return useMutation({ mutationFn: (query: string) => searchPlaces(query) });
+}
+
+export function usePlaceDraft() {
+  return useMutation({ mutationFn: (placeId: string) => getPlaceDraft(placeId) });
 }
 
 export function useImportPois() {

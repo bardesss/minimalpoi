@@ -230,6 +230,14 @@ class EnrichRequest(SQLModel):
     url: str
 
 
+class PlaceSearchResult(SQLModel):
+    place_id: str
+    name: str
+    address: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+
+
 class POIDraft(SQLModel):
     name: str | None = None
     address: str | None = None

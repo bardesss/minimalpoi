@@ -1,6 +1,6 @@
 // frontend/src/components/PoiFormModal.tsx
 import { useEffect, useState } from "react";
-import type { Category, PoiCreate, PoiDraft } from "../types/api";
+import type { Category, PlaceSearchResult, PoiCreate, PoiDraft } from "../types/api";
 import { safeImageCss } from "../lib/safeUrl";
 import { ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, textareaStyle, theme } from "../theme";
 
@@ -36,6 +36,8 @@ export default function PoiFormModal({
   onCheckDuplicate,
   duplicateId,
   onEnrich,
+  onSearchPlaces,
+  onPickPlace,
 }: {
   mode: "add" | "edit";
   initial: PoiFormInitial | null;
@@ -46,6 +48,8 @@ export default function PoiFormModal({
   onCheckDuplicate: (body: { name: string; lat: number; lng: number }) => void;
   duplicateId: number | null;
   onEnrich?: (url: string) => Promise<PoiDraft>;
+  onSearchPlaces?: (query: string) => Promise<PlaceSearchResult[]>;
+  onPickPlace?: (placeId: string) => Promise<PoiDraft>;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [categoryId, setCategoryId] = useState<string>(initial?.category_id != null ? String(initial.category_id) : "");
@@ -70,6 +74,11 @@ export default function PoiFormModal({
   const [enrichHost, setEnrichHost] = useState<string | null>(null);
   const [filledCount, setFilledCount] = useState(0);
 
+  const [searchText, setSearchText] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [results, setResults] = useState<PlaceSearchResult[]>([]);
+
   // Click-to-place / map-center updates flow in via `coords` (add mode only).
   useEffect(() => {
     if (mode === "add" && coords) {
@@ -81,33 +90,68 @@ export default function PoiFormModal({
   const isAdd = mode === "add";
   const safeImage = safeImageCss(imageUrl);
 
+  function applyDraft(draft: PoiDraft, source: string | null) {
+    if (draft.name != null) setName(draft.name);
+    if (draft.address != null) setAddress(draft.address);
+    if (draft.city != null) setCity(draft.city);
+    if (draft.country_code != null) setCountryCode(draft.country_code);
+    if (draft.lat != null) setLat(String(draft.lat));
+    if (draft.lng != null) setLng(String(draft.lng));
+    if (draft.phone != null) setPhone(draft.phone);
+    if (draft.website != null) setWebsite(draft.website);
+    if (draft.description != null) setNotes(draft.description);
+    setImageUrl(draft.image_url);
+    setFieldSources(draft.field_sources);
+    setFilledCount(Object.keys(draft.field_sources).length);
+    setEnrichHost(source);
+  }
+
   async function runEnrich() {
     if (!onEnrich || enrichUrlText.trim() === "") return;
     setEnriching(true);
     setEnrichError(null);
     try {
       const draft = await onEnrich(enrichUrlText.trim());
-      if (draft.name != null) setName(draft.name);
-      if (draft.address != null) setAddress(draft.address);
-      if (draft.city != null) setCity(draft.city);
-      if (draft.country_code != null) setCountryCode(draft.country_code);
-      if (draft.lat != null) setLat(String(draft.lat));
-      if (draft.lng != null) setLng(String(draft.lng));
-      if (draft.phone != null) setPhone(draft.phone);
-      if (draft.website != null) setWebsite(draft.website);
-      if (draft.description != null) setNotes(draft.description);
-      setImageUrl(draft.image_url);
-      setFieldSources(draft.field_sources);
-      setFilledCount(Object.keys(draft.field_sources).length);
+      let host: string | null = null;
       try {
-        setEnrichHost(new URL(enrichUrlText.trim()).host);
+        host = new URL(enrichUrlText.trim()).host;
       } catch {
-        setEnrichHost(null);
+        host = null;
       }
+      applyDraft(draft, host);
     } catch {
       setEnrichError("Couldn't read that link — fill the form manually.");
     } finally {
       setEnriching(false);
+    }
+  }
+
+  async function runSearch() {
+    if (!onSearchPlaces || searchText.trim() === "") return;
+    setSearching(true);
+    setSearchError(null);
+    setResults([]);
+    try {
+      const found = await onSearchPlaces(searchText.trim());
+      setResults(found);
+      if (found.length === 0) setSearchError("No matching places found.");
+    } catch {
+      setSearchError("Search failed — add a Google API key in Settings, or fill the form manually.");
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function pickPlace(result: PlaceSearchResult) {
+    if (!onPickPlace) return;
+    setSearchError(null);
+    setResults([]);
+    setSearchText("");
+    try {
+      const draft = await onPickPlace(result.place_id);
+      applyDraft(draft, "Google Places");
+    } catch {
+      setSearchError("Couldn't load that place — try another or fill the form manually.");
     }
   }
 
@@ -150,6 +194,40 @@ export default function PoiFormModal({
         </div>
 
         <div style={{ padding: "0 24px 8px", display: "flex", flexDirection: "column", gap: 14 }}>
+          {isAdd && onSearchPlaces && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <label style={label} htmlFor="poi-place-search">Search places</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  id="poi-place-search"
+                  style={inputStyle}
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runSearch(); } }}
+                  placeholder="Search Google Places by name"
+                />
+                <button type="button" onClick={runSearch} disabled={searching} style={{ ...ghostButtonStyle, whiteSpace: "nowrap" }}>{searching ? "Searching…" : "Search"}</button>
+              </div>
+              {searchError && <div role="status" style={{ fontSize: 12, color: theme.color.dangerText }}>{searchError}</div>}
+              {results.length > 0 && (
+                <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 4, maxHeight: 200, overflowY: "auto", border: `1px solid ${theme.color.borderCard}`, borderRadius: theme.radius.input }}>
+                  {results.map((r) => (
+                    <li key={r.place_id}>
+                      <button
+                        type="button"
+                        onClick={() => pickPlace(r)}
+                        style={{ width: "100%", textAlign: "left", padding: "8px 10px", background: "transparent", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", gap: 2 }}
+                      >
+                        <span style={{ fontSize: 13, fontWeight: 700, color: theme.color.textPrimary }}>{r.name}</span>
+                        {r.address && <span style={{ fontSize: 11.5, color: theme.color.textPlaceholder }}>{r.address}</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           {isAdd && onEnrich && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <label style={label} htmlFor="poi-enrich-url">Enrich from URL</label>

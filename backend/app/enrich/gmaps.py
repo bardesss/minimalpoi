@@ -106,6 +106,89 @@ async def places_lookup(query: str, api_key: str, client: httpx.AsyncClient | No
     return out or None
 
 
+async def place_search(query: str, api_key: str, client: httpx.AsyncClient | None = None, limit: int = 6) -> list[dict]:
+    """Text Search → a list of candidate places to pick from.
+
+    Each candidate is `{place_id, name, address}` (plus `lat`/`lng` when the
+    response carries geometry). Returns an empty list on any error.
+    """
+    owns = client is None
+    if client is None:
+        client = httpx.AsyncClient(timeout=10.0)
+    try:
+        resp = await client.get(PLACES_URL, params={"query": query, "key": api_key})
+        data = resp.json()
+    except (httpx.HTTPError, ValueError):
+        return []
+    finally:
+        if owns:
+            await client.aclose()
+    out: list[dict] = []
+    for first in (data.get("results") or [])[:limit]:
+        if not isinstance(first.get("place_id"), str) or not isinstance(first.get("name"), str):
+            continue
+        cand: dict = {"place_id": first["place_id"], "name": first["name"]}
+        if isinstance(first.get("formatted_address"), str):
+            cand["address"] = first["formatted_address"]
+        loc = (first.get("geometry") or {}).get("location") or {}
+        if "lat" in loc and "lng" in loc:
+            cand["lat"] = float(loc["lat"])
+            cand["lng"] = float(loc["lng"])
+        out.append(cand)
+    return out
+
+
+async def place_by_id(place_id: str, api_key: str, client: httpx.AsyncClient | None = None) -> dict | None:
+    """Full Place Details for a chosen search result.
+
+    Returns everything needed to fill the add-place form:
+    `{name?, address?, lat?, lng?, phone?, website?, photo_reference?, city?,
+    country_code?}`. None on any error.
+    """
+    owns = client is None
+    if client is None:
+        client = httpx.AsyncClient(timeout=10.0)
+    try:
+        resp = await client.get(DETAILS_URL, params={
+            "place_id": place_id,
+            "fields": (
+                "name,formatted_address,geometry,international_phone_number,"
+                "formatted_phone_number,website,photos,address_component"
+            ),
+            "key": api_key,
+        })
+        data = resp.json()
+    except (httpx.HTTPError, ValueError):
+        return None
+    finally:
+        if owns:
+            await client.aclose()
+    result = data.get("result") or {}
+    out: dict = {}
+    if isinstance(result.get("name"), str):
+        out["name"] = result["name"]
+    if isinstance(result.get("formatted_address"), str):
+        out["address"] = result["formatted_address"]
+    loc = (result.get("geometry") or {}).get("location") or {}
+    if "lat" in loc and "lng" in loc:
+        out["lat"] = float(loc["lat"])
+        out["lng"] = float(loc["lng"])
+    phone = result.get("international_phone_number") or result.get("formatted_phone_number")
+    if isinstance(phone, str):
+        out["phone"] = phone
+    if isinstance(result.get("website"), str):
+        out["website"] = result["website"]
+    photos = result.get("photos") or []
+    if photos and isinstance(photos[0].get("photo_reference"), str):
+        out["photo_reference"] = photos[0]["photo_reference"]
+    city, country = _city_country(result.get("address_components") or [])
+    if city:
+        out["city"] = city
+    if country:
+        out["country_code"] = country
+    return out or None
+
+
 async def place_details(place_id: str, api_key: str, client: httpx.AsyncClient | None = None) -> dict | None:
     """Fetch phone / website / photo / city / country for a place_id.
 
