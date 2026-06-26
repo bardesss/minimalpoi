@@ -12,8 +12,9 @@ if (typeof URL.revokeObjectURL === "undefined") {
 }
 
 // jsdom does not implement matchMedia; stub it so useMediaQuery resolves to the
-// desktop layout (matches: false) in tests.
-if (typeof window.matchMedia === "undefined") {
+// desktop layout (matches: false) in tests. Guard on `window` first: node-env
+// test files (e.g. api/portability.test.ts) have no `window` at all.
+if (typeof window !== "undefined" && typeof window.matchMedia === "undefined") {
   window.matchMedia = (query: string) =>
     ({
       matches: false,
