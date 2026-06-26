@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 
 from .. import db as _db
 from ..crypto import decrypt
-from ..models import POI, SyncStatus, get_or_create_settings
+from ..models import POI, SyncStatus, get_or_create_settings, utcnow
 from .client import TripClient
 from .engine import reconcile_categories, reconcile_places
 
@@ -40,6 +40,9 @@ async def run_sync(session: Session, client: TripClient | None = None) -> dict:
     finally:
         if owns and http is not None:
             await http.aclose()
+    s.trip_last_sync_at = utcnow()
+    session.add(s)
+    session.commit()
     errors = len(session.exec(select(POI).where(POI.trip_sync_status == SyncStatus.ERROR)).all())
     return {"ran": True, "errors": errors}
 

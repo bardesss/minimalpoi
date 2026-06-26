@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "../test/msw";
 import { makeClient } from "../test/utils";
-import { useCreatePoi, useEnrich, useImportPois, usePois, useTags, useUsers, useTeams } from "./hooks";
+import { useCreatePoi, useEnrich, useImportPois, usePois, useSyncConflicts, useSyncStatus, useTags, useUsers, useTeams } from "./hooks";
 
 function wrapper(client = makeClient()) {
   return ({ children }: { children: ReactNode }) => (
@@ -91,5 +91,19 @@ describe("data hooks", () => {
     const { result } = renderHook(() => useTeams(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.[0].name).toBe("Crew");
+  });
+
+  it("useSyncStatus loads status", async () => {
+    server.use(http.get("/api/sync/status", () => HttpResponse.json({ enabled: true, last_run: null, error_count: 0, conflict_count: 2 })));
+    const { result } = renderHook(() => useSyncStatus(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.conflict_count).toBe(2);
+  });
+
+  it("useSyncConflicts loads the conflict list", async () => {
+    server.use(http.get("/api/sync/conflicts", () => HttpResponse.json([{ entity_type: "place", id: 1, name: "Cafe", trip_id: 5, status: "conflict", last_error: null }])));
+    const { result } = renderHook(() => useSyncConflicts(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0].name).toBe("Cafe");
   });
 });

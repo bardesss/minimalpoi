@@ -26,6 +26,7 @@ def _to_read(s: Settings) -> SettingsRead:
         default_map_center_lng=s.default_map_center_lng,
         default_map_zoom=s.default_map_zoom,
         cookie_secure=s.cookie_secure,
+        trip_last_sync_at=s.trip_last_sync_at,
     )
 
 

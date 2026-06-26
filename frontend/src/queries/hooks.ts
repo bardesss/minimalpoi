@@ -3,7 +3,8 @@ import { createCategory, deleteCategory, getCategories, updateCategory } from ".
 import { checkDuplicate, createPoi, deletePoi, getPois, updatePoi } from "../api/pois";
 import { getFullSettings, getSettings, updateSettings } from "../api/settings";
 import { deleteTag, getTags, renameTag } from "../api/tags";
-import type { CategoryCreate, CategoryUpdate, PoiCreate, PoiUpdate, SettingsUpdate, UserCreate, UserUpdate, TeamCreate } from "../types/api";
+import type { CategoryCreate, CategoryUpdate, PoiCreate, PoiUpdate, SettingsUpdate, SyncResolve, UserCreate, UserUpdate, TeamCreate } from "../types/api";
+import { getConflicts, getSyncStatus, resolveConflict, syncNow } from "../api/sync";
 import { enrichUrl } from "../api/enrich";
 import { importPois } from "../api/portability";
 import { getVersion } from "../api/version";
@@ -203,5 +204,36 @@ export function useSetPreferredTeam() {
   return useMutation({
     mutationFn: (preferredTeamId: number | null) => setPreferredTeam(preferredTeamId),
     onSuccess: () => refreshUser(),
+  });
+}
+
+export function useSyncStatus() {
+  return useQuery({ queryKey: ["sync", "status"], queryFn: getSyncStatus });
+}
+
+export function useSyncConflicts() {
+  return useQuery({ queryKey: ["sync", "conflicts"], queryFn: getConflicts });
+}
+
+function invalidateSync(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["sync", "status"] });
+  qc.invalidateQueries({ queryKey: ["sync", "conflicts"] });
+  qc.invalidateQueries({ queryKey: ["pois"] });
+  qc.invalidateQueries({ queryKey: ["categories"] });
+}
+
+export function useResolveConflict() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SyncResolve) => resolveConflict(body),
+    onSuccess: () => invalidateSync(qc),
+  });
+}
+
+export function useSyncNow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => syncNow(),
+    onSuccess: () => invalidateSync(qc),
   });
 }
