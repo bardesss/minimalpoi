@@ -61,6 +61,17 @@ def test_import_unknown_extension_400(client):
     assert r.status_code == 400
 
 
+def test_import_rejects_oversized_upload(client):
+    _setup(client)
+    from app.routers.pois import MAX_IMPORT_BYTES
+
+    header = "name,lat,lng\n"
+    big = header + ("X,1,2\n" * ((MAX_IMPORT_BYTES // 6) + 1))
+    assert len(big.encode("utf-8")) > MAX_IMPORT_BYTES
+    r = _upload(client, "places.csv", big)
+    assert r.status_code == 413
+
+
 def test_import_geojson(client):
     _setup(client)
     fc = {"type": "FeatureCollection", "features": [
