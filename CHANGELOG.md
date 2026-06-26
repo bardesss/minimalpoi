@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.12.0](https://github.com/Bardesss/minimalpoi/compare/v0.11.0...v0.12.0) (2026-06-26)
+
+
+### Features
+
+* **web:** search Google Places to add a POI ([fc23fd3](https://github.com/Bardesss/minimalpoi/commit/fc23fd3c7a58ed038366f2ba8011a4aae829954a))
+* **web:** show "&lt;City&gt;, &lt;flag&gt;" on POI cards ([c65aa0f](https://github.com/Bardesss/minimalpoi/commit/c65aa0f4d9bdcbd1d7d27b9eb6db284992f1aa6f))
+
+
+### Bug Fixes
+
+* **enrich:** decode Google Maps place names from EU consent redirects ([42d25a5](https://github.com/Bardesss/minimalpoi/commit/42d25a51001392180f1b1af6d81f1d44381a7666))
+
 ## [0.11.0](https://github.com/Bardesss/minimalpoi/compare/v0.10.1...v0.11.0) (2026-06-26)
 
 
