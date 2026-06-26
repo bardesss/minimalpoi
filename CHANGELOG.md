@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.0](https://github.com/Bardesss/minimalpoi/compare/v0.13.0...v0.14.0) (2026-06-26)
+
+
+### Features
+
+* **auth:** persistent 30-day sessions; refresh README ([6c394f7](https://github.com/Bardesss/minimalpoi/commit/6c394f767c2d639e197ab84bb89076d1cc247ea7))
+* **auth:** persistent 30-day sessions; refresh README ([66f8037](https://github.com/Bardesss/minimalpoi/commit/66f803757f1a64f7c1985dd8d6b4d20873a5c23a))
+
 ## [0.13.0](https://github.com/Bardesss/minimalpoi/compare/v0.12.1...v0.13.0) (2026-06-26)
 
 
