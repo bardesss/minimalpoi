@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.8.0](https://github.com/Bardesss/minimalpoi/compare/v0.7.1...v0.8.0) (2026-06-26)
+
+
+### Features
+
+* **sync:** last-run stamp + conflict list/resolve API (slice 3 backend) ([1c0aefb](https://github.com/Bardesss/minimalpoi/commit/1c0aefb521d6d76cdfc7fc4a46f50b34e4eac2c8))
+* **web:** admin Sync section — status, Sync now, per-item conflict resolve ([d14a4f7](https://github.com/Bardesss/minimalpoi/commit/d14a4f7fd1737dd0abe60c129c9b526f750b7a9f))
+* **web:** data layer for sync status, conflicts, resolve, sync-now ([246048a](https://github.com/Bardesss/minimalpoi/commit/246048a6c8eee3a248ac27491c82fe39a7792448))
+
 ## [0.7.1](https://github.com/Bardesss/minimalpoi/compare/v0.7.0...v0.7.1) (2026-06-26)
 
 

@@ -138,6 +138,8 @@ class Settings(SQLModel, table=True):
     # Set the `Secure` flag on the auth cookie. Default off so the app works
     # over plain HTTP on a LAN / offline; enable when running behind TLS.
     cookie_secure: bool = Field(default=False)
+    # Stamp of the last completed sync run (UTC); surfaced by GET /api/sync/status.
+    trip_last_sync_at: datetime | None = Field(default=None)
 
 
 SYNC_USERNAME = "__trip_sync__"

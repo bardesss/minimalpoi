@@ -179,6 +179,7 @@ class SettingsRead(SQLModel):
     default_map_center_lng: float
     default_map_zoom: float
     cookie_secure: bool
+    trip_last_sync_at: datetime | None
 
 
 class SettingsUpdate(SQLModel):
@@ -202,6 +203,21 @@ class SyncStatusRead(SQLModel):
     last_run: datetime | None
     error_count: int
     conflict_count: int
+
+
+class SyncConflictRead(SQLModel):
+    entity_type: str  # "place" | "category"
+    id: int
+    name: str
+    trip_id: int | None
+    status: str       # "conflict" | "error"
+    last_error: str | None
+
+
+class SyncResolve(SQLModel):
+    entity_type: str  # "place" | "category"
+    id: int
+    resolution: str   # "local" | "trip"
 
 
 class EnrichRequest(SQLModel):

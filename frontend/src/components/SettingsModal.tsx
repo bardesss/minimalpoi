@@ -6,6 +6,7 @@ import CategoriesSection from "./settings/CategoriesSection";
 import ConnectionsSection from "./settings/ConnectionsSection";
 import DataSection from "./settings/DataSection";
 import MapSection from "./settings/MapSection";
+import SyncSection from "./settings/SyncSection";
 import TagsSection from "./settings/TagsSection";
 import TeamsSection from "./settings/TeamsSection";
 import UsersSection from "./settings/UsersSection";
@@ -24,6 +25,7 @@ const SECTIONS: SectionDef[] = [
   { key: "teams", label: "Teams", adminOnly: false, Component: TeamsSection },
   { key: "categories", label: "Categories", adminOnly: false, Component: CategoriesSection },
   { key: "tags", label: "Tags", adminOnly: false, Component: TagsSection },
+  { key: "sync", label: "Sync", adminOnly: true, Component: SyncSection },
   { key: "data", label: "Data & backups", adminOnly: false, Component: DataSection },
   { key: "about", label: "About", adminOnly: false, Component: AboutSection },
 ];
