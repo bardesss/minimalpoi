@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.1](https://github.com/Bardesss/minimalpoi/compare/v0.12.0...v0.12.1) (2026-06-26)
+
+
+### Bug Fixes
+
+* **docker:** build frontend natively for multi-arch (unblocks image publish) ([413c131](https://github.com/Bardesss/minimalpoi/commit/413c131c966167772ff0b51f64fc342477777d78))
+* **docker:** build the frontend on the native platform for multi-arch ([602dcd8](https://github.com/Bardesss/minimalpoi/commit/602dcd8a44cebfe0df3d4ad785e089ab4c009e15))
+
 ## [0.12.0](https://github.com/Bardesss/minimalpoi/compare/v0.11.0...v0.12.0) (2026-06-26)
 
 
