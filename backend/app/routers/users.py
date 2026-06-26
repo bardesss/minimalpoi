@@ -3,7 +3,7 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from ..deps import AdminUser, SessionDep
-from ..models import Comment, Role, TeamMember, User, Visit, Wishlist
+from ..models import SYNC_USERNAME, Comment, Role, TeamMember, User, Visit, Wishlist
 from ..schemas import UserCreate, UserRead, UserUpdate
 from ..security import hash_password
 
@@ -14,9 +14,16 @@ def _admin_count(session: Session) -> int:
     return session.exec(select(func.count()).select_from(User).where(User.role == Role.ADMIN)).one()
 
 
+def _guard_system(user: User) -> None:
+    # The reserved TRIP-sync account owns inbound POIs; editing or deleting it
+    # would orphan their attribution. It can't be logged into anyway.
+    if user.username == SYNC_USERNAME:
+        raise HTTPException(status_code=403, detail="The sync system account cannot be modified")
+
+
 @router.get("", response_model=list[UserRead])
 def list_users(session: SessionDep, _: AdminUser) -> list[User]:
-    return session.exec(select(User)).all()
+    return session.exec(select(User).where(User.username != SYNC_USERNAME)).all()
 
 
 @router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
@@ -39,6 +46,7 @@ def update_user(user_id: int, body: UserUpdate, session: SessionDep, _: AdminUse
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Not found")
+    _guard_system(user)
     if user.role == Role.ADMIN and _admin_count(session) <= 1:
         demoting = body.role is not None and body.role != Role.ADMIN
         disabling = body.disabled is True
@@ -61,6 +69,7 @@ def delete_user(user_id: int, session: SessionDep, _: AdminUser) -> Response:
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Not found")
+    _guard_system(user)
     if user.role == Role.ADMIN and _admin_count(session) <= 1:
         raise HTTPException(status_code=400, detail="Cannot delete the last admin")
     for model in (Visit, Wishlist, Comment):

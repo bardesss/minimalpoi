@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
-from ..models import Team, TeamMember, User, Role
+from ..models import SYNC_USERNAME, Team, TeamMember, User, Role
 from ..schemas import TeamCandidate, TeamCreate, TeamRead
 
 router = APIRouter(prefix="/api/teams", tags=["teams"])
@@ -46,7 +46,8 @@ def list_teams(session: SessionDep, _: CurrentUser) -> list[TeamRead]:
 
 @router.get("/candidates", response_model=list[TeamCandidate])
 def team_candidates(session: SessionDep, _: CurrentUser) -> list[TeamCandidate]:
-    return [TeamCandidate(id=u.id, username=u.username) for u in session.exec(select(User)).all()]
+    rows = session.exec(select(User).where(User.username != SYNC_USERNAME)).all()
+    return [TeamCandidate(id=u.id, username=u.username) for u in rows]
 
 
 @router.post("", response_model=TeamRead, status_code=status.HTTP_201_CREATED)
