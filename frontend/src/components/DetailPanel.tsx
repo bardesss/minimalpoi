@@ -13,20 +13,25 @@ export default function DetailPanel({
   onClose,
   onEdit,
   onDelete,
+  mobile = false,
 }: {
   poi: Poi;
   category: Category | undefined;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  mobile?: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
   const color = category?.color ?? theme.color.fallbackPin;
   const tint = tintFromColor(color);
   const heroImage = safeImageCss(poi.image_url);
   const websiteHref = safeLinkHref(poi.website);
+  const containerStyle = mobile
+    ? ({ position: "fixed", left: 0, right: 0, bottom: 0, maxHeight: "88vh", zIndex: 1300, background: "#fff", borderTopLeftRadius: 18, borderTopRightRadius: 18, boxShadow: "0 -8px 30px rgba(0,0,0,.22)", overflowY: "auto", animation: "sheetUp .26s cubic-bezier(.32,.72,0,1)" } as const)
+    : ({ position: "absolute", top: 0, left: 0, bottom: 0, width: 368, zIndex: 800, background: "#fff", boxShadow: theme.shadow.detail, overflowY: "auto", animation: "slideIn .22s ease" } as const);
   return (
-    <div className="poi-scroll" style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 368, zIndex: 800, background: "#fff", boxShadow: theme.shadow.detail, overflowY: "auto", animation: "slideIn .22s ease" }}>
+    <div className="poi-scroll" style={containerStyle}>
       <div style={{ position: "relative", height: 208, background: heroImage ? `center/cover no-repeat url("${heroImage}"), ${tint}` : tint }}>
         <div style={{ position: "absolute", inset: 0, background: theme.gradient.detailHero }} />
         <button type="button" aria-label="Close" onClick={onClose} style={{ position: "absolute", top: 14, right: 14, width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.92)", boxShadow: "0 2px 8px rgba(0,0,0,.18)", cursor: "pointer", fontSize: 16 }}>×</button>
@@ -67,7 +72,7 @@ export default function DetailPanel({
 
         <PoiActions poiId={poi.id} />
       </div>
-      <div style={{ display: "flex", gap: 9, padding: "14px 18px", borderTop: `1px solid ${theme.color.borderSubtle}` }}>
+      <div style={{ display: "flex", gap: 9, padding: "14px 18px", paddingBottom: mobile ? "calc(14px + env(safe-area-inset-bottom))" : 14, borderTop: `1px solid ${theme.color.borderSubtle}`, position: mobile ? "sticky" : "static", bottom: 0, background: "#fff" }}>
         <button type="button" onClick={onEdit} style={{ ...primaryButtonStyle, flex: 1 }}>Edit place</button>
         <button type="button" onClick={() => (confirming ? onDelete() : setConfirming(true))} style={dangerButtonStyle}>
           {confirming ? "Confirm delete?" : "Delete"}

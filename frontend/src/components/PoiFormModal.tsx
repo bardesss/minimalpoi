@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { Category, PlaceSearchResult, PoiCreate, PoiDraft } from "../types/api";
 import { safeImageCss } from "../lib/safeUrl";
 import { ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, textareaStyle, theme } from "../theme";
+import { useIsMobile } from "../lib/useMediaQuery";
 import PhoneInput from "./PhoneInput";
 
 export function splitTags(text: string): string[] {
@@ -89,6 +90,7 @@ export default function PoiFormModal({
   }, [coords, mode]);
 
   const isAdd = mode === "add";
+  const isMobile = useIsMobile();
   const safeImage = safeImageCss(imageUrl);
 
   function applyDraft(draft: PoiDraft, source: string | null) {
@@ -187,8 +189,8 @@ export default function PoiFormModal({
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: isAdd ? "transparent" : "rgba(26,24,22,.42)", backdropFilter: isAdd ? "none" : "blur(2px)", pointerEvents: isAdd ? "none" : "auto", display: "flex", alignItems: "center", justifyContent: "center", animation: "fadeIn .16s ease" }}>
-      <div role="dialog" aria-modal={isAdd ? false : true} className="poi-scroll" style={{ width: 540, maxWidth: "100%", maxHeight: "90vh", overflowY: "auto", background: "#fff", borderRadius: theme.radius.modal, boxShadow: theme.shadow.modal, animation: "popIn .2s ease", pointerEvents: "auto" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: isAdd ? "transparent" : "rgba(26,24,22,.42)", backdropFilter: isAdd ? "none" : "blur(2px)", pointerEvents: isAdd ? "none" : "auto", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", animation: "fadeIn .16s ease" }}>
+      <div role="dialog" aria-modal={isAdd ? false : true} className="poi-scroll" style={{ width: isMobile ? "100%" : 540, maxWidth: "100%", maxHeight: isMobile ? "92vh" : "90vh", overflowY: "auto", background: "#fff", borderRadius: isMobile ? "18px 18px 0 0" : theme.radius.modal, paddingBottom: isMobile ? "env(safe-area-inset-bottom)" : undefined, boxShadow: theme.shadow.modal, animation: isMobile ? "sheetUp .26s cubic-bezier(.32,.72,0,1)" : "popIn .2s ease", pointerEvents: "auto" }}>
         <div style={{ position: "sticky", top: 0, background: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 24px 16px", zIndex: 2 }}>
           <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: "-.02em" }}>{mode === "add" ? "Add a new place" : "Edit place"}</h2>
           <button type="button" aria-label="Close" onClick={onClose} style={{ width: 30, height: 30, borderRadius: theme.radius.icon, border: "none", background: "#f5f4f2", color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
