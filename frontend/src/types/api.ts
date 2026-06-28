@@ -203,11 +203,6 @@ export interface VisitUpsert {
   rating?: number | null;
 }
 
-export interface Wishlist {
-  poi_id: number;
-  user_id: number;
-}
-
 export interface Comment {
   id: number;
   poi_id: number;

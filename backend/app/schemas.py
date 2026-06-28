@@ -153,11 +153,6 @@ class PreferredTeamUpdate(SQLModel):
     preferred_team_id: int | None = None
 
 
-class WishlistRead(SQLModel):
-    poi_id: int
-    user_id: int
-
-
 class CommentCreate(SQLModel):
     text: str
 

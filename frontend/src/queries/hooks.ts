@@ -4,7 +4,7 @@ import { checkDuplicate, createPoi, deletePoi, getPois, updatePoi } from "../api
 import { getFullSettings, getSettings, updateSettings } from "../api/settings";
 import { deleteTag, getTags, renameTag } from "../api/tags";
 import type { CategoryCreate, CategoryUpdate, CommentCreate, PoiCreate, PoiUpdate, SettingsUpdate, SyncResolve, UserCreate, UserUpdate, TeamCreate, VisitUpsert } from "../types/api";
-import { addComment, addWishlist, deleteComment, deleteVisit, getComments, getVisits, getWishlist, removeWishlist, upsertVisit } from "../api/poiActions";
+import { addComment, deleteComment, deleteVisit, getComments, getVisits, upsertVisit } from "../api/poiActions";
 import { getConflicts, getSyncStatus, resolveConflict, syncNow } from "../api/sync";
 import { enrichUrl } from "../api/enrich";
 import { getPlaceDraft, searchPlaces } from "../api/places";
@@ -232,24 +232,6 @@ export function useDeleteVisit(poiId: number) {
   return useMutation({
     mutationFn: () => deleteVisit(poiId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["visits", poiId] }),
-  });
-}
-
-export function useWishlist(poiId: number) {
-  return useQuery({ queryKey: ["wishlist", poiId], queryFn: () => getWishlist(poiId) });
-}
-export function useAddWishlist(poiId: number) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => addWishlist(poiId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["wishlist", poiId] }),
-  });
-}
-export function useRemoveWishlist(poiId: number) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => removeWishlist(poiId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["wishlist", poiId] }),
   });
 }
 

@@ -17,7 +17,7 @@ Drop a pin, paste a link to auto-fill the details, and keep all your favorite pl
 - 📞 **Worldwide phone numbers** — a country-picker phone field normalizes entries to E.164 and shows them nicely formatted.
 - 💾 **Import & export** — bulk-import places from **GeoJSON or CSV** (with server-side duplicate detection and automatic category matching), and export your whole collection as a **GeoJSON backup** — all from the in-app **Data & backups** panel.
 - 🏷️ **Categories & organization** — a shared place list with full create/edit/delete, categories with custom color and icon, and tags.
-- 👥 **Multi-user** — first-run admin setup, secure cookie login (sessions persist across restarts for 30 days by default), admin/member roles, and teams. Each user gets **visited** marks (with a 1–5 rating), a **wishlist**, and attributed **comments**.
+- 👥 **Multi-user** — first-run admin setup, secure cookie login (sessions persist across restarts for 30 days by default), admin/member roles, and teams. Each user gets **visited** marks (with a 1–5 rating) and attributed **comments**.
 - 🖼️ **Local images** — enriched images are downloaded and served from your own server; manual upload is supported too.
 - 🔁 **Optional TRIP sync** — connect a [TRIP](https://github.com/itskovacs/trip) instance and MinimalPOI keeps categories and places reconciled **both ways** (creates, edits, and deletes propagate, with a configurable conflict policy). Entirely optional — enable it only if you use TRIP.
 - 🐳 **Self-hosted & simple** — ships as a single multi-arch Docker image (amd64 + arm64), stores everything in SQLite on one volume, and needs **no external services** to run.

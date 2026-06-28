@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
-  useAddComment, useAddWishlist, useComments, useDeleteComment, useDeleteVisit,
-  useRemoveWishlist, useUpsertVisit, useVisits, useWishlist,
+  useAddComment, useComments, useDeleteComment, useDeleteVisit,
+  useUpsertVisit, useVisits,
 } from "../queries/hooks";
 import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
 
@@ -16,11 +16,6 @@ export default function PoiActions({ poiId }: { poiId: number }) {
   const myVisit = visits.find((v) => v.user_id === meId);
   const upsertVisit = useUpsertVisit(poiId);
   const deleteVisit = useDeleteVisit(poiId);
-
-  const wishlist = useWishlist(poiId).data ?? [];
-  const wished = wishlist.some((w) => w.user_id === meId);
-  const addWishlist = useAddWishlist(poiId);
-  const removeWishlist = useRemoveWishlist(poiId);
 
   const comments = useComments(poiId).data ?? [];
   const addComment = useAddComment(poiId);
@@ -57,9 +52,6 @@ export default function PoiActions({ poiId }: { poiId: number }) {
               ))}
             </span>
           )}
-          <button type="button" onClick={() => (wished ? removeWishlist.mutate() : addWishlist.mutate())} style={{ ...ghostButtonStyle, marginLeft: "auto" }}>
-            {wished ? "♥ Wishlisted" : "♡ Wishlist"}
-          </button>
         </div>
       </div>
 
