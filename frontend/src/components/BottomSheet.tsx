@@ -1,17 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { theme } from "../theme";
-
-type Snap = "peek" | "half" | "full";
-const ORDER: Snap[] = ["peek", "half", "full"];
-
-/** Fraction of the viewport the sheet is translated DOWN by at each snap. */
-const HIDE: Record<Snap, number> = { peek: 0.72, half: 0.48, full: 0.1 };
-
-function vh(fraction: number): number {
-  const h = typeof window === "undefined" ? 800 : window.innerHeight;
-  return h * fraction;
-}
+import { useSheetDrag } from "./useSheetDrag";
+import type { Snap } from "./useSheetDrag";
 
 /**
  * Map-first bottom sheet. The map stays fully interactive above it; only the
@@ -27,57 +17,7 @@ export default function BottomSheet({
   initial?: Snap;
   label?: string;
 }) {
-  const [snap, setSnap] = useState<Snap>(initial);
-  const [translate, setTranslate] = useState(() => vh(HIDE[initial]));
-  const [dragging, setDragging] = useState(false);
-  const drag = useRef<{ startY: number; startT: number; moved: number } | null>(null);
-
-  // Keep the resting position in sync with the viewport while not dragging.
-  useEffect(() => {
-    if (dragging) return;
-    const apply = () => setTranslate(vh(HIDE[snap]));
-    apply();
-    window.addEventListener("resize", apply);
-    return () => window.removeEventListener("resize", apply);
-  }, [snap, dragging]);
-
-  const onPointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      (e.target as Element).setPointerCapture?.(e.pointerId);
-      drag.current = { startY: e.clientY, startT: translate, moved: 0 };
-      setDragging(true);
-    },
-    [translate],
-  );
-
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    const d = drag.current;
-    if (!d) return;
-    const dy = e.clientY - d.startY;
-    d.moved = Math.max(d.moved, Math.abs(dy));
-    const next = Math.min(Math.max(d.startT + dy, vh(HIDE.full)), vh(HIDE.peek));
-    setTranslate(next);
-  }, []);
-
-  const onPointerUp = useCallback(() => {
-    const d = drag.current;
-    drag.current = null;
-    setDragging(false);
-    if (!d) return;
-    // A tap (negligible movement) cycles toward more open, then back to peek.
-    if (d.moved < 6) {
-      setSnap((s) => (s === "full" ? "peek" : ORDER[ORDER.indexOf(s) + 1]));
-      return;
-    }
-    // Snap to whichever rest position the sheet is now closest to.
-    let best: Snap = "peek";
-    let bestDist = Infinity;
-    for (const s of ORDER) {
-      const dist = Math.abs(translate - vh(HIDE[s]));
-      if (dist < bestDist) (bestDist = dist), (best = s);
-    }
-    setSnap(best);
-  }, [translate]);
+  const { translate, dragging, handlers } = useSheetDrag(initial);
 
   return (
     <section
@@ -100,10 +40,7 @@ export default function BottomSheet({
       }}
     >
       <div
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        {...handlers}
         role="separator"
         aria-label="Drag to resize list"
         style={{

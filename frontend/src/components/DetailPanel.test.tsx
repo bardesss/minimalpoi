@@ -41,4 +41,11 @@ describe("DetailPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: /edit place/i }));
     expect(onEdit).toHaveBeenCalled();
   });
+
+  it("renders a drag handle on mobile so the card can be resized to reveal the map", () => {
+    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} mobile />);
+    expect(screen.getByRole("separator", { name: /drag to resize/i })).toBeInTheDocument();
+    // Content still renders inside the draggable sheet.
+    expect(screen.getByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
+  });
 });
