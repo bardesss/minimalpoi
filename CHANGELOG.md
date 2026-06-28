@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.0](https://github.com/Bardesss/minimalpoi/compare/v0.16.1...v0.17.0) (2026-06-28)
+
+
+### Features
+
+* **mobile:** drag the POI detail card down to reveal the map ([260fcea](https://github.com/Bardesss/minimalpoi/commit/260fcea79bd3faf3c23395cb6bd507c638fa1730))
+* **mobile:** make the POI detail card draggable to reveal the map ([76f929f](https://github.com/Bardesss/minimalpoi/commit/76f929f61faeb280f2820cc881cfc0efb44a9e25))
+
 ## [0.16.1](https://github.com/Bardesss/minimalpoi/compare/v0.16.0...v0.16.1) (2026-06-28)
 
 
