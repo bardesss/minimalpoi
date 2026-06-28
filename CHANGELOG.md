@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.15.0](https://github.com/Bardesss/minimalpoi/compare/v0.14.1...v0.15.0) (2026-06-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* the /api/pois/{id}/wishlist endpoints are removed.
+
+### Features
+
+* remove the wishlist feature ([05eb839](https://github.com/Bardesss/minimalpoi/commit/05eb839e1ea1ed346c1ba7d114d56f68f038f03c))
+
 ## [0.14.1](https://github.com/Bardesss/minimalpoi/compare/v0.14.0...v0.14.1) (2026-06-28)
 
 
