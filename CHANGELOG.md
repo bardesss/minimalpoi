@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.1](https://github.com/Bardesss/minimalpoi/compare/v0.16.0...v0.16.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* **visits:** group rating + comment + save into one card; gold stars ([9257296](https://github.com/Bardesss/minimalpoi/commit/9257296ec70a35ae438b1414e29cd2b7ff71588e))
+* **visits:** group rating + comment into one card; gold stars ([869ef3e](https://github.com/Bardesss/minimalpoi/commit/869ef3ef65cee3f079e46dd6ed8171e58ac396a9))
+
 ## [0.16.0](https://github.com/Bardesss/minimalpoi/compare/v0.15.0...v0.16.0) (2026-06-28)
 
 
