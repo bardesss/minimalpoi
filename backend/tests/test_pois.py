@@ -119,3 +119,30 @@ def test_delete_synced_poi_writes_tombstone(client):
         assert tombstones[0].entity_type == "place"
         assert tombstones[0].trip_id == 555
         assert tombstones[0].origin == "local"
+
+
+def test_list_pois_includes_average_rating(client):
+    cat_id = _setup(client)
+    rated = client.post(
+        "/api/pois", json={"name": "Rated", "lat": 1.0, "lng": 2.0, "category_id": cat_id}
+    ).json()["id"]
+    unrated = client.post(
+        "/api/pois", json={"name": "Unrated", "lat": 3.0, "lng": 4.0, "category_id": cat_id}
+    ).json()["id"]
+
+    # Admin rates 4; a visit with no rating must not count toward the average.
+    assert client.put(f"/api/pois/{rated}/visit", json={"rating": 4}).status_code == 200
+    assert client.put(f"/api/pois/{unrated}/visit", json={}).status_code == 200
+
+    # A second user rates the same place 2 -> average is 3.0 over 2 ratings.
+    client.post("/api/users", json={"username": "bob", "password": "pw"})
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw"})
+    assert client.put(f"/api/pois/{rated}/visit", json={"rating": 2}).status_code == 200
+
+    by_id = {p["id"]: p for p in client.get("/api/pois").json()}
+    assert by_id[rated]["avg_rating"] == 3.0
+    assert by_id[rated]["rating_count"] == 2
+    # An unrated visit leaves the place with no average.
+    assert by_id[unrated]["avg_rating"] is None
+    assert by_id[unrated]["rating_count"] == 0

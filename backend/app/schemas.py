@@ -124,6 +124,9 @@ class POIRead(SQLModel):
     updated_at: datetime
     trip_place_id: int | None
     trip_sync_status: SyncStatus
+    # Aggregated across all users' visits; populated by the list endpoint only.
+    avg_rating: float | None = None
+    rating_count: int = 0
 
 
 class DuplicateCheck(SQLModel):

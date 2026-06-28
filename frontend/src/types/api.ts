@@ -44,6 +44,8 @@ export interface Poi {
   updated_at: string;
   trip_place_id: number | null;
   trip_sync_status: string;
+  avg_rating: number | null;
+  rating_count: number;
 }
 
 export interface MapSettings {
