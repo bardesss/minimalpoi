@@ -68,7 +68,7 @@ export default function UsersSection() {
 
   async function remove(u: UserRead) {
     setError(null);
-    if (!confirm(`Delete user "${u.username}"? This removes their visits, wishlist, and comments.`)) return;
+    if (!confirm(`Delete user "${u.username}"? This removes their visits and comments.`)) return;
     try {
       await deleteUser.mutateAsync(u.id);
       notify("User deleted");

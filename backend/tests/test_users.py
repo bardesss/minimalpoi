@@ -86,11 +86,10 @@ def test_delete_user_cascades_children(client):
     # Admin creates bob
     bob_id = client.post("/api/users", json={"username": "bob", "password": "pw"}).json()["id"]
 
-    # Bob logs in and adds visit, wishlist, comment
+    # Bob logs in and adds visit, comment
     client.post("/api/auth/logout")
     client.post("/api/auth/login", json={"username": "bob", "password": "pw"})
     assert client.put(f"/api/pois/{poi_id}/visit", json={}).status_code == 200
-    assert client.put(f"/api/pois/{poi_id}/wishlist").status_code == 200
     assert client.post(f"/api/pois/{poi_id}/comments", json={"text": "from bob"}).status_code == 201
 
     # Admin logs back in and deletes bob
@@ -100,9 +99,8 @@ def test_delete_user_cascades_children(client):
 
     from sqlmodel import Session, select
     from app import db
-    from app.models import Comment, TeamMember, Visit, Wishlist
+    from app.models import Comment, TeamMember, Visit
     with Session(db.engine) as session:
         assert session.exec(select(Visit).where(Visit.user_id == bob_id)).all() == []
-        assert session.exec(select(Wishlist).where(Wishlist.user_id == bob_id)).all() == []
         assert session.exec(select(Comment).where(Comment.user_id == bob_id)).all() == []
         assert session.exec(select(TeamMember).where(TeamMember.user_id == bob_id)).all() == []

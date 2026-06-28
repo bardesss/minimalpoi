@@ -3,7 +3,7 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from ..deps import AdminUser, SessionDep
-from ..models import SYNC_USERNAME, Comment, Role, TeamMember, User, Visit, Wishlist
+from ..models import SYNC_USERNAME, Comment, Role, TeamMember, User, Visit
 from ..schemas import UserCreate, UserRead, UserUpdate
 from ..security import hash_password
 
@@ -72,7 +72,7 @@ def delete_user(user_id: int, session: SessionDep, _: AdminUser) -> Response:
     _guard_system(user)
     if user.role == Role.ADMIN and _admin_count(session) <= 1:
         raise HTTPException(status_code=400, detail="Cannot delete the last admin")
-    for model in (Visit, Wishlist, Comment):
+    for model in (Visit, Comment):
         for row in session.exec(select(model).where(model.user_id == user_id)).all():
             session.delete(row)
     for row in session.exec(select(TeamMember).where(TeamMember.user_id == user_id)).all():

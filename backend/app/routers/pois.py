@@ -6,7 +6,7 @@ from sqlmodel import select
 from ..dedup import find_duplicate
 from ..deps import CurrentUser, SessionDep
 from ..enrich.images import localize
-from ..models import POI, Category, Comment, Tombstone, Visit, Wishlist, utcnow
+from ..models import POI, Category, Comment, Tombstone, Visit, utcnow
 from ..phone import to_e164
 from ..portability import parse_csv, parse_geojson, pois_to_geojson
 from ..schemas import (
@@ -175,7 +175,7 @@ def delete_poi(poi_id: int, session: SessionDep, _: CurrentUser) -> Response:
     poi = session.get(POI, poi_id)
     if not poi:
         raise HTTPException(status_code=404, detail="Not found")
-    for model in (Visit, Wishlist, Comment):
+    for model in (Visit, Comment):
         for row in session.exec(select(model).where(model.poi_id == poi_id)).all():
             session.delete(row)
     if poi.trip_place_id is not None:
