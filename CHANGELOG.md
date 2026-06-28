@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.0](https://github.com/Bardesss/minimalpoi/compare/v0.15.0...v0.16.0) (2026-06-28)
+
+
+### Features
+
+* **visits:** unify rating + comment into one action; show average on cards ([698ee46](https://github.com/Bardesss/minimalpoi/commit/698ee466d1abb53025c7b03e4cf0461b790fce32))
+* **visits:** unify rating + comment; show average rating on cards ([4b00651](https://github.com/Bardesss/minimalpoi/commit/4b00651e962aec44b3c7194a9fc6636b92297693))
+
 ## [0.15.0](https://github.com/Bardesss/minimalpoi/compare/v0.14.1...v0.15.0) (2026-06-28)
 
 
