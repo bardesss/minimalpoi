@@ -7,23 +7,30 @@ import { renderWithProviders } from "../test/utils";
 import PoiActions from "./PoiActions";
 
 describe("PoiActions", () => {
-  it("marks a POI visited", async () => {
+  it("records a visit by picking a star rating", async () => {
     let put: unknown = null;
     server.use(
       http.get("/api/pois/1/visits", () => HttpResponse.json([])),
       http.put("/api/pois/1/visit", async ({ request }) => {
         put = await request.json();
-        return HttpResponse.json({ poi_id: 1, user_id: 1, team_id: null, rating: null });
+        return HttpResponse.json({ poi_id: 1, user_id: 1, team_id: null, rating: 4 });
       }),
     );
     renderWithProviders(<PoiActions poiId={1} />);
-    await userEvent.click(await screen.findByRole("button", { name: /mark visited/i }));
-    await waitFor(() => expect(put).not.toBeNull());
+    await userEvent.click(await screen.findByRole("button", { name: /rate 4/i }));
+    await userEvent.click(screen.getByRole("button", { name: /save visit/i }));
+    await waitFor(() => expect(put).toMatchObject({ rating: 4 }));
   });
 
-  it("adds a comment", async () => {
+  it("saves a rating together with an optional comment", async () => {
+    let put: unknown = null;
     let posted: unknown = null;
     server.use(
+      http.get("/api/pois/1/visits", () => HttpResponse.json([])),
+      http.put("/api/pois/1/visit", async ({ request }) => {
+        put = await request.json();
+        return HttpResponse.json({ poi_id: 1, user_id: 1, team_id: null, rating: 5 });
+      }),
       http.get("/api/pois/1/comments", () => HttpResponse.json([])),
       http.post("/api/pois/1/comments", async ({ request }) => {
         posted = await request.json();
@@ -34,8 +41,16 @@ describe("PoiActions", () => {
       }),
     );
     renderWithProviders(<PoiActions poiId={1} />);
-    await userEvent.type(await screen.findByPlaceholderText(/add a comment/i), "great");
-    await userEvent.click(screen.getByRole("button", { name: /post/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /rate 5/i }));
+    await userEvent.type(screen.getByPlaceholderText(/add a comment/i), "great");
+    await userEvent.click(screen.getByRole("button", { name: /save visit/i }));
     await waitFor(() => expect(posted).toMatchObject({ text: "great" }));
+    expect(put).toMatchObject({ rating: 5 });
+  });
+
+  it("requires a rating before a visit can be saved", async () => {
+    server.use(http.get("/api/pois/1/visits", () => HttpResponse.json([])));
+    renderWithProviders(<PoiActions poiId={1} />);
+    expect(await screen.findByRole("button", { name: /save visit/i })).toBeDisabled();
   });
 });

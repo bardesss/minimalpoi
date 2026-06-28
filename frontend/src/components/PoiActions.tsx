@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
   useAddComment, useComments, useDeleteComment, useDeleteVisit,
@@ -20,38 +20,63 @@ export default function PoiActions({ poiId }: { poiId: number }) {
   const comments = useComments(poiId).data ?? [];
   const addComment = useAddComment(poiId);
   const deleteComment = useDeleteComment(poiId);
-  const [text, setText] = useState("");
 
-  function submitComment() {
-    if (text.trim() === "") return;
-    addComment.mutate({ text: text.trim() }, { onSuccess: () => setText("") });
+  // The visit is one action: a star rating (which marks the place visited) plus
+  // an optional comment, saved together. Seed the stars from any existing visit.
+  const [rating, setRating] = useState(0);
+  const [text, setText] = useState("");
+  useEffect(() => setRating(myVisit?.rating ?? 0), [myVisit?.rating]);
+
+  function save() {
+    if (rating < 1) return;
+    upsertVisit.mutate({ rating });
+    const comment = text.trim();
+    if (comment !== "") addComment.mutate({ text: comment }, { onSuccess: () => setText("") });
+  }
+
+  function removeVisit() {
+    deleteVisit.mutate();
+    setRating(0);
   }
 
   return (
     <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 18 }}>
       <div>
-        <p style={sectionLabel}>Visited</p>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          {myVisit ? (
-            <button type="button" onClick={() => deleteVisit.mutate()} style={ghostButtonStyle}>Visited ✓</button>
-          ) : (
-            <button type="button" onClick={() => upsertVisit.mutate({})} style={primaryButtonStyle}>Mark visited</button>
-          )}
-          {myVisit && (
+        <p style={sectionLabel}>Your visit</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span aria-label="Rating" style={{ display: "inline-flex", gap: 2 }}>
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
                   key={n}
                   type="button"
                   aria-label={`Rate ${n}`}
-                  onClick={() => upsertVisit.mutate({ rating: n })}
-                  style={{ border: "none", background: "none", cursor: "pointer", fontSize: 18, lineHeight: 1, color: (myVisit.rating ?? 0) >= n ? theme.color.fallbackPin : theme.color.borderCard }}
+                  onClick={() => setRating(n)}
+                  style={{ border: "none", background: "none", cursor: "pointer", fontSize: 22, lineHeight: 1, color: rating >= n ? theme.color.fallbackPin : theme.color.borderCard }}
                 >
-                  {(myVisit.rating ?? 0) >= n ? "★" : "☆"}
+                  {rating >= n ? "★" : "☆"}
                 </button>
               ))}
             </span>
-          )}
+            {myVisit && (
+              <button type="button" onClick={removeVisit} style={{ ...ghostButtonStyle, marginLeft: "auto" }}>Remove</button>
+            )}
+          </div>
+          <textarea
+            style={{ ...inputStyle, resize: "vertical", minHeight: 38 }}
+            placeholder="Add a comment (optional)"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={save}
+            disabled={rating < 1}
+            style={{ ...primaryButtonStyle, alignSelf: "flex-start", opacity: rating < 1 ? 0.5 : 1, cursor: rating < 1 ? "not-allowed" : "pointer" }}
+          >
+            {myVisit ? "Save" : "Save visit"}
+          </button>
+          {rating < 1 && <span style={{ fontSize: 12, color: theme.color.textPlaceholder }}>Pick a rating to record your visit.</span>}
         </div>
       </div>
 
@@ -76,16 +101,6 @@ export default function PoiActions({ poiId }: { poiId: number }) {
             </div>
           ))}
           {comments.length === 0 && <div style={{ fontSize: 13, color: theme.color.textPlaceholder }}>No comments yet.</div>}
-          <div style={{ display: "flex", gap: 8 }}>
-            <input
-              style={{ ...inputStyle, flex: 1 }}
-              placeholder="Add a comment"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") submitComment(); }}
-            />
-            <button type="button" onClick={submitComment} style={primaryButtonStyle}>Post</button>
-          </div>
         </div>
       </div>
     </div>

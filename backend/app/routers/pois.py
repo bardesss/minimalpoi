@@ -1,6 +1,7 @@
 import json
 
 from fastapi import APIRouter, File, HTTPException, Response, UploadFile, status
+from sqlalchemy import func
 from sqlmodel import select
 
 from ..dedup import find_duplicate
@@ -26,8 +27,24 @@ MAX_IMPORT_BYTES = 10 * 1024 * 1024  # 10 MiB
 
 
 @router.get("", response_model=list[POIRead])
-def list_pois(session: SessionDep, _: CurrentUser) -> list[POI]:
-    return session.exec(select(POI)).all()
+def list_pois(session: SessionDep, _: CurrentUser) -> list[POIRead]:
+    # One grouped aggregate for the whole list — the average and number of
+    # ratings per POI, ignoring visits left without a rating.
+    agg = session.exec(
+        select(Visit.poi_id, func.avg(Visit.rating), func.count(Visit.rating))
+        .where(Visit.rating.is_not(None))
+        .group_by(Visit.poi_id)
+    ).all()
+    ratings = {poi_id: (avg, count) for poi_id, avg, count in agg}
+
+    result: list[POIRead] = []
+    for poi in session.exec(select(POI)).all():
+        read = POIRead.model_validate(poi, from_attributes=True)
+        avg, count = ratings.get(poi.id, (None, 0))
+        read.avg_rating = round(avg, 2) if avg is not None else None
+        read.rating_count = count
+        result.append(read)
+    return result
 
 
 @router.post("", response_model=POIRead, status_code=status.HTTP_201_CREATED)

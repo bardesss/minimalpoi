@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Poi } from "../types/api";
 import { boundsOf } from "./bounds";
 
-const mk = (lng: number, lat: number): Poi => ({ id: 0, name: "", address: null, city: null, country_code: null, lat, lng, category_id: null, tags: [], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "s" });
+const mk = (lng: number, lat: number): Poi => ({ id: 0, name: "", address: null, city: null, country_code: null, lat, lng, category_id: null, tags: [], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "s", avg_rating: null, rating_count: 0 });
 
 describe("boundsOf", () => {
   it("returns null for empty", () => {

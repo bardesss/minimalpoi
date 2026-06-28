@@ -52,7 +52,7 @@ vi.mock("maplibre-gl", () => ({
 
 const settings: MapSettings = { map_tile_url: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json", default_map_center_lat: 52.3676, default_map_center_lng: 4.9041, default_map_zoom: 11 };
 const categories: Category[] = [{ id: 1, name: "R", color: "#E1574C", icon: null, created_by: 1, trip_category_id: null, trip_sync_status: "s" }];
-const pois: Poi[] = [{ id: 1, name: "A", address: null, city: null, country_code: null, lat: 52.37, lng: 4.9, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "s" }];
+const pois: Poi[] = [{ id: 1, name: "A", address: null, city: null, country_code: null, lat: 52.37, lng: 4.9, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "s", avg_rating: null, rating_count: 0 }];
 
 beforeEach(() => {
   MapMock.mockClear();
