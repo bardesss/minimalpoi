@@ -4,7 +4,7 @@ import {
   useAddComment, useComments, useDeleteComment, useDeleteVisit,
   useUpsertVisit, useVisits,
 } from "../queries/hooks";
-import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
+import { dangerButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
@@ -41,43 +41,41 @@ export default function PoiActions({ poiId }: { poiId: number }) {
 
   return (
     <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 18 }}>
-      <div>
-        <p style={sectionLabel}>Your visit</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span aria-label="Rating" style={{ display: "inline-flex", gap: 2 }}>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  aria-label={`Rate ${n}`}
-                  onClick={() => setRating(n)}
-                  style={{ border: "none", background: "none", cursor: "pointer", fontSize: 22, lineHeight: 1, color: rating >= n ? theme.color.fallbackPin : theme.color.borderCard }}
-                >
-                  {rating >= n ? "★" : "☆"}
-                </button>
-              ))}
-            </span>
-            {myVisit && (
-              <button type="button" onClick={removeVisit} style={{ ...ghostButtonStyle, marginLeft: "auto" }}>Remove</button>
-            )}
-          </div>
-          <textarea
-            style={{ ...inputStyle, resize: "vertical", minHeight: 38 }}
-            placeholder="Add a comment (optional)"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-          <button
-            type="button"
-            onClick={save}
-            disabled={rating < 1}
-            style={{ ...primaryButtonStyle, alignSelf: "flex-start", opacity: rating < 1 ? 0.5 : 1, cursor: rating < 1 ? "not-allowed" : "pointer" }}
-          >
-            {myVisit ? "Save" : "Save visit"}
-          </button>
-          {rating < 1 && <span style={{ fontSize: 12, color: theme.color.textPlaceholder }}>Pick a rating to record your visit.</span>}
+      <div style={{ borderRadius: theme.radius.card, border: `1px solid ${theme.color.borderSubtle}`, background: theme.color.pageBg, padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <p style={{ ...sectionLabel, margin: 0 }}>Your visit</p>
+          {myVisit && (
+            <button type="button" onClick={removeVisit} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: 12, fontWeight: 700, color: theme.color.dangerText }}>Remove visit</button>
+          )}
         </div>
+        <span aria-label="Rating" style={{ display: "inline-flex", gap: 4 }}>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              aria-label={`Rate ${n}`}
+              onClick={() => setRating(n)}
+              style={{ border: "none", background: "none", cursor: "pointer", fontSize: 26, lineHeight: 1, padding: 0, color: rating >= n ? theme.color.starActive : theme.color.starInactive }}
+            >
+              {rating >= n ? "★" : "☆"}
+            </button>
+          ))}
+        </span>
+        <textarea
+          style={{ ...inputStyle, background: theme.color.surface0, resize: "vertical", minHeight: 56, lineHeight: 1.5 }}
+          placeholder="Add a comment (optional)"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={save}
+          disabled={rating < 1}
+          aria-label={myVisit ? "Save changes" : "Save visit"}
+          style={{ ...primaryButtonStyle, width: "100%", opacity: rating < 1 ? 0.45 : 1, cursor: rating < 1 ? "not-allowed" : "pointer" }}
+        >
+          {rating < 1 ? "Tap a star to record your visit" : myVisit ? "Save changes" : "Save visit"}
+        </button>
       </div>
 
       <div>

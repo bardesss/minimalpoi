@@ -39,6 +39,8 @@ export const theme = {
     textInputIcon: "#b3aea7",
     textCoord: "#a8a39b",
     link: "#2563eb",
+    starActive: "#f59e0b",
+    starInactive: "#d8d5d0",
     dangerText: "#c0392b",
     dangerBorder: "#f0d4cf",
     dangerHover: "#fdf3f1",
