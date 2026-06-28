@@ -53,7 +53,7 @@ export default function PoiCard({
             aria-label={`Average rating ${poi.avg_rating.toFixed(1)} from ${poi.rating_count} ${poi.rating_count === 1 ? "rating" : "ratings"}`}
             style={{ position: "absolute", right: 8, top: 8, display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 999, background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: 1.4 }}
           >
-            <span aria-hidden style={{ color: theme.color.fallbackPin }}>★</span>
+            <span aria-hidden style={{ color: theme.color.starActive }}>★</span>
             {poi.avg_rating.toFixed(1)}
           </span>
         )}
