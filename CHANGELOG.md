@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.1](https://github.com/Bardesss/minimalpoi/compare/v0.14.0...v0.14.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* **mobile:** enlarge bottom-sheet drag target ([ec51155](https://github.com/Bardesss/minimalpoi/commit/ec51155f6fddc8db4f4ea6133740296f5529bc95))
+* **mobile:** enlarge bottom-sheet drag target ([b5648ca](https://github.com/Bardesss/minimalpoi/commit/b5648cac1f0e6026692c76e80dea36f26ad482f2))
+
 ## [0.14.0](https://github.com/Bardesss/minimalpoi/compare/v0.13.0...v0.14.0) (2026-06-26)
 
 
