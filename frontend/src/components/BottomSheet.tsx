@@ -106,9 +106,17 @@ export default function BottomSheet({
         onPointerCancel={onPointerUp}
         role="separator"
         aria-label="Drag to resize list"
-        style={{ flex: "none", padding: "10px 0 6px", cursor: "grab", touchAction: "none" }}
+        style={{
+          flex: "none",
+          minHeight: 44,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "grab",
+          touchAction: "none",
+        }}
       >
-        <div style={{ width: 40, height: 5, borderRadius: 999, background: theme.color.borderStd, margin: "0 auto" }} />
+        <div style={{ width: 40, height: 5, borderRadius: 999, background: theme.color.borderStd }} />
       </div>
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>{children}</div>
     </section>
