@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/Bardesss/minimalpoi/compare/v1.0.3...v1.1.0) (2026-06-29)
+
+
+### Features
+
+* **list:** sort places (recently added, name, top rated, nearest) ([1e2312c](https://github.com/Bardesss/minimalpoi/commit/1e2312c482dd0fbcc3d9bc7e588757fd883de07b))
+* **list:** sort the place list (recent, name, top rated, nearest) ([f513357](https://github.com/Bardesss/minimalpoi/commit/f513357de7ed6bd32d5b23d6f86fedc13a5f88cf))
+
 ## [1.0.3](https://github.com/Bardesss/minimalpoi/compare/v1.0.2...v1.0.3) (2026-06-29)
 
 
