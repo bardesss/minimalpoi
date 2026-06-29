@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.25.0](https://github.com/Bardesss/minimalpoi/compare/v0.24.0...v0.25.0) (2026-06-29)
+
+
+### Features
+
+* **ui:** map view toggle, mobile sheet scroll fix, unified reviews ([2988325](https://github.com/Bardesss/minimalpoi/commit/29883257dd3a93a6d5eddec43c1f47f71c0c535e))
+* **ui:** map view toggle, mobile sheet scroll fix, unified reviews ([98cadda](https://github.com/Bardesss/minimalpoi/commit/98caddac7db2affc461d339d46c724aaa490ade3))
+
 ## [0.24.0](https://github.com/Bardesss/minimalpoi/compare/v0.23.0...v0.24.0) (2026-06-29)
 
 
