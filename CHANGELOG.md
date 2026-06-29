@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.21.0](https://github.com/Bardesss/minimalpoi/compare/v0.20.0...v0.21.0) (2026-06-29)
+
+
+### Features
+
+* **visits:** merge the visit editor into the comments thread ([3fd4060](https://github.com/Bardesss/minimalpoi/commit/3fd4060f8e8cfd18e94ddfca545785123ac9f7fd))
+* **visits:** merge visit editor into comments + smaller visited marker ([604cd56](https://github.com/Bardesss/minimalpoi/commit/604cd56ff37247ae6e43e5806abb994d0f0957c7))
+
 ## [0.20.0](https://github.com/Bardesss/minimalpoi/compare/v0.19.0...v0.20.0) (2026-06-29)
 
 
