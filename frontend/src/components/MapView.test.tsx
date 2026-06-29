@@ -62,7 +62,7 @@ beforeEach(() => {
 describe("MapView", () => {
   it("constructs the map with the resolved style + center/zoom and adds layers on load", () => {
     const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
-    render(<MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={() => {}} onMapClick={() => {}} addMode={false} mapRef={mapRef} />);
+    render(<MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={() => {}} onMapClick={() => {}} addMode={false} visitedPoiIds={new Set()} mapRef={mapRef} />);
     expect(MapMock).toHaveBeenCalledTimes(1);
     const args = (MapMock.mock.calls[0] as unknown[])[0] as { style: unknown; center: number[]; zoom: number };
     expect(args.style).toBe(settings.map_tile_url);
@@ -71,6 +71,6 @@ describe("MapView", () => {
     handlers.load();
     expect(mapInstance.addSource).toHaveBeenCalledWith("pois", expect.objectContaining({ type: "geojson", cluster: true, clusterMaxZoom: 13, clusterRadius: 50 }));
     const layerIds = mapInstance.addLayer.mock.calls.map((c) => (c[0] as { id: string }).id);
-    expect(layerIds).toEqual(["clusters", "cluster-count", "unclustered", "poi-selected"]);
+    expect(layerIds).toEqual(["clusters", "cluster-count", "poi-visited", "unclustered", "poi-selected"]);
   });
 });

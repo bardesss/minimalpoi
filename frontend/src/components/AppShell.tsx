@@ -2,9 +2,9 @@ import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
-import { useCategories, useCreatePoi, useDeletePoi, useEnrich, usePlaceDraft, usePois, useSearchPlaces, useSettings, useUpdatePoi, useCheckDuplicate, useVersion } from "../queries/hooks";
+import { useCategories, useCreatePoi, useDeletePoi, useEnrich, useMyVisits, usePlaceDraft, usePois, useSearchPlaces, useSettings, useUpdatePoi, useCheckDuplicate, useVersion } from "../queries/hooks";
 import { filterPois } from "../lib/filterPois";
-import type { Category, Poi, PoiCreate } from "../types/api";
+import type { Category, Poi, PoiCreate, VisitedFilter } from "../types/api";
 import { theme } from "../theme";
 import { boundsOf } from "../map/bounds";
 import { useIsMobile } from "../lib/useMediaQuery";
@@ -26,6 +26,7 @@ export default function AppShell() {
   const poisQuery = usePois();
   const categoriesQuery = useCategories();
   const settingsQuery = useSettings();
+  const myVisitsQuery = useMyVisits();
 
   const createPoi = useCreatePoi();
   const updatePoi = useUpdatePoi();
@@ -41,6 +42,7 @@ export default function AppShell() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [searchText, setSearchText] = useState("");
   const [activeCategoryIds, setActiveCategoryIds] = useState<number[]>([]);
+  const [visitedFilter, setVisitedFilter] = useState<VisitedFilter>("any");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [formState, setFormState] = useState<{ mode: "add" | "edit"; initial: PoiFormInitial | null } | null>(null);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
@@ -52,9 +54,18 @@ export default function AppShell() {
     () => Object.fromEntries(categories.map((c) => [c.id, c])) as Record<number, Category>,
     [categories],
   );
+  const myVisitedPoiIds = useMemo(
+    () => new Set((myVisitsQuery.data ?? []).map((v) => v.poi_id)),
+    [myVisitsQuery.data],
+  );
   const filtered = useMemo(
-    () => filterPois(poisQuery.data ?? [], searchText, activeCategoryIds),
-    [poisQuery.data, searchText, activeCategoryIds],
+    () =>
+      filterPois(
+        poisQuery.data ?? [],
+        { search: searchText, categoryIds: activeCategoryIds, visited: visitedFilter },
+        { myVisitedPoiIds },
+      ),
+    [poisQuery.data, searchText, activeCategoryIds, visitedFilter, myVisitedPoiIds],
   );
 
   const counts = useMemo(() => {
@@ -143,8 +154,11 @@ export default function AppShell() {
           activeCategoryIds={activeCategoryIds}
           onToggleCategory={toggleCategory}
           onClearCategories={() => setActiveCategoryIds([])}
+          visited={visitedFilter}
+          onVisitedChange={setVisitedFilter}
           pois={filtered}
           categoriesById={categoriesById}
+          myVisitedPoiIds={myVisitedPoiIds}
           selectedId={selectedId}
           onSelect={selectPoi}
           isLoading={poisQuery.isLoading}
@@ -168,6 +182,7 @@ export default function AppShell() {
             onSelect={selectPoi}
             onMapClick={(lng, lat) => setAddCoords({ lng, lat })}
             addMode={addMode}
+            visitedPoiIds={myVisitedPoiIds}
             mapRef={mapRef}
           />
         )}
@@ -232,8 +247,11 @@ export default function AppShell() {
             activeCategoryIds={activeCategoryIds}
             onToggleCategory={toggleCategory}
             onClearCategories={() => setActiveCategoryIds([])}
+            visited={visitedFilter}
+            onVisitedChange={setVisitedFilter}
             pois={filtered}
             categoriesById={categoriesById}
+            myVisitedPoiIds={myVisitedPoiIds}
             selectedId={selectedId}
             onSelect={selectPoi}
             isLoading={poisQuery.isLoading}

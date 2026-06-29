@@ -14,8 +14,11 @@ interface Props {
   onSelect: (id: number) => void;
   onMapClick: (lng: number, lat: number) => void;
   addMode: boolean;
+  visitedPoiIds: Set<number>;
   mapRef: MutableRefObject<MlMap | null>;
 }
+
+const VISITED_RING_COLOR = "#4f46e5";
 
 function addPoiLayers(map: MlMap, color: ReturnType<typeof categoryColorExpression>, selectedId: number | null) {
   map.addLayer({
@@ -38,6 +41,15 @@ function addPoiLayers(map: MlMap, color: ReturnType<typeof categoryColorExpressi
     layout: { "text-field": ["get", "point_count_abbreviated"], "text-font": ["Open Sans Bold"], "text-size": 13 },
     paint: { "text-color": "#1a1a1a" },
   });
+  // Visited halo: a larger filled circle drawn behind the dot, so visited
+  // places read as a colored ring at a glance.
+  map.addLayer({
+    id: "poi-visited",
+    type: "circle",
+    source: "pois",
+    filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "visited"], true]],
+    paint: { "circle-color": VISITED_RING_COLOR, "circle-radius": 11, "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.5 },
+  });
   map.addLayer({
     id: "unclustered",
     type: "circle",
@@ -54,15 +66,17 @@ function addPoiLayers(map: MlMap, color: ReturnType<typeof categoryColorExpressi
   });
 }
 
-export default function MapView({ pois, categories, settings, selectedId, onSelect, onMapClick, addMode, mapRef }: Props) {
+export default function MapView({ pois, categories, settings, selectedId, onSelect, onMapClick, addMode, visitedPoiIds, mapRef }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Keep latest callbacks/flags in refs so the load handler closure stays current.
   const onSelectRef = useRef(onSelect);
   const onMapClickRef = useRef(onMapClick);
   const addModeRef = useRef(addMode);
+  const visitedRef = useRef(visitedPoiIds);
   onSelectRef.current = onSelect;
   onMapClickRef.current = onMapClick;
   addModeRef.current = addMode;
+  visitedRef.current = visitedPoiIds;
 
   // Init once.
   useEffect(() => {
@@ -81,7 +95,7 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
     map.on("load", () => {
       map.addSource("pois", {
         type: "geojson",
-        data: toFeatureCollection(pois),
+        data: toFeatureCollection(pois, visitedRef.current),
         cluster: true,
         clusterMaxZoom: 13,
         clusterRadius: 50,
@@ -121,13 +135,13 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update source data when filtered pois change.
+  // Update source data when filtered pois or my-visited set change.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const src = map.getSource("pois") as GeoJSONSource | undefined;
-    if (src) src.setData(toFeatureCollection(pois));
-  }, [pois, mapRef]);
+    if (src) src.setData(toFeatureCollection(pois, visitedPoiIds));
+  }, [pois, visitedPoiIds, mapRef]);
 
   // Update selection ring.
   useEffect(() => {

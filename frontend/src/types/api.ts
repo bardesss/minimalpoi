@@ -48,6 +48,14 @@ export interface Poi {
   rating_count: number;
 }
 
+export type VisitedFilter = "any" | "visited" | "not";
+
+export interface PoiFilter {
+  search: string;
+  categoryIds: number[];
+  visited: VisitedFilter; // visited-by-me
+}
+
 export interface MapSettings {
   map_tile_url: string;
   default_map_center_lat: number;

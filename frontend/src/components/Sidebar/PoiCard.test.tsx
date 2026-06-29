@@ -38,4 +38,14 @@ describe("PoiCard", () => {
     render(<PoiCard poi={poi} category={cat} selected={false} onSelect={() => {}} />);
     expect(screen.queryByLabelText(/average rating/i)).not.toBeInTheDocument();
   });
+
+  it("shows a visited badge when visited by me", () => {
+    render(<PoiCard poi={poi} category={cat} selected={false} onSelect={() => {}} visited />);
+    expect(screen.getByLabelText(/visited/i)).toBeInTheDocument();
+  });
+
+  it("omits the visited badge when not visited", () => {
+    render(<PoiCard poi={poi} category={cat} selected={false} onSelect={() => {}} />);
+    expect(screen.queryByLabelText(/visited/i)).not.toBeInTheDocument();
+  });
 });

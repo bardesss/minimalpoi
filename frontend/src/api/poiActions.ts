@@ -4,6 +4,9 @@ import { apiFetch } from "./client";
 export function getVisits(poiId: number): Promise<Visit[]> {
   return apiFetch<Visit[]>(`/api/pois/${poiId}/visits`);
 }
+export function getMyVisits(): Promise<Visit[]> {
+  return apiFetch<Visit[]>(`/api/me/visits`);
+}
 export function upsertVisit(poiId: number, body: VisitUpsert): Promise<Visit> {
   return apiFetch<Visit>(`/api/pois/${poiId}/visit`, { method: "PUT", body: JSON.stringify(body) });
 }

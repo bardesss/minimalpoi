@@ -1,5 +1,6 @@
-import type { Category, Poi } from "../../types/api";
+import type { Category, Poi, VisitedFilter } from "../../types/api";
 import CategoryChips from "./CategoryChips";
+import FilterBar from "./FilterBar";
 import PoiList from "./PoiList";
 import ResultsMeta from "./ResultsMeta";
 import SearchBox from "./SearchBox";
@@ -11,8 +12,11 @@ export interface SidebarContentProps {
   activeCategoryIds: number[];
   onToggleCategory: (id: number) => void;
   onClearCategories: () => void;
+  visited: VisitedFilter;
+  onVisitedChange: (v: VisitedFilter) => void;
   pois: Poi[];
   categoriesById: Record<number, Category>;
+  myVisitedPoiIds: Set<number>;
   selectedId: number | null;
   onSelect: (id: number) => void;
   isLoading: boolean;
@@ -35,10 +39,12 @@ export default function SidebarContent(props: SidebarContentProps) {
         onClear={props.onClearCategories}
         scroll={props.mobile}
       />
+      <FilterBar value={props.visited} onChange={props.onVisitedChange} />
       <ResultsMeta count={props.pois.length} onFit={props.onFit} />
       <PoiList
         pois={props.pois}
         categoriesById={props.categoriesById}
+        myVisitedPoiIds={props.myVisitedPoiIds}
         selectedId={props.selectedId}
         onSelect={props.onSelect}
         isLoading={props.isLoading}

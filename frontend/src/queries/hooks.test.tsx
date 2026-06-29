@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "../test/msw";
 import { makeClient } from "../test/utils";
-import { useComments, useCreatePoi, useEnrich, useImportPois, usePois, useSyncConflicts, useSyncStatus, useTags, useUsers, useTeams, useVisits } from "./hooks";
+import { useComments, useCreatePoi, useEnrich, useImportPois, useMyVisits, usePois, useSyncConflicts, useSyncStatus, useTags, useUpsertVisit, useUsers, useTeams, useVisits } from "./hooks";
 
 function wrapper(client = makeClient()) {
   return ({ children }: { children: ReactNode }) => (
@@ -98,6 +98,30 @@ describe("data hooks", () => {
     const { result } = renderHook(() => useVisits(1), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.[0].rating).toBe(4);
+  });
+
+  it("useMyVisits loads the caller's visits", async () => {
+    server.use(http.get("/api/me/visits", () => HttpResponse.json([{ poi_id: 7, user_id: 1, team_id: null, rating: 5 }])));
+    const { result } = renderHook(() => useMyVisits(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.map((v) => v.poi_id)).toEqual([7]);
+  });
+
+  it("useUpsertVisit invalidates ['visits','me'] so my-visits refetches", async () => {
+    const client = makeClient();
+    let getCount = 0;
+    server.use(
+      http.get("/api/me/visits", () => {
+        getCount += 1;
+        return HttpResponse.json([]);
+      }),
+      http.put("/api/pois/1/visit", () => HttpResponse.json({ poi_id: 1, user_id: 1, team_id: null, rating: 4 })),
+    );
+    const mine = renderHook(() => useMyVisits(), { wrapper: wrapper(client) });
+    await waitFor(() => expect(mine.result.current.isSuccess).toBe(true));
+    const mut = renderHook(() => useUpsertVisit(1), { wrapper: wrapper(client) });
+    await mut.result.current.mutateAsync({ rating: 4 });
+    await waitFor(() => expect(getCount).toBeGreaterThanOrEqual(2));
   });
 
   it("useComments loads comments for a poi", async () => {

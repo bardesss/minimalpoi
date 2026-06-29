@@ -1,4 +1,4 @@
-import type { Category, Poi } from "../../types/api";
+import type { Category, Poi, VisitedFilter } from "../../types/api";
 import { theme } from "../../theme";
 import AccountFooter from "./AccountFooter";
 import SidebarContent from "./SidebarContent";
@@ -13,8 +13,11 @@ export interface SidebarProps {
   activeCategoryIds: number[];
   onToggleCategory: (id: number) => void;
   onClearCategories: () => void;
+  visited: VisitedFilter;
+  onVisitedChange: (v: VisitedFilter) => void;
   pois: Poi[];
   categoriesById: Record<number, Category>;
+  myVisitedPoiIds: Set<number>;
   selectedId: number | null;
   onSelect: (id: number) => void;
   isLoading: boolean;
@@ -51,8 +54,11 @@ export default function Sidebar(props: SidebarProps) {
         activeCategoryIds={props.activeCategoryIds}
         onToggleCategory={props.onToggleCategory}
         onClearCategories={props.onClearCategories}
+        visited={props.visited}
+        onVisitedChange={props.onVisitedChange}
         pois={props.pois}
         categoriesById={props.categoriesById}
+        myVisitedPoiIds={props.myVisitedPoiIds}
         selectedId={props.selectedId}
         onSelect={props.onSelect}
         isLoading={props.isLoading}
