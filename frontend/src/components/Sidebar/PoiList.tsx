@@ -11,6 +11,7 @@ export default function PoiList({
   isLoading,
   isError,
   onRetry,
+  myVisitedPoiIds,
 }: {
   pois: Poi[];
   categoriesById: Record<number, Category>;
@@ -19,6 +20,7 @@ export default function PoiList({
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
+  myVisitedPoiIds: Set<number>;
 }) {
   if (isLoading) {
     return (
@@ -48,7 +50,7 @@ export default function PoiList({
   return (
     <div className="poi-scroll" style={{ flex: 1, overflowY: "auto", padding: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, alignContent: "start" }}>
       {pois.map((p) => (
-        <PoiCard key={p.id} poi={p} category={p.category_id != null ? categoriesById[p.category_id] : undefined} selected={p.id === selectedId} onSelect={onSelect} />
+        <PoiCard key={p.id} poi={p} category={p.category_id != null ? categoriesById[p.category_id] : undefined} selected={p.id === selectedId} onSelect={onSelect} visited={myVisitedPoiIds.has(p.id)} />
       ))}
     </div>
   );

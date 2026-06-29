@@ -12,11 +12,14 @@ export default function PoiCard({
   category,
   selected,
   onSelect,
+  visited = false,
 }: {
   poi: Poi;
   category: Category | undefined;
   selected: boolean;
   onSelect: (id: number) => void;
+  /** The current user has visited this place. */
+  visited?: boolean;
 }) {
   const color = category?.color ?? theme.color.fallbackPin;
   const tint = tintFromColor(color);
@@ -48,6 +51,14 @@ export default function PoiCard({
         }}
       >
         <span style={{ position: "absolute", left: 8, top: 8, width: 18, height: 18, borderRadius: "50%", background: color, border: "2px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,.3)" }} />
+        {visited && (
+          <span
+            aria-label="Visited by you"
+            style={{ position: "absolute", left: 8, bottom: 8, display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 999, background: theme.color.primary, color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: 1.4, boxShadow: "0 1px 4px rgba(0,0,0,.3)" }}
+          >
+            <span aria-hidden>✓</span> Visited
+          </span>
+        )}
         {poi.avg_rating != null && (
           <span
             aria-label={`Average rating ${poi.avg_rating.toFixed(1)} from ${poi.rating_count} ${poi.rating_count === 1 ? "rating" : "ratings"}`}

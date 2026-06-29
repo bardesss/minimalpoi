@@ -1,13 +1,24 @@
-import type { Poi } from "../types/api";
+import type { Poi, PoiFilter } from "../types/api";
 
-export function filterPois(pois: Poi[], search: string, activeCategoryIds: number[]): Poi[] {
-  const q = search.trim().toLowerCase();
+export interface FilterContext {
+  myVisitedPoiIds: Set<number>;
+}
+
+export function filterPois(pois: Poi[], filter: PoiFilter, ctx: FilterContext): Poi[] {
+  const q = filter.search.trim().toLowerCase();
   return pois.filter((p) => {
-    if (activeCategoryIds.length > 0 && (p.category_id == null || !activeCategoryIds.includes(p.category_id))) {
+    if (
+      filter.categoryIds.length > 0 &&
+      (p.category_id == null || !filter.categoryIds.includes(p.category_id))
+    ) {
       return false;
     }
-    if (!q) return true;
-    const hay = `${p.name} ${p.address ?? ""} ${p.tags.join(" ")}`.toLowerCase();
-    return hay.includes(q);
+    if (q) {
+      const hay = `${p.name} ${p.address ?? ""} ${p.tags.join(" ")}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (filter.visited === "visited" && !ctx.myVisitedPoiIds.has(p.id)) return false;
+    if (filter.visited === "not" && ctx.myVisitedPoiIds.has(p.id)) return false;
+    return true;
   });
 }
