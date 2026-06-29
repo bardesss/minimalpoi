@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1](https://github.com/Bardesss/minimalpoi/compare/v1.0.0...v1.0.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* **docker:** honor PUID/PGID + auto-fix /data ownership (fixes v1.0.0 login 500) ([dc12142](https://github.com/Bardesss/minimalpoi/commit/dc12142d8fa688e7b769604a98d5ff1e2d947996))
+* **docker:** honor PUID/PGID and auto-fix /data ownership on startup ([216cc4f](https://github.com/Bardesss/minimalpoi/commit/216cc4fe8e927939b26f2169496b78888edcc4e0))
+
 ## [1.0.0](https://github.com/Bardesss/minimalpoi/compare/v0.25.0...v1.0.0) (2026-06-29)
 
 
