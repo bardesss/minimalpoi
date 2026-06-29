@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.2](https://github.com/Bardesss/minimalpoi/compare/v1.0.1...v1.0.2) (2026-06-29)
+
+
+### Bug Fixes
+
+* **ratelimit:** drop headers_enabled — it 500'd every limited endpoint ([94a6057](https://github.com/Bardesss/minimalpoi/commit/94a60570f7e3d60d9d164dff374596c64e9290ca))
+* **ratelimit:** drop headers_enabled that 500'd search/writes (fixes 1.0.x) ([7f1d465](https://github.com/Bardesss/minimalpoi/commit/7f1d465143a09149ce33e2372345e43b29910b3e))
+
 ## [1.0.1](https://github.com/Bardesss/minimalpoi/compare/v1.0.0...v1.0.1) (2026-06-29)
 
 
