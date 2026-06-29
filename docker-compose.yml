@@ -7,8 +7,12 @@ services:
     ports:
       - "7676:7676"
     # MINIMALPOI_DATA_DIR=/data is already baked into the image (see Dockerfile).
-    # To pin the encryption key across hosts, uncomment and set a real value:
+    # PUID/PGID set the user the app runs as (default 10001); match your host
+    # user when bind-mounting. To pin the encryption key across hosts, set
+    # SECRET_KEY too. Uncomment any you need:
     # environment:
+    #   - PUID=1000
+    #   - PGID=1000
     #   - SECRET_KEY=change-me   # otherwise auto-generated into /data/secret.key
     volumes:
       - minimalpoi-data:/data
