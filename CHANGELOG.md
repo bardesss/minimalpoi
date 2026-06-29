@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.24.0](https://github.com/Bardesss/minimalpoi/compare/v0.23.0...v0.24.0) (2026-06-29)
+
+
+### Features
+
+* **mobile:** top-left add button + full-screen detail overlay ([b762781](https://github.com/Bardesss/minimalpoi/commit/b762781025e98bdf8f63d3351b2faa69f0d4ee11))
+* **mobile:** top-left add button + full-screen detail overlay ([0826fc3](https://github.com/Bardesss/minimalpoi/commit/0826fc3c8ad0a01c0a4ccd9ab739af257f9c7eeb))
+
 ## [0.23.0](https://github.com/Bardesss/minimalpoi/compare/v0.22.0...v0.23.0) (2026-06-29)
 
 
