@@ -21,6 +21,10 @@ class User(SQLModel, table=True):
     role: Role = Field(default=Role.MEMBER)
     preferred_team_id: int | None = Field(default=None)
     disabled: bool = Field(default=False)
+    # Bumped on password / role change to invalidate previously issued tokens
+    # (their embedded `tv` no longer matches). The supported way to revoke a
+    # leaked session is to reset the password.
+    token_version: int = Field(default=0)
     created_at: datetime = Field(default_factory=utcnow)
 
 

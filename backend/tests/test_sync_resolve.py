@@ -8,7 +8,7 @@ from app.trip.resolve import apply_category_snapshot, apply_place_snapshot
 
 
 def _setup(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
 
 
 # --- Task 1: last-run plumbing -------------------------------------------------
@@ -69,10 +69,10 @@ def _make_admin_and_poi_in_conflict(client):
 
 
 def _login_member(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
-    client.post("/api/users", json={"username": "bob", "password": "pw", "role": "member"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
+    client.post("/api/users", json={"username": "bob", "password": "pw123456", "role": "member"})
     client.post("/api/auth/logout")
-    client.post("/api/auth/login", json={"username": "bob", "password": "pw"})
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
 
 
 def test_conflicts_requires_admin(client):

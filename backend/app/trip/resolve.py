@@ -9,9 +9,14 @@ from .mapping import fields_from_links, trip_category_to_fields
 
 
 def apply_place_snapshot(poi, snapshot: dict, category_id: int | None) -> None:
-    poi.name = snapshot.get("name")
-    poi.lat = snapshot.get("lat")
-    poi.lng = snapshot.get("lng")
+    # Required columns: only overwrite when the snapshot actually carries a value,
+    # so a partial/old snapshot can't write NULL into name/lat/lng and corrupt the row.
+    if snapshot.get("name") is not None:
+        poi.name = snapshot["name"]
+    if snapshot.get("lat") is not None:
+        poi.lat = snapshot["lat"]
+    if snapshot.get("lng") is not None:
+        poi.lng = snapshot["lng"]
     poi.address = snapshot.get("place")
     poi.notes = snapshot.get("description")
     poi.category_id = category_id

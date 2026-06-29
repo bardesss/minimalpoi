@@ -1,4 +1,5 @@
 import io
+import json
 import zipfile
 
 import pytest
@@ -86,14 +87,22 @@ def test_restore_rejects_unknown_version(data_dir):
             backup.restore_backup(s, {"version": 999})
 
 
+def _real_webp() -> bytes:
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (8, 8), (10, 20, 30)).save(buf, "WEBP")
+    return buf.getvalue()
+
+
 def test_archive_round_trips_image_files(data_dir):
     from app import backup, db
     from app.enrich.images import images_dir
     from app.models import POI
+    from PIL import Image
 
     db.reset_engine()
     db.init_db()
-    (images_dir() / "pic.webp").write_bytes(b"IMAGEBYTES")
+    (images_dir() / "pic.webp").write_bytes(_real_webp())
     with _session() as s:
         _seed(s)
         raw = backup.build_backup_archive(s)
@@ -103,6 +112,7 @@ def test_archive_round_trips_image_files(data_dir):
         assert "images/pic.webp" in z.namelist()
 
     # delete the image file, then restore the archive and confirm it's rewritten
+    # as a valid (re-encoded) image.
     (images_dir() / "pic.webp").unlink()
     with _session() as s:
         for row in s.exec(select(POI)).all():
@@ -110,13 +120,32 @@ def test_archive_round_trips_image_files(data_dir):
         s.commit()
     with _session() as s:
         backup.restore_from_archive(s, raw)
-    assert (images_dir() / "pic.webp").read_bytes() == b"IMAGEBYTES"
+    restored = images_dir() / "pic.webp"
+    assert restored.is_file()
+    assert Image.open(io.BytesIO(restored.read_bytes())).format == "WEBP"
+
+
+def test_restore_skips_non_image_archive_members(data_dir):
+    from app import backup, db
+    from app.enrich.images import images_dir
+
+    db.reset_engine()
+    db.init_db()
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("backup.json", json.dumps({"version": backup.BACKUP_VERSION}))
+        z.writestr("images/evil.html", b"<script>alert(1)</script>")
+        z.writestr("images/ok.webp", _real_webp())
+    with _session() as s:
+        backup.restore_from_archive(s, buf.getvalue())
+    assert not (images_dir() / "evil.html").exists()   # never written to the public dir
+    assert (images_dir() / "ok.webp").is_file()          # real image kept (re-encoded)
 
 
 # ---- endpoint-level ----
 
 def _setup_admin(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
 
 
 def test_backup_download_is_a_zip(client):
@@ -131,8 +160,8 @@ def test_backup_download_is_a_zip(client):
 
 def test_backup_requires_admin(client):
     _setup_admin(client)
-    client.post("/api/users", json={"username": "bob", "password": "pw"})
-    client.post("/api/auth/login", json={"username": "bob", "password": "pw"})
+    client.post("/api/users", json={"username": "bob", "password": "pw123456"})
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
     assert client.get("/api/backup").status_code == 403
     assert client.post("/api/restore", files={"file": ("b.zip", b"x", "application/zip")}).status_code == 403
 
@@ -165,10 +194,8 @@ def test_restore_loads_an_archive_into_a_fresh_instance(client):
     }
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as z:
-        import json
-
         z.writestr("backup.json", json.dumps(data))
-        z.writestr("images/v.webp", b"VV")
+        z.writestr("images/v.webp", _real_webp())
 
     res = client.post("/api/restore", files={"file": ("b.zip", buf.getvalue(), "application/zip")})
     assert res.status_code == 200
@@ -177,4 +204,4 @@ def test_restore_loads_an_archive_into_a_fresh_instance(client):
     with _session() as s:
         assert s.get(POI, 9).name == "Vondel"
         assert s.get(Category, 3).name == "Parks"
-    assert (images_dir() / "v.webp").read_bytes() == b"VV"
+    assert (images_dir() / "v.webp").is_file()

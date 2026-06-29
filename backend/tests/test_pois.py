@@ -2,7 +2,7 @@ from app.dedup import haversine_m
 
 
 def _setup(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
     return client.post("/api/categories", json={"name": "Food"}).json()["id"]
 
 
@@ -135,9 +135,9 @@ def test_list_pois_includes_average_rating(client):
     assert client.put(f"/api/pois/{unrated}/visit", json={}).status_code == 200
 
     # A second user rates the same place 2 -> average is 3.0 over 2 ratings.
-    client.post("/api/users", json={"username": "bob", "password": "pw"})
+    client.post("/api/users", json={"username": "bob", "password": "pw123456"})
     client.post("/api/auth/logout")
-    client.post("/api/auth/login", json={"username": "bob", "password": "pw"})
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
     assert client.put(f"/api/pois/{rated}/visit", json={"rating": 2}).status_code == 200
 
     by_id = {p["id"]: p for p in client.get("/api/pois").json()}

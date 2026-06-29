@@ -18,9 +18,12 @@ def haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
 
 
 def _norm(name: str) -> str:
-    # Remove accents and normalize to ASCII
-    nfd = unicodedata.normalize('NFD', name.lower())
-    return "".join(ch for ch in nfd if ch.isalnum() and ord(ch) < 128)
+    # Fold accents (drop combining marks) but keep alphanumerics across ALL
+    # scripts. The old ASCII-only filter collapsed any Cyrillic/CJK/Arabic name
+    # to "", so two unrelated non-Latin places within 150 m looked identical.
+    nfkd = unicodedata.normalize("NFKD", name.lower())
+    stripped = "".join(ch for ch in nfkd if not unicodedata.combining(ch))
+    return "".join(ch for ch in stripped if ch.isalnum())
 
 
 def find_duplicate(
@@ -37,7 +40,8 @@ def find_duplicate(
                 return poi
     if lat is not None and lng is not None:
         target = _norm(name)
-        for poi in candidates:
-            if _norm(poi.name) == target and haversine_m(lat, lng, poi.lat, poi.lng) <= PROXIMITY_THRESHOLD_M:
-                return poi
+        if target:  # an unnormalizable name (e.g. only punctuation) must not match
+            for poi in candidates:
+                if _norm(poi.name) == target and haversine_m(lat, lng, poi.lat, poi.lng) <= PROXIMITY_THRESHOLD_M:
+                    return poi
     return None

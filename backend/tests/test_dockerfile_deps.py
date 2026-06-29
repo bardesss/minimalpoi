@@ -24,3 +24,16 @@ def test_dockerfile_installs_all_runtime_deps():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8").lower()
     missing = sorted(d for d in deps if f'"{d}' not in dockerfile)
     assert not missing, f"Dockerfile pip list is missing runtime deps: {missing}"
+
+
+def test_dockerfile_runs_nonroot_with_healthcheck():
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert "USER appuser" in dockerfile
+    assert "HEALTHCHECK" in dockerfile
+
+
+def test_compose_has_no_empty_environment_key():
+    # A bare `environment:` with only comments under it parses as null and makes
+    # `docker compose config` fail — the documented deploy path must stay valid.
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    assert not re.search(r"(?m)^\s*environment:\s*$", compose)

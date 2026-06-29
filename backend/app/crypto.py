@@ -1,9 +1,15 @@
 import base64
 import hashlib
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 
 from .config import get_secret_key
+
+
+class DecryptError(Exception):
+    """A stored ciphertext could not be decrypted (usually the secret key changed
+    or was lost). Callers should surface a 're-enter the credential' message
+    instead of leaking an opaque 500."""
 
 
 def _fernet() -> Fernet:
@@ -17,4 +23,7 @@ def encrypt(plaintext: str) -> str:
 
 
 def decrypt(token: str) -> str:
-    return _fernet().decrypt(token.encode("utf-8")).decode("utf-8")
+    try:
+        return _fernet().decrypt(token.encode("utf-8")).decode("utf-8")
+    except InvalidToken as exc:
+        raise DecryptError("could not decrypt stored credential") from exc

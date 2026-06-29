@@ -2,7 +2,7 @@ from app.schemas import POIDraft
 
 
 def _login_admin(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
 
 
 def test_places_search_requires_auth(client):

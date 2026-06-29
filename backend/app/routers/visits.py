@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
 from ..models import POI, TeamMember, Visit
+from ..ratelimit import WRITE_LIMIT, limiter, user_or_ip
 from ..schemas import VisitRead, VisitUpsert
 
 router = APIRouter(prefix="/api/pois", tags=["visits"])
@@ -25,7 +26,8 @@ def _assert_team_member(session: SessionDep, team_id: int | None, user_id: int) 
 
 
 @router.put("/{poi_id}/visit", response_model=VisitRead)
-def upsert_visit(poi_id: int, body: VisitUpsert, session: SessionDep, user: CurrentUser) -> Visit:
+@limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
+def upsert_visit(poi_id: int, request: Request, body: VisitUpsert, session: SessionDep, user: CurrentUser) -> Visit:
     if not session.get(POI, poi_id):
         raise HTTPException(status_code=404, detail="Not found")
     fields = body.model_dump(exclude_unset=True)

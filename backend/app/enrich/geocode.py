@@ -1,6 +1,7 @@
 import httpx
 
 from .fetch import USER_AGENT
+from .safety import UnsafeURLError, safe_get
 
 
 async def nominatim_geocode(
@@ -11,11 +12,14 @@ async def nominatim_geocode(
     owns = client is None
     if client is None:
         client = httpx.AsyncClient(timeout=10.0, headers={"User-Agent": USER_AGENT})
-    url = base_url.rstrip("/") + "/search"
+    base = base_url.rstrip("/") + "/search"
+    url = str(httpx.URL(base, params={"q": query, "format": "json", "limit": 1}))
     try:
-        resp = await client.get(url, params={"q": query, "format": "json", "limit": 1})
+        # Route through the SSRF guard too — the nominatim URL is admin-set but
+        # still attacker-influenceable if an admin account is compromised.
+        resp = await safe_get(client, url)
         data = resp.json()
-    except (httpx.HTTPError, ValueError):
+    except (httpx.HTTPError, UnsafeURLError, ValueError):
         return None
     finally:
         if owns:

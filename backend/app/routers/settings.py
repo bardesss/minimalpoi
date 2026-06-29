@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from ..crypto import encrypt
 from ..deps import AdminUser, CurrentUser, SessionDep
 from ..models import Settings, get_or_create_settings
-from ..schemas import SettingsRead, SettingsUpdate
+from ..schemas import MapSettingsRead, SettingsRead, SettingsUpdate
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -30,8 +30,20 @@ def _to_read(s: Settings) -> SettingsRead:
     )
 
 
+@router.get("/map", response_model=MapSettingsRead)
+def read_map_settings(session: SessionDep, _: CurrentUser) -> MapSettingsRead:
+    # Map-only fields any member needs to render the map — no TRIP host/username.
+    s = get_or_create_settings(session)
+    return MapSettingsRead(
+        map_tile_url=s.map_tile_url,
+        default_map_center_lat=s.default_map_center_lat,
+        default_map_center_lng=s.default_map_center_lng,
+        default_map_zoom=s.default_map_zoom,
+    )
+
+
 @router.get("", response_model=SettingsRead)
-def read_settings(session: SessionDep, _: CurrentUser) -> SettingsRead:
+def read_settings(session: SessionDep, _: AdminUser) -> SettingsRead:
     return _to_read(get_or_create_settings(session))
 
 

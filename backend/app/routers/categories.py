@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Response, status
 from sqlmodel import select
 
-from ..deps import CurrentUser, SessionDep
+from ..deps import CurrentUser, SessionDep, require_owner_or_admin
 from ..models import POI, Category, Tombstone
 from ..schemas import CategoryCreate, CategoryRead, CategoryUpdate
 
@@ -29,11 +29,12 @@ def create_category(body: CategoryCreate, session: SessionDep, user: CurrentUser
 
 @router.patch("/{category_id}", response_model=CategoryRead)
 def update_category(
-    category_id: int, body: CategoryUpdate, session: SessionDep, _: CurrentUser
+    category_id: int, body: CategoryUpdate, session: SessionDep, user: CurrentUser
 ) -> Category:
     cat = session.get(Category, category_id)
     if not cat:
         raise HTTPException(status_code=404, detail="Not found")
+    require_owner_or_admin(cat.created_by, user)
     data = body.model_dump(exclude_unset=True)
     for key, value in data.items():
         setattr(cat, key, value)
@@ -44,10 +45,11 @@ def update_category(
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_category(category_id: int, session: SessionDep, _: CurrentUser) -> Response:
+def delete_category(category_id: int, session: SessionDep, user: CurrentUser) -> Response:
     cat = session.get(Category, category_id)
     if not cat:
         raise HTTPException(status_code=404, detail="Not found")
+    require_owner_or_admin(cat.created_by, user)
     if cat.trip_category_id is not None:
         session.add(Tombstone(entity_type="category", trip_id=cat.trip_category_id, origin="local"))
     for p in session.exec(select(POI).where(POI.category_id == cat.id)).all():

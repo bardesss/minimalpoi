@@ -85,8 +85,9 @@ export function useRestoreBackup() {
   return useMutation({
     mutationFn: (file: File) => restoreBackup(file),
     onSuccess: () => {
-      // A restore replaces everything — refetch the lot.
-      for (const key of [["pois"], ["categories"], ["settings"], ["tags"], ["users"], ["teams"], ["visits", "me"]]) {
+      // A restore replaces everything — refetch the lot. Use prefix keys so
+      // every per-POI visits/comments query and both settings views refresh.
+      for (const key of [["pois"], ["categories"], ["settings"], ["settings", "full"], ["tags"], ["users"], ["teams"], ["visits"], ["comments"]]) {
         qc.invalidateQueries({ queryKey: key });
       }
     },

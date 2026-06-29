@@ -1,6 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .mapping import links_from_poi
+
+
+def _aware(dt: datetime) -> datetime:
+    """Treat a naive datetime as UTC so naive/aware values never fail to compare."""
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 
 
 def place_snapshot_local(poi, trip_category_id: int | None) -> dict:
@@ -38,7 +43,7 @@ def category_snapshot_trip(trip_cat: dict) -> dict:
 def local_changed(updated_at: datetime, trip_synced_at: datetime | None) -> bool:
     if trip_synced_at is None:
         return True
-    return updated_at > trip_synced_at
+    return _aware(updated_at) > _aware(trip_synced_at)
 
 
 def local_changed_by_snapshot(current_local: dict, stored: dict | None) -> bool:

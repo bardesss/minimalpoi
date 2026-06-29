@@ -5,10 +5,6 @@ export function getPois(): Promise<Poi[]> {
   return apiFetch<Poi[]>("/api/pois");
 }
 
-export function getPoi(id: number): Promise<Poi> {
-  return apiFetch<Poi>(`/api/pois/${id}`);
-}
-
 export function createPoi(body: PoiCreate): Promise<Poi> {
   return apiFetch<Poi>("/api/pois", { method: "POST", body: JSON.stringify(body) });
 }

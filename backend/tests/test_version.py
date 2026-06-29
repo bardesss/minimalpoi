@@ -28,7 +28,7 @@ async def test_cached_latest_throttles_repeated_failures(monkeypatch):
 
 
 def _setup(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
 
 
 def test_parse_semver():

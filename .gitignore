@@ -20,6 +20,7 @@ images/
 # Env / secrets
 .env
 .env.*
+secret.key
 
 # Planning docs (specs/plans) — kept local, not published
 docs/

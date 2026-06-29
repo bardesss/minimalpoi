@@ -1,5 +1,5 @@
 def _setup(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
     cat = client.post("/api/categories", json={"name": "Food"}).json()["id"]
     poi = client.post("/api/pois", json={"name": "P", "lat": 1.0, "lng": 2.0, "category_id": cat}).json()
     return poi["id"]
@@ -36,13 +36,13 @@ def test_visit_rating_out_of_range_rejected(client):
 
 
 def test_visit_missing_poi_404(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
     assert client.put("/api/pois/9999/visit", json={}).status_code == 404
     assert client.get("/api/pois/9999/visits").status_code == 404
 
 
 def test_preferences_rejects_non_member_team(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
     assert client.patch("/api/auth/me/preferences", json={"preferred_team_id": 9999}).status_code == 403
 
 

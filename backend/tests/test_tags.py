@@ -26,7 +26,7 @@ def test_remove_from_drops_tag():
 
 
 def _setup(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
 
 
 def _poi(client, name, tags):

@@ -171,8 +171,13 @@ async def reconcile_places(session: Session, client: TripClient) -> None:
     for poi in unlinked_local:
         for tid in list(unlinked_trip_ids):
             tplace = trip_by_id[tid]
+            tlat, tlng = tplace.get("lat"), tplace.get("lng")
+            # A TRIP place can carry null coordinates; skip it rather than pass
+            # None into haversine (which would crash the whole reconcile pass).
+            if not isinstance(tlat, (int, float)) or not isinstance(tlng, (int, float)):
+                continue
             if _norm(poi.name) == _norm(tplace.get("name")) and \
-               haversine_m(poi.lat, poi.lng, tplace.get("lat", 0), tplace.get("lng", 0)) <= 150:
+               haversine_m(poi.lat, poi.lng, tlat, tlng) <= 150:
                 poi.trip_place_id = tid
                 local_cat = cat_by_trip.get((tplace.get("category") or {}).get("id"))
                 _mark_synced(poi, snapshot.place_snapshot_trip(tplace, local_cat.trip_category_id if local_cat else None))

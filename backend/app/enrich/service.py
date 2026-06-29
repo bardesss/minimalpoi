@@ -1,6 +1,6 @@
 from sqlmodel import Session
 
-from ..crypto import decrypt
+from ..crypto import DecryptError, decrypt
 from ..models import get_or_create_settings
 from ..phone import to_e164
 from ..schemas import POIDraft
@@ -17,10 +17,21 @@ def _set(draft: POIDraft, field: str, value, source: str) -> None:
     draft.field_sources[field] = source
 
 
+def _google_key(settings) -> str | None:
+    """Decrypt the stored Google key; if it can't be decrypted (e.g. the secret
+    key changed) degrade to None rather than 500 — enrichment is best-effort."""
+    if not settings.google_api_key_enc:
+        return None
+    try:
+        return decrypt(settings.google_api_key_enc)
+    except DecryptError:
+        return None
+
+
 async def enrich(url: str, session: Session, client=None) -> POIDraft:
     draft = POIDraft(source_url=url, field_sources={})
     settings = get_or_create_settings(session)
-    google_key = decrypt(settings.google_api_key_enc) if settings.google_api_key_enc else None
+    google_key = _google_key(settings)
 
     target = url
     if gmaps.is_google_maps(url):
@@ -83,7 +94,7 @@ async def enrich_place(place_id: str, session: Session, client=None) -> POIDraft
     """Build a draft from a chosen Places search result (search-and-pick)."""
     draft = POIDraft(source_url=None, field_sources={})
     settings = get_or_create_settings(session)
-    google_key = decrypt(settings.google_api_key_enc) if settings.google_api_key_enc else None
+    google_key = _google_key(settings)
     if not google_key:
         return draft
     details = await gmaps.place_by_id(place_id, google_key, client=client)
