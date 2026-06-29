@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.22.0](https://github.com/Bardesss/minimalpoi/compare/v0.21.0...v0.22.0) (2026-06-29)
+
+
+### Features
+
+* **comments:** edit your own comment text inline ([2c87d2a](https://github.com/Bardesss/minimalpoi/commit/2c87d2a6d1e1927c2a7b5f5fa67a60fedaea822e))
+* **comments:** edit your own comment text inline ([c6f2d8b](https://github.com/Bardesss/minimalpoi/commit/c6f2d8bed1905b159fa22efa7ebd657129105c01))
+
 ## [0.21.0](https://github.com/Bardesss/minimalpoi/compare/v0.20.0...v0.21.0) (2026-06-29)
 
 
