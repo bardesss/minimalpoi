@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.19.0](https://github.com/Bardesss/minimalpoi/compare/v0.18.1...v0.19.0) (2026-06-29)
+
+
+### Features
+
+* **editor:** manual photo upload + fix edit-mode image drop (Phase 6 Slice 2) ([478c595](https://github.com/Bardesss/minimalpoi/commit/478c5956b310f5742095a28e2230f3d5b44d5642))
+* **editor:** upload a photo from your device + fix edit dropping the image ([4f73661](https://github.com/Bardesss/minimalpoi/commit/4f73661f6245acd1a922fd7165ec7d78d5ca9a45))
+
 ## [0.18.1](https://github.com/Bardesss/minimalpoi/compare/v0.18.0...v0.18.1) (2026-06-29)
 
 
