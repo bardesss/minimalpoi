@@ -10,6 +10,7 @@ import { enrichUrl } from "../api/enrich";
 import { uploadImage } from "../api/images";
 import { getPlaceDraft, searchPlaces } from "../api/places";
 import { importPois } from "../api/portability";
+import { restoreBackup } from "../api/backup";
 import { getVersion } from "../api/version";
 import { createUser, deleteUser, getUsers, updateUser } from "../api/users";
 import { createTeam, deleteTeam, getTeamCandidates, getTeams, setPreferredTeam, updateTeam } from "../api/teams";
@@ -76,6 +77,19 @@ export function useImportPois() {
   return useMutation({
     mutationFn: (file: File) => importPois(file),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pois"] }),
+  });
+}
+
+export function useRestoreBackup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => restoreBackup(file),
+    onSuccess: () => {
+      // A restore replaces everything — refetch the lot.
+      for (const key of [["pois"], ["categories"], ["settings"], ["tags"], ["users"], ["teams"], ["visits", "me"]]) {
+        qc.invalidateQueries({ queryKey: key });
+      }
+    },
   });
 }
 
