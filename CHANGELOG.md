@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.0.0](https://github.com/Bardesss/minimalpoi/compare/v0.25.0...v1.0.0) (2026-06-29)
+
+
+### Features
+
+* **security:** add rate limiting (slowapi) ([682cb10](https://github.com/Bardesss/minimalpoi/commit/682cb10ce3a6927661f240c9c4b3618c777c16a2))
+* **security:** authz hardening (owners, sessions, cookies, settings) ([f9810de](https://github.com/Bardesss/minimalpoi/commit/f9810de8bb3634555f1b3384347965899ef57e90))
+
+
+### Bug Fixes
+
+* **api:** consistency — 404s, response models, typed enums, cache, dead code ([2370abe](https://github.com/Bardesss/minimalpoi/commit/2370abe65209d28c154a4e49ed080332f940b3ee))
+* **backend:** correctness landmines (restore, dedup, sync, migrations) ([ca62d4e](https://github.com/Bardesss/minimalpoi/commit/ca62d4e35f75f34889b91f25a2c7cff30e9ff7e3))
+* **infra:** valid compose, non-root container, healthcheck ([103b2fd](https://github.com/Bardesss/minimalpoi/commit/103b2fd7d74799d656ee973e3a1f6c3500b9167d))
+* **security:** bound fetch/upload sizes, sanitize restore, guard SSRF ([dfb2c36](https://github.com/Bardesss/minimalpoi/commit/dfb2c36b223b095f057f22433a9fcccf2ccf41ff))
+
+
+### Miscellaneous Chores
+
+* release 1.0.0 ([13d5f52](https://github.com/Bardesss/minimalpoi/commit/13d5f526c81680a979d2ce66b0ad1f63d1427330))
+
 ## [0.25.0](https://github.com/Bardesss/minimalpoi/compare/v0.24.0...v0.25.0) (2026-06-29)
 
 
