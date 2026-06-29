@@ -26,6 +26,10 @@ describe("MapSection", () => {
     );
     renderWithProviders(<MapSection />);
     const lat = await screen.findByLabelText(/default center lat/i);
+    // The field is populated by an effect after the first paint; wait for the
+    // value to land before clearing, else the clear can race the populate and
+    // the stale value gets sent (flaky under parallel CI load).
+    await waitFor(() => expect(lat).toHaveValue("52"));
     await userEvent.clear(lat);
     await userEvent.click(screen.getByRole("button", { name: /save map settings/i }));
     await waitFor(() => expect(patched).not.toBeNull());

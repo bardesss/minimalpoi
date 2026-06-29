@@ -33,6 +33,10 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npx vitest run
+      # Run test files serially: a few suites (e.g. settings forms that populate
+      # via an effect after the first paint) race against React state updates
+      # under full file-parallelism on a loaded CI runner, producing flaky
+      # findBy/value failures that don't reproduce single-threaded.
+      - run: npx vitest run --no-file-parallelism
       - run: npx tsc -b
       - run: npm run build
