@@ -24,7 +24,7 @@ export default function PoiList({
 }) {
   if (isLoading) {
     return (
-      <div className="poi-scroll" style={{ flex: 1, overflowY: "auto", padding: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, gridAutoRows: "min-content", alignContent: "start" }}>
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} style={{ height: 130, borderRadius: theme.radius.card, background: theme.color.surface1 }} />
         ))}
@@ -48,7 +48,7 @@ export default function PoiList({
     );
   }
   return (
-    <div className="poi-scroll" style={{ flex: 1, overflowY: "auto", padding: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, alignContent: "start" }}>
+    <div className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, gridAutoRows: "min-content", alignContent: "start" }}>
       {pois.map((p) => (
         <PoiCard key={p.id} poi={p} category={p.category_id != null ? categoriesById[p.category_id] : undefined} selected={p.id === selectedId} onSelect={onSelect} visited={myVisitedPoiIds.has(p.id)} />
       ))}

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -51,6 +52,34 @@ describe("PoiActions — no review yet", () => {
     );
     renderWithProviders(<PoiActions poiId={1} />);
     expect(await screen.findByRole("button", { name: /save review/i })).toBeDisabled();
+  });
+
+  it("resets the draft when you navigate to a different POI", async () => {
+    // Both POIs are unreviewed, so the editor shows for each.
+    server.use(
+      http.get("/api/pois/1/visits", () => HttpResponse.json([])),
+      http.get("/api/pois/1/comments", () => HttpResponse.json([])),
+      http.get("/api/pois/2/visits", () => HttpResponse.json([])),
+      http.get("/api/pois/2/comments", () => HttpResponse.json([])),
+    );
+    function Harness() {
+      const [id, setId] = useState(1);
+      return (
+        <>
+          <button type="button" onClick={() => setId(2)}>switch</button>
+          <PoiActions poiId={id} />
+        </>
+      );
+    }
+    renderWithProviders(<Harness />);
+    // Start a review on POI 1 without saving.
+    await userEvent.click(await screen.findByRole("button", { name: /rate 5/i }));
+    await userEvent.type(screen.getByPlaceholderText(/share a comment/i), "stale draft");
+    expect(screen.getByRole("button", { name: /save review/i })).toBeEnabled();
+    // Navigate to POI 2 — the draft must not carry over.
+    await userEvent.click(screen.getByRole("button", { name: "switch" }));
+    await waitFor(() => expect(screen.getByPlaceholderText(/share a comment/i)).toHaveValue(""));
+    expect(screen.getByRole("button", { name: /save review/i })).toBeDisabled();
   });
 });
 

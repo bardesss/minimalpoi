@@ -15,7 +15,7 @@ describe("PhoneInput", () => {
 
   it("parses an existing E.164 value into country + national", () => {
     render(<PhoneInput value="+12127363100" onChange={() => {}} />);
-    expect((screen.getByLabelText("Country") as HTMLSelectElement).value).toBe("US");
+    expect(screen.getByRole("button", { name: /^country: united states$/i })).toBeInTheDocument();
     expect((screen.getByPlaceholderText("20 308 0090") as HTMLInputElement).value).toBe("2127363100");
   });
 
@@ -26,7 +26,9 @@ describe("PhoneInput", () => {
     await userEvent.type(input, "2127363100");
     fireEvent.blur(input);
     onChange.mockClear();
-    await userEvent.selectOptions(screen.getByLabelText("Country"), "US");
+    // Open the custom country dropdown (default NL) and pick the US.
+    await userEvent.click(screen.getByRole("button", { name: /^country: netherlands$/i }));
+    await userEvent.click(screen.getByRole("option", { name: /united states \(\+1\)/i }));
     expect(onChange).toHaveBeenCalledWith("+12127363100");
   });
 

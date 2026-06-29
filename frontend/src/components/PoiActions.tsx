@@ -77,6 +77,17 @@ export default function PoiActions({ poiId }: { poiId: number }) {
   const [rating, setRating] = useState(0);
   const [text, setText] = useState("");
 
+  // This component is reused as you click between places (only `poiId` changes),
+  // so reset the draft when the place changes — otherwise the rating/comment you
+  // started on one POI would appear pre-filled on the next, unreviewed one.
+  const [shownPoiId, setShownPoiId] = useState(poiId);
+  if (poiId !== shownPoiId) {
+    setShownPoiId(poiId);
+    setEditing(false);
+    setRating(0);
+    setText("");
+  }
+
   // Show the editor while you have no review, or while editing an existing one.
   const showEditor = !myVisit || editing;
 
