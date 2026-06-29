@@ -20,6 +20,9 @@ export function getComments(poiId: number): Promise<Comment[]> {
 export function addComment(poiId: number, body: CommentCreate): Promise<Comment> {
   return apiFetch<Comment>(`/api/pois/${poiId}/comments`, { method: "POST", body: JSON.stringify(body) });
 }
+export function updateComment(poiId: number, commentId: number, text: string): Promise<Comment> {
+  return apiFetch<Comment>(`/api/pois/${poiId}/comments/${commentId}`, { method: "PATCH", body: JSON.stringify({ text }) });
+}
 export function deleteComment(poiId: number, commentId: number): Promise<void> {
   return apiFetch<void>(`/api/pois/${poiId}/comments/${commentId}`, { method: "DELETE" });
 }

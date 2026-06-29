@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
   useAddComment, useComments, useDeleteComment, useDeleteVisit,
-  useUpsertVisit, useVisits,
+  useUpdateComment, useUpsertVisit, useVisits,
 } from "../queries/hooks";
 import { dangerButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
 
@@ -50,8 +50,21 @@ export default function PoiActions({ poiId }: { poiId: number }) {
 
   const comments = useComments(poiId).data ?? [];
   const addComment = useAddComment(poiId);
+  const updateComment = useUpdateComment(poiId);
   const deleteComment = useDeleteComment(poiId);
   const myComments = comments.filter((c) => c.user_id === meId);
+
+  // Inline editing of an own comment's wording.
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+  function startEdit(id: number, text: string) {
+    setEditingId(id);
+    setEditText(text);
+  }
+  function saveEdit(id: number) {
+    const text = editText.trim();
+    if (text !== "") updateComment.mutate({ commentId: id, text }, { onSuccess: () => setEditingId(null) });
+  }
 
   // Recording a first visit: a rating (required) plus an optional comment.
   const [rating, setRating] = useState(0);
@@ -114,6 +127,16 @@ export default function PoiActions({ poiId }: { poiId: number }) {
                     stars != null && <RatingStars value={stars} />
                   )}
                   <span style={{ color: theme.color.textPlaceholder }}>· {new Date(c.created_at).toLocaleDateString()}</span>
+                  {mine && editingId !== c.id && (
+                    <button
+                      type="button"
+                      aria-label={`Edit comment ${c.id}`}
+                      onClick={() => startEdit(c.id, c.text)}
+                      style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: 11, fontWeight: 700, color: theme.color.primary }}
+                    >
+                      Edit
+                    </button>
+                  )}
                   {(mine || isAdmin) && (
                     <button
                       type="button"
@@ -125,7 +148,21 @@ export default function PoiActions({ poiId }: { poiId: number }) {
                     </button>
                   )}
                 </div>
-                <div style={{ color: theme.color.textBody }}>{c.text}</div>
+                {editingId === c.id ? (
+                  <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <textarea
+                      style={{ ...inputStyle, background: theme.color.surface0, resize: "vertical", minHeight: 48, lineHeight: 1.5 }}
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button type="button" aria-label={`Save comment ${c.id}`} onClick={() => saveEdit(c.id)} disabled={editText.trim() === ""} style={{ ...primaryButtonStyle, padding: "5px 14px", opacity: editText.trim() === "" ? 0.45 : 1 }}>Save</button>
+                      <button type="button" onClick={() => setEditingId(null)} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: 12, fontWeight: 700, color: theme.color.textPlaceholder }}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ color: theme.color.textBody }}>{c.text}</div>
+                )}
               </div>
             );
           })}

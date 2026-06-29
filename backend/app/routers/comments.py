@@ -3,7 +3,7 @@ from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
 from ..models import POI, Comment, Role, User
-from ..schemas import CommentCreate, CommentRead
+from ..schemas import CommentCreate, CommentRead, CommentUpdate
 
 router = APIRouter(prefix="/api/pois", tags=["comments"])
 
@@ -35,6 +35,23 @@ def create_comment(
     if not session.get(POI, poi_id):
         raise HTTPException(status_code=404, detail="Not found")
     comment = Comment(poi_id=poi_id, user_id=user.id, text=body.text)
+    session.add(comment)
+    session.commit()
+    session.refresh(comment)
+    return _to_read(session, comment)
+
+
+@router.patch("/{poi_id}/comments/{comment_id}", response_model=CommentRead)
+def update_comment(
+    poi_id: int, comment_id: int, body: CommentUpdate, session: SessionDep, user: CurrentUser
+) -> CommentRead:
+    comment = session.get(Comment, comment_id)
+    if not comment or comment.poi_id != poi_id:
+        raise HTTPException(status_code=404, detail="Not found")
+    # Only the author may edit the wording (admins can delete, not rewrite).
+    if comment.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    comment.text = body.text
     session.add(comment)
     session.commit()
     session.refresh(comment)
