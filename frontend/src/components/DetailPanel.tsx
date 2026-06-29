@@ -4,14 +4,8 @@ import { dangerButtonStyle, primaryButtonStyle, theme, tintFromColor } from "../
 import { safeImageCss, safeLinkHref } from "../lib/safeUrl";
 import { formatPhoneDisplay } from "../lib/phone";
 import PoiActions from "./PoiActions";
-import { useSheetDrag } from "./useSheetDrag";
-import type { Snap } from "./useSheetDrag";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
-
-// The detail card covers the whole screen when "full", so its footer rests at
-// the viewport bottom; drag down to half/peek to bring the map back into view.
-const DETAIL_HIDE: Record<Snap, number> = { peek: 0.8, half: 0.45, full: 0 };
 
 export default function DetailPanel({
   poi,
@@ -29,7 +23,6 @@ export default function DetailPanel({
   mobile?: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
-  const sheet = useSheetDrag("full", DETAIL_HIDE);
   const color = category?.color ?? theme.color.fallbackPin;
   const tint = tintFromColor(color);
   const heroImage = safeImageCss(poi.image_url);
@@ -91,34 +84,20 @@ export default function DetailPanel({
   );
 
   if (mobile) {
+    // Full-screen overlay: an opaque view that covers the map; return via the
+    // hero close button (×). No drag — predictable and roomy.
     return (
       <section
         aria-label={poi.name}
         style={{
           position: "fixed",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: "100vh",
-          zIndex: 1300,
-          transform: `translateY(${sheet.translate}px)`,
-          transition: sheet.dragging ? "none" : "transform .28s cubic-bezier(.32,.72,0,1)",
+          inset: 0,
+          zIndex: 2000,
           background: "#fff",
-          borderTopLeftRadius: 18,
-          borderTopRightRadius: 18,
-          boxShadow: "0 -8px 30px rgba(0,0,0,.22)",
           display: "flex",
           flexDirection: "column",
         }}
       >
-        <div
-          {...sheet.handlers}
-          role="separator"
-          aria-label="Drag to resize"
-          style={{ flex: "none", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "grab", touchAction: "none" }}
-        >
-          <div style={{ width: 40, height: 5, borderRadius: 999, background: theme.color.borderStd }} />
-        </div>
         <div className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
           {hero}
           {body}
