@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.18.1](https://github.com/Bardesss/minimalpoi/compare/v0.18.0...v0.18.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* **ci:** run frontend tests serially + de-flake MapSection test ([bd82200](https://github.com/Bardesss/minimalpoi/commit/bd822001f4b29ba332875d8e2a7f4fa5f6cf5fa4))
+* **ci:** run frontend tests serially + de-flake MapSection test ([4b988c7](https://github.com/Bardesss/minimalpoi/commit/4b988c74f2ad23892bda022400be76b9274ab9d0))
+
 ## [0.18.0](https://github.com/Bardesss/minimalpoi/compare/v0.17.0...v0.18.0) (2026-06-29)
 
 
