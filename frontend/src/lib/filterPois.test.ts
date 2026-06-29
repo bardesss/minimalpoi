@@ -35,4 +35,25 @@ describe("filterPois", () => {
     expect(filterPois(pois, f({ visited: "visited", search: "café" }), ctx).map((p) => p.id)).toEqual([1]);
     expect(filterPois(pois, f({ visited: "visited", categoryIds: [2] }), ctx)).toHaveLength(0);
   });
+
+  it("matches city and country by code and full name, accent-insensitive", () => {
+    const local = [
+      mk({ id: 1, name: "Umai", address: "Urk", city: "Urk", country_code: "NL" }),
+      mk({ id: 2, name: "Kafi", address: "Zürich", city: "Zürich", country_code: "CH" }),
+    ];
+    const c = { myVisitedPoiIds: new Set<number>() };
+    expect(filterPois(local, f({ search: "urk" }), c).map((p) => p.id)).toEqual([1]); // city
+    expect(filterPois(local, f({ search: "nl" }), c).map((p) => p.id)).toEqual([1]); // country code
+    expect(filterPois(local, f({ search: "netherlands" }), c).map((p) => p.id)).toEqual([1]); // country name
+    expect(filterPois(local, f({ search: "zurich" }), c).map((p) => p.id)).toEqual([2]); // accent-folded city
+    expect(filterPois(local, f({ search: "switzerland" }), c).map((p) => p.id)).toEqual([2]); // country name
+  });
+
+  it("tolerates typos in longer queries without false positives", () => {
+    const local = [mk({ id: 1, name: "Vondelpark", address: "Amsterdam" })];
+    const c = { myVisitedPoiIds: new Set<number>() };
+    expect(filterPois(local, f({ search: "amstrdam" }), c).map((p) => p.id)).toEqual([1]); // 1 deletion
+    expect(filterPois(local, f({ search: "vondelprak" }), c).map((p) => p.id)).toEqual([1]); // 2 edits
+    expect(filterPois(local, f({ search: "xyzq" }), c)).toHaveLength(0);
+  });
 });
