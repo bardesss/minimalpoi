@@ -10,17 +10,44 @@ Drop a pin, paste a link to auto-fill the details, and keep all your favorite pl
 
 ## ✨ Features
 
-- 🗺️ **Interactive map** — a MapLibre map with category-colored pins. Search and filter by text or category, click a pin or list card (which shows the place's city and country flag) to open its details, and click anywhere on the map to drop a new place. Duplicate detection warns you before you save the same spot twice.
-- 📱 **Works on mobile** — a responsive, map-first layout: on phones the place list, filters, and detail open as draggable bottom sheets over a full-screen map.
-- 🔗 **Enrich from a link** — paste a Google Maps or website URL and MinimalPOI auto-fills the name, coordinates, address, phone, image, and description (OpenGraph + JSON-LD + Twitter Card, with an optional Google Places key and a Nominatim geocoding fallback). Every auto-filled field shows where it came from.
-- 🔎 **Search Google Places** — rather than pasting a link, search Google Places by name (with a key configured) and pick a result to fill a new place in one step.
-- 📞 **Worldwide phone numbers** — a country-picker phone field normalizes entries to E.164 and shows them nicely formatted.
-- 💾 **Import & export** — bulk-import places from **GeoJSON or CSV** (with server-side duplicate detection and automatic category matching), and export your whole collection as a **GeoJSON backup** — all from the in-app **Data & backups** panel.
-- 🏷️ **Categories & organization** — a shared place list with full create/edit/delete, categories with custom color and icon, and tags.
-- 👥 **Multi-user** — first-run admin setup, secure cookie login (sessions persist across restarts for 30 days by default), admin/member roles, and teams. Each user gets **visited** marks (with a 1–5 rating) and attributed **comments**.
-- 🖼️ **Local images** — enriched images are downloaded and served from your own server; manual upload is supported too.
-- 🔁 **Optional TRIP sync** — connect a [TRIP](https://github.com/itskovacs/trip) instance and MinimalPOI keeps categories and places reconciled **both ways** (creates, edits, and deletes propagate, with a configurable conflict policy). Entirely optional — enable it only if you use TRIP.
-- 🐳 **Self-hosted & simple** — ships as a single multi-arch Docker image (amd64 + arm64), stores everything in SQLite on one volume, and needs **no external services** to run.
+### 🗺️ Map & places
+- **Interactive map** — a MapLibre map with category-colored pins. Click a pin or a list card (showing the place's city and country flag) to open its details, or click anywhere on the map to drop a new place.
+- **Search & filter** — narrow the shared list by free text, category, and **visit status** (any · visited · not visited).
+- **Two view modes** — switch the map between *fit-to-results* (auto-frames whatever the filters show) and a *fixed default center & zoom*; your choice is remembered.
+- **Ratings at a glance** — every place shows its **average rating and review count**, aggregated across everyone's visits.
+- **Customizable basemap** — admins set the map tile source and the default center & zoom.
+- **Duplicate detection** — warns you before you save the same spot twice.
+- **Mobile-first** — on phones the list, filters, and detail open as draggable bottom sheets over a full-screen map.
+
+### 🔗 Enrichment & quick entry
+- **Enrich from a link** — paste a Google Maps or website URL and MinimalPOI auto-fills the name, coordinates, address, phone, image, and description (OpenGraph + JSON-LD + Twitter Card), with an optional Google Places key and a Nominatim geocoding fallback. Every auto-filled field shows where it came from.
+- **Search Google Places** — with a key configured, search by name and pick a result to fill a new place in one step.
+- **Worldwide phone numbers** — a country-picker field normalizes entries to E.164 and shows them nicely formatted.
+
+### 👥 Multi-user & collaboration
+- **Accounts & roles** — first-run admin setup, secure cookie login (sessions persist ~30 days), and admin/member roles. Admins can enable/disable, re-role, or remove users.
+- **Teams** — create teams, add members, and set a **preferred team** that's applied automatically to your new visits.
+- **Visits & reviews** — mark places visited with a **1–5 star rating** and an attributed comment; you can edit your own review, and admins can moderate.
+- **Ownership** — only a place's author (or an admin) can edit or delete it.
+
+### 🏷️ Organization
+- **Shared place list** with full create / edit / delete.
+- **Categories** with a custom color and icon.
+- **Tags** with usage counts, plus admin-wide tag **rename & delete**.
+
+### 💾 Data, images & backups
+- **Import & export** — bulk-import from **GeoJSON or CSV** (server-side duplicate detection + automatic category matching) and export your whole collection as **GeoJSON**.
+- **Full backup & restore** — download a complete **ZIP archive** of everything (places, photos, users, teams, comments, ratings, settings) and restore it into a fresh instance.
+- **Local images** — enriched images are downloaded and served from your own server; manual upload works too (auto-converted to WebP, 10 MB cap).
+
+### 🔁 Optional TRIP sync
+- Connect a [TRIP](https://github.com/itskovacs/trip) instance and MinimalPOI keeps categories and places reconciled **both ways** — creates, edits, and deletes propagate — on a configurable interval and conflict policy.
+- A built-in **conflict resolution view** lets you settle each clash by keeping the MinimalPOI or the TRIP version. Entirely optional — enable it only if you use TRIP.
+
+### 🔒 Security & self-hosting
+- **Hardened by default** — per-action rate limiting, an encrypted-at-rest Google API key, auto-`Secure` login cookies over HTTPS, and a non-root, health-checked container.
+- **Update notifications** — checks GitHub releases and tells you when a newer version is out.
+- **Simple to run** — ships as a single multi-arch **Linux** image (`linux/amd64` + `linux/arm64`, so it runs on x86 servers and ARM boards / Apple Silicon alike), stores everything in SQLite on one volume, and needs **no external services**.
 
 ---
 
