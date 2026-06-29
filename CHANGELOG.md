@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.23.0](https://github.com/Bardesss/minimalpoi/compare/v0.22.0...v0.23.0) (2026-06-29)
+
+
+### Features
+
+* **search:** city & country matching, accent-folding, typo tolerance ([8a120d9](https://github.com/Bardesss/minimalpoi/commit/8a120d96225701880b10a7c192ed8411e4948a1d))
+* **search:** match city & country, fold accents, tolerate typos ([59e5b7d](https://github.com/Bardesss/minimalpoi/commit/59e5b7deeb6d8fea243133a1ee88aad82be63ca6))
+
 ## [0.22.0](https://github.com/Bardesss/minimalpoi/compare/v0.21.0...v0.22.0) (2026-06-29)
 
 
