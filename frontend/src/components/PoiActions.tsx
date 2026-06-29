@@ -8,7 +8,7 @@ import { dangerButtonStyle, inputStyle, primaryButtonStyle, theme } from "../the
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
-/** Read-only star rating shown next to a commenter's name. */
+/** Read-only star rating shown next to a reviewer's name. */
 function RatingStars({ value }: { value: number }) {
   return (
     <span aria-label={`Rated ${value}`} style={{ color: theme.color.starActive, fontSize: 13, letterSpacing: 1 }}>
@@ -18,7 +18,7 @@ function RatingStars({ value }: { value: number }) {
   );
 }
 
-/** Interactive star rating used to set or change the current user's visit. */
+/** Interactive star rating used to set or change your own review. */
 function RatePicker({ value, onRate, size = 26 }: { value: number; onRate: (n: number) => void; size?: number }) {
   return (
     <span aria-label="Rating" style={{ display: "inline-flex", gap: 4 }}>
@@ -37,6 +37,12 @@ function RatePicker({ value, onRate, size = 26 }: { value: number; onRate: (n: n
   );
 }
 
+/**
+ * A person's review = one rating + one comment, kept as a single unit. You set
+ * yours with a star (required) and an optional note; one Edit changes both and
+ * one Delete removes both. Everyone else's review is read-only (admins may
+ * delete it).
+ */
 export default function PoiActions({ poiId }: { poiId: number }) {
   const { user } = useAuth();
   const meId = user?.id;
@@ -45,156 +51,126 @@ export default function PoiActions({ poiId }: { poiId: number }) {
   const visits = useVisits(poiId).data ?? [];
   const myVisit = visits.find((v) => v.user_id === meId);
   const ratingByUser = new Map(visits.filter((v) => v.rating != null).map((v) => [v.user_id, v.rating as number]));
-  const upsertVisit = useUpsertVisit(poiId);
-  const deleteVisit = useDeleteVisit(poiId);
 
   const comments = useComments(poiId).data ?? [];
+  const myComments = comments.filter((c) => c.user_id === meId);
+  const myComment = myComments[0];
+  // One review per person: each other user's first comment anchors their review.
+  const otherReviews = (() => {
+    const seen = new Set<number>();
+    const out: typeof comments = [];
+    for (const c of comments) {
+      if (c.user_id === meId || seen.has(c.user_id)) continue;
+      seen.add(c.user_id);
+      out.push(c);
+    }
+    return out;
+  })();
+
+  const upsertVisit = useUpsertVisit(poiId);
+  const deleteVisit = useDeleteVisit(poiId);
   const addComment = useAddComment(poiId);
   const updateComment = useUpdateComment(poiId);
   const deleteComment = useDeleteComment(poiId);
-  const myComments = comments.filter((c) => c.user_id === meId);
 
-  // Inline editing of an own comment's wording.
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editText, setEditText] = useState("");
-  function startEdit(id: number, text: string) {
-    setEditingId(id);
-    setEditText(text);
-  }
-  function saveEdit(id: number) {
-    const text = editText.trim();
-    if (text !== "") updateComment.mutate({ commentId: id, text }, { onSuccess: () => setEditingId(null) });
-  }
-
-  // Recording a first visit: a rating (required) plus an optional comment.
+  const [editing, setEditing] = useState(false);
   const [rating, setRating] = useState(0);
-  const [firstText, setFirstText] = useState("");
-  // Adding further comments once a visit already exists.
-  const [newText, setNewText] = useState("");
+  const [text, setText] = useState("");
 
-  function saveFirstVisit() {
+  // Show the editor while you have no review, or while editing an existing one.
+  const showEditor = !myVisit || editing;
+
+  function openEdit() {
+    setRating(myVisit?.rating ?? 0);
+    setText(myComment?.text ?? "");
+    setEditing(true);
+  }
+
+  function saveReview() {
     if (rating < 1) return;
     upsertVisit.mutate({ rating });
-    const text = firstText.trim();
-    if (text !== "") addComment.mutate({ text }, { onSuccess: () => setFirstText("") });
+    const t = text.trim();
+    if (myComment) {
+      if (t === "") deleteComment.mutate(myComment.id);
+      else if (t !== myComment.text) updateComment.mutate({ commentId: myComment.id, text: t });
+    } else if (t !== "") {
+      addComment.mutate({ text: t });
+    }
+    setEditing(false);
   }
 
-  function postComment() {
-    const text = newText.trim();
-    if (text !== "") addComment.mutate({ text }, { onSuccess: () => setNewText("") });
+  function deleteMyReview() {
+    deleteVisit.mutate();
+    for (const c of myComments) deleteComment.mutate(c.id);
   }
 
   return (
-    <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 18 }}>
-      {/* Record your visit — only until you have one; afterwards the rating
-          lives on your comment in the thread below. */}
-      {!myVisit && (
-        <div style={{ borderRadius: theme.radius.card, border: `1px solid ${theme.color.borderSubtle}`, background: theme.color.pageBg, padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
-          <p style={{ ...sectionLabel, margin: 0 }}>Your visit</p>
-          <RatePicker value={rating} onRate={setRating} />
-          <textarea
-            style={{ ...inputStyle, background: theme.color.surface0, resize: "vertical", minHeight: 56, lineHeight: 1.5 }}
-            placeholder="Share a comment (optional)"
-            value={firstText}
-            onChange={(e) => setFirstText(e.target.value)}
-          />
-          <button
-            type="button"
-            onClick={saveFirstVisit}
-            disabled={rating < 1}
-            aria-label="Save visit"
-            style={{ ...primaryButtonStyle, width: "100%", opacity: rating < 1 ? 0.45 : 1, cursor: rating < 1 ? "not-allowed" : "pointer" }}
-          >
-            {rating < 1 ? "Tap a star to record your visit" : "Save visit"}
-          </button>
-        </div>
-      )}
-
-      <div>
-        <p style={sectionLabel}>Comments</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {comments.map((c) => {
-            const mine = c.user_id === meId;
-            const stars = ratingByUser.get(c.user_id);
-            return (
-              <div key={c.id} style={{ fontSize: 13, lineHeight: 1.45 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontWeight: 700 }}>{c.username}</span>
-                  {/* Your own rating is editable inline; everyone else's is read-only. */}
-                  {mine && myVisit ? (
-                    <RatePicker value={myVisit.rating ?? 0} onRate={(n) => upsertVisit.mutate({ rating: n })} size={16} />
-                  ) : (
-                    stars != null && <RatingStars value={stars} />
-                  )}
-                  <span style={{ color: theme.color.textPlaceholder }}>· {new Date(c.created_at).toLocaleDateString()}</span>
-                  {mine && editingId !== c.id && (
-                    <button
-                      type="button"
-                      aria-label={`Edit comment ${c.id}`}
-                      onClick={() => startEdit(c.id, c.text)}
-                      style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: 11, fontWeight: 700, color: theme.color.primary }}
-                    >
-                      Edit
-                    </button>
-                  )}
-                  {(mine || isAdmin) && (
-                    <button
-                      type="button"
-                      aria-label={`Delete comment ${c.id}`}
-                      onClick={() => deleteComment.mutate(c.id)}
-                      style={{ ...dangerButtonStyle, padding: "1px 8px", fontSize: 11 }}
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-                {editingId === c.id ? (
-                  <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 6 }}>
-                    <textarea
-                      style={{ ...inputStyle, background: theme.color.surface0, resize: "vertical", minHeight: 48, lineHeight: 1.5 }}
-                      value={editText}
-                      onChange={(e) => setEditText(e.target.value)}
-                    />
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button type="button" aria-label={`Save comment ${c.id}`} onClick={() => saveEdit(c.id)} disabled={editText.trim() === ""} style={{ ...primaryButtonStyle, padding: "5px 14px", opacity: editText.trim() === "" ? 0.45 : 1 }}>Save</button>
-                      <button type="button" onClick={() => setEditingId(null)} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: 12, fontWeight: 700, color: theme.color.textPlaceholder }}>Cancel</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ color: theme.color.textBody }}>{c.text}</div>
-                )}
-              </div>
-            );
-          })}
-          {comments.length === 0 && <div style={{ fontSize: 13, color: theme.color.textPlaceholder }}>No comments yet.</div>}
-        </div>
-
-        {/* When you've visited: a place to re-rate (if you left no comment to
-            host the stars) and remove the visit, plus add further comments. */}
-        {myVisit && (
-          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-            {myComments.length === 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: theme.color.textPlaceholder }}>Your rating</span>
-                <RatePicker value={myVisit.rating ?? 0} onRate={(n) => upsertVisit.mutate({ rating: n })} size={18} />
-              </div>
-            )}
+    <div style={{ marginTop: 18 }}>
+      <p style={sectionLabel}>Reviews</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Your review */}
+        {showEditor ? (
+          <div style={{ borderRadius: theme.radius.card, border: `1px solid ${theme.color.borderSubtle}`, background: theme.color.pageBg, padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+            <p style={{ ...sectionLabel, margin: 0 }}>Your review</p>
+            <RatePicker value={rating} onRate={setRating} />
             <textarea
-              style={{ ...inputStyle, background: theme.color.surface0, resize: "vertical", minHeight: 48, lineHeight: 1.5 }}
-              placeholder="Add a comment"
-              value={newText}
-              onChange={(e) => setNewText(e.target.value)}
+              style={{ ...inputStyle, background: theme.color.surface0, resize: "vertical", minHeight: 56, lineHeight: 1.5 }}
+              placeholder="Share a comment (optional)"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
             />
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-              <button type="button" onClick={() => deleteVisit.mutate()} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: 12, fontWeight: 700, color: theme.color.dangerText }}>
-                Remove visit
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button
+                type="button"
+                onClick={saveReview}
+                disabled={rating < 1}
+                aria-label="Save review"
+                style={{ ...primaryButtonStyle, flex: 1, opacity: rating < 1 ? 0.45 : 1, cursor: rating < 1 ? "not-allowed" : "pointer" }}
+              >
+                {rating < 1 ? "Tap a star to rate" : "Save review"}
               </button>
-              <button type="button" onClick={postComment} disabled={newText.trim() === ""} style={{ ...primaryButtonStyle, opacity: newText.trim() === "" ? 0.45 : 1, cursor: newText.trim() === "" ? "not-allowed" : "pointer" }}>
-                Post comment
-              </button>
+              {editing && (
+                <button type="button" onClick={() => setEditing(false)} style={{ border: "none", background: "none", padding: "0 6px", cursor: "pointer", fontSize: 12, fontWeight: 700, color: theme.color.textPlaceholder }}>
+                  Cancel
+                </button>
+              )}
             </div>
           </div>
+        ) : (
+          <div style={{ fontSize: 13, lineHeight: 1.45 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontWeight: 700 }}>{user?.username}</span>
+              {myVisit?.rating != null && <RatingStars value={myVisit.rating} />}
+              <button type="button" aria-label="Edit review" onClick={openEdit} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: 11, fontWeight: 700, color: theme.color.primary }}>
+                Edit
+              </button>
+              <button type="button" aria-label="Delete review" onClick={deleteMyReview} style={{ ...dangerButtonStyle, padding: "1px 8px", fontSize: 11 }}>
+                Delete
+              </button>
+            </div>
+            {myComment?.text && <div style={{ color: theme.color.textBody }}>{myComment.text}</div>}
+          </div>
         )}
+
+        {/* Everyone else's reviews — read-only (admins may delete). */}
+        {otherReviews.map((c) => {
+          const stars = ratingByUser.get(c.user_id);
+          return (
+            <div key={c.id} style={{ fontSize: 13, lineHeight: 1.45 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 700 }}>{c.username}</span>
+                {stars != null && <RatingStars value={stars} />}
+                <span style={{ color: theme.color.textPlaceholder }}>· {new Date(c.created_at).toLocaleDateString()}</span>
+                {isAdmin && (
+                  <button type="button" aria-label={`Delete ${c.username}'s review`} onClick={() => deleteComment.mutate(c.id)} style={{ ...dangerButtonStyle, padding: "1px 8px", fontSize: 11 }}>
+                    Delete
+                  </button>
+                )}
+              </div>
+              <div style={{ color: theme.color.textBody }}>{c.text}</div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

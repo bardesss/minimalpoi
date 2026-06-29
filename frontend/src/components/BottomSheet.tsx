@@ -19,6 +19,16 @@ export default function BottomSheet({
 }) {
   const { translate, dragging, handlers } = useSheetDrag(initial);
 
+  // The sheet is a full-height element pushed DOWN by `translate`, so the part
+  // on screen is only `viewport - translate`. Size the content area to exactly
+  // that (minus the handle) so the list scrolls within the visible region at
+  // every snap — otherwise its scroll viewport hangs below the fold and the
+  // visible slice can't be scrolled. Recomputes whenever `translate` changes
+  // (drag / snap / resize all update it).
+  const HANDLE_H = 44;
+  const viewport = typeof window === "undefined" ? 800 : window.innerHeight;
+  const contentHeight = Math.max(viewport - translate - HANDLE_H, 0);
+
   return (
     <section
       aria-label={label}
@@ -55,7 +65,7 @@ export default function BottomSheet({
       >
         <div style={{ width: 40, height: 5, borderRadius: 999, background: theme.color.borderStd }} />
       </div>
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>{children}</div>
+      <div style={{ height: contentHeight, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>{children}</div>
     </section>
   );
 }

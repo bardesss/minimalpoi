@@ -1,4 +1,5 @@
 import type { Category, Poi, VisitedFilter } from "../../types/api";
+import type { MapViewMode } from "../../lib/mapViewPref";
 import CategoryChips from "./CategoryChips";
 import FilterBar from "./FilterBar";
 import PoiList from "./PoiList";
@@ -22,7 +23,8 @@ export interface SidebarContentProps {
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
-  onFit: () => void;
+  viewMode: MapViewMode;
+  onViewModeChange: (mode: MapViewMode) => void;
   /** Mobile: chips scroll horizontally to keep the sheet header short. */
   mobile?: boolean;
 }
@@ -40,7 +42,7 @@ export default function SidebarContent(props: SidebarContentProps) {
         scroll={props.mobile}
       />
       <FilterBar value={props.visited} onChange={props.onVisitedChange} />
-      <ResultsMeta count={props.pois.length} onFit={props.onFit} />
+      <ResultsMeta count={props.pois.length} viewMode={props.viewMode} onViewModeChange={props.onViewModeChange} />
       <PoiList
         pois={props.pois}
         categoriesById={props.categoriesById}
