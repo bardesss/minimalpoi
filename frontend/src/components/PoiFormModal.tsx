@@ -1,6 +1,7 @@
 // frontend/src/components/PoiFormModal.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import type { Category, PlaceSearchResult, PoiCreate, PoiDraft } from "../types/api";
+import { ApiError } from "../api/client";
 import { safeImageCss } from "../lib/safeUrl";
 import { ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, textareaStyle, theme } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
@@ -23,6 +24,7 @@ export interface PoiFormInitial {
   phone: string | null;
   email: string | null;
   website: string | null;
+  image_url: string | null;
 }
 
 const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" } as const;
@@ -40,6 +42,7 @@ export default function PoiFormModal({
   onEnrich,
   onSearchPlaces,
   onPickPlace,
+  onUploadImage,
 }: {
   mode: "add" | "edit";
   initial: PoiFormInitial | null;
@@ -52,6 +55,7 @@ export default function PoiFormModal({
   onEnrich?: (url: string) => Promise<PoiDraft>;
   onSearchPlaces?: (query: string) => Promise<PlaceSearchResult[]>;
   onPickPlace?: (placeId: string) => Promise<PoiDraft>;
+  onUploadImage?: (file: File) => Promise<{ url: string }>;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [categoryId, setCategoryId] = useState<string>(initial?.category_id != null ? String(initial.category_id) : "");
@@ -71,7 +75,9 @@ export default function PoiFormModal({
   const [enrichUrlText, setEnrichUrlText] = useState("");
   const [enriching, setEnriching] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(initial?.image_url ?? null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [fieldSources, setFieldSources] = useState<Record<string, string>>({});
   const [enrichHost, setEnrichHost] = useState<string | null>(null);
   const [filledCount, setFilledCount] = useState(0);
@@ -129,6 +135,22 @@ export default function PoiFormModal({
     }
   }
 
+  async function onPickFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file later
+    if (!file || !onUploadImage) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const { url } = await onUploadImage(file);
+      setImageUrl(url);
+    } catch (err) {
+      setUploadError(err instanceof ApiError ? err.message : "Upload failed — try a different image.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function runSearch() {
     if (!onSearchPlaces || searchText.trim() === "") return;
     setSearching(true);
@@ -177,8 +199,8 @@ export default function PoiFormModal({
       phone: nn(phone),
       email: nn(email),
       website: nn(website),
+      image_url: imageUrl,
     };
-    if (isAdd) payload.image_url = imageUrl;
     onSubmit(payload);
   }
 
@@ -244,11 +266,25 @@ export default function PoiFormModal({
                   Filled {filledCount} fields from {enrichHost} — review before saving.
                 </div>
               )}
-              {safeImage && (
-                <div aria-label="Image preview" style={{ width: 96, height: 64, borderRadius: theme.radius.input, backgroundImage: `url(${safeImage})`, backgroundSize: "cover", backgroundPosition: "center", border: `1px solid ${theme.color.borderCard}` }} />
-              )}
             </div>
           )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <label style={label} htmlFor="poi-image">Photo</label>
+            {safeImage && (
+              <div aria-label="Image preview" style={{ width: 96, height: 64, borderRadius: theme.radius.input, backgroundImage: `url(${safeImage})`, backgroundSize: "cover", backgroundPosition: "center", border: `1px solid ${theme.color.borderCard}` }} />
+            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              {onUploadImage && (
+                <input id="poi-image" type="file" accept="image/*" aria-label="Choose image" onChange={onPickFile} style={{ fontSize: 12 }} />
+              )}
+              {imageUrl && (
+                <button type="button" onClick={() => setImageUrl(null)} style={{ ...ghostButtonStyle, padding: "6px 12px" }}>Remove image</button>
+              )}
+            </div>
+            {uploading && <span role="status" style={{ fontSize: 12, color: theme.color.textPlaceholder }}>Uploading…</span>}
+            {uploadError && <div role="status" style={{ fontSize: 12, color: theme.color.dangerText }}>{uploadError}</div>}
+          </div>
 
           {duplicateId != null && (
             <div role="status" style={{ padding: "10px 12px", borderRadius: theme.radius.input, background: theme.color.tintBg, border: `1px solid ${theme.color.tintBorder}`, color: theme.color.deepIndigoText, fontSize: 12.5 }}>
