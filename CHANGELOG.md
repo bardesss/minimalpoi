@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.20.0](https://github.com/Bardesss/minimalpoi/compare/v0.19.0...v0.20.0) (2026-06-29)
+
+
+### Features
+
+* **backup:** full ZIP backup & restore of all data (admin) ([5152641](https://github.com/Bardesss/minimalpoi/commit/51526419cdf01d5d5e01b35aa2cd623ec554f15e))
+* **backup:** full ZIP backup & restore of all data, admin (Phase 6 Slice 3) ([5676ffc](https://github.com/Bardesss/minimalpoi/commit/5676ffcc942b3284c5c1a6f67084ab0b77e933b3))
+
 ## [0.19.0](https://github.com/Bardesss/minimalpoi/compare/v0.18.1...v0.19.0) (2026-06-29)
 
 
