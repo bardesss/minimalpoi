@@ -109,6 +109,25 @@ describe("PoiActions — after a visit exists", () => {
     await waitFor(() => expect(posted).toMatchObject({ text: "again" }));
   });
 
+  it("edits an own comment's text inline", async () => {
+    let patched: unknown = null;
+    server.use(
+      http.get("/api/pois/1/visits", () => HttpResponse.json([visit()])),
+      http.get("/api/pois/1/comments", () => HttpResponse.json([comment({ id: 9, text: "frist" })])),
+      http.patch("/api/pois/1/comments/9", async ({ request }) => {
+        patched = await request.json();
+        return HttpResponse.json(comment({ id: 9, text: "fixed typo" }));
+      }),
+    );
+    renderWithProviders(<PoiActions poiId={1} />);
+    await userEvent.click(await screen.findByRole("button", { name: /edit comment 9/i }));
+    const box = screen.getByDisplayValue("frist");
+    await userEvent.clear(box);
+    await userEvent.type(box, "fixed typo");
+    await userEvent.click(screen.getByRole("button", { name: /save comment 9/i }));
+    await waitFor(() => expect(patched).toMatchObject({ text: "fixed typo" }));
+  });
+
   it("shows another user's rating read-only and mine interactive", async () => {
     server.use(
       http.get("/api/pois/1/visits", () => HttpResponse.json([visit({ user_id: 1, rating: 5 }), visit({ user_id: 2, rating: 4 })])),

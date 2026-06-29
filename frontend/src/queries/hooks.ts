@@ -4,7 +4,7 @@ import { checkDuplicate, createPoi, deletePoi, getPois, updatePoi } from "../api
 import { getFullSettings, getSettings, updateSettings } from "../api/settings";
 import { deleteTag, getTags, renameTag } from "../api/tags";
 import type { CategoryCreate, CategoryUpdate, CommentCreate, PoiCreate, PoiUpdate, SettingsUpdate, SyncResolve, UserCreate, UserUpdate, TeamCreate, VisitUpsert } from "../types/api";
-import { addComment, deleteComment, deleteVisit, getComments, getMyVisits, getVisits, upsertVisit } from "../api/poiActions";
+import { addComment, deleteComment, deleteVisit, getComments, getMyVisits, getVisits, updateComment, upsertVisit } from "../api/poiActions";
 import { getConflicts, getSyncStatus, resolveConflict, syncNow } from "../api/sync";
 import { enrichUrl } from "../api/enrich";
 import { uploadImage } from "../api/images";
@@ -270,6 +270,13 @@ export function useAddComment(poiId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: CommentCreate) => addComment(poiId, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", poiId] }),
+  });
+}
+export function useUpdateComment(poiId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ commentId, text }: { commentId: number; text: string }) => updateComment(poiId, commentId, text),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", poiId] }),
   });
 }

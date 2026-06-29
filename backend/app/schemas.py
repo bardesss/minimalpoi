@@ -160,6 +160,10 @@ class CommentCreate(SQLModel):
     text: str
 
 
+class CommentUpdate(SQLModel):
+    text: str
+
+
 class CommentRead(SQLModel):
     id: int
     poi_id: int

@@ -26,3 +26,26 @@ def test_member_cannot_delete_others_comment(client):
     client.post("/api/auth/logout")
     client.post("/api/auth/login", json={"username": "bob", "password": "pw"})
     assert client.delete(f"/api/pois/{poi_id}/comments/{admin_comment['id']}").status_code == 403
+
+
+def test_edit_own_comment(client):
+    poi_id = _setup(client)
+    c = client.post(f"/api/pois/{poi_id}/comments", json={"text": "frist"}).json()
+    res = client.patch(f"/api/pois/{poi_id}/comments/{c['id']}", json={"text": "fixed typo"})
+    assert res.status_code == 200
+    assert res.json()["text"] == "fixed typo"
+    assert client.get(f"/api/pois/{poi_id}/comments").json()[0]["text"] == "fixed typo"
+
+
+def test_member_cannot_edit_others_comment(client):
+    poi_id = _setup(client)
+    admin_comment = client.post(f"/api/pois/{poi_id}/comments", json={"text": "admin note"}).json()
+    client.post("/api/users", json={"username": "bob", "password": "pw"})
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw"})
+    assert client.patch(f"/api/pois/{poi_id}/comments/{admin_comment['id']}", json={"text": "hacked"}).status_code == 403
+
+
+def test_edit_missing_comment_404(client):
+    poi_id = _setup(client)
+    assert client.patch(f"/api/pois/{poi_id}/comments/9999", json={"text": "x"}).status_code == 404
