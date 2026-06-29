@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.18.0](https://github.com/Bardesss/minimalpoi/compare/v0.17.0...v0.18.0) (2026-06-29)
+
+
+### Features
+
+* **filters:** filter the list/map by places I've visited ([3c9531a](https://github.com/Bardesss/minimalpoi/commit/3c9531ab1e3e306b3ea99b4e669c65476593acb5))
+* **filters:** filter the list/map by places I've visited (Phase 6 Slice 1) ([5576a7f](https://github.com/Bardesss/minimalpoi/commit/5576a7f815d0ad35963f9872df22e30d72ca68ca))
+
 ## [0.17.0](https://github.com/Bardesss/minimalpoi/compare/v0.16.1...v0.17.0) (2026-06-28)
 
 
