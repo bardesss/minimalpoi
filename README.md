@@ -26,7 +26,7 @@ Drop a pin, paste a link to auto-fill the details, and keep all your favorite pl
 
 ## 🚀 Deploy
 
-MinimalPOI runs as one container on **port 7676**. All state (database, images, signing key) lives in a single `/data` volume.
+MinimalPOI runs as one container on **port 7676** — as a **non-root** user, with a built-in **healthcheck**. All state (database, images, signing key) lives in a single `/data` volume.
 
 ### Option A — Docker (recommended)
 
@@ -47,9 +47,11 @@ docker compose up -d
 
 Then open **http://localhost:7676** and create your admin account on the first-run setup screen. 🎉
 
-> 💡 **Pin a version** instead of `latest` for reproducible deploys, e.g. `ghcr.io/bardesss/minimalpoi:0.1`.
+> 💡 **Pin a version** instead of `latest` for reproducible deploys, e.g. `ghcr.io/bardesss/minimalpoi:1.0`.
 
 > ⚠️ **No published image yet?** Until the first release is cut and its GHCR package is made public, build from source instead: in `docker-compose.yml` comment the `image:` line and uncomment `build: .`, then run `docker compose up -d --build`.
+
+> 🔐 **Upgrading from a pre-1.0 image?** v1.0 runs as a non-root user (uid `10001`). A *named* volume inherits the right ownership automatically, but if you bind-mount a host directory you must hand it over once: `chown -R 10001:10001 /path/to/your/data`.
 
 ### ⚙️ Configuration
 
