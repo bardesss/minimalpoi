@@ -18,6 +18,13 @@ countries.registerLocale(fr);
 
 const LOOKUP_LANGS = ["en", "nl", "de", "fr"];
 
+/** Full country name (English) for an alpha-2 code, e.g. "NL" -> "Netherlands". */
+export function countryNameFromCode(code: string | null | undefined): string | null {
+  const value = code?.trim().toUpperCase();
+  if (!value) return null;
+  return countries.getName(value, "en") ?? null;
+}
+
 /** Resolve a country name (any of the registered languages) to its alpha-2 code. */
 export function countryCodeFromName(name: string | null | undefined): string | null {
   const value = name?.trim();
