@@ -56,8 +56,20 @@ COPY --from=frontend /app/frontend/dist /app/frontend/dist
 ENV MINIMALPOI_DATA_DIR=/data
 RUN mkdir -p /data
 
+# Run as a non-root user. A named volume inherits /data's ownership on first
+# mount, so fresh installs work out of the box. NOTE: upgrading an existing
+# deployment whose volume is root-owned needs a one-time
+# `chown -R 10001:10001` of the volume (see README).
+RUN useradd --system --uid 10001 --create-home appuser \
+    && chown -R appuser:appuser /data /app
+USER appuser
+
 EXPOSE 7676
 
 WORKDIR /app/backend
+
+# Liveness via the existing health endpoint (no curl in the slim image).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7676/api/health')" || exit 1
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7676"]
