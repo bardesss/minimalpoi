@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
@@ -7,6 +7,7 @@ import { filterPois } from "../lib/filterPois";
 import type { Category, Poi, PoiCreate, VisitedFilter } from "../types/api";
 import { theme } from "../theme";
 import { boundsOf } from "../map/bounds";
+import { readMapViewMode, writeMapViewMode, type MapViewMode } from "../lib/mapViewPref";
 import { useIsMobile } from "../lib/useMediaQuery";
 import Sidebar from "./Sidebar/Sidebar";
 import SidebarContent from "./Sidebar/SidebarContent";
@@ -45,6 +46,7 @@ export default function AppShell() {
   const [activeCategoryIds, setActiveCategoryIds] = useState<number[]>([]);
   const [visitedFilter, setVisitedFilter] = useState<VisitedFilter>("any");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mapViewMode, setMapViewMode] = useState<MapViewMode>(() => readMapViewMode());
   const [formState, setFormState] = useState<{ mode: "add" | "edit"; initial: PoiFormInitial | null } | null>(null);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [addCoords, setAddCoords] = useState<{ lng: number; lat: number } | null>(null);
@@ -98,6 +100,26 @@ export default function AppShell() {
     const b = boundsOf(filtered);
     if (b && mapRef.current) mapRef.current.fitBounds(b, { padding: 60, maxZoom: 15, duration: 600 });
   }
+
+  function resetToDefaultCenter() {
+    const s = settingsQuery.data;
+    if (s && mapRef.current) mapRef.current.flyTo({ center: [s.default_map_center_lng, s.default_map_center_lat], zoom: s.default_map_zoom, duration: 600 });
+  }
+
+  function changeMapViewMode(mode: MapViewMode) {
+    setMapViewMode(mode);
+    writeMapViewMode(mode);
+    if (mode === "fit") fitToResults();
+    else resetToDefaultCenter();
+  }
+
+  // In "fit" mode keep the camera framed on the current results — on first load
+  // and whenever the filtered set changes. Selecting a place still flies to it
+  // (selection doesn't change `filtered`, so it won't be overridden).
+  useEffect(() => {
+    if (mapViewMode === "fit") fitToResults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, mapViewMode]);
 
   function openAdd() {
     const c = mapRef.current?.getCenter();
@@ -165,7 +187,8 @@ export default function AppShell() {
           isLoading={poisQuery.isLoading}
           isError={poisQuery.isError}
           onRetry={() => poisQuery.refetch()}
-          onFit={fitToResults}
+          viewMode={mapViewMode}
+          onViewModeChange={changeMapViewMode}
           username={user?.username ?? ""}
           role={user?.role ?? "member"}
           onLogout={onLogout}
@@ -259,7 +282,8 @@ export default function AppShell() {
             isLoading={poisQuery.isLoading}
             isError={poisQuery.isError}
             onRetry={() => poisQuery.refetch()}
-            onFit={fitToResults}
+            viewMode={mapViewMode}
+            onViewModeChange={changeMapViewMode}
             mobile
           />
           <AccountFooter
