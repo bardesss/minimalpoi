@@ -2,9 +2,9 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
-from ..models import Role, TeamMember, User, get_or_create_settings
+from ..models import SYNC_USERNAME, Role, TeamMember, User, get_or_create_settings
 from ..ratelimit import LOGIN_LIMIT, SETUP_LIMIT, limiter
-from ..schemas import Credentials, PreferredTeamUpdate, SetupStatus, UserRead
+from ..schemas import Credentials, PreferredTeamUpdate, SetupStatus, Signup, UserRead
 from ..config import get_session_lifetime_days
 from ..security import create_access_token, hash_password, verify_password, verify_password_dummy
 
@@ -13,19 +13,31 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 COOKIE_NAME = "access_token"
 
 
-def _set_auth_cookie(response: Response, username: str, session: SessionDep) -> None:
-    secure = get_or_create_settings(session).cookie_secure
+def _is_https(request: Request) -> bool:
+    """True when the request reached us over TLS, directly or via a trusted proxy."""
+    if request.url.scheme == "https":
+        return True
+    return request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower() == "https"
+
+
+def _cookie_secure(request: Request, session: SessionDep) -> bool:
+    # Auto-enable Secure on HTTPS (so an exposed instance never sends the token
+    # in cleartext); the setting is an explicit override for plain-HTTP LAN use.
+    return get_or_create_settings(session).cookie_secure or _is_https(request)
+
+
+def _set_auth_cookie(response: Response, request: Request, user: User, session: SessionDep) -> None:
     # Set max_age so the browser keeps the cookie across restarts; without it the
     # cookie is a session cookie and is dropped when the tab/app closes (which
     # forced a re-login on every reopen, especially on mobile).
     response.set_cookie(
         COOKIE_NAME,
-        create_access_token(username),
+        create_access_token(user.username, user.token_version),
         max_age=get_session_lifetime_days() * 24 * 60 * 60,
         httponly=True,
         samesite="lax",
         path="/",
-        secure=secure,
+        secure=_cookie_secure(request, session),
     )
 
 
@@ -41,9 +53,11 @@ def setup_status(request: Request, session: SessionDep) -> SetupStatus:
 
 @router.post("/setup", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit(SETUP_LIMIT)
-def setup(request: Request, creds: Credentials, session: SessionDep, response: Response) -> User:
+def setup(request: Request, creds: Signup, session: SessionDep, response: Response) -> User:
     if _any_user_exists(session):
         raise HTTPException(status_code=409, detail="Setup already completed")
+    if creds.username.lower() == SYNC_USERNAME.lower():
+        raise HTTPException(status_code=400, detail="That username is reserved")
     user = User(
         username=creds.username,
         password_hash=hash_password(creds.password),
@@ -52,7 +66,7 @@ def setup(request: Request, creds: Credentials, session: SessionDep, response: R
     session.add(user)
     session.commit()
     session.refresh(user)
-    _set_auth_cookie(response, user.username, session)
+    _set_auth_cookie(response, request, user, session)
     return user
 
 
@@ -65,14 +79,13 @@ def login(request: Request, creds: Credentials, session: SessionDep, response: R
     password_ok = verify_password(creds.password, user.password_hash) if user else verify_password_dummy()
     if not user or user.disabled or not password_ok:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    _set_auth_cookie(response, user.username, session)
+    _set_auth_cookie(response, request, user, session)
     return user
 
 
 @router.post("/logout")
-def logout(session: SessionDep, response: Response) -> dict:
-    secure = get_or_create_settings(session).cookie_secure
-    response.delete_cookie(COOKIE_NAME, path="/", samesite="lax", secure=secure)
+def logout(request: Request, session: SessionDep, response: Response) -> dict:
+    response.delete_cookie(COOKIE_NAME, path="/", samesite="lax", secure=_cookie_secure(request, session))
     return {"status": "ok"}
 
 

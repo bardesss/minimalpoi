@@ -1,5 +1,5 @@
 def _setup_admin(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
 
 
 def test_sync_system_user_is_hidden_and_protected(client):
@@ -25,13 +25,13 @@ def test_sync_system_user_is_hidden_and_protected(client):
 def test_admin_can_manage_users(client):
     _setup_admin(client)
 
-    created = client.post("/api/users", json={"username": "bob", "password": "pw"})
+    created = client.post("/api/users", json={"username": "bob", "password": "pw123456"})
     assert created.status_code == 201
     bob_id = created.json()["id"]
     assert created.json()["role"] == "member"
 
     # duplicate username rejected
-    assert client.post("/api/users", json={"username": "bob", "password": "pw"}).status_code == 409
+    assert client.post("/api/users", json={"username": "bob", "password": "pw123456"}).status_code == 409
 
     # list shows both
     assert len(client.get("/api/users").json()) == 2
@@ -39,14 +39,14 @@ def test_admin_can_manage_users(client):
     # disable bob, then bob cannot log in
     assert client.patch(f"/api/users/{bob_id}", json={"disabled": True}).status_code == 200
     client.post("/api/auth/logout")
-    assert client.post("/api/auth/login", json={"username": "bob", "password": "pw"}).status_code == 401
+    assert client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"}).status_code == 401
 
 
 def test_non_admin_forbidden(client):
     _setup_admin(client)
-    client.post("/api/users", json={"username": "bob", "password": "pw"})
+    client.post("/api/users", json={"username": "bob", "password": "pw123456"})
     client.post("/api/auth/logout")
-    login_resp = client.post("/api/auth/login", json={"username": "bob", "password": "pw"})
+    login_resp = client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
     assert login_resp.status_code == 200
     assert client.get("/api/users").status_code == 403
     assert client.post("/api/users", json={"username": "x", "password": "y"}).status_code == 403
@@ -84,17 +84,17 @@ def test_delete_user_cascades_children(client):
     ).json()["id"]
 
     # Admin creates bob
-    bob_id = client.post("/api/users", json={"username": "bob", "password": "pw"}).json()["id"]
+    bob_id = client.post("/api/users", json={"username": "bob", "password": "pw123456"}).json()["id"]
 
     # Bob logs in and adds visit, comment
     client.post("/api/auth/logout")
-    client.post("/api/auth/login", json={"username": "bob", "password": "pw"})
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
     assert client.put(f"/api/pois/{poi_id}/visit", json={}).status_code == 200
     assert client.post(f"/api/pois/{poi_id}/comments", json={"text": "from bob"}).status_code == 201
 
     # Admin logs back in and deletes bob
     client.post("/api/auth/logout")
-    client.post("/api/auth/login", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/login", json={"username": "admin", "password": "pw123456"})
     assert client.delete(f"/api/users/{bob_id}").status_code == 204
 
     from sqlmodel import Session, select

@@ -6,7 +6,7 @@ def test_enrich_endpoint_requires_auth(client):
 
 
 def test_enrich_endpoint_returns_draft(client, monkeypatch):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
 
     async def fake_enrich(url, session, client=None):
         return POIDraft(name="Stub", lat=1.0, lng=2.0, source_url=url, field_sources={"lat": "gmaps_url"})

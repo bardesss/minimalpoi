@@ -9,8 +9,10 @@ def test_password_hash_and_verify(data_dir):
 
 
 def test_jwt_round_trip(data_dir):
-    token = security.create_access_token("alice")
-    assert security.decode_access_token(token) == "alice"
+    token = security.create_access_token("alice", token_version=3)
+    payload = security.decode_access_token(token)
+    assert payload["sub"] == "alice"
+    assert payload["tv"] == 3
 
 
 def test_jwt_rejects_garbage(data_dir):

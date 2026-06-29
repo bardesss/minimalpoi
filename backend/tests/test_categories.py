@@ -1,5 +1,5 @@
 def _setup_admin(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
 
 
 def test_category_crud(client):

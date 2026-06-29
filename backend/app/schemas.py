@@ -1,8 +1,16 @@
 from datetime import datetime
+from typing import Annotated
 
+from pydantic import StringConstraints
 from sqlmodel import Field, SQLModel
 
 from .models import Role, SyncStatus
+
+# Username is trimmed and must be non-blank. Password has a floor (basic
+# strength) and a 72-char ceiling so bcrypt's 72-byte truncation can't silently
+# drop characters. These apply when *setting* credentials, not when logging in.
+Username = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+Password = Annotated[str, StringConstraints(min_length=8, max_length=72)]
 
 
 class SetupStatus(SQLModel):
@@ -10,8 +18,14 @@ class SetupStatus(SQLModel):
 
 
 class Credentials(SQLModel):
+    # Login: accept anything and answer 401 on mismatch (no policy leak).
     username: str
     password: str
+
+
+class Signup(SQLModel):
+    username: Username
+    password: Password
 
 
 class UserRead(SQLModel):
@@ -24,13 +38,13 @@ class UserRead(SQLModel):
 
 
 class UserCreate(SQLModel):
-    username: str
-    password: str
+    username: Username
+    password: Password
     role: Role = Role.MEMBER
 
 
 class UserUpdate(SQLModel):
-    password: str | None = None
+    password: Password | None = None
     role: Role | None = None
     disabled: bool | None = None
 
@@ -171,6 +185,14 @@ class CommentRead(SQLModel):
     username: str
     text: str
     created_at: datetime
+
+
+class MapSettingsRead(SQLModel):
+    """Public, map-only view — safe for any logged-in member (no TRIP/secret fields)."""
+    map_tile_url: str
+    default_map_center_lat: float
+    default_map_center_lng: float
+    default_map_zoom: float
 
 
 class SettingsRead(SQLModel):

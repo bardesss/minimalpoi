@@ -2,7 +2,8 @@ import type { MapSettings, Settings, SettingsUpdate } from "../types/api";
 import { apiFetch } from "./client";
 
 export function getSettings(): Promise<MapSettings> {
-  return apiFetch<MapSettings>("/api/settings");
+  // Map-only payload, readable by any member (the full /api/settings is admin-only).
+  return apiFetch<MapSettings>("/api/settings/map");
 }
 
 export function getFullSettings(): Promise<Settings> {

@@ -28,6 +28,8 @@ def list_users(session: SessionDep, _: AdminUser) -> list[User]:
 
 @router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def create_user(body: UserCreate, session: SessionDep, _: AdminUser) -> User:
+    if body.username.lower() == SYNC_USERNAME.lower():
+        raise HTTPException(status_code=400, detail="That username is reserved")
     if session.exec(select(User).where(User.username == body.username)).first():
         raise HTTPException(status_code=409, detail="Username taken")
     user = User(
@@ -52,10 +54,13 @@ def update_user(user_id: int, body: UserUpdate, session: SessionDep, _: AdminUse
         disabling = body.disabled is True
         if demoting or disabling:
             raise HTTPException(status_code=400, detail="Cannot remove the last admin")
+    # A password or role change must revoke previously issued tokens.
     if body.password is not None:
         user.password_hash = hash_password(body.password)
-    if body.role is not None:
+        user.token_version += 1
+    if body.role is not None and body.role != user.role:
         user.role = body.role
+        user.token_version += 1
     if body.disabled is not None:
         user.disabled = body.disabled
     session.add(user)

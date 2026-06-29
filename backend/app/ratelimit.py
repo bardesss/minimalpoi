@@ -17,9 +17,9 @@ def user_or_ip(request: Request) -> str:
     if token:
         from .security import decode_access_token
 
-        username = decode_access_token(token)
-        if username:
-            return f"user:{username}"
+        payload = decode_access_token(token)
+        if payload and payload.get("sub"):
+            return f"user:{payload['sub']}"
     return get_remote_address(request)
 
 

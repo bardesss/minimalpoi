@@ -73,7 +73,7 @@ async def test_localize_passthrough_for_local_and_none(data_dir):
 
 
 def test_upload_endpoint(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
     png = _img_bytes("PNG", 200, 150)
     resp = client.post("/api/images", files={"file": ("p.png", png, "image/png")})
     assert resp.status_code == 201
@@ -81,14 +81,14 @@ def test_upload_endpoint(client):
 
 
 def test_upload_rejects_gif(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
     gif = _img_bytes("GIF", 50, 50, mode="P")
     resp = client.post("/api/images", files={"file": ("a.gif", gif, "image/gif")})
     assert resp.status_code == 415
 
 
 def test_upload_rejects_non_image(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
     resp = client.post("/api/images", files={"file": ("x.png", b"not an image", "image/png")})
     assert resp.status_code == 415
 
@@ -168,7 +168,7 @@ def test_process_image_rejects_huge_dimensions(monkeypatch):
 
 
 def test_upload_rejects_oversized(client, monkeypatch):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
     import app.routers.images as imgrouter
     monkeypatch.setattr(imgrouter, "MAX_IMAGE_BYTES", 10)
     resp = client.post("/api/images", files={"file": ("p.png", _img_bytes("PNG", 200, 150), "image/png")})

@@ -116,7 +116,7 @@ def test_archive_round_trips_image_files(data_dir):
 # ---- endpoint-level ----
 
 def _setup_admin(client):
-    client.post("/api/auth/setup", json={"username": "admin", "password": "pw"})
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
 
 
 def test_backup_download_is_a_zip(client):
@@ -131,8 +131,8 @@ def test_backup_download_is_a_zip(client):
 
 def test_backup_requires_admin(client):
     _setup_admin(client)
-    client.post("/api/users", json={"username": "bob", "password": "pw"})
-    client.post("/api/auth/login", json={"username": "bob", "password": "pw"})
+    client.post("/api/users", json={"username": "bob", "password": "pw123456"})
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
     assert client.get("/api/backup").status_code == 403
     assert client.post("/api/restore", files={"file": ("b.zip", b"x", "application/zip")}).status_code == 403
 

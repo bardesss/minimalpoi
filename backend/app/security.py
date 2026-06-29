@@ -31,17 +31,17 @@ def verify_password_dummy() -> bool:
     return False
 
 
-def create_access_token(username: str, expires_minutes: int | None = None) -> str:
+def create_access_token(username: str, token_version: int = 0, expires_minutes: int | None = None) -> str:
     if expires_minutes is None:
         expires_minutes = get_session_lifetime_days() * 24 * 60
     expire = datetime.now(timezone.utc) + timedelta(minutes=expires_minutes)
-    payload = {"sub": username, "exp": expire}
+    payload = {"sub": username, "tv": token_version, "exp": expire}
     return jwt.encode(payload, get_secret_key(), algorithm=ALGORITHM)
 
 
-def decode_access_token(token: str) -> str | None:
+def decode_access_token(token: str) -> dict | None:
+    """Return the decoded JWT payload (with `sub` and `tv`), or None if invalid."""
     try:
-        payload = jwt.decode(token, get_secret_key(), algorithms=[ALGORITHM])
+        return jwt.decode(token, get_secret_key(), algorithms=[ALGORITHM])
     except jwt.PyJWTError:
         return None
-    return payload.get("sub")
