@@ -23,7 +23,11 @@ def user_or_ip(request: Request) -> str:
     return get_remote_address(request)
 
 
-limiter = Limiter(key_func=get_remote_address, headers_enabled=True)
+# NOTE: do NOT enable headers_enabled. slowapi injects X-RateLimit-* headers by
+# requiring every limited endpoint to declare a `response: Response` param; ours
+# mostly return via response_model, so enabling it 500s those endpoints (caught
+# only with the limiter live — see tests/test_ratelimit.py).
+limiter = Limiter(key_func=get_remote_address)
 
 # Central, tunable limits. IP-keyed unless applied with key_func=user_or_ip.
 LOGIN_LIMIT = "5/minute;50/hour"   # brute-force / credential stuffing
