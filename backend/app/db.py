@@ -24,17 +24,36 @@ def reset_engine() -> None:
     )
 
 
+def _scalar_default_sql(col) -> str | None:
+    """An SQL literal for a column's Python-side scalar default, or None.
+
+    SQLite can't add a NOT NULL column to a populated table without a DEFAULT, so
+    we synthesize one from the model field's default (e.g. token_version=0)."""
+    default = col.default
+    if default is None or not getattr(default, "is_scalar", False):
+        return None
+    value = default.arg
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        return "'" + value.replace("'", "''") + "'"
+    return None
+
+
 def _add_missing_columns(engine) -> None:
-    """Additively backfill nullable columns added to models after a table was
-    first created.
+    """Additively backfill columns added to models after a table was first
+    created.
 
     There is no migrations framework: `create_all` adds new *tables* but never
-    new *columns* on an existing table, so a model field added in a later
-    release (e.g. Settings.trip_last_sync_at) would otherwise make every read of
-    that table fail with "no such column" on a pre-existing database. For each
-    table that already exists, add any model column missing from it. Only
-    **nullable** columns are added (a NOT NULL column needs a real migration);
-    each addition is isolated so one failure never blocks startup.
+    new *columns* on an existing table, so a model field added in a later release
+    would otherwise make every read of that table fail with "no such column" on a
+    pre-existing database. For each existing table, add any missing model column.
+    Nullable columns are added as-is; a NOT NULL column is added with a DEFAULT
+    derived from its model default (required by SQLite on a populated table). A
+    NOT NULL column with no derivable default is escalated loudly rather than
+    silently skipped, so a real migration need can't go unnoticed.
     """
     inspector = inspect(engine)
     existing = set(inspector.get_table_names())
@@ -43,12 +62,24 @@ def _add_missing_columns(engine) -> None:
             continue  # brand-new table — create_all already made it in full
         have = {c["name"] for c in inspector.get_columns(table.name)}
         for col in table.columns:
-            if col.name in have or not col.nullable:
+            if col.name in have:
                 continue
-            ddl = CreateColumn(col).compile(dialect=engine.dialect)
+            if col.nullable:
+                ddl = CreateColumn(col).compile(dialect=engine.dialect)
+                clause = f"ADD COLUMN {ddl}"
+            else:
+                default_sql = _scalar_default_sql(col)
+                if default_sql is None:
+                    logger.error(
+                        "Cannot add NOT NULL column %s.%s without a default — a manual "
+                        "migration is required.", table.name, col.name,
+                    )
+                    continue
+                type_sql = col.type.compile(dialect=engine.dialect)
+                clause = f'ADD COLUMN "{col.name}" {type_sql} NOT NULL DEFAULT {default_sql}'
             try:
                 with engine.begin() as conn:
-                    conn.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN {ddl}'))
+                    conn.execute(text(f'ALTER TABLE "{table.name}" {clause}'))
                 logger.info("Added missing column %s.%s", table.name, col.name)
             except Exception as exc:  # pragma: no cover - defensive
                 logger.warning("Could not add column %s.%s: %s", table.name, col.name, exc)

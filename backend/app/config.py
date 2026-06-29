@@ -39,11 +39,15 @@ def get_secret_key() -> str:
     if path.exists():
         return path.read_text(encoding="utf-8").strip()
     key = secrets.token_urlsafe(48)
-    path.write_text(key, encoding="utf-8")
+    # Create atomically (O_CREAT|O_EXCL): under multiple workers two processes
+    # could otherwise both generate and clobber the file, splitting the key and
+    # making already-encrypted data undecryptable. The loser re-reads the winner's.
     try:
-        os.chmod(path, 0o600)
-    except OSError:
-        pass  # best-effort on platforms without POSIX perms
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        return path.read_text(encoding="utf-8").strip()
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(key)
     return key
 
 

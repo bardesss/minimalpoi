@@ -24,11 +24,13 @@ from pathlib import Path
 from sqlmodel import Session, select
 
 from .enrich.images import images_dir
-from .models import POI, Category, Comment, Settings, Team, TeamMember, User, Visit, utcnow
+from .models import POI, Category, Comment, Settings, Team, TeamMember, Tombstone, User, Visit, utcnow
 
 BACKUP_VERSION = 1
 
 # (json key, model) in foreign-key-safe insert order. Reverse for deletes.
+# Tombstones are included so a restored instance doesn't re-import TRIP items it
+# had previously deleted.
 _TABLES = [
     ("users", User),
     ("teams", Team),
@@ -37,6 +39,7 @@ _TABLES = [
     ("pois", POI),
     ("visits", Visit),
     ("comments", Comment),
+    ("tombstones", Tombstone),
 ]
 
 
@@ -91,21 +94,27 @@ def restore_backup(session: Session, data: dict) -> dict[str, int]:
     if version != BACKUP_VERSION:
         raise ValueError(f"unsupported backup version: {version}")
 
+    # Build and validate every row from the (untrusted) archive FIRST. If any row
+    # is malformed (bad datetime/enum, etc.) this raises before we touch existing
+    # data, so a corrupt backup can never leave the instance wiped.
+    built: dict[str, list] = {key: [_build_row(model, d) for d in (data.get(key) or [])] for key, model in _TABLES}
+    settings_obj = _build_row(Settings, data["settings"]) if data.get("settings") else None
+
+    # Now clear and insert in a single transaction (one commit); a failure here
+    # rolls back the deletes too.
     for _key, model in reversed(_TABLES):
         for row in session.exec(select(model)).all():
             session.delete(row)
     for row in session.exec(select(Settings)).all():
         session.delete(row)
-    session.commit()
 
     counts: dict[str, int] = {}
-    for key, model in _TABLES:
-        rows = data.get(key) or []
-        for d in rows:
-            session.add(_build_row(model, d))
-        counts[key] = len(rows)
-    if data.get("settings"):
-        session.add(_build_row(Settings, data["settings"]))
+    for key, _model in _TABLES:
+        for obj in built[key]:
+            session.add(obj)
+        counts[key] = len(built[key])
+    if settings_obj is not None:
+        session.add(settings_obj)
     session.commit()
     return counts
 

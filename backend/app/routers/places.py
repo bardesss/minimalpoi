@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from ..crypto import decrypt
+from ..crypto import DecryptError, decrypt
 from ..deps import CurrentUser, SessionDep
 from ..enrich import gmaps
 from ..enrich.service import enrich_place
@@ -13,7 +13,12 @@ router = APIRouter(prefix="/api/places", tags=["places"])
 
 def _require_key(session) -> str:
     settings = get_or_create_settings(session)
-    key = decrypt(settings.google_api_key_enc) if settings.google_api_key_enc else None
+    if not settings.google_api_key_enc:
+        raise HTTPException(status_code=400, detail="Google API key not configured")
+    try:
+        key = decrypt(settings.google_api_key_enc)
+    except DecryptError:
+        raise HTTPException(status_code=400, detail="Stored Google API key can't be decrypted — re-enter it in Settings (the secret key likely changed).")
     if not key:
         raise HTTPException(status_code=400, detail="Google API key not configured")
     return key
