@@ -69,18 +69,11 @@ async def localize(image_url: str | None, client: httpx.AsyncClient | None = Non
     if client is None:
         client = httpx.AsyncClient(follow_redirects=False, timeout=10.0)
     try:
-        resp = await safe_get(client, image_url)
+        # safe_get streams with a hard MAX_IMAGE_BYTES ceiling; an over-cap body
+        # raises (ResponseTooLargeError ⊂ UnsafeURLError) and we keep the URL.
+        resp = await safe_get(client, image_url, max_bytes=MAX_IMAGE_BYTES)
         resp.raise_for_status()
-        cl_header = resp.headers.get("content-length")
-        if cl_header is not None:
-            try:
-                if int(cl_header) > MAX_IMAGE_BYTES:
-                    return image_url
-            except (ValueError, TypeError):
-                pass
         content = resp.content
-        if len(content) > MAX_IMAGE_BYTES:
-            return image_url
     except (httpx.HTTPError, UnsafeURLError):
         return image_url  # non-fatal: keep the remote URL
     finally:

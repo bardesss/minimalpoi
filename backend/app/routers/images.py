@@ -10,7 +10,9 @@ router = APIRouter(prefix="/api/images", tags=["images"])
 @router.post("", status_code=status.HTTP_201_CREATED)
 @limiter.limit(UPLOAD_LIMIT, key_func=user_or_ip)
 async def upload_image(request: Request, file: UploadFile, _: CurrentUser) -> dict:
-    data = await file.read()
+    # Read at most one byte past the limit so an oversized upload is rejected
+    # without ever buffering the whole (potentially multi-GB) body in memory.
+    data = await file.read(MAX_IMAGE_BYTES + 1)
     if len(data) > MAX_IMAGE_BYTES:
         raise HTTPException(
             status_code=413,

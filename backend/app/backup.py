@@ -23,10 +23,16 @@ from pathlib import Path
 
 from sqlmodel import Session, select
 
-from .enrich.images import images_dir
+from .enrich.images import UnsupportedImageError, images_dir, process_image
 from .models import POI, Category, Comment, Settings, Team, TeamMember, Tombstone, User, Visit, utcnow
 
 BACKUP_VERSION = 1
+
+# Restore-time guards: a total decompressed budget (zip-bomb) and an image
+# extension allowlist. Restored image bytes are re-encoded through process_image
+# so a crafted archive can't drop e.g. evil.html/.svg into the public /images dir.
+ZIP_MAX_TOTAL_BYTES = 500 * 1024 * 1024
+_IMAGE_EXTS = {".webp", ".jpg", ".jpeg", ".png"}
 
 # (json key, model) in foreign-key-safe insert order. Reverse for deletes.
 # Tombstones are included so a restored instance doesn't re-import TRIP items it
@@ -140,11 +146,20 @@ def restore_from_archive(session: Session, raw: bytes) -> dict[str, int]:
     """Load a ZIP produced by build_backup_archive: restore the data, then
     write the image files back under the images dir."""
     with zipfile.ZipFile(io.BytesIO(raw)) as z:
+        if sum(info.file_size for info in z.infolist()) > ZIP_MAX_TOTAL_BYTES:
+            raise ValueError("backup archive is too large to restore")
         data = json.loads(z.read("backup.json"))
         summary = restore_backup(session, data)
         img_dir = images_dir()
         for member in z.namelist():
-            if member.startswith("images/") and not member.endswith("/"):
-                target = img_dir / Path(member).name  # flatten; ignore any path tricks
-                target.write_bytes(z.read(member))
+            if not member.startswith("images/") or member.endswith("/"):
+                continue
+            name = Path(member).name  # flatten; ignore any path tricks
+            if Path(name).suffix.lower() not in _IMAGE_EXTS:
+                continue  # not an image extension — never write it to the public dir
+            try:
+                safe = process_image(z.read(member))  # re-encode; strips any payload
+            except UnsupportedImageError:
+                continue  # not a real image — skip
+            (img_dir / name).write_bytes(safe)
     return summary
