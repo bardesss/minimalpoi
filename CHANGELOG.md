@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.3](https://github.com/Bardesss/minimalpoi/compare/v1.0.2...v1.0.3) (2026-06-29)
+
+
+### Bug Fixes
+
+* **ui:** form layout, flag country picker, list scroll, review-draft reset ([5d50790](https://github.com/Bardesss/minimalpoi/commit/5d507901fc34fbff5304a2b6c5209256cc9301e6))
+* **ui:** place-form layout, flag country picker, list scroll, review reset ([97a14b0](https://github.com/Bardesss/minimalpoi/commit/97a14b07058c04623617f2abd14a58a179ec4b36))
+
 ## [1.0.2](https://github.com/Bardesss/minimalpoi/compare/v1.0.1...v1.0.2) (2026-06-29)
 
 
