@@ -4,7 +4,7 @@ from sqlmodel import select
 from ..deps import CurrentUser, SessionDep
 from ..models import SYNC_USERNAME, Role, TeamMember, User, get_or_create_settings
 from ..ratelimit import LOGIN_LIMIT, SETUP_LIMIT, limiter
-from ..schemas import Credentials, PreferredTeamUpdate, SetupStatus, Signup, UserRead
+from ..schemas import Credentials, PreferredTeamUpdate, SetupStatus, Signup, StatusResponse, UserRead
 from ..config import get_session_lifetime_days
 from ..security import create_access_token, hash_password, verify_password, verify_password_dummy
 
@@ -83,7 +83,7 @@ def login(request: Request, creds: Credentials, session: SessionDep, response: R
     return user
 
 
-@router.post("/logout")
+@router.post("/logout", response_model=StatusResponse)
 def logout(request: Request, session: SessionDep, response: Response) -> dict:
     response.delete_cookie(COOKIE_NAME, path="/", samesite="lax", secure=_cookie_secure(request, session))
     return {"status": "ok"}

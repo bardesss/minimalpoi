@@ -23,6 +23,8 @@ def _to_read(session: SessionDep, comment: Comment) -> CommentRead:
 
 @router.get("/{poi_id}/comments", response_model=list[CommentRead])
 def list_comments(poi_id: int, session: SessionDep, _: CurrentUser) -> list[CommentRead]:
+    if not session.get(POI, poi_id):
+        raise HTTPException(status_code=404, detail="Not found")
     comments = session.exec(
         select(Comment).where(Comment.poi_id == poi_id).order_by(Comment.created_at)
     ).all()

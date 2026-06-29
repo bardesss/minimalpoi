@@ -1,10 +1,33 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import StringConstraints
 from sqlmodel import Field, SQLModel
 
 from .models import Role, SyncStatus
+
+
+class StatusResponse(SQLModel):
+    status: str
+
+
+class VersionInfo(SQLModel):
+    current: str
+    latest: str | None
+    update_available: bool
+
+
+class ImageUploadResult(SQLModel):
+    url: str
+
+
+class RestoreResult(SQLModel):
+    restored: dict[str, int]
+
+
+class SyncRunResult(SQLModel):
+    ran: bool
+    errors: int = 0
 
 # Username is trimmed and must be non-blank. Password has a floor (basic
 # strength) and a 72-char ceiling so bcrypt's 72-byte truncation can't silently
@@ -245,9 +268,9 @@ class SyncConflictRead(SQLModel):
 
 
 class SyncResolve(SQLModel):
-    entity_type: str  # "place" | "category"
+    entity_type: Literal["place", "category"]
     id: int
-    resolution: str   # "local" | "trip"
+    resolution: Literal["local", "trip"]
 
 
 class EnrichRequest(SQLModel):

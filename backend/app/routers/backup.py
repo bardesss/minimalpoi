@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Response, UploadFile
 
 from .. import backup as backup_service
 from ..deps import AdminUser, SessionDep
+from ..schemas import RestoreResult
 
 router = APIRouter(prefix="/api", tags=["backup"])
 
@@ -18,7 +19,7 @@ def download_backup(session: SessionDep, _: AdminUser) -> Response:
     )
 
 
-@router.post("/restore")
+@router.post("/restore", response_model=RestoreResult)
 async def restore_backup(file: UploadFile, session: SessionDep, _: AdminUser) -> dict:
     if not backup_service.is_empty(session):
         raise HTTPException(

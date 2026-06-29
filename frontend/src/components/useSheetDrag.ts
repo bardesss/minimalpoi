@@ -4,7 +4,7 @@ export type Snap = "peek" | "half" | "full";
 const ORDER: Snap[] = ["peek", "half", "full"];
 
 /** Default fraction of the viewport each snap is translated DOWN by. */
-export const DEFAULT_HIDE: Record<Snap, number> = { peek: 0.72, half: 0.48, full: 0.1 };
+const DEFAULT_HIDE: Record<Snap, number> = { peek: 0.72, half: 0.48, full: 0.1 };
 
 function vh(fraction: number): number {
   const h = typeof window === "undefined" ? 800 : window.innerHeight;

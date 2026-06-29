@@ -3,11 +3,12 @@ from fastapi import APIRouter, HTTPException, Request, UploadFile, status
 from ..deps import CurrentUser
 from ..enrich.images import MAX_IMAGE_BYTES, UnsupportedImageError, process_image, save_bytes
 from ..ratelimit import UPLOAD_LIMIT, limiter, user_or_ip
+from ..schemas import ImageUploadResult
 
 router = APIRouter(prefix="/api/images", tags=["images"])
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, response_model=ImageUploadResult)
 @limiter.limit(UPLOAD_LIMIT, key_func=user_or_ip)
 async def upload_image(request: Request, file: UploadFile, _: CurrentUser) -> dict:
     # Read at most one byte past the limit so an oversized upload is rejected

@@ -5,6 +5,7 @@ import httpx
 from fastapi import APIRouter
 
 from ..deps import CurrentUser
+from ..schemas import VersionInfo
 
 router = APIRouter(prefix="/api/version", tags=["version"])
 
@@ -48,7 +49,7 @@ async def _cached_latest() -> str | None:
     return _cache["latest"]
 
 
-@router.get("")
+@router.get("", response_model=VersionInfo)
 async def get_version(_: CurrentUser) -> dict:
     current = os.environ.get("MINIMALPOI_VERSION", "dev")
     latest = await _cached_latest()
