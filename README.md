@@ -53,7 +53,7 @@ Drop a pin, paste a link to auto-fill the details, and keep all your favorite pl
 
 ## 🚀 Deploy
 
-MinimalPOI runs as one container on **port 7676** — as a **non-root** user, with a built-in **healthcheck**. All state (database, images, signing key) lives in a single `/data` volume.
+MinimalPOI runs as one container on **port 7676** — the app process runs **non-root** (default uid/gid `10001`, overridable via `PUID`/`PGID`), with a built-in **healthcheck**. All state (database, images, signing key) lives in a single `/data` volume, and the container fixes that volume's ownership on startup so upgrades and bind-mounts just work.
 
 ### Option A — Docker (recommended)
 
@@ -78,7 +78,7 @@ Then open **http://localhost:7676** and create your admin account on the first-r
 
 > ⚠️ **No published image yet?** Until the first release is cut and its GHCR package is made public, build from source instead: in `docker-compose.yml` comment the `image:` line and uncomment `build: .`, then run `docker compose up -d --build`.
 
-> 🔐 **Upgrading from a pre-1.0 image?** v1.0 runs as a non-root user (uid `10001`). A *named* volume inherits the right ownership automatically, but if you bind-mount a host directory you must hand it over once: `chown -R 10001:10001 /path/to/your/data`.
+> 🔐 **Permissions & upgrades.** The container fixes `/data` ownership on startup, so upgrades and bind-mounts work with no manual steps. Set `PUID`/`PGID` (e.g. `1000`) to match your host user for bind-mounts. *(This auto-fix needs **1.0.1+**. On exactly **1.0.0**, `PUID`/`PGID` are ignored and that image runs as uid `10001`; if you're stuck there, run once: `docker run --rm -v minimalpoi-data:/data alpine chown -R 10001:10001 /data`, then restart — or just upgrade to 1.0.1+.)*
 
 ### ⚙️ Configuration
 
@@ -86,6 +86,8 @@ Then open **http://localhost:7676** and create your admin account on the first-r
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
+| `PUID` | `10001` | User ID the app runs as. Set to your host user (often `1000`) when bind-mounting a directory. |
+| `PGID` | `10001` | Group ID the app runs as. Pair with `PUID`. |
 | `SECRET_KEY` | auto-generated in `/data/secret.key` | Signing key for login cookies — set it yourself only if you'd rather manage it. |
 | `SESSION_LIFETIME_DAYS` | `30` | How long a login stays valid before you have to sign in again. |
 

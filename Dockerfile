@@ -26,6 +26,13 @@ WORKDIR /app
 ARG VERSION=dev
 ENV MINIMALPOI_VERSION=$VERSION
 
+# gosu lets the entrypoint drop from root to the runtime user after fixing
+# /data ownership (privilege step-down, not step-up).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gosu \
+    && rm -rf /var/lib/apt/lists/* \
+    && gosu nobody true
+
 # Install runtime dependencies explicitly.
 # Keep this list in sync with [project].dependencies in backend/pyproject.toml.
 # (We do NOT use `pip install ./backend` because pyproject.toml references
@@ -56,13 +63,12 @@ COPY --from=frontend /app/frontend/dist /app/frontend/dist
 ENV MINIMALPOI_DATA_DIR=/data
 RUN mkdir -p /data
 
-# Run as a non-root user. A named volume inherits /data's ownership on first
-# mount, so fresh installs work out of the box. NOTE: upgrading an existing
-# deployment whose volume is root-owned needs a one-time
-# `chown -R 10001:10001` of the volume (see README).
-RUN useradd --system --uid 10001 --create-home appuser \
-    && chown -R appuser:appuser /data /app
-USER appuser
+# The container starts as root only long enough for the entrypoint to chown
+# /data, then drops to a non-root user (PUID/PGID, default 10001) via gosu — so
+# the app process never runs as root, yet upgrades of an existing root-owned
+# volume keep working with no manual chown. See docker-entrypoint.sh.
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 7676
 
@@ -72,4 +78,5 @@ WORKDIR /app/backend
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7676/api/health')" || exit 1
 
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7676"]

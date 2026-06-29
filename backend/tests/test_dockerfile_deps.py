@@ -26,10 +26,21 @@ def test_dockerfile_installs_all_runtime_deps():
     assert not missing, f"Dockerfile pip list is missing runtime deps: {missing}"
 
 
-def test_dockerfile_runs_nonroot_with_healthcheck():
+def test_dockerfile_drops_privileges_with_healthcheck():
+    # The app must not run as root. We start as root only to fix /data ownership,
+    # then drop to PUID/PGID via gosu in the entrypoint (so upgrades of an
+    # existing root-owned volume keep working). Guard that wiring stays intact.
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
-    assert "USER appuser" in dockerfile
+    assert "gosu" in dockerfile
+    assert "docker-entrypoint.sh" in dockerfile
     assert "HEALTHCHECK" in dockerfile
+
+
+def test_entrypoint_chowns_data_and_steps_down():
+    entrypoint = (ROOT / "docker-entrypoint.sh").read_text(encoding="utf-8")
+    assert "PUID" in entrypoint and "PGID" in entrypoint
+    assert "chown" in entrypoint
+    assert "exec gosu" in entrypoint  # privilege step-down, then run the app
 
 
 def test_compose_has_no_empty_environment_key():
