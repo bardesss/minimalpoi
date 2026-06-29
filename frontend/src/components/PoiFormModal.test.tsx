@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Category, PoiDraft } from "../types/api";
+import { ApiError } from "../api/client";
 import PoiFormModal, { splitTags } from "./PoiFormModal";
 
 const cats: Category[] = [{ id: 1, name: "Restaurants", color: "#E1574C", icon: null, created_by: 1, trip_category_id: null, trip_sync_status: "s" }];
@@ -35,7 +36,7 @@ describe("PoiFormModal", () => {
   });
 
   it("shows edit-mode title and save label", () => {
-    render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null, image_url: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
     expect(screen.getByRole("heading", { name: /edit place/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save changes/i })).toBeInTheDocument();
   });
@@ -100,8 +101,70 @@ describe("PoiFormModal enrich", () => {
     await screen.findByText(/google api key in settings/i);
   });
 
+  it("edit mode pre-fills the existing image and preserves it on save", async () => {
+    const onSubmit = vi.fn();
+    render(
+      <PoiFormModal
+        mode="edit"
+        initial={{ name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null, image_url: "/images/keep.webp" }}
+        categories={cats}
+        coords={null}
+        onSubmit={onSubmit}
+        onClose={() => {}}
+        onCheckDuplicate={() => {}}
+        duplicateId={null}
+      />,
+    );
+    expect(screen.getByLabelText(/image preview/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ image_url: "/images/keep.webp" }));
+  });
+
+  it("uploads a chosen file, previews it, and submits its url", async () => {
+    const onUploadImage = vi.fn().mockResolvedValue({ url: "/images/up.webp" });
+    const onSubmit = vi.fn();
+    render(
+      <PoiFormModal mode="add" initial={null} categories={cats} coords={{ lng: 4.9, lat: 52.37 }} onSubmit={onSubmit} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} onUploadImage={onUploadImage} />,
+    );
+    await userEvent.type(screen.getByLabelText(/^name$/i), "Pic Spot");
+    await userEvent.upload(screen.getByLabelText(/choose image/i), new File(["x"], "p.png", { type: "image/png" }));
+    expect(onUploadImage).toHaveBeenCalled();
+    await screen.findByLabelText(/image preview/i);
+    await userEvent.click(screen.getByRole("button", { name: /add place/i }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ image_url: "/images/up.webp" }));
+  });
+
+  it("removes the image so save sends null", async () => {
+    const onSubmit = vi.fn();
+    render(
+      <PoiFormModal
+        mode="edit"
+        initial={{ name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null, image_url: "/images/keep.webp" }}
+        categories={cats}
+        coords={null}
+        onSubmit={onSubmit}
+        onClose={() => {}}
+        onCheckDuplicate={() => {}}
+        duplicateId={null}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /remove image/i }));
+    expect(screen.queryByLabelText(/image preview/i)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ image_url: null }));
+  });
+
+  it("shows an inline message when the upload is rejected (e.g. 413)", async () => {
+    const onUploadImage = vi.fn().mockRejectedValue(new ApiError(413, "Image too large (max 10 MB)"));
+    render(
+      <PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} onUploadImage={onUploadImage} />,
+    );
+    await userEvent.upload(screen.getByLabelText(/choose image/i), new File(["x"], "big.png", { type: "image/png" }));
+    await screen.findByText(/image too large/i);
+  });
+
   it("does not render the enrich row in edit mode", () => {
-    render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null, image_url: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
     expect(screen.queryByLabelText(/enrich from url/i)).not.toBeInTheDocument();
   });
 });

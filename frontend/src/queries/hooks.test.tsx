@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "../test/msw";
 import { makeClient } from "../test/utils";
-import { useComments, useCreatePoi, useEnrich, useImportPois, useMyVisits, usePois, useSyncConflicts, useSyncStatus, useTags, useUpsertVisit, useUsers, useTeams, useVisits } from "./hooks";
+import { useComments, useCreatePoi, useEnrich, useImportPois, useMyVisits, usePois, useSyncConflicts, useSyncStatus, useTags, useUploadImage, useUpsertVisit, useUsers, useTeams, useVisits } from "./hooks";
 
 function wrapper(client = makeClient()) {
   return ({ children }: { children: ReactNode }) => (
@@ -122,6 +122,13 @@ describe("data hooks", () => {
     const mut = renderHook(() => useUpsertVisit(1), { wrapper: wrapper(client) });
     await mut.result.current.mutateAsync({ rating: 4 });
     await waitFor(() => expect(getCount).toBeGreaterThanOrEqual(2));
+  });
+
+  it("useUploadImage posts a file and returns the url", async () => {
+    server.use(http.post("/api/images", () => HttpResponse.json({ url: "/images/x.webp" }, { status: 201 })));
+    const { result } = renderHook(() => useUploadImage(), { wrapper: wrapper() });
+    const res = await result.current.mutateAsync(new File(["x"], "p.png", { type: "image/png" }));
+    expect(res.url).toBe("/images/x.webp");
   });
 
   it("useComments loads comments for a poi", async () => {

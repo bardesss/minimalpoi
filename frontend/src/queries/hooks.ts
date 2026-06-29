@@ -7,6 +7,7 @@ import type { CategoryCreate, CategoryUpdate, CommentCreate, PoiCreate, PoiUpdat
 import { addComment, deleteComment, deleteVisit, getComments, getMyVisits, getVisits, upsertVisit } from "../api/poiActions";
 import { getConflicts, getSyncStatus, resolveConflict, syncNow } from "../api/sync";
 import { enrichUrl } from "../api/enrich";
+import { uploadImage } from "../api/images";
 import { getPlaceDraft, searchPlaces } from "../api/places";
 import { importPois } from "../api/portability";
 import { getVersion } from "../api/version";
@@ -56,6 +57,10 @@ export function useCheckDuplicate() {
 
 export function useEnrich() {
   return useMutation({ mutationFn: (url: string) => enrichUrl(url) });
+}
+
+export function useUploadImage() {
+  return useMutation({ mutationFn: (file: File) => uploadImage(file) });
 }
 
 export function useSearchPlaces() {

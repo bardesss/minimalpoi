@@ -48,6 +48,7 @@ export const handlers = [
   http.get("/api/version", () => HttpResponse.json({ current: "dev", latest: null, update_available: false })),
   http.get("/api/pois/:id/visits", () => HttpResponse.json([])),
   http.get("/api/me/visits", () => HttpResponse.json([])),
+  http.post("/api/images", () => HttpResponse.json({ url: "/images/stub.webp" }, { status: 201 })),
   http.get("/api/pois/:id/comments", () => HttpResponse.json([])),
   // Background list fetches from the Settings sections; default to empty so any
   // component mounting them (without an explicit override) never 404s.

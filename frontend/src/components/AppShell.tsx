@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
-import { useCategories, useCreatePoi, useDeletePoi, useEnrich, useMyVisits, usePlaceDraft, usePois, useSearchPlaces, useSettings, useUpdatePoi, useCheckDuplicate, useVersion } from "../queries/hooks";
+import { useCategories, useCreatePoi, useDeletePoi, useEnrich, useMyVisits, usePlaceDraft, usePois, useSearchPlaces, useSettings, useUpdatePoi, useUploadImage, useCheckDuplicate, useVersion } from "../queries/hooks";
 import { filterPois } from "../lib/filterPois";
 import type { Category, Poi, PoiCreate, VisitedFilter } from "../types/api";
 import { theme } from "../theme";
@@ -35,6 +35,7 @@ export default function AppShell() {
   const enrich = useEnrich();
   const searchPlaces = useSearchPlaces();
   const placeDraft = usePlaceDraft();
+  const uploadImage = useUploadImage();
   const version = useVersion();
 
   const mapRef = useRef<MlMap | null>(null);
@@ -109,7 +110,7 @@ export default function AppShell() {
     setDuplicateId(null);
     setFormState({
       mode: "edit",
-      initial: { name: poi.name, address: poi.address, city: poi.city, country_code: poi.country_code, lat: poi.lat, lng: poi.lng, category_id: poi.category_id, tags: poi.tags, notes: poi.notes, phone: poi.phone, email: poi.email, website: poi.website },
+      initial: { name: poi.name, address: poi.address, city: poi.city, country_code: poi.country_code, lat: poi.lat, lng: poi.lng, category_id: poi.category_id, tags: poi.tags, notes: poi.notes, phone: poi.phone, email: poi.email, website: poi.website, image_url: poi.image_url },
     });
   }
 
@@ -234,6 +235,7 @@ export default function AppShell() {
             onEnrich={(url) => enrich.mutateAsync(url)}
             onSearchPlaces={(q) => searchPlaces.mutateAsync(q)}
             onPickPlace={(placeId) => placeDraft.mutateAsync(placeId)}
+            onUploadImage={(file) => uploadImage.mutateAsync(file)}
           />
         )}
         {settingsModalOpen && <SettingsModal onClose={() => setSettingsModalOpen(false)} />}
