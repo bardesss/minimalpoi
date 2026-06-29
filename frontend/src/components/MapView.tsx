@@ -16,6 +16,8 @@ interface Props {
   addMode: boolean;
   visitedPoiIds: Set<number>;
   mapRef: MutableRefObject<MlMap | null>;
+  /** Fires after the user finishes panning/zooming — used to re-sort the list by distance. */
+  onMoveEnd?: (center: { lng: number; lat: number }) => void;
 }
 
 const VISITED_RING_COLOR = "#4f46e5";
@@ -66,17 +68,19 @@ function addPoiLayers(map: MlMap, color: ReturnType<typeof categoryColorExpressi
   });
 }
 
-export default function MapView({ pois, categories, settings, selectedId, onSelect, onMapClick, addMode, visitedPoiIds, mapRef }: Props) {
+export default function MapView({ pois, categories, settings, selectedId, onSelect, onMapClick, addMode, visitedPoiIds, mapRef, onMoveEnd }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Keep latest callbacks/flags in refs so the load handler closure stays current.
   const onSelectRef = useRef(onSelect);
   const onMapClickRef = useRef(onMapClick);
   const addModeRef = useRef(addMode);
   const visitedRef = useRef(visitedPoiIds);
+  const onMoveEndRef = useRef(onMoveEnd);
   onSelectRef.current = onSelect;
   onMapClickRef.current = onMapClick;
   addModeRef.current = addMode;
   visitedRef.current = visitedPoiIds;
+  onMoveEndRef.current = onMoveEnd;
 
   // Init once.
   useEffect(() => {
@@ -119,6 +123,10 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
     });
     map.on("click", (e) => {
       if (addModeRef.current) onMapClickRef.current(e.lngLat.lng, e.lngLat.lat);
+    });
+    map.on("moveend", () => {
+      const c = map.getCenter();
+      onMoveEndRef.current?.({ lng: c.lng, lat: c.lat });
     });
 
     // The map lives in a flex sibling of the 480px→0 collapsing sidebar; when
