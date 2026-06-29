@@ -42,10 +42,12 @@ describe("DetailPanel", () => {
     expect(onEdit).toHaveBeenCalled();
   });
 
-  it("renders a drag handle on mobile so the card can be resized to reveal the map", () => {
-    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} mobile />);
-    expect(screen.getByRole("separator", { name: /drag to resize/i })).toBeInTheDocument();
-    // Content still renders inside the draggable sheet.
+  it("renders a full-screen overlay on mobile (no drag handle) with a working close", async () => {
+    const onClose = vi.fn();
+    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={onClose} onEdit={() => {}} onDelete={() => {}} mobile />);
     expect(screen.getByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
+    expect(screen.queryByRole("separator")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /close/i }));
+    expect(onClose).toHaveBeenCalled();
   });
 });
