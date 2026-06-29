@@ -332,16 +332,15 @@ export default function PoiFormModal({
           </div>
           <p style={{ margin: "-6px 0 0", fontSize: 11.5, color: theme.color.textPlaceholder }}>Click anywhere on the map to drop the coordinates here.</p>
 
-          <div style={{ display: "flex", gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <label style={label} htmlFor="poi-phone">Phone</label>
-              <PhoneInput id="poi-phone" value={phone} onChange={setPhone} />
-              {caption("phone")}
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={label} htmlFor="poi-email">Email</label>
-              <input id="poi-email" style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
+          <div>
+            <label style={label} htmlFor="poi-phone">Phone</label>
+            <PhoneInput id="poi-phone" value={phone} onChange={setPhone} />
+            {caption("phone")}
+          </div>
+
+          <div>
+            <label style={label} htmlFor="poi-email">Email</label>
+            <input id="poi-email" type="email" style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" />
           </div>
 
           <div>

@@ -1,19 +1,13 @@
 import { useEffect, useState } from "react";
 import {
   type CountryCode,
-  getCountries,
   getCountryCallingCode,
   parsePhoneNumber,
 } from "libphonenumber-js";
+import CountrySelect from "./CountrySelect";
 import { inputStyle, theme } from "../theme";
 
 const DEFAULT_COUNTRY: CountryCode = "NL";
-
-// All ~245 regions libphonenumber knows about, with a localized display name.
-const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
-const COUNTRIES = getCountries()
-  .map((code) => ({ code, calling: getCountryCallingCode(code), name: regionNames.of(code) ?? code }))
-  .sort((a, b) => a.name.localeCompare(b.name));
 
 function parseInitial(value: string): { country: CountryCode; national: string } {
   if (value) {
@@ -81,22 +75,13 @@ export default function PhoneInput({
   return (
     <div>
       <div style={{ display: "flex", gap: 8 }}>
-        <select
-          aria-label="Country"
+        <CountrySelect
           value={country}
-          onChange={(e) => {
-            const c = e.target.value as CountryCode;
+          onChange={(c) => {
             setCountry(c);
             emit(c, national);
           }}
-          style={{ ...inputStyle, width: "auto", maxWidth: 190 }}
-        >
-          {COUNTRIES.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.name} (+{c.calling})
-            </option>
-          ))}
-        </select>
+        />
         <input
           id={id}
           type="tel"
