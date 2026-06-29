@@ -54,9 +54,10 @@ export default function PoiCard({
         {visited && (
           <span
             aria-label="Visited by you"
-            style={{ position: "absolute", left: 8, bottom: 8, display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 999, background: theme.color.primary, color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: 1.4, boxShadow: "0 1px 4px rgba(0,0,0,.3)" }}
+            title="Visited"
+            style={{ position: "absolute", right: 8, bottom: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: "50%", background: theme.color.primary, color: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1, border: "1.5px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,.35)" }}
           >
-            <span aria-hidden>✓</span> Visited
+            <span aria-hidden>✓</span>
           </span>
         )}
         {poi.avg_rating != null && (
