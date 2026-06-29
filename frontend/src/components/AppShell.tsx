@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
@@ -8,6 +8,8 @@ import type { Category, Poi, PoiCreate, VisitedFilter } from "../types/api";
 import { theme } from "../theme";
 import { boundsOf } from "../map/bounds";
 import { readMapViewMode, writeMapViewMode, type MapViewMode } from "../lib/mapViewPref";
+import { readSortMode, writeSortMode, type SortMode } from "../lib/sortPref";
+import { sortPois } from "../lib/sortPois";
 import { useIsMobile } from "../lib/useMediaQuery";
 import Sidebar from "./Sidebar/Sidebar";
 import SidebarContent from "./Sidebar/SidebarContent";
@@ -47,6 +49,10 @@ export default function AppShell() {
   const [visitedFilter, setVisitedFilter] = useState<VisitedFilter>("any");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mapViewMode, setMapViewMode] = useState<MapViewMode>(() => readMapViewMode());
+  const [sortMode, setSortMode] = useState<SortMode>(() => readSortMode());
+  const [mapCenter, setMapCenter] = useState<{ lng: number; lat: number } | null>(null);
+  const sortModeRef = useRef(sortMode);
+  sortModeRef.current = sortMode;
   const [formState, setFormState] = useState<{ mode: "add" | "edit"; initial: PoiFormInitial | null } | null>(null);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [addCoords, setAddCoords] = useState<{ lng: number; lat: number } | null>(null);
@@ -69,6 +75,14 @@ export default function AppShell() {
         { myVisitedPoiIds },
       ),
     [poisQuery.data, searchText, activeCategoryIds, visitedFilter, myVisitedPoiIds],
+  );
+
+  // Ordered list for the sidebar/sheet. Distance re-sorts as the map center
+  // changes; other modes ignore it (so panning doesn't re-sort needlessly).
+  const centerForSort = sortMode === "distance" ? mapCenter : null;
+  const sorted = useMemo(
+    () => sortPois(filtered, sortMode, centerForSort),
+    [filtered, sortMode, centerForSort],
   );
 
   const counts = useMemo(() => {
@@ -105,6 +119,23 @@ export default function AppShell() {
     const s = settingsQuery.data;
     if (s && mapRef.current) mapRef.current.flyTo({ center: [s.default_map_center_lng, s.default_map_center_lat], zoom: s.default_map_zoom, duration: 600 });
   }
+
+  function changeSort(mode: SortMode) {
+    setSortMode(mode);
+    writeSortMode(mode);
+    // Seed the center immediately so "Nearest" sorts on the current view without
+    // waiting for the next pan.
+    if (mode === "distance") {
+      const c = mapRef.current?.getCenter();
+      if (c) setMapCenter({ lng: c.lng, lat: c.lat });
+    }
+  }
+
+  // Only track the center while sorting by distance — avoids re-rendering the
+  // list on every pan in the common (non-distance) case.
+  const handleMoveEnd = useCallback((c: { lng: number; lat: number }) => {
+    if (sortModeRef.current === "distance") setMapCenter(c);
+  }, []);
 
   function changeMapViewMode(mode: MapViewMode) {
     setMapViewMode(mode);
@@ -179,7 +210,7 @@ export default function AppShell() {
           onClearCategories={() => setActiveCategoryIds([])}
           visited={visitedFilter}
           onVisitedChange={setVisitedFilter}
-          pois={filtered}
+          pois={sorted}
           categoriesById={categoriesById}
           myVisitedPoiIds={myVisitedPoiIds}
           selectedId={selectedId}
@@ -189,6 +220,8 @@ export default function AppShell() {
           onRetry={() => poisQuery.refetch()}
           viewMode={mapViewMode}
           onViewModeChange={changeMapViewMode}
+          sortMode={sortMode}
+          onSortChange={changeSort}
           username={user?.username ?? ""}
           role={user?.role ?? "member"}
           onLogout={onLogout}
@@ -208,6 +241,7 @@ export default function AppShell() {
             addMode={addMode}
             visitedPoiIds={myVisitedPoiIds}
             mapRef={mapRef}
+            onMoveEnd={handleMoveEnd}
           />
         )}
         {!isMobile && <Legend categories={categories} counts={counts} />}
@@ -274,7 +308,7 @@ export default function AppShell() {
             onClearCategories={() => setActiveCategoryIds([])}
             visited={visitedFilter}
             onVisitedChange={setVisitedFilter}
-            pois={filtered}
+            pois={sorted}
             categoriesById={categoriesById}
             myVisitedPoiIds={myVisitedPoiIds}
             selectedId={selectedId}
@@ -284,6 +318,8 @@ export default function AppShell() {
             onRetry={() => poisQuery.refetch()}
             viewMode={mapViewMode}
             onViewModeChange={changeMapViewMode}
+            sortMode={sortMode}
+            onSortChange={changeSort}
             mobile
           />
           <AccountFooter

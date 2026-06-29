@@ -1,5 +1,6 @@
 import type { Category, Poi, VisitedFilter } from "../../types/api";
 import type { MapViewMode } from "../../lib/mapViewPref";
+import type { SortMode } from "../../lib/sortPref";
 import { theme } from "../../theme";
 import AccountFooter from "./AccountFooter";
 import SidebarContent from "./SidebarContent";
@@ -26,6 +27,8 @@ export interface SidebarProps {
   onRetry: () => void;
   viewMode: MapViewMode;
   onViewModeChange: (mode: MapViewMode) => void;
+  sortMode: SortMode;
+  onSortChange: (mode: SortMode) => void;
   username: string;
   role: string;
   onLogout: () => void;
@@ -68,6 +71,8 @@ export default function Sidebar(props: SidebarProps) {
         onRetry={props.onRetry}
         viewMode={props.viewMode}
         onViewModeChange={props.onViewModeChange}
+        sortMode={props.sortMode}
+        onSortChange={props.onSortChange}
       />
       <AccountFooter username={props.username} role={props.role} onLogout={props.onLogout} onOpenSettings={props.onOpenSettings} updateAvailable={props.updateAvailable} />
     </aside>
