@@ -25,6 +25,10 @@ def client(data_dir):
     db.reset_engine()
     db.init_db()
     from app.main import app
+    # Rate limiting is global state across the process; keep it off for the
+    # general suite (tests that exercise it re-enable + reset it explicitly).
+    app.state.limiter.reset()
+    app.state.limiter.enabled = False
     from starlette.testclient import TestClient
     with TestClient(app) as c:
         yield c

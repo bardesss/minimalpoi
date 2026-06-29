@@ -40,7 +40,8 @@ RUN pip install --no-cache-dir \
     "python-multipart>=0.0.9" \
     "httpx>=0.27" \
     "pillow>=11" \
-    "phonenumbers>=8.13"
+    "phonenumbers>=8.13" \
+    "slowapi>=0.1.9"
 
 # Copy backend source
 COPY backend/ /app/backend/

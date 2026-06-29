@@ -5,9 +5,12 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from . import db
 from .enrich.images import images_dir
+from .ratelimit import limiter
 from .routers import auth, backup, categories, comments, enrich, images, me, places, pois, settings, tags, teams, users, version, visits
 from .routers import sync as sync_router_module
 from .trip.service import start_worker, stop_worker
@@ -34,6 +37,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="MinimalPOI", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(teams.router)

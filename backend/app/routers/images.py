@@ -1,13 +1,15 @@
-from fastapi import APIRouter, HTTPException, UploadFile, status
+from fastapi import APIRouter, HTTPException, Request, UploadFile, status
 
 from ..deps import CurrentUser
 from ..enrich.images import MAX_IMAGE_BYTES, UnsupportedImageError, process_image, save_bytes
+from ..ratelimit import UPLOAD_LIMIT, limiter, user_or_ip
 
 router = APIRouter(prefix="/api/images", tags=["images"])
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def upload_image(file: UploadFile, _: CurrentUser) -> dict:
+@limiter.limit(UPLOAD_LIMIT, key_func=user_or_ip)
+async def upload_image(request: Request, file: UploadFile, _: CurrentUser) -> dict:
     data = await file.read()
     if len(data) > MAX_IMAGE_BYTES:
         raise HTTPException(

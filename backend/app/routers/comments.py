@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
 from ..models import POI, Comment, Role, User
+from ..ratelimit import WRITE_LIMIT, limiter, user_or_ip
 from ..schemas import CommentCreate, CommentRead, CommentUpdate
 
 router = APIRouter(prefix="/api/pois", tags=["comments"])
@@ -29,8 +30,9 @@ def list_comments(poi_id: int, session: SessionDep, _: CurrentUser) -> list[Comm
 
 
 @router.post("/{poi_id}/comments", response_model=CommentRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
 def create_comment(
-    poi_id: int, body: CommentCreate, session: SessionDep, user: CurrentUser
+    poi_id: int, request: Request, body: CommentCreate, session: SessionDep, user: CurrentUser
 ) -> CommentRead:
     if not session.get(POI, poi_id):
         raise HTTPException(status_code=404, detail="Not found")

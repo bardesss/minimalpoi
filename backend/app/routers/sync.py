@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from sqlmodel import select
 
 from ..deps import AdminUser, CurrentUser, SessionDep
 from ..models import POI, Category, SyncStatus, get_or_create_settings, utcnow
+from ..ratelimit import SYNC_LIMIT, limiter, user_or_ip
 from ..schemas import SyncConflictRead, SyncResolve, SyncStatusRead
 from ..trip.resolve import apply_category_snapshot, apply_place_snapshot
 from ..trip.service import run_sync
@@ -13,7 +14,8 @@ _BAD = (SyncStatus.CONFLICT, SyncStatus.ERROR)
 
 
 @router.post("/now")
-async def sync_now(session: SessionDep, _: AdminUser) -> dict:
+@limiter.limit(SYNC_LIMIT, key_func=user_or_ip)
+async def sync_now(request: Request, session: SessionDep, _: AdminUser) -> dict:
     return await run_sync(session)
 
 

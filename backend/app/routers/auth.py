@@ -1,11 +1,12 @@
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
 from ..models import Role, TeamMember, User, get_or_create_settings
+from ..ratelimit import LOGIN_LIMIT, SETUP_LIMIT, limiter
 from ..schemas import Credentials, PreferredTeamUpdate, SetupStatus, UserRead
 from ..config import get_session_lifetime_days
-from ..security import create_access_token, hash_password, verify_password
+from ..security import create_access_token, hash_password, verify_password, verify_password_dummy
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -33,12 +34,14 @@ def _any_user_exists(session: SessionDep) -> bool:
 
 
 @router.get("/setup-status", response_model=SetupStatus)
-def setup_status(session: SessionDep) -> SetupStatus:
+@limiter.limit(SETUP_LIMIT)
+def setup_status(request: Request, session: SessionDep) -> SetupStatus:
     return SetupStatus(needs_setup=not _any_user_exists(session))
 
 
 @router.post("/setup", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-def setup(creds: Credentials, session: SessionDep, response: Response) -> User:
+@limiter.limit(SETUP_LIMIT)
+def setup(request: Request, creds: Credentials, session: SessionDep, response: Response) -> User:
     if _any_user_exists(session):
         raise HTTPException(status_code=409, detail="Setup already completed")
     user = User(
@@ -54,9 +57,13 @@ def setup(creds: Credentials, session: SessionDep, response: Response) -> User:
 
 
 @router.post("/login", response_model=UserRead)
-def login(creds: Credentials, session: SessionDep, response: Response) -> User:
+@limiter.limit(LOGIN_LIMIT)
+def login(request: Request, creds: Credentials, session: SessionDep, response: Response) -> User:
     user = session.exec(select(User).where(User.username == creds.username)).first()
-    if not user or user.disabled or not verify_password(creds.password, user.password_hash):
+    # Always spend bcrypt time, even when the user is missing, so a wrong
+    # username and a wrong password are indistinguishable by response timing.
+    password_ok = verify_password(creds.password, user.password_hash) if user else verify_password_dummy()
+    if not user or user.disabled or not password_ok:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     _set_auth_cookie(response, user.username, session)
     return user

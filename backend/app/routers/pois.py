@@ -1,12 +1,13 @@
 import json
 
-from fastapi import APIRouter, File, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile, status
 from sqlalchemy import func
 from sqlmodel import select
 
 from ..dedup import find_duplicate
 from ..deps import CurrentUser, SessionDep
 from ..enrich.images import localize
+from ..ratelimit import IMPORT_LIMIT, WRITE_LIMIT, limiter, user_or_ip
 from ..models import POI, Category, Comment, Tombstone, Visit, utcnow
 from ..phone import to_e164
 from ..portability import parse_csv, parse_geojson, pois_to_geojson
@@ -48,7 +49,8 @@ def list_pois(session: SessionDep, _: CurrentUser) -> list[POIRead]:
 
 
 @router.post("", response_model=POIRead, status_code=status.HTTP_201_CREATED)
-async def create_poi(body: POICreate, session: SessionDep, user: CurrentUser) -> POI:
+@limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
+async def create_poi(request: Request, body: POICreate, session: SessionDep, user: CurrentUser) -> POI:
     data = body.model_dump()
     data["image_url"] = await localize(data.get("image_url"))
     data["phone"] = to_e164(data.get("phone"))
@@ -66,7 +68,8 @@ def check_duplicate(body: DuplicateCheck, session: SessionDep, _: CurrentUser) -
 
 
 @router.post("/import", response_model=ImportResult)
-async def import_pois(session: SessionDep, user: CurrentUser, file: UploadFile = File(...)) -> ImportResult:
+@limiter.limit(IMPORT_LIMIT, key_func=user_or_ip)
+async def import_pois(request: Request, session: SessionDep, user: CurrentUser, file: UploadFile = File(...)) -> ImportResult:
     raw = await file.read()
     if len(raw) > MAX_IMPORT_BYTES:
         raise HTTPException(

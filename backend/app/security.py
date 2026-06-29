@@ -19,6 +19,18 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
+# A precomputed hash used to spend the same bcrypt time when the username
+# doesn't exist, so a missing user can't be told apart from a wrong password by
+# response timing (username enumeration).
+_DUMMY_HASH = hash_password("minimalpoi-timing-equalizer").encode("utf-8")
+
+
+def verify_password_dummy() -> bool:
+    """Run a throwaway bcrypt comparison to equalize timing; always False."""
+    bcrypt.checkpw(b"x", _DUMMY_HASH)
+    return False
+
+
 def create_access_token(username: str, expires_minutes: int | None = None) -> str:
     if expires_minutes is None:
         expires_minutes = get_session_lifetime_days() * 24 * 60
