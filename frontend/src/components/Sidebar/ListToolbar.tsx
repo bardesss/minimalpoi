@@ -52,6 +52,7 @@ export default function ListToolbar({
   onSortChange,
   viewMode,
   onViewModeChange,
+  mobile = false,
 }: {
   count: number;
   visited: VisitedFilter;
@@ -60,14 +61,19 @@ export default function ListToolbar({
   onSortChange: (mode: SortMode) => void;
   viewMode: MapViewMode;
   onViewModeChange: (mode: MapViewMode) => void;
+  /** Mobile: count sits on its own line; the three controls stay on one row. */
+  mobile?: boolean;
 }) {
+  // On mobile the three controls must share one row, so tighten gaps/padding and
+  // let the group scroll horizontally rather than wrap on very narrow screens.
+  const wrap = mobile ? { ...wrapStyle, padding: "2px 7px" } : wrapStyle;
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", padding: "8px 20px", borderBottom: `1px solid ${theme.color.borderSubtle}` }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", padding: mobile ? "8px 16px" : "8px 20px", borderBottom: `1px solid ${theme.color.borderSubtle}` }}>
       <span style={{ fontSize: 12, fontWeight: 700, color: theme.color.textPrimary, whiteSpace: "nowrap" }}>
         {count} {count === 1 ? "place" : "places"}
       </span>
-      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <span style={wrapStyle}>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: mobile ? 6 : 8, flexWrap: mobile ? "nowrap" : "wrap", maxWidth: "100%", overflowX: mobile ? "auto" : undefined }}>
+        <span style={wrap}>
           <Eye size={13} color={theme.color.textMuted} aria-hidden />
           <select
             aria-label="Filter by visited"
@@ -80,7 +86,7 @@ export default function ListToolbar({
             ))}
           </select>
         </span>
-        <span style={wrapStyle}>
+        <span style={wrap}>
           <ArrowUpDown size={13} color={theme.color.textMuted} aria-hidden />
           <select
             aria-label="Sort places"

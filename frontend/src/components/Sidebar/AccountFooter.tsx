@@ -9,7 +9,7 @@ const roleBadge: Record<string, { bg: string; fg: string }> = {
 export default function AccountFooter({ username, role, onLogout, onOpenSettings, updateAvailable }: { username: string; role: string; onLogout: () => void; onOpenSettings: () => void; updateAvailable: boolean }) {
   const badge = roleBadge[role] ?? roleBadge.member;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 20px", borderTop: `1px solid ${theme.color.borderSubtle}`, background: "#fff" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 20px", paddingBottom: "max(14px, env(safe-area-inset-bottom))", borderTop: `1px solid ${theme.color.borderSubtle}`, background: "#fff" }}>
       <div style={{ width: 32, height: 32, borderRadius: theme.radius.logo, background: theme.gradient.brand, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12.5 }}>
         {username.slice(0, 1).toUpperCase()}
       </div>

@@ -37,7 +37,10 @@ export default function BottomSheet({
         left: 0,
         right: 0,
         bottom: 0,
-        height: "100vh",
+        // Dynamic viewport height matches window.innerHeight (used for
+        // contentHeight); plain 100vh is the URL-bar-hidden height and would
+        // leave the footer floating a URL-bar's height above the real bottom.
+        height: "100dvh",
         zIndex: 1000,
         transform: `translateY(${translate}px)`,
         transition: dragging ? "none" : "transform .28s cubic-bezier(.32,.72,0,1)",
