@@ -51,6 +51,7 @@ export default function SidebarContent(props: SidebarContentProps) {
         onSortChange={props.onSortChange}
         viewMode={props.viewMode}
         onViewModeChange={props.onViewModeChange}
+        mobile={props.mobile}
       />
       <PoiList
         pois={props.pois}
