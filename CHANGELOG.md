@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.2](https://github.com/Bardesss/minimalpoi/compare/v1.2.1...v1.2.2) (2026-06-30)
+
+
+### Bug Fixes
+
+* **mobile:** pin sheet footer to bottom and keep sort controls on one row ([b6eb9ee](https://github.com/Bardesss/minimalpoi/commit/b6eb9ee9417fa6a24674e0adf20489ca152eef4c))
+* **mobile:** pin sheet footer to bottom and keep sort controls on one row ([7bfc345](https://github.com/Bardesss/minimalpoi/commit/7bfc345165d2baab8d8f29c2975d648be8098540))
+
 ## [1.2.1](https://github.com/Bardesss/minimalpoi/compare/v1.2.0...v1.2.1) (2026-06-30)
 
 
