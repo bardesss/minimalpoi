@@ -19,7 +19,7 @@ describe("AppShell", () => {
     renderWithProviders(<AppShell />);
     expect(await screen.findByText("Café Modern")).toBeInTheDocument();
     expect(screen.getByText("Vondelpark")).toBeInTheDocument();
-    expect(screen.getByText(/2 places shown/i)).toBeInTheDocument();
+    expect(screen.getByText(/2 places/i)).toBeInTheDocument();
   });
 
   it("renders the category legend with live counts", async () => {
@@ -36,7 +36,7 @@ describe("AppShell", () => {
     await user.type(screen.getByLabelText(/search places/i), "vondel");
     expect(screen.queryByText("Café Modern")).not.toBeInTheDocument();
     expect(screen.getByText("Vondelpark")).toBeInTheDocument();
-    expect(screen.getByText(/1 place shown/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 place/i)).toBeInTheDocument();
     const calls = mapPropsSpy.mock.calls;
     const lastPois = calls[calls.length - 1][0] as { id: number }[];
     expect(lastPois.map((p) => p.id)).toEqual([2]);
