@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.0](https://github.com/Bardesss/minimalpoi/compare/v1.1.0...v1.2.0) (2026-06-30)
+
+
+### Features
+
+* **list:** merge visited + sort + view into ListToolbar ([82c1c81](https://github.com/Bardesss/minimalpoi/commit/82c1c817bac5dbe394a8ca6d271545e3b6e1fd45))
+* **list:** sort places + consolidated list toolbar ([8165e78](https://github.com/Bardesss/minimalpoi/commit/8165e782f7e9f92aef280390d86aeb963a417893))
+* **list:** use ListToolbar in sidebar, drop FilterBar row ([b822d02](https://github.com/Bardesss/minimalpoi/commit/b822d023e63298cb2397cf240cfced690998edbe))
+
 ## [1.1.0](https://github.com/Bardesss/minimalpoi/compare/v1.0.3...v1.1.0) (2026-06-29)
 
 
