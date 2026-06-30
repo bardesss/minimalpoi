@@ -10,17 +10,21 @@ import type { Category, MapSettings, Poi } from "../types/api";
 // only reference variables created via vi.hoisted (also hoisted). Declaring the
 // mock objects as plain consts here would throw "Cannot access before
 // initialization" when the factory runs.
-const { handlers, mapInstance, MapMock } = vi.hoisted(() => {
+const { handlers, mapInstance, MapMock, state } = vi.hoisted(() => {
   const handlers: Record<string, () => void> = {};
+  // Model MapLibre faithfully: the "pois" source does not exist until the
+  // async "load" handler calls addSource, so getSource returns undefined
+  // before load — this is what makes the load-time data race observable.
+  const state = { sourceAdded: false };
   const mapInstance = {
     addControl: vi.fn(),
     on: vi.fn((evt: string, _layerOrFn: unknown, fn?: () => void) => {
       if (evt === "load") handlers.load = _layerOrFn as () => void;
       else handlers[`${evt}:${typeof _layerOrFn === "string" ? _layerOrFn : ""}`] = (fn ?? (_layerOrFn as () => void));
     }),
-    addSource: vi.fn(),
+    addSource: vi.fn(() => { state.sourceAdded = true; }),
     addLayer: vi.fn(),
-    getSource: vi.fn(() => ({ setData: vi.fn(), getClusterExpansionZoom: vi.fn() })),
+    getSource: vi.fn(() => (state.sourceAdded ? { setData: vi.fn(), getClusterExpansionZoom: vi.fn() } : undefined)),
     getLayer: vi.fn(() => true),
     setFilter: vi.fn(),
     setData: vi.fn(),
@@ -31,7 +35,7 @@ const { handlers, mapInstance, MapMock } = vi.hoisted(() => {
     fitBounds: vi.fn(),
   };
   const MapMock = vi.fn(() => mapInstance);
-  return { handlers, mapInstance, MapMock };
+  return { handlers, mapInstance, MapMock, state };
 });
 
 // jsdom has no ResizeObserver; MapView installs one to call map.resize().
@@ -56,6 +60,7 @@ const pois: Poi[] = [{ id: 1, name: "A", address: null, city: null, country_code
 
 beforeEach(() => {
   MapMock.mockClear();
+  state.sourceAdded = false;
   Object.values(mapInstance).forEach((m) => typeof m === "function" && (m as ReturnType<typeof vi.fn>).mockClear?.());
 });
 
@@ -72,5 +77,20 @@ describe("MapView", () => {
     expect(mapInstance.addSource).toHaveBeenCalledWith("pois", expect.objectContaining({ type: "geojson", cluster: true, clusterMaxZoom: 13, clusterRadius: 50 }));
     const layerIds = mapInstance.addLayer.mock.calls.map((c) => (c[0] as { id: string }).id);
     expect(layerIds).toEqual(["clusters", "cluster-count", "poi-visited", "unclustered", "poi-selected"]);
+  });
+
+  it("seeds the source with the latest pois when data arrives before the map finishes loading", () => {
+    const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+    const props = { categories, settings, selectedId: null, onSelect: () => {}, onMapClick: () => {}, addMode: false, visitedPoiIds: new Set<number>(), mapRef };
+    // Mount while the POI query is still loading (empty list).
+    const { rerender } = render(<MapView pois={[]} {...props} />);
+    // Query resolves BEFORE MapLibre fires "load": the data-sync effect runs,
+    // but the source does not exist yet, so its setData is a no-op.
+    rerender(<MapView pois={pois} {...props} />);
+    // Now the map finishes loading and creates the source.
+    handlers.load();
+    const sourceCall = (mapInstance.addSource.mock.calls as unknown[][]).find((c) => c[0] === "pois");
+    const data = (sourceCall![1] as { data: { features: unknown[] } }).data;
+    expect(data.features).toHaveLength(1);
   });
 });
