@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1](https://github.com/Bardesss/minimalpoi/compare/v1.2.0...v1.2.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* **map:** pins intermittently disappear on refresh (load-race) ([e855c69](https://github.com/Bardesss/minimalpoi/commit/e855c69957f4d5a11e40a3e50bad903eb82abbf3))
+* **map:** seed pin source with latest data when query wins the load race ([5157c0f](https://github.com/Bardesss/minimalpoi/commit/5157c0f73622bc4628393a4ca377fac01f3d160a))
+
 ## [1.2.0](https://github.com/Bardesss/minimalpoi/compare/v1.1.0...v1.2.0) (2026-06-30)
 
 
