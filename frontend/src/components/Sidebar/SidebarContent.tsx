@@ -2,9 +2,8 @@ import type { Category, Poi, VisitedFilter } from "../../types/api";
 import type { MapViewMode } from "../../lib/mapViewPref";
 import type { SortMode } from "../../lib/sortPref";
 import CategoryChips from "./CategoryChips";
-import FilterBar from "./FilterBar";
+import ListToolbar from "./ListToolbar";
 import PoiList from "./PoiList";
-import ResultsMeta from "./ResultsMeta";
 import SearchBox from "./SearchBox";
 
 export interface SidebarContentProps {
@@ -44,8 +43,15 @@ export default function SidebarContent(props: SidebarContentProps) {
         onClear={props.onClearCategories}
         scroll={props.mobile}
       />
-      <FilterBar value={props.visited} onChange={props.onVisitedChange} />
-      <ResultsMeta count={props.pois.length} viewMode={props.viewMode} onViewModeChange={props.onViewModeChange} sortMode={props.sortMode} onSortChange={props.onSortChange} />
+      <ListToolbar
+        count={props.pois.length}
+        visited={props.visited}
+        onVisitedChange={props.onVisitedChange}
+        sortMode={props.sortMode}
+        onSortChange={props.onSortChange}
+        viewMode={props.viewMode}
+        onViewModeChange={props.onViewModeChange}
+      />
       <PoiList
         pois={props.pois}
         categoriesById={props.categoriesById}
