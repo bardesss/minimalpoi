@@ -76,11 +76,21 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
   const addModeRef = useRef(addMode);
   const visitedRef = useRef(visitedPoiIds);
   const onMoveEndRef = useRef(onMoveEnd);
+  // pois/categories/selectedId arrive asynchronously (queries) and may land
+  // before OR after the map's "load" event. The load handler must read their
+  // latest values via refs — otherwise a source created after the data has
+  // already arrived gets seeded with the stale initial (empty) values.
+  const poisRef = useRef(pois);
+  const categoriesRef = useRef(categories);
+  const selectedIdRef = useRef(selectedId);
   onSelectRef.current = onSelect;
   onMapClickRef.current = onMapClick;
   addModeRef.current = addMode;
   visitedRef.current = visitedPoiIds;
   onMoveEndRef.current = onMoveEnd;
+  poisRef.current = pois;
+  categoriesRef.current = categories;
+  selectedIdRef.current = selectedId;
 
   // Init once.
   useEffect(() => {
@@ -99,12 +109,12 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
     map.on("load", () => {
       map.addSource("pois", {
         type: "geojson",
-        data: toFeatureCollection(pois, visitedRef.current),
+        data: toFeatureCollection(poisRef.current, visitedRef.current),
         cluster: true,
         clusterMaxZoom: 13,
         clusterRadius: 50,
       });
-      addPoiLayers(map, categoryColorExpression(categories), selectedId);
+      addPoiLayers(map, categoryColorExpression(categoriesRef.current), selectedIdRef.current);
     });
 
     map.on("click", "unclustered", (e) => {
