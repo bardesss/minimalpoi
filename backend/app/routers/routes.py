@@ -12,6 +12,7 @@ from ..models import (
     utcnow,
 )
 from ..ratelimit import GOOGLE_LIMIT, WRITE_LIMIT, limiter, user_or_ip
+from ..routes_export import route_to_geojson
 from ..routing.service import derive, legs_for, ordered_nodes, recompute_legs
 from ..schemas import (
     RouteCreate,
@@ -99,6 +100,14 @@ def create_route(request: Request, body: RouteCreate, session: SessionDep, user:
 @router.get("/{route_id}", response_model=RouteDetail, dependencies=[Gate])
 def get_route(route_id: int, session: SessionDep, _: CurrentUser) -> RouteDetail:
     return _detail(session, _get_route_or_404(session, route_id))
+
+
+@router.get("/{route_id}/export", dependencies=[Gate])
+@limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
+def export_route(route_id: int, request: Request, session: SessionDep, _: CurrentUser) -> dict:
+    """Any member may read — a route is a shared collection, so no owner check."""
+    route = _get_route_or_404(session, route_id)
+    return route_to_geojson(route.name, ordered_nodes(session, route_id))
 
 
 @router.patch("/{route_id}", response_model=RouteDetail, dependencies=[Gate])
