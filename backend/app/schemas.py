@@ -374,6 +374,23 @@ class RouteLegRead(SQLModel):
     source: LegSource
 
 
+class RouteNodeCreate(SQLModel):
+    kind: RouteNodeKind
+    poi_id: int | None = None
+    name: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    nights: int | None = None
+    notes: str | None = None
+    position: float | None = None
+
+
+class RouteNodeUpdate(SQLModel):
+    nights: int | None = None
+    notes: str | None = None
+    position: float | None = None
+
+
 class RouteDetail(RouteSummary):
     nodes: list[RouteNodeRead] = []
     legs: list[RouteLegRead] = []

@@ -3,6 +3,7 @@ from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep, require_owner_or_admin
 from ..models import (
+    POI,
     Route,
     RouteLeg,
     RouteNode,
@@ -10,13 +11,15 @@ from ..models import (
     get_or_create_settings,
     utcnow,
 )
-from ..ratelimit import WRITE_LIMIT, limiter, user_or_ip
-from ..routing.service import derive, legs_for, ordered_nodes
+from ..ratelimit import GOOGLE_LIMIT, WRITE_LIMIT, limiter, user_or_ip
+from ..routing.service import derive, legs_for, ordered_nodes, recompute_legs
 from ..schemas import (
     RouteCreate,
     RouteDetail,
     RouteLegRead,
+    RouteNodeCreate,
     RouteNodeRead,
+    RouteNodeUpdate,
     RouteSummary,
     RouteUpdate,
 )
@@ -125,3 +128,81 @@ def delete_route(route_id: int, request: Request, session: SessionDep, user: Cur
     session.delete(route)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _next_position(session, route_id: int) -> float:
+    nodes = ordered_nodes(session, route_id)
+    return (nodes[-1].position + 1.0) if nodes else 1.0
+
+
+def _resolve_location(session, body: RouteNodeCreate) -> tuple[int | None, str, float, float]:
+    """A node is either a POI reference (snapshot its name/lat/lng) or an ad-hoc
+    point (name+lat+lng required)."""
+    if body.poi_id is not None:
+        poi = session.get(POI, body.poi_id)
+        if not poi:
+            raise HTTPException(status_code=400, detail="Unknown poi_id")
+        return poi.id, poi.name, poi.lat, poi.lng
+    if body.name and body.lat is not None and body.lng is not None:
+        return None, body.name, body.lat, body.lng
+    raise HTTPException(status_code=400, detail="Provide poi_id or name+lat+lng")
+
+
+@router.post("/{route_id}/nodes", response_model=RouteDetail, status_code=status.HTTP_201_CREATED, dependencies=[Gate])
+@limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
+async def add_node(route_id: int, request: Request, body: RouteNodeCreate, session: SessionDep, user: CurrentUser) -> RouteDetail:
+    route = _get_route_or_404(session, route_id)
+    require_owner_or_admin(route.created_by, user)
+    poi_id, name, lat, lng = _resolve_location(session, body)
+    node = RouteNode(
+        route_id=route_id, kind=body.kind, poi_id=poi_id, name=name, lat=lat, lng=lng,
+        nights=body.nights if body.kind.value == "stay" else None,
+        notes=body.notes,
+        position=body.position if body.position is not None else _next_position(session, route_id),
+    )
+    session.add(node)
+    session.commit()
+    await recompute_legs(session, route_id)
+    return _detail(session, route)
+
+
+@router.patch("/{route_id}/nodes/{node_id}", response_model=RouteDetail, dependencies=[Gate])
+@limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
+async def update_node(route_id: int, node_id: int, request: Request, body: RouteNodeUpdate, session: SessionDep, user: CurrentUser) -> RouteDetail:
+    route = _get_route_or_404(session, route_id)
+    require_owner_or_admin(route.created_by, user)
+    node = session.get(RouteNode, node_id)
+    if not node or node.route_id != route_id:
+        raise HTTPException(status_code=404, detail="Not found")
+    data = body.model_dump(exclude_unset=True)
+    for k, v in data.items():
+        setattr(node, k, v)
+    session.add(node)
+    session.commit()
+    await recompute_legs(session, route_id)  # position may have changed the order
+    return _detail(session, route)
+
+
+@router.delete("/{route_id}/nodes/{node_id}", response_model=RouteDetail, dependencies=[Gate])
+@limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
+async def delete_node(route_id: int, node_id: int, request: Request, session: SessionDep, user: CurrentUser) -> RouteDetail:
+    route = _get_route_or_404(session, route_id)
+    require_owner_or_admin(route.created_by, user)
+    node = session.get(RouteNode, node_id)
+    if not node or node.route_id != route_id:
+        raise HTTPException(status_code=404, detail="Not found")
+    session.delete(node)
+    session.commit()
+    await recompute_legs(session, route_id)
+    return _detail(session, route)
+
+
+@router.post("/{route_id}/recompute", response_model=RouteDetail, dependencies=[Gate])
+@limiter.limit(GOOGLE_LIMIT, key_func=user_or_ip)
+async def recompute_route(route_id: int, request: Request, session: SessionDep, user: CurrentUser) -> RouteDetail:
+    """Manual refresh — re-runs leg computation (may hit paid Google Directions
+    calls), hence the tighter GOOGLE_LIMIT instead of WRITE_LIMIT."""
+    route = _get_route_or_404(session, route_id)
+    require_owner_or_admin(route.created_by, user)
+    await recompute_legs(session, route_id)
+    return _detail(session, route)
