@@ -216,6 +216,7 @@ class MapSettingsRead(SQLModel):
     default_map_center_lat: float
     default_map_center_lng: float
     default_map_zoom: float
+    routes_enabled: bool
 
 
 class SettingsRead(SQLModel):
@@ -233,6 +234,7 @@ class SettingsRead(SQLModel):
     default_map_zoom: float
     cookie_secure: bool
     trip_last_sync_at: datetime | None
+    routes_enabled: bool
 
 
 class SettingsUpdate(SQLModel):
@@ -249,6 +251,7 @@ class SettingsUpdate(SQLModel):
     default_map_center_lng: float | None = None
     default_map_zoom: float | None = None
     cookie_secure: bool | None = None
+    routes_enabled: bool | None = None
 
 
 class SyncStatusRead(SQLModel):

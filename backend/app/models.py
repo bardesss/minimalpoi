@@ -138,6 +138,10 @@ class Settings(SQLModel, table=True):
     cookie_secure: bool = Field(default=False)
     # Stamp of the last completed sync run (UTC); surfaced by GET /api/sync/status.
     trip_last_sync_at: datetime | None = Field(default=None)
+    # Opt-in Route module. When false, all /api/routes* endpoints 404 and the
+    # client hides the Routes nav. NOT NULL with a scalar default so the
+    # additive column backfill (db._add_missing_columns) can add it in place.
+    routes_enabled: bool = Field(default=False)
 
 
 SYNC_USERNAME = "__trip_sync__"
