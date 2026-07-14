@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 
 from pydantic import StringConstraints
 from sqlmodel import Field, SQLModel
 
-from .models import Role, SyncStatus
+from .models import LegSource, Role, RouteNodeKind, SyncStatus
 
 
 class StatusResponse(SQLModel):
@@ -328,3 +328,54 @@ class TagRename(SQLModel):
 class TeamCandidate(SQLModel):
     id: int
     username: str
+
+
+class RouteCreate(SQLModel):
+    name: str
+    start_date: date
+
+
+class RouteUpdate(SQLModel):
+    name: str | None = None
+    start_date: date | None = None
+
+
+class RouteSummary(SQLModel):
+    id: int
+    name: str
+    start_date: date
+    end_date: date
+    node_count: int
+    created_by: int
+    owner_username: str
+
+
+class RouteNodeRead(SQLModel):
+    id: int
+    kind: RouteNodeKind
+    position: float
+    nights: int | None
+    notes: str | None
+    poi_id: int | None
+    name: str
+    lat: float
+    lng: float
+    arrive_date: date | None = None
+    depart_date: date | None = None
+    inbound_distance_m: int | None = None
+    inbound_duration_s: int | None = None
+
+
+class RouteLegRead(SQLModel):
+    from_node_id: int
+    to_node_id: int
+    distance_m: int
+    duration_s: int
+    source: LegSource
+
+
+class RouteDetail(RouteSummary):
+    nodes: list[RouteNodeRead] = []
+    legs: list[RouteLegRead] = []
+    total_distance_m: int = 0
+    total_duration_s: int = 0
