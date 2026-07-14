@@ -207,6 +207,10 @@ async def delete_node(route_id: int, node_id: int, request: Request, session: Se
     node = session.get(RouteNode, node_id)
     if not node or node.route_id != route_id:
         raise HTTPException(status_code=404, detail="Not found")
+    # Clean up attachments scoped to this node (no DB-level cascade configured).
+    for a in session.exec(select(RouteAttachment).where(RouteAttachment.node_id == node_id)).all():
+        att.remove(a.stored_filename)
+        session.delete(a)
     session.delete(node)
     session.commit()
     await recompute_legs(session, route_id)

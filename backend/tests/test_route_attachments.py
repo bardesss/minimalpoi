@@ -32,6 +32,28 @@ def test_reject_disallowed_type_by_magic_bytes(client):
     assert bad.status_code == 415
 
 
+def test_delete_node_removes_its_attachments(client):
+    from app import attachments as att
+
+    rid = _route(client)
+    nid = client.post(f"/api/routes/{rid}/nodes",
+                      json={"kind": "stop", "name": "S", "lat": 1.0, "lng": 1.0}).json()["nodes"][0]["id"]
+    up = client.post(f"/api/routes/{rid}/attachments",
+                     files={"file": ("t.pdf", io.BytesIO(PDF), "application/pdf")},
+                     data={"node_id": str(nid)})
+    assert up.status_code == 201
+    aid = up.json()["id"]
+    assert up.json()["node_id"] == nid
+    # File exists on disk before the node is deleted.
+    assert list(att.attachments_dir().iterdir())
+
+    assert client.delete(f"/api/routes/{rid}/nodes/{nid}").status_code == 200
+
+    # Row is gone (download 404s) and the file is removed from disk.
+    assert client.get(f"/api/routes/{rid}/attachments/{aid}").status_code == 404
+    assert list(att.attachments_dir().iterdir()) == []
+
+
 def test_upload_requires_owner(client):
     rid = _route(client)
     client.post("/api/users", json={"username": "bob", "password": "pw123456"})
