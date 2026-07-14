@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from enum import Enum
 
 from sqlalchemy import JSON, Column, UniqueConstraint
@@ -89,6 +89,63 @@ class POI(SQLModel, table=True):
     trip_synced_snapshot: dict | None = Field(default=None, sa_column=Column(JSON))
     trip_synced_at: datetime | None = Field(default=None)
     trip_last_error: str | None = Field(default=None)
+
+
+class RouteNodeKind(str, Enum):
+    STAY = "stay"
+    STOP = "stop"
+
+
+class LegSource(str, Enum):
+    GOOGLE = "google"
+    ESTIMATE = "estimate"
+
+
+class Route(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+    start_date: date
+    created_by: int = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class RouteNode(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    route_id: int = Field(foreign_key="route.id", index=True)
+    position: float  # fractional ordering key; insert between as (a+b)/2
+    kind: RouteNodeKind
+    nights: int | None = Field(default=None)  # stays only
+    notes: str | None = Field(default=None)
+    # Location: poi_id references a POI; name/lat/lng always hold a usable
+    # snapshot so the node survives POI deletion.
+    poi_id: int | None = Field(default=None, foreign_key="poi.id")
+    name: str
+    lat: float
+    lng: float
+
+
+class RouteLeg(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    route_id: int = Field(foreign_key="route.id", index=True)
+    from_node_id: int = Field(foreign_key="routenode.id")
+    to_node_id: int = Field(foreign_key="routenode.id")
+    distance_m: int
+    duration_s: int
+    source: LegSource
+    computed_at: datetime = Field(default_factory=utcnow)
+
+
+class RouteAttachment(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    route_id: int = Field(foreign_key="route.id", index=True)
+    node_id: int | None = Field(default=None, foreign_key="routenode.id")
+    filename: str          # original, for the download name
+    stored_filename: str   # random on-disk name
+    content_type: str
+    size: int
+    uploaded_by: int = Field(foreign_key="user.id")
+    uploaded_at: datetime = Field(default_factory=utcnow)
 
 
 class Tombstone(SQLModel, table=True):
