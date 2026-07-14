@@ -1,20 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlmodel import select
 
+from .. import attachments as att
 from ..deps import CurrentUser, SessionDep, require_owner_or_admin
 from ..models import (
     POI,
     Route,
+    RouteAttachment,
     RouteLeg,
     RouteNode,
     User,
     get_or_create_settings,
     utcnow,
 )
-from ..ratelimit import GOOGLE_LIMIT, WRITE_LIMIT, limiter, user_or_ip
+from ..ratelimit import GOOGLE_LIMIT, UPLOAD_LIMIT, WRITE_LIMIT, limiter, user_or_ip
 from ..routes_export import route_to_geojson
 from ..routing.service import derive, legs_for, ordered_nodes, recompute_legs
 from ..schemas import (
+    RouteAttachmentRead,
     RouteCreate,
     RouteDetail,
     RouteLegRead,
@@ -131,6 +135,9 @@ def delete_route(route_id: int, request: Request, session: SessionDep, user: Cur
     route = _get_route_or_404(session, route_id)
     require_owner_or_admin(route.created_by, user)
     # Explicit child cleanup (no DB-level cascade configured on these tables).
+    for a in session.exec(select(RouteAttachment).where(RouteAttachment.route_id == route_id)).all():
+        att.remove(a.stored_filename)
+        session.delete(a)
     for model in (RouteLeg, RouteNode):
         for row in session.exec(select(model).where(model.route_id == route_id)).all():
             session.delete(row)
@@ -215,3 +222,63 @@ async def recompute_route(route_id: int, request: Request, session: SessionDep, 
     require_owner_or_admin(route.created_by, user)
     await recompute_legs(session, route_id)
     return _detail(session, route)
+
+
+def _attach_read(a: RouteAttachment) -> RouteAttachmentRead:
+    return RouteAttachmentRead(
+        id=a.id, route_id=a.route_id, node_id=a.node_id, filename=a.filename,
+        content_type=a.content_type, size=a.size, uploaded_by=a.uploaded_by, uploaded_at=a.uploaded_at,
+    )
+
+
+@router.post("/{route_id}/attachments", response_model=RouteAttachmentRead, status_code=201, dependencies=[Gate])
+@limiter.limit(UPLOAD_LIMIT, key_func=user_or_ip)
+async def upload_attachment(route_id: int, request: Request, session: SessionDep, user: CurrentUser,
+                            file: UploadFile = File(...), node_id: int | None = Form(default=None)) -> RouteAttachmentRead:
+    route = _get_route_or_404(session, route_id)
+    require_owner_or_admin(route.created_by, user)
+    # Read at most one byte past the limit so an oversized upload is rejected
+    # without ever buffering the whole (potentially multi-GB) body in memory.
+    data = await file.read(att.MAX_ATTACHMENT_BYTES + 1)
+    if len(data) > att.MAX_ATTACHMENT_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 10 MB)")
+    mime = att.sniff(data)
+    if mime is None:
+        raise HTTPException(status_code=415, detail="Unsupported file (PDF, PNG, JPEG, WebP only)")
+    if node_id is not None:
+        node = session.get(RouteNode, node_id)
+        if not node or node.route_id != route_id:
+            raise HTTPException(status_code=400, detail="Unknown node_id")
+    stored = att.save(data, att.ALLOWED[mime])
+    row = RouteAttachment(route_id=route_id, node_id=node_id, filename=file.filename or "file",
+                          stored_filename=stored, content_type=mime, size=len(data), uploaded_by=user.id)
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return _attach_read(row)
+
+
+@router.get("/{route_id}/attachments/{aid}", dependencies=[Gate])
+def download_attachment(route_id: int, aid: int, session: SessionDep, _: CurrentUser):
+    """Any member may read — a route is a shared collection, so no owner check."""
+    row = session.get(RouteAttachment, aid)
+    if not row or row.route_id != route_id:
+        raise HTTPException(status_code=404, detail="Not found")
+    path = att.attachments_dir() / row.stored_filename
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(str(path), media_type=row.content_type, filename=row.filename)
+
+
+@router.delete("/{route_id}/attachments/{aid}", status_code=204, dependencies=[Gate])
+@limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
+def delete_attachment(route_id: int, aid: int, request: Request, session: SessionDep, user: CurrentUser) -> Response:
+    route = _get_route_or_404(session, route_id)
+    require_owner_or_admin(route.created_by, user)
+    row = session.get(RouteAttachment, aid)
+    if not row or row.route_id != route_id:
+        raise HTTPException(status_code=404, detail="Not found")
+    att.remove(row.stored_filename)
+    session.delete(row)
+    session.commit()
+    return Response(status_code=204)

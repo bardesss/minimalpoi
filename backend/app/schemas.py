@@ -396,3 +396,14 @@ class RouteDetail(RouteSummary):
     legs: list[RouteLegRead] = []
     total_distance_m: int = 0
     total_duration_s: int = 0
+
+
+class RouteAttachmentRead(SQLModel):
+    id: int
+    route_id: int
+    node_id: int | None
+    filename: str
+    content_type: str
+    size: int
+    uploaded_by: int
+    uploaded_at: datetime
