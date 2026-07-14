@@ -250,3 +250,72 @@ export interface SyncResolve {
   id: number;
   resolution: SyncResolution;
 }
+
+export type RouteNodeKind = "stay" | "stop";
+export type LegSource = "google" | "estimate";
+
+export interface RouteSummary {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  node_count: number;
+  created_by: number;
+  owner_username: string;
+}
+
+export interface RouteNode {
+  id: number;
+  kind: RouteNodeKind;
+  position: number;
+  nights: number | null;
+  notes: string | null;
+  poi_id: number | null;
+  name: string;
+  lat: number;
+  lng: number;
+  arrive_date: string | null;
+  depart_date: string | null;
+  inbound_distance_m: number | null;
+  inbound_duration_s: number | null;
+}
+
+export interface RouteLeg {
+  from_node_id: number;
+  to_node_id: number;
+  distance_m: number;
+  duration_s: number;
+  source: LegSource;
+}
+
+export interface RouteDetail extends RouteSummary {
+  nodes: RouteNode[];
+  legs: RouteLeg[];
+  total_distance_m: number;
+  total_duration_s: number;
+}
+
+export interface RouteAttachment {
+  id: number;
+  route_id: number;
+  node_id: number | null;
+  filename: string;
+  content_type: string;
+  size: number;
+  uploaded_by: number;
+  uploaded_at: string;
+}
+
+export interface RouteCreate { name: string; start_date: string; }
+export interface RouteUpdate { name?: string; start_date?: string; }
+export interface RouteNodeCreate {
+  kind: RouteNodeKind;
+  poi_id?: number | null;
+  name?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  nights?: number | null;
+  notes?: string | null;
+  position?: number | null;
+}
+export interface RouteNodeUpdate { nights?: number | null; notes?: string | null; position?: number | null; }
