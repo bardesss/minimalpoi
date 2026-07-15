@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.4.0](https://github.com/Bardesss/minimalpoi/compare/v2.3.1...v2.4.0) (2026-07-15)
+
+
+### Features
+
+* add toPoiCreate draft-to-payload mapper ([a3139ea](https://github.com/Bardesss/minimalpoi/commit/a3139ea4ff648765ee2b6c8bc7188be9f05c9d4a))
+* **routes:** search Google Places in the route node picker ([4d2d458](https://github.com/Bardesss/minimalpoi/commit/4d2d45802e7fc1ae142c3ffe85c148494d14dd53))
+* search Google Places in the route node picker ([4d78386](https://github.com/Bardesss/minimalpoi/commit/4d78386eec7fa024ca0fef67eb73e9c4f5ba018f))
+
+
+### Bug Fixes
+
+* reset Google picker state on mode switch and guard-test coverage ([d58f750](https://github.com/Bardesss/minimalpoi/commit/d58f750a88b5fca7ca642e0aba1c40fb00da9ed5))
+
 ## [2.3.1](https://github.com/Bardesss/minimalpoi/compare/v2.3.0...v2.3.1) (2026-07-15)
 
 
