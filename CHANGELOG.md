@@ -1,5 +1,34 @@
 # Changelog
 
+## [2.0.0](https://github.com/Bardesss/minimalpoi/compare/v1.2.2...v2.0.0) (2026-07-15)
+
+
+### Features
+
+* opt-in Route module (stays/stops, travel legs, map, attachments, export) ([b8a43c3](https://github.com/Bardesss/minimalpoi/commit/b8a43c38dc60c262fe0d14f4362f79c396bd712f))
+* **routes:** /routes route, gated nav entry, and route-line helper ([3c7566f](https://github.com/Bardesss/minimalpoi/commit/3c7566f6b873d6514e72e5a1fcc05fc3e183dc9d))
+* **routes:** add Route/RouteNode/RouteLeg/RouteAttachment tables ([73080e6](https://github.com/Bardesss/minimalpoi/commit/73080e66ff3f4ade5f3506ef2f681e517ae20820))
+* **routes:** add routes_enabled opt-in toggle to settings ([60de0ce](https://github.com/Bardesss/minimalpoi/commit/60de0ced2ba003bd47ff84b74fcb833aee9dc247))
+* **routes:** add swappable travel calc (haversine + google directions) ([3ce72a0](https://github.com/Bardesss/minimalpoi/commit/3ce72a0f97c308994d03ccc983aeb879aa138876))
+* **routes:** attachments with magic-byte allowlist and upload limit ([dc3872f](https://github.com/Bardesss/minimalpoi/commit/dc3872fdd324a49d94d65e5defdb496dee41bcf5))
+* **routes:** CRUD router with opt-in gate and shared-collection authz ([72afbad](https://github.com/Bardesss/minimalpoi/commit/72afbad6f463ad3a0b7062167069dd695fe8f82d))
+* **routes:** frontend types, api client, and query hooks ([204768f](https://github.com/Bardesss/minimalpoi/commit/204768f1839459ad2e8eecae75f40ac2ff4b00e9))
+* **routes:** GeoJSON export endpoint ([9c21a30](https://github.com/Bardesss/minimalpoi/commit/9c21a308df03bfec67b1081d5d35a0d34b807a66))
+* **routes:** leg recompute + date/total derivations ([cd253a7](https://github.com/Bardesss/minimalpoi/commit/cd253a7ccccce62543b06ffbfbaf998951db3574))
+* **routes:** node add/edit/reorder/delete with leg recompute ([914dd58](https://github.com/Bardesss/minimalpoi/commit/914dd58266759f99fae4a9fa77d02b87c853ad36))
+* **routes:** route map layer, attachments UI, and export button ([0df4ea7](https://github.com/Bardesss/minimalpoi/commit/0df4ea750f559261054c6a0905071c0aecfbf268))
+* **routes:** routes list and editor timeline UI ([22df330](https://github.com/Bardesss/minimalpoi/commit/22df3304bc6bce5e2df0f0d79b0a3720e35224dc))
+
+
+### Bug Fixes
+
+* **routes:** clean up node attachments on delete_node ([5ae8fcc](https://github.com/Bardesss/minimalpoi/commit/5ae8fcc84c3a0592439e7fa281ede41ed8431c2c))
+
+
+### Miscellaneous Chores
+
+* release 2.0.0 ([7aea230](https://github.com/Bardesss/minimalpoi/commit/7aea230535528c9fd0a14698f4917080e0d228f3))
+
 ## [1.2.2](https://github.com/Bardesss/minimalpoi/compare/v1.2.1...v1.2.2) (2026-06-30)
 
 
