@@ -35,6 +35,12 @@ Drop a pin, paste a link to auto-fill the details, and keep all your favorite pl
 - **Categories** with a custom color and icon.
 - **Tags** with usage counts, plus admin-wide tag **rename & delete**.
 
+### 🧭 Route planner (optional)
+- **Build a journey** — an admin-enabled Route module turns your places into a named, dated trip: an ordered chain of multi-night **stays** and in-between **stops** (linked POIs or ad-hoc points).
+- **Travel per leg** — each hop shows driving distance and time via **Google Directions**, with an offline **haversine estimate** fallback (flagged *est.*); arrival/departure dates and route totals are derived from the stay nights.
+- **Map-primary editor** — a full-screen map draws the numbered polyline while a floating timeline (bottom sheet on mobile) lets you add, reorder, and re-night stops.
+- **Shared & exportable** — every member sees all routes (only the creator or an admin can edit), export any route as **GeoJSON**, and attach tickets/confirmations (PDF or image, magic-byte checked, 10 MB cap) to the route or a single stop.
+
 ### 💾 Data, images & backups
 - **Import & export** — bulk-import from **GeoJSON or CSV** (server-side duplicate detection + automatic category matching) and export your whole collection as **GeoJSON**.
 - **Full backup & restore** — download a complete **ZIP archive** of everything (places, photos, users, teams, comments, ratings, settings) and restore it into a fresh instance.
