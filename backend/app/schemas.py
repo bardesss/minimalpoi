@@ -333,18 +333,21 @@ class TeamCandidate(SQLModel):
 class RouteCreate(SQLModel):
     name: str
     start_date: date
+    end_date: date | None = None
 
 
 class RouteUpdate(SQLModel):
     name: str | None = None
     start_date: date | None = None
+    end_date: date | None = None
 
 
 class RouteSummary(SQLModel):
     id: int
     name: str
     start_date: date
-    end_date: date
+    end_date: date | None = None
+    scheduled_end_date: date
     node_count: int
     created_by: int
     owner_username: str

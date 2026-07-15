@@ -261,7 +261,8 @@ export interface RouteSummary {
   id: number;
   name: string;
   start_date: string;
-  end_date: string;
+  end_date: string | null;
+  scheduled_end_date: string;
   node_count: number;
   created_by: number;
   owner_username: string;
@@ -310,8 +311,8 @@ export interface RouteAttachment {
   uploaded_at: string;
 }
 
-export interface RouteCreate { name: string; start_date: string; }
-export interface RouteUpdate { name?: string; start_date?: string; }
+export interface RouteCreate { name: string; start_date: string; end_date?: string | null; }
+export interface RouteUpdate { name?: string; start_date?: string; end_date?: string | null; }
 export interface RouteNodeCreate {
   kind: RouteNodeKind;
   poi_id?: number | null;

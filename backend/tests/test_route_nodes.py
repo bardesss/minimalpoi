@@ -27,8 +27,8 @@ def test_add_adhoc_stop_and_leg_computed(client):
     assert len(detail["legs"]) == 1
     assert detail["legs"][0]["distance_m"] > 0
     assert detail["total_duration_s"] > 0
-    # end date = start + 2 nights
-    assert detail["end_date"] == "2026-07-16"
+    # scheduled end date = start + 2 nights
+    assert detail["scheduled_end_date"] == "2026-07-16"
 
 
 def test_reorder_and_delete_node(client):
