@@ -66,3 +66,16 @@ def test_team_candidates_lists_id_and_username(client):
 
 def test_team_candidates_requires_auth(client):
     assert client.get("/api/teams/candidates").status_code == 401
+
+
+def test_delete_team_nulls_route_team_id(client):
+    # NOTE: POI has no team_id field (only Team/TeamMember/Route/Visit do —
+    # POICreate/POIRead don't expose team_id), so this only covers Route.
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
+    client.patch("/api/settings", json={"routes_enabled": True})
+    team = client.post("/api/teams", json={"name": "Crew", "member_ids": []}).json()
+    rid = client.post(
+        "/api/routes", json={"name": "R", "start_date": "2026-07-14", "team_id": team["id"]}
+    ).json()["id"]
+    assert client.delete(f"/api/teams/{team['id']}").status_code == 204
+    assert client.get(f"/api/routes/{rid}").json()["team_id"] is None

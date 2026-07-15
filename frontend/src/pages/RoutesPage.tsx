@@ -62,6 +62,13 @@ export default function RoutesPage() {
   const teams = teamsQuery.data ?? [];
   const myTeams = user?.role === "admin" ? teams : teams.filter((t) => user != null && t.member_ids.includes(user.id));
   const canAssignTeam = !!detail && !!user && (detail.created_by === user.id || user.role === "admin");
+  const editTeamOptions = (() => {
+    const opts = myTeams.map((t) => ({ id: t.id, name: t.name }));
+    if (detail?.team_id != null && !opts.some((o) => o.id === detail.team_id)) {
+      opts.unshift({ id: detail.team_id, name: detail.team_name ?? `Team ${detail.team_id}` });
+    }
+    return opts;
+  })();
 
   async function onExport() {
     if (!detail) return;
@@ -164,7 +171,7 @@ export default function RoutesPage() {
                   {canAssignTeam && (
                     <select aria-label="Edit team" style={inputStyle} value={edit.team_id} onChange={(e) => setEdit({ ...edit, team_id: e.target.value })}>
                       <option value="">No team</option>
-                      {myTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      {editTeamOptions.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                   )}
                   <div style={{ display: "flex", gap: 8 }}>
