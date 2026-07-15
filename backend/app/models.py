@@ -105,6 +105,7 @@ class Route(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
     start_date: date
+    end_date: date | None = Field(default=None)
     created_by: int = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)

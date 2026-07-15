@@ -1,26 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
 import { useCategories, useCreatePoi, useDeletePoi, useEnrich, useMyVisits, usePlaceDraft, usePois, useSearchPlaces, useSettings, useUpdatePoi, useUploadImage, useCheckDuplicate, useVersion } from "../queries/hooks";
 import { filterPois } from "../lib/filterPois";
 import type { Category, Poi, PoiCreate, VisitedFilter } from "../types/api";
-import { theme } from "../theme";
 import { boundsOf } from "../map/bounds";
 import { readMapViewMode, writeMapViewMode, type MapViewMode } from "../lib/mapViewPref";
 import { readSortMode, writeSortMode, type SortMode } from "../lib/sortPref";
 import { sortPois } from "../lib/sortPois";
 import { useIsMobile } from "../lib/useMediaQuery";
-import Sidebar from "./Sidebar/Sidebar";
 import SidebarContent from "./Sidebar/SidebarContent";
-import AccountFooter from "./Sidebar/AccountFooter";
-import BottomSheet from "./BottomSheet";
 import MapView from "./MapView";
 import Legend from "./Legend";
 import DetailPanel from "./DetailPanel";
 import AddFab from "./AddFab";
 import PoiFormModal, { type PoiFormInitial } from "./PoiFormModal";
 import SettingsModal from "./SettingsModal";
+import AppLayout from "./AppLayout";
 
 export default function AppShell() {
   const { user, signOut } = useAuth();
@@ -196,164 +193,98 @@ export default function AppShell() {
     setSelectedId(null);
   }
 
-  return (
-    <div style={{ display: "flex", height: "100vh", width: "100vw", background: theme.color.pageBg }}>
-      {!isMobile && (
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          onCollapse={() => setSidebarCollapsed(true)}
-          search={searchText}
-          onSearch={setSearchText}
+  const sidebarContent = (
+    <SidebarContent
+      search={searchText}
+      onSearch={setSearchText}
+      categories={categories}
+      activeCategoryIds={activeCategoryIds}
+      onToggleCategory={toggleCategory}
+      onClearCategories={() => setActiveCategoryIds([])}
+      visited={visitedFilter}
+      onVisitedChange={setVisitedFilter}
+      pois={sorted}
+      categoriesById={categoriesById}
+      myVisitedPoiIds={myVisitedPoiIds}
+      selectedId={selectedId}
+      onSelect={selectPoi}
+      isLoading={poisQuery.isLoading}
+      isError={poisQuery.isError}
+      onRetry={() => poisQuery.refetch()}
+      viewMode={mapViewMode}
+      onViewModeChange={changeMapViewMode}
+      sortMode={sortMode}
+      onSortChange={changeSort}
+      mobile={isMobile}
+    />
+  );
+
+  const main = (
+    <>
+      {settingsQuery.data && (
+        <MapView
+          pois={filtered}
           categories={categories}
-          activeCategoryIds={activeCategoryIds}
-          onToggleCategory={toggleCategory}
-          onClearCategories={() => setActiveCategoryIds([])}
-          visited={visitedFilter}
-          onVisitedChange={setVisitedFilter}
-          pois={sorted}
-          categoriesById={categoriesById}
-          myVisitedPoiIds={myVisitedPoiIds}
+          settings={settingsQuery.data}
           selectedId={selectedId}
           onSelect={selectPoi}
-          isLoading={poisQuery.isLoading}
-          isError={poisQuery.isError}
-          onRetry={() => poisQuery.refetch()}
-          viewMode={mapViewMode}
-          onViewModeChange={changeMapViewMode}
-          sortMode={sortMode}
-          onSortChange={changeSort}
-          username={user?.username ?? ""}
-          role={user?.role ?? "member"}
-          onLogout={onLogout}
-          onOpenSettings={() => setSettingsModalOpen(true)}
-          updateAvailable={version.data?.update_available ?? false}
+          onMapClick={(lng, lat) => setAddCoords({ lng, lat })}
+          addMode={addMode}
+          visitedPoiIds={myVisitedPoiIds}
+          mapRef={mapRef}
+          onMoveEnd={handleMoveEnd}
         />
       )}
-      <main style={{ flex: 1, position: "relative", background: theme.color.mapBg }}>
-        {settingsQuery.data && (
-          <MapView
-            pois={filtered}
-            categories={categories}
-            settings={settingsQuery.data}
-            selectedId={selectedId}
-            onSelect={selectPoi}
-            onMapClick={(lng, lat) => setAddCoords({ lng, lat })}
-            addMode={addMode}
-            visitedPoiIds={myVisitedPoiIds}
-            mapRef={mapRef}
-            onMoveEnd={handleMoveEnd}
-          />
-        )}
-        {settingsQuery.data?.routes_enabled && (
-          <Link
-            to="/routes"
-            style={{
-              position: "absolute",
-              top: 16,
-              right: 16,
-              zIndex: 1100,
-              background: "#fff",
-              border: `1px solid ${theme.color.borderCard}`,
-              borderRadius: 11,
-              padding: "10px 14px",
-              boxShadow: theme.shadow.expand,
-              fontFamily: theme.font.ui,
-              fontWeight: 700,
-              fontSize: 13,
-              color: theme.color.textPrimary,
-              textDecoration: "none",
-            }}
-          >
-            Routes
-          </Link>
-        )}
-        {!isMobile && <Legend categories={categories} counts={counts} />}
-        {!isMobile && sidebarCollapsed && (
-          <button
-            type="button"
-            onClick={() => setSidebarCollapsed(false)}
-            style={{
-              position: "absolute",
-              top: 16,
-              left: 16,
-              zIndex: 1100,
-              background: "#fff",
-              border: `1px solid ${theme.color.borderCard}`,
-              borderRadius: 11,
-              padding: "10px 14px",
-              boxShadow: theme.shadow.expand,
-              fontFamily: theme.font.ui,
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: "pointer",
-            }}
-          >
-            » {filtered.length} places
-          </button>
-        )}
-        {selectedPoi && (
-          <DetailPanel
-            poi={selectedPoi}
-            category={selectedPoi.category_id != null ? categoriesById[selectedPoi.category_id] : undefined}
-            onClose={() => setSelectedId(null)}
-            onEdit={() => openEdit(selectedPoi)}
-            onDelete={confirmDelete}
-            mobile={isMobile}
-          />
-        )}
-        {!(isMobile && selectedPoi) && <AddFab onClick={openAdd} mobile={isMobile} />}
-        {formState && (
-          <PoiFormModal
-            mode={formState.mode}
-            initial={formState.initial}
-            categories={categories}
-            coords={addCoords}
-            onSubmit={submitForm}
-            onClose={closeForm}
-            onCheckDuplicate={runDuplicateCheck}
-            duplicateId={duplicateId}
-            onEnrich={(url) => enrich.mutateAsync(url)}
-            onSearchPlaces={(q) => searchPlaces.mutateAsync(q)}
-            onPickPlace={(placeId) => placeDraft.mutateAsync(placeId)}
-            onUploadImage={(file) => uploadImage.mutateAsync(file)}
-          />
-        )}
-        {settingsModalOpen && <SettingsModal onClose={() => setSettingsModalOpen(false)} />}
-      </main>
-      {isMobile && (
-        <BottomSheet label="Places" initial="half">
-          <SidebarContent
-            search={searchText}
-            onSearch={setSearchText}
-            categories={categories}
-            activeCategoryIds={activeCategoryIds}
-            onToggleCategory={toggleCategory}
-            onClearCategories={() => setActiveCategoryIds([])}
-            visited={visitedFilter}
-            onVisitedChange={setVisitedFilter}
-            pois={sorted}
-            categoriesById={categoriesById}
-            myVisitedPoiIds={myVisitedPoiIds}
-            selectedId={selectedId}
-            onSelect={selectPoi}
-            isLoading={poisQuery.isLoading}
-            isError={poisQuery.isError}
-            onRetry={() => poisQuery.refetch()}
-            viewMode={mapViewMode}
-            onViewModeChange={changeMapViewMode}
-            sortMode={sortMode}
-            onSortChange={changeSort}
-            mobile
-          />
-          <AccountFooter
-            username={user?.username ?? ""}
-            role={user?.role ?? "member"}
-            onLogout={onLogout}
-            onOpenSettings={() => setSettingsModalOpen(true)}
-            updateAvailable={version.data?.update_available ?? false}
-          />
-        </BottomSheet>
+      {!isMobile && <Legend categories={categories} counts={counts} />}
+      {selectedPoi && (
+        <DetailPanel
+          poi={selectedPoi}
+          category={selectedPoi.category_id != null ? categoriesById[selectedPoi.category_id] : undefined}
+          onClose={() => setSelectedId(null)}
+          onEdit={() => openEdit(selectedPoi)}
+          onDelete={confirmDelete}
+          mobile={isMobile}
+        />
       )}
-    </div>
+      {!(isMobile && selectedPoi) && <AddFab onClick={openAdd} mobile={isMobile} />}
+      {formState && (
+        <PoiFormModal
+          mode={formState.mode}
+          initial={formState.initial}
+          categories={categories}
+          coords={addCoords}
+          onSubmit={submitForm}
+          onClose={closeForm}
+          onCheckDuplicate={runDuplicateCheck}
+          duplicateId={duplicateId}
+          onEnrich={(url) => enrich.mutateAsync(url)}
+          onSearchPlaces={(q) => searchPlaces.mutateAsync(q)}
+          onPickPlace={(placeId) => placeDraft.mutateAsync(placeId)}
+          onUploadImage={(file) => uploadImage.mutateAsync(file)}
+        />
+      )}
+      {settingsModalOpen && <SettingsModal onClose={() => setSettingsModalOpen(false)} />}
+    </>
+  );
+
+  return (
+    <AppLayout
+      active="map"
+      routesEnabled={settingsQuery.data?.routes_enabled ?? false}
+      sheetLabel="Places"
+      collapsed={sidebarCollapsed}
+      onCollapse={() => setSidebarCollapsed(true)}
+      onExpand={() => setSidebarCollapsed(false)}
+      reopenLabel={`» ${filtered.length} places`}
+      sidebar={sidebarContent}
+      main={main}
+      account={{
+        username: user?.username ?? "",
+        role: user?.role ?? "member",
+        onLogout: onLogout,
+        onOpenSettings: () => setSettingsModalOpen(true),
+        updateAvailable: version.data?.update_available ?? false,
+      }}
+    />
   );
 }

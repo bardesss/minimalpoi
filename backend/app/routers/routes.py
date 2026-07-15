@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlmodel import select
@@ -49,7 +51,8 @@ def _summary(session, route: Route) -> RouteSummary:
     nodes = ordered_nodes(session, route.id)
     d = derive(nodes, legs_for(session, route.id), route.start_date)
     return RouteSummary(
-        id=route.id, name=route.name, start_date=route.start_date, end_date=d["end_date"],
+        id=route.id, name=route.name, start_date=route.start_date,
+        end_date=route.end_date, scheduled_end_date=d["end_date"],
         node_count=len(nodes), created_by=route.created_by,
         owner_username=_username(session, route.created_by),
     )
@@ -70,7 +73,8 @@ def _detail(session, route: Route) -> RouteDetail:
         select(RouteAttachment).where(RouteAttachment.route_id == route.id).order_by(RouteAttachment.uploaded_at)
     ).all()
     return RouteDetail(
-        id=route.id, name=route.name, start_date=route.start_date, end_date=d["end_date"],
+        id=route.id, name=route.name, start_date=route.start_date,
+        end_date=route.end_date, scheduled_end_date=d["end_date"],
         node_count=len(nodes), created_by=route.created_by,
         owner_username=_username(session, route.created_by),
         nodes=node_reads,
@@ -89,6 +93,11 @@ def _get_route_or_404(session, route_id: int) -> Route:
     return route
 
 
+def _validate_dates(start: "date", end: "date | None") -> None:
+    if end is not None and end < start:
+        raise HTTPException(status_code=422, detail="end_date is before start_date")
+
+
 @router.get("", response_model=list[RouteSummary], dependencies=[Gate])
 def list_routes(session: SessionDep, _: CurrentUser) -> list[RouteSummary]:
     routes = session.exec(select(Route).order_by(Route.created_at.desc())).all()
@@ -98,7 +107,8 @@ def list_routes(session: SessionDep, _: CurrentUser) -> list[RouteSummary]:
 @router.post("", response_model=RouteDetail, status_code=status.HTTP_201_CREATED, dependencies=[Gate])
 @limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
 def create_route(request: Request, body: RouteCreate, session: SessionDep, user: CurrentUser) -> RouteDetail:
-    route = Route(name=body.name, start_date=body.start_date, created_by=user.id)
+    _validate_dates(body.start_date, body.end_date)
+    route = Route(name=body.name, start_date=body.start_date, end_date=body.end_date, created_by=user.id)
     session.add(route)
     session.commit()
     session.refresh(route)
@@ -124,6 +134,10 @@ def update_route(route_id: int, request: Request, body: RouteUpdate, session: Se
     route = _get_route_or_404(session, route_id)
     require_owner_or_admin(route.created_by, user)
     data = body.model_dump(exclude_unset=True)
+    _validate_dates(
+        data.get("start_date", route.start_date),
+        data.get("end_date", route.end_date),
+    )
     for k, v in data.items():
         setattr(route, k, v)
     route.updated_at = utcnow()
