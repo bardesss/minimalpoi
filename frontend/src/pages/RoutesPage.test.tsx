@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import RoutesPage from "./RoutesPage";
 import type { RouteDetail } from "../types/api";
@@ -10,7 +10,7 @@ const deleteAsync = vi.fn().mockResolvedValue(undefined);
 const detail: RouteDetail = {
   id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-20",
   scheduled_end_date: "2026-07-16", node_count: 0,
-  created_by: 1, owner_username: "admin", team_id: 3, team_name: "Crew", can_edit: true,
+  created_by: 1, owner_username: "admin", team_id: 9, team_name: "Ghosts", can_edit: true,
   nodes: [], legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
 };
 
@@ -109,6 +109,17 @@ describe("RoutesPage", () => {
   it("shows the team badge on a route", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
-    expect(await screen.findAllByText(/Crew/)).not.toHaveLength(0);
+    expect(await screen.findAllByText(/Ghosts/)).not.toHaveLength(0);
+  });
+
+  it("edit team selector includes the route's current team even if not in my teams", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /^edit$/i }));
+    const select = screen.getByLabelText(/edit team/i) as HTMLSelectElement;
+    // the currently-assigned team (id 9, "Ghosts") must be an option and selected,
+    // even though it is not in the mocked useTeams list (only team 3 "Crew" is).
+    expect(within(select).getByRole("option", { name: "Ghosts" })).toBeInTheDocument();
+    expect(select.value).toBe("9");
   });
 });
