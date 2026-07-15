@@ -72,3 +72,30 @@ def test_route_patch_end_before_start_rejected(client):
     # patch a start_date after the existing (stored) end_date -> 422
     client.patch(f"/api/routes/{rid}", json={"end_date": "2026-07-20"})
     assert client.patch(f"/api/routes/{rid}", json={"start_date": "2026-07-25"}).status_code == 422
+
+
+def test_route_team_assignment_and_name(client):
+    _admin(client)
+    team = client.post("/api/teams", json={"name": "Crew", "member_ids": []}).json()
+    r = client.post("/api/routes", json={"name": "T", "start_date": "2026-07-14", "team_id": team["id"]})
+    assert r.status_code == 201
+    body = r.json()
+    assert body["team_id"] == team["id"]
+    assert body["team_name"] == "Crew"
+    assert client.get("/api/routes").json()[0]["team_name"] == "Crew"
+
+
+def test_route_unknown_team_rejected(client):
+    _admin(client)
+    bad = client.post("/api/routes", json={"name": "T", "start_date": "2026-07-14", "team_id": 999})
+    assert bad.status_code == 400
+
+
+def test_member_cannot_assign_foreign_team(client):
+    _admin(client)
+    team = client.post("/api/teams", json={"name": "Crew", "member_ids": []}).json()
+    client.post("/api/users", json={"username": "bob", "password": "pw123456"})
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
+    bad = client.post("/api/routes", json={"name": "T", "start_date": "2026-07-14", "team_id": team["id"]})
+    assert bad.status_code == 403

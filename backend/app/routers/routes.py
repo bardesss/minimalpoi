@@ -8,10 +8,13 @@ from .. import attachments as att
 from ..deps import CurrentUser, SessionDep, require_owner_or_admin
 from ..models import (
     POI,
+    Role,
     Route,
     RouteAttachment,
     RouteLeg,
     RouteNode,
+    Team,
+    TeamMember,
     User,
     get_or_create_settings,
     utcnow,
@@ -55,6 +58,7 @@ def _summary(session, route: Route) -> RouteSummary:
         end_date=route.end_date, scheduled_end_date=d["end_date"],
         node_count=len(nodes), created_by=route.created_by,
         owner_username=_username(session, route.created_by),
+        team_id=route.team_id, team_name=_team_name(session, route.team_id),
     )
 
 
@@ -77,6 +81,7 @@ def _detail(session, route: Route) -> RouteDetail:
         end_date=route.end_date, scheduled_end_date=d["end_date"],
         node_count=len(nodes), created_by=route.created_by,
         owner_username=_username(session, route.created_by),
+        team_id=route.team_id, team_name=_team_name(session, route.team_id),
         nodes=node_reads,
         legs=[RouteLegRead(from_node_id=l.from_node_id, to_node_id=l.to_node_id,
                            distance_m=l.distance_m, duration_s=l.duration_s, source=l.source)
@@ -98,6 +103,27 @@ def _validate_dates(start: "date", end: "date | None") -> None:
         raise HTTPException(status_code=422, detail="end_date is before start_date")
 
 
+def _team_name(session, team_id: int | None) -> str | None:
+    if team_id is None:
+        return None
+    team = session.get(Team, team_id)
+    return team.name if team else None
+
+
+def _is_team_member(session, team_id: int, user_id: int) -> bool:
+    return session.exec(
+        select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.user_id == user_id)
+    ).first() is not None
+
+
+def _assert_can_assign_team(session, team_id: int, user: User) -> None:
+    """Assigning a route to a team requires the setter to belong to it; admins may assign to any."""
+    if session.get(Team, team_id) is None:
+        raise HTTPException(status_code=400, detail="Unknown team_id")
+    if user.role != Role.ADMIN and not _is_team_member(session, team_id, user.id):
+        raise HTTPException(status_code=403, detail="Not a member of that team")
+
+
 @router.get("", response_model=list[RouteSummary], dependencies=[Gate])
 def list_routes(session: SessionDep, _: CurrentUser) -> list[RouteSummary]:
     routes = session.exec(select(Route).order_by(Route.created_at.desc())).all()
@@ -108,7 +134,10 @@ def list_routes(session: SessionDep, _: CurrentUser) -> list[RouteSummary]:
 @limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
 def create_route(request: Request, body: RouteCreate, session: SessionDep, user: CurrentUser) -> RouteDetail:
     _validate_dates(body.start_date, body.end_date)
-    route = Route(name=body.name, start_date=body.start_date, end_date=body.end_date, created_by=user.id)
+    if body.team_id is not None:
+        _assert_can_assign_team(session, body.team_id, user)
+    route = Route(name=body.name, start_date=body.start_date, end_date=body.end_date,
+                  team_id=body.team_id, created_by=user.id)
     session.add(route)
     session.commit()
     session.refresh(route)
@@ -138,6 +167,8 @@ def update_route(route_id: int, request: Request, body: RouteUpdate, session: Se
         data.get("start_date", route.start_date),
         data.get("end_date", route.end_date),
     )
+    if "team_id" in data and data["team_id"] is not None:
+        _assert_can_assign_team(session, data["team_id"], user)
     for k, v in data.items():
         setattr(route, k, v)
     route.updated_at = utcnow()

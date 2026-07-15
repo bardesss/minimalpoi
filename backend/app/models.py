@@ -106,6 +106,7 @@ class Route(SQLModel, table=True):
     name: str
     start_date: date
     end_date: date | None = Field(default=None)
+    team_id: int | None = Field(default=None, foreign_key="team.id")
     created_by: int = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
