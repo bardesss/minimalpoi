@@ -12,6 +12,9 @@ vi.mock("../../queries/hooks", () => ({
   usePois: () => ({ data: [{ id: 7, name: "Utrecht", lat: 52.09, lng: 5.12 }] }),
   useUploadRouteAttachment: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteRouteAttachment: () => ({ mutate: vi.fn(), isPending: false }),
+  useSearchPlaces: () => ({ mutateAsync: vi.fn() }),
+  usePlaceDraft: () => ({ mutateAsync: vi.fn() }),
+  useCreatePoi: () => ({ mutateAsync: vi.fn() }),
 }));
 
 beforeEach(() => {
