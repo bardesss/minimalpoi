@@ -410,6 +410,7 @@ class RouteAttachmentRead(SQLModel):
 
 
 class RouteDetail(RouteSummary):
+    can_edit: bool = False
     nodes: list[RouteNodeRead] = []
     legs: list[RouteLegRead] = []
     attachments: list[RouteAttachmentRead] = []

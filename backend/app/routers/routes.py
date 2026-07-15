@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from sqlmodel import select
 
 from .. import attachments as att
-from ..deps import CurrentUser, SessionDep, require_owner_or_admin
+from ..deps import CurrentUser, SessionDep
 from ..models import (
     POI,
     Role,
@@ -62,7 +62,7 @@ def _summary(session, route: Route) -> RouteSummary:
     )
 
 
-def _detail(session, route: Route) -> RouteDetail:
+def _detail(session, route: Route, user: User) -> RouteDetail:
     nodes = ordered_nodes(session, route.id)
     legs = legs_for(session, route.id)
     d = derive(nodes, legs, route.start_date)
@@ -82,6 +82,7 @@ def _detail(session, route: Route) -> RouteDetail:
         node_count=len(nodes), created_by=route.created_by,
         owner_username=_username(session, route.created_by),
         team_id=route.team_id, team_name=_team_name(session, route.team_id),
+        can_edit=_can_edit_route(session, route, user),
         nodes=node_reads,
         legs=[RouteLegRead(from_node_id=l.from_node_id, to_node_id=l.to_node_id,
                            distance_m=l.distance_m, duration_s=l.duration_s, source=l.source)
@@ -124,6 +125,17 @@ def _assert_can_assign_team(session, team_id: int, user: User) -> None:
         raise HTTPException(status_code=403, detail="Not a member of that team")
 
 
+def _can_edit_route(session, route: Route, user: User) -> bool:
+    if user.role == Role.ADMIN or route.created_by == user.id:
+        return True
+    return route.team_id is not None and _is_team_member(session, route.team_id, user.id)
+
+
+def require_route_editor(session, route: Route, user: User) -> None:
+    if not _can_edit_route(session, route, user):
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+
 @router.get("", response_model=list[RouteSummary], dependencies=[Gate])
 def list_routes(session: SessionDep, _: CurrentUser) -> list[RouteSummary]:
     routes = session.exec(select(Route).order_by(Route.created_at.desc())).all()
@@ -141,12 +153,12 @@ def create_route(request: Request, body: RouteCreate, session: SessionDep, user:
     session.add(route)
     session.commit()
     session.refresh(route)
-    return _detail(session, route)
+    return _detail(session, route, user)
 
 
 @router.get("/{route_id}", response_model=RouteDetail, dependencies=[Gate])
-def get_route(route_id: int, session: SessionDep, _: CurrentUser) -> RouteDetail:
-    return _detail(session, _get_route_or_404(session, route_id))
+def get_route(route_id: int, session: SessionDep, user: CurrentUser) -> RouteDetail:
+    return _detail(session, _get_route_or_404(session, route_id), user)
 
 
 @router.get("/{route_id}/export", dependencies=[Gate])
@@ -161,28 +173,31 @@ def export_route(route_id: int, request: Request, session: SessionDep, _: Curren
 @limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
 def update_route(route_id: int, request: Request, body: RouteUpdate, session: SessionDep, user: CurrentUser) -> RouteDetail:
     route = _get_route_or_404(session, route_id)
-    require_owner_or_admin(route.created_by, user)
+    require_route_editor(session, route, user)
     data = body.model_dump(exclude_unset=True)
     _validate_dates(
         data.get("start_date", route.start_date),
         data.get("end_date", route.end_date),
     )
-    if "team_id" in data and data["team_id"] is not None:
-        _assert_can_assign_team(session, data["team_id"], user)
+    if "team_id" in data and data["team_id"] != route.team_id:
+        if route.created_by != user.id and user.role != Role.ADMIN:
+            raise HTTPException(status_code=403, detail="Only the owner or an admin can change the team")
+        if data["team_id"] is not None:
+            _assert_can_assign_team(session, data["team_id"], user)
     for k, v in data.items():
         setattr(route, k, v)
     route.updated_at = utcnow()
     session.add(route)
     session.commit()
     session.refresh(route)
-    return _detail(session, route)
+    return _detail(session, route, user)
 
 
 @router.delete("/{route_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Gate])
 @limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
 def delete_route(route_id: int, request: Request, session: SessionDep, user: CurrentUser) -> Response:
     route = _get_route_or_404(session, route_id)
-    require_owner_or_admin(route.created_by, user)
+    require_route_editor(session, route, user)
     # Explicit child cleanup (no DB-level cascade configured on these tables).
     for a in session.exec(select(RouteAttachment).where(RouteAttachment.route_id == route_id)).all():
         att.remove(a.stored_filename)
@@ -217,7 +232,7 @@ def _resolve_location(session, body: RouteNodeCreate) -> tuple[int | None, str, 
 @limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
 async def add_node(route_id: int, request: Request, body: RouteNodeCreate, session: SessionDep, user: CurrentUser) -> RouteDetail:
     route = _get_route_or_404(session, route_id)
-    require_owner_or_admin(route.created_by, user)
+    require_route_editor(session, route, user)
     poi_id, name, lat, lng = _resolve_location(session, body)
     node = RouteNode(
         route_id=route_id, kind=body.kind, poi_id=poi_id, name=name, lat=lat, lng=lng,
@@ -228,14 +243,14 @@ async def add_node(route_id: int, request: Request, body: RouteNodeCreate, sessi
     session.add(node)
     session.commit()
     await recompute_legs(session, route_id)
-    return _detail(session, route)
+    return _detail(session, route, user)
 
 
 @router.patch("/{route_id}/nodes/{node_id}", response_model=RouteDetail, dependencies=[Gate])
 @limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
 async def update_node(route_id: int, node_id: int, request: Request, body: RouteNodeUpdate, session: SessionDep, user: CurrentUser) -> RouteDetail:
     route = _get_route_or_404(session, route_id)
-    require_owner_or_admin(route.created_by, user)
+    require_route_editor(session, route, user)
     node = session.get(RouteNode, node_id)
     if not node or node.route_id != route_id:
         raise HTTPException(status_code=404, detail="Not found")
@@ -245,14 +260,14 @@ async def update_node(route_id: int, node_id: int, request: Request, body: Route
     session.add(node)
     session.commit()
     await recompute_legs(session, route_id)  # position may have changed the order
-    return _detail(session, route)
+    return _detail(session, route, user)
 
 
 @router.delete("/{route_id}/nodes/{node_id}", response_model=RouteDetail, dependencies=[Gate])
 @limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
 async def delete_node(route_id: int, node_id: int, request: Request, session: SessionDep, user: CurrentUser) -> RouteDetail:
     route = _get_route_or_404(session, route_id)
-    require_owner_or_admin(route.created_by, user)
+    require_route_editor(session, route, user)
     node = session.get(RouteNode, node_id)
     if not node or node.route_id != route_id:
         raise HTTPException(status_code=404, detail="Not found")
@@ -263,7 +278,7 @@ async def delete_node(route_id: int, node_id: int, request: Request, session: Se
     session.delete(node)
     session.commit()
     await recompute_legs(session, route_id)
-    return _detail(session, route)
+    return _detail(session, route, user)
 
 
 @router.post("/{route_id}/recompute", response_model=RouteDetail, dependencies=[Gate])
@@ -272,9 +287,9 @@ async def recompute_route(route_id: int, request: Request, session: SessionDep, 
     """Manual refresh — re-runs leg computation (may hit paid Google Directions
     calls), hence the tighter GOOGLE_LIMIT instead of WRITE_LIMIT."""
     route = _get_route_or_404(session, route_id)
-    require_owner_or_admin(route.created_by, user)
+    require_route_editor(session, route, user)
     await recompute_legs(session, route_id)
-    return _detail(session, route)
+    return _detail(session, route, user)
 
 
 def _attach_read(a: RouteAttachment) -> RouteAttachmentRead:
@@ -289,7 +304,7 @@ def _attach_read(a: RouteAttachment) -> RouteAttachmentRead:
 async def upload_attachment(route_id: int, request: Request, session: SessionDep, user: CurrentUser,
                             file: UploadFile = File(...), node_id: int | None = Form(default=None)) -> RouteAttachmentRead:
     route = _get_route_or_404(session, route_id)
-    require_owner_or_admin(route.created_by, user)
+    require_route_editor(session, route, user)
     # Read at most one byte past the limit so an oversized upload is rejected
     # without ever buffering the whole (potentially multi-GB) body in memory.
     data = await file.read(att.MAX_ATTACHMENT_BYTES + 1)
@@ -327,7 +342,7 @@ def download_attachment(route_id: int, aid: int, session: SessionDep, _: Current
 @limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
 def delete_attachment(route_id: int, aid: int, request: Request, session: SessionDep, user: CurrentUser) -> Response:
     route = _get_route_or_404(session, route_id)
-    require_owner_or_admin(route.created_by, user)
+    require_route_editor(session, route, user)
     row = session.get(RouteAttachment, aid)
     if not row or row.route_id != route_id:
         raise HTTPException(status_code=404, detail="Not found")

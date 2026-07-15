@@ -99,3 +99,26 @@ def test_member_cannot_assign_foreign_team(client):
     client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
     bad = client.post("/api/routes", json={"name": "T", "start_date": "2026-07-14", "team_id": team["id"]})
     assert bad.status_code == 403
+
+
+def test_team_member_can_edit_but_not_reassign(client):
+    _admin(client)
+    bob = client.post("/api/users", json={"username": "bob", "password": "pw123456"}).json()
+    team = client.post("/api/teams", json={"name": "Crew", "member_ids": [bob["id"]]}).json()
+    rid = client.post("/api/routes", json={"name": "T", "start_date": "2026-07-14", "team_id": team["id"]}).json()["id"]
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
+    assert client.get(f"/api/routes/{rid}").json()["can_edit"] is True
+    assert client.patch(f"/api/routes/{rid}", json={"name": "Bob edited"}).status_code == 200
+    # a team member who is not the owner cannot reassign/clear the team
+    assert client.patch(f"/api/routes/{rid}", json={"team_id": None}).status_code == 403
+
+
+def test_non_member_cannot_edit_team_route(client):
+    _admin(client)
+    rid = client.post("/api/routes", json={"name": "T", "start_date": "2026-07-14"}).json()["id"]
+    client.post("/api/users", json={"username": "carol", "password": "pw123456"})
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"username": "carol", "password": "pw123456"})
+    assert client.get(f"/api/routes/{rid}").json()["can_edit"] is False
+    assert client.patch(f"/api/routes/{rid}", json={"name": "hax"}).status_code == 403
