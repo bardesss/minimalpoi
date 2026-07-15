@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.0](https://github.com/Bardesss/minimalpoi/compare/v2.0.0...v2.1.0) (2026-07-15)
+
+
+### Features
+
+* **routes:** settings toggle, mobile touch targets & sync-tab gating ([5f3fabd](https://github.com/Bardesss/minimalpoi/commit/5f3fabd55bb5a6969a2c527f695cb9f923e13be9))
+* **routes:** settings toggle, mobile touch targets, sync-tab gating ([94252e9](https://github.com/Bardesss/minimalpoi/commit/94252e95f40754be0b07904b799e57d6e9fab5b7))
+
 ## [2.0.0](https://github.com/Bardesss/minimalpoi/compare/v1.2.2...v2.0.0) (2026-07-15)
 
 
