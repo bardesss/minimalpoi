@@ -266,6 +266,8 @@ export interface RouteSummary {
   node_count: number;
   created_by: number;
   owner_username: string;
+  team_id: number | null;
+  team_name: string | null;
 }
 
 export interface RouteNode {
@@ -293,6 +295,7 @@ export interface RouteLeg {
 }
 
 export interface RouteDetail extends RouteSummary {
+  can_edit: boolean;
   nodes: RouteNode[];
   legs: RouteLeg[];
   attachments: RouteAttachment[];
@@ -311,8 +314,8 @@ export interface RouteAttachment {
   uploaded_at: string;
 }
 
-export interface RouteCreate { name: string; start_date: string; end_date?: string | null; }
-export interface RouteUpdate { name?: string; start_date?: string; end_date?: string | null; }
+export interface RouteCreate { name: string; start_date: string; end_date?: string | null; team_id?: number | null; }
+export interface RouteUpdate { name?: string; start_date?: string; end_date?: string | null; team_id?: number | null; }
 export interface RouteNodeCreate {
   kind: RouteNodeKind;
   poi_id?: number | null;

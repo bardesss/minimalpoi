@@ -334,12 +334,14 @@ class RouteCreate(SQLModel):
     name: str
     start_date: date
     end_date: date | None = None
+    team_id: int | None = None
 
 
 class RouteUpdate(SQLModel):
     name: str | None = None
     start_date: date | None = None
     end_date: date | None = None
+    team_id: int | None = None
 
 
 class RouteSummary(SQLModel):
@@ -351,6 +353,8 @@ class RouteSummary(SQLModel):
     node_count: int
     created_by: int
     owner_username: str
+    team_id: int | None = None
+    team_name: str | None = None
 
 
 class RouteNodeRead(SQLModel):
@@ -406,6 +410,7 @@ class RouteAttachmentRead(SQLModel):
 
 
 class RouteDetail(RouteSummary):
+    can_edit: bool = False
     nodes: list[RouteNodeRead] = []
     legs: list[RouteLegRead] = []
     attachments: list[RouteAttachmentRead] = []

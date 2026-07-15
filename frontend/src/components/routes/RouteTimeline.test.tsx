@@ -25,6 +25,7 @@ function node(id: number, kind: "stay" | "stop", position: number): RouteNode {
 
 const route: RouteDetail = {
   id: 1, name: "NL", start_date: "2026-07-14", end_date: "2026-07-16", scheduled_end_date: "2026-07-16", node_count: 2, created_by: 1, owner_username: "admin",
+  team_id: null, team_name: null, can_edit: true,
   nodes: [node(1, "stay", 1), node(2, "stay", 2)],
   legs: [{ from_node_id: 1, to_node_id: 2, distance_m: 28000, duration_s: 2100, source: "estimate" }],
   attachments: [],
