@@ -1,7 +1,25 @@
 import { useState } from "react";
-import type { RouteNodeCreate, RouteNodeKind } from "../../types/api";
+import type { PoiCreate, PoiDraft, RouteNodeCreate, RouteNodeKind } from "../../types/api";
 import { ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../theme";
 import { usePois } from "../../queries/hooks";
+
+export function toPoiCreate(draft: PoiDraft): PoiCreate {
+  return {
+    name: draft.name ?? "",
+    lat: draft.lat as number,
+    lng: draft.lng as number,
+    address: draft.address,
+    city: draft.city,
+    country_code: draft.country_code,
+    category_id: null,
+    tags: [],
+    notes: draft.description,
+    phone: draft.phone,
+    website: draft.website,
+    image_url: draft.image_url,
+    source_url: draft.source_url,
+  };
+}
 
 export default function NodePicker({
   kind,
