@@ -11,6 +11,8 @@ class Leg:
     distance_m: int
     duration_s: int
     source: str
+    # Encoded polyline of the driving path (Google only); None for haversine legs.
+    geometry: str | None = None
 
 
 def haversine_m(a_lat: float, a_lng: float, b_lat: float, b_lng: float) -> float:

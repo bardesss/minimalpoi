@@ -37,4 +37,6 @@ class GoogleCalc:
             return None
         dist = sum((leg.get("distance") or {}).get("value", 0) for leg in legs)
         dur = sum((leg.get("duration") or {}).get("value", 0) for leg in legs)
-        return Leg(distance_m=int(dist), duration_s=int(dur), source=LegSource.GOOGLE.value)
+        geometry = (routes[0].get("overview_polyline") or {}).get("points") or None
+        return Leg(distance_m=int(dist), duration_s=int(dur),
+                   source=LegSource.GOOGLE.value, geometry=geometry)

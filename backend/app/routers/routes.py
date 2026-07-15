@@ -85,7 +85,8 @@ def _detail(session, route: Route, user: User) -> RouteDetail:
         can_edit=_can_edit_route(session, route, user),
         nodes=node_reads,
         legs=[RouteLegRead(from_node_id=l.from_node_id, to_node_id=l.to_node_id,
-                           distance_m=l.distance_m, duration_s=l.duration_s, source=l.source)
+                           distance_m=l.distance_m, duration_s=l.duration_s, source=l.source,
+                           geometry=l.geometry)
               for l in legs],
         attachments=[_attach_read(a) for a in attachments],
         total_distance_m=d["totals"]["distance_m"], total_duration_s=d["totals"]["duration_s"],

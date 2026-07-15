@@ -19,4 +19,29 @@ describe("routeLine", () => {
   it("omits the line when fewer than 2 nodes", () => {
     expect(routeLine([nodes[0]]).line).toBeNull();
   });
+
+  it("uses a leg's decoded polyline geometry when present", () => {
+    const legs = [{ from_node_id: 1, to_node_id: 2, geometry: "_p~iF~ps|U_ulLnnqC" }] as any;
+    const { line } = routeLine(nodes, legs);
+    expect(line!.geometry.coordinates).toEqual([[-120.2, 38.5], [-120.95, 40.7]]);
+  });
+
+  it("falls back to a straight segment for legs without geometry", () => {
+    const legs = [{ from_node_id: 1, to_node_id: 2, geometry: null }] as any;
+    const { line } = routeLine(nodes, legs);
+    expect(line!.geometry.coordinates).toEqual([[4.9, 52.3], [5.1, 52.1]]);
+  });
+
+  it("stitches multiple legs, mixing real and straight segments", () => {
+    const three = [...nodes, { id: 3, kind: "stay", name: "C", lat: 51.9, lng: 5.3, position: 3 }] as any;
+    const legs = [
+      { from_node_id: 1, to_node_id: 2, geometry: null },
+      { from_node_id: 2, to_node_id: 3, geometry: "_p~iF~ps|U_ulLnnqC" },
+    ] as any;
+    const { line } = routeLine(three, legs);
+    expect(line!.geometry.coordinates).toEqual([
+      [4.9, 52.3], [5.1, 52.1], // straight A->B
+      [-120.2, 38.5], [-120.95, 40.7], // decoded B->C
+    ]);
+  });
 });

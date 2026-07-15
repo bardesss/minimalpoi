@@ -135,6 +135,8 @@ class RouteLeg(SQLModel, table=True):
     distance_m: int
     duration_s: int
     source: LegSource
+    # Encoded polyline of the driving path (Google only); None for estimate legs.
+    geometry: str | None = None
     computed_at: datetime = Field(default_factory=utcnow)
 
 
