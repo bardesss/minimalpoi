@@ -11,7 +11,7 @@ const FULL = {
   trip_sync_enabled: false, trip_sync_interval_seconds: 300, trip_conflict_policy: "minimalpoi_wins",
   google_api_key_set: false, nominatim_url: null,
   map_tile_url: "https://t.example/s.json", default_map_center_lat: 52, default_map_center_lng: 4,
-  default_map_zoom: 11, cookie_secure: false,
+  default_map_zoom: 11, cookie_secure: false, routes_enabled: false,
 };
 
 describe("MapSection", () => {
@@ -34,5 +34,23 @@ describe("MapSection", () => {
     await userEvent.click(screen.getByRole("button", { name: /save map settings/i }));
     await waitFor(() => expect(patched).not.toBeNull());
     expect(patched).not.toHaveProperty("default_map_center_lat");
+  });
+
+  it("saves the Route planner toggle", async () => {
+    let patched: Record<string, unknown> | null = null;
+    server.use(
+      http.get("/api/settings", () => HttpResponse.json(FULL)),
+      http.patch("/api/settings", async ({ request }) => {
+        patched = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ...FULL, routes_enabled: true });
+      }),
+    );
+    renderWithProviders(<MapSection />);
+    const toggle = await screen.findByRole("checkbox", { name: /route planner/i });
+    expect(toggle).not.toBeChecked();
+    await userEvent.click(toggle);
+    await userEvent.click(screen.getByRole("button", { name: /save map settings/i }));
+    await waitFor(() => expect(patched).not.toBeNull());
+    expect(patched).toHaveProperty("routes_enabled", true);
   });
 });

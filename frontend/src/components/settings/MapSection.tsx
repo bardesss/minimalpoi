@@ -16,6 +16,7 @@ export default function MapSection() {
   const [lng, setLng] = useState("");
   const [zoom, setZoom] = useState("");
   const [cookieSecure, setCookieSecure] = useState(false);
+  const [routesEnabled, setRoutesEnabled] = useState(false);
 
   useEffect(() => {
     if (!s) return;
@@ -24,6 +25,7 @@ export default function MapSection() {
     setLng(String(s.default_map_center_lng));
     setZoom(String(s.default_map_zoom));
     setCookieSecure(s.cookie_secure);
+    setRoutesEnabled(s.routes_enabled);
   }, [s]);
 
   if (!s) return <p style={{ fontSize: 13, color: theme.color.textSecondary }}>Loading…</p>;
@@ -32,6 +34,7 @@ export default function MapSection() {
     const patch: SettingsUpdate = {
       map_tile_url: tileUrl.trim(),
       cookie_secure: cookieSecure,
+      routes_enabled: routesEnabled,
     };
     const latN = Number(lat);
     const lngN = Number(lng);
@@ -55,6 +58,9 @@ export default function MapSection() {
       </div>
       <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700 }}>
         <input type="checkbox" checked={cookieSecure} onChange={(e) => setCookieSecure(e.target.checked)} /> Secure cookie (enable behind HTTPS)
+      </label>
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700 }}>
+        <input type="checkbox" checked={routesEnabled} onChange={(e) => setRoutesEnabled(e.target.checked)} /> Enable Route planner (adds the Routes view)
       </label>
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <button type="button" onClick={submit} disabled={update.isPending} style={primaryButtonStyle}>{update.isPending ? "Saving…" : "Save map settings"}</button>
