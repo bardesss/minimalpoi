@@ -12,6 +12,8 @@ const detail: RouteDetail = {
 
 vi.mock("../components/routes/RouteMap", () => ({ default: () => null }));
 
+vi.mock("../components/SettingsModal", () => ({ default: () => null }));
+
 vi.mock("../queries/hooks", () => ({
   useRoutes: () => ({ data: [{ id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-16", node_count: 0, created_by: 1, owner_username: "admin" }], isLoading: false }),
   useRoute: () => ({ data: detail, isLoading: false }),
@@ -23,10 +25,13 @@ vi.mock("../queries/hooks", () => ({
   usePois: () => ({ data: [] }),
   useUploadRouteAttachment: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteRouteAttachment: () => ({ mutate: vi.fn(), isPending: false }),
+  useVersion: () => ({ data: { update_available: false } }),
+  useUpdateRoute: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteRoute: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 vi.mock("../auth/AuthContext", () => ({
-  useAuth: () => ({ user: { id: 1, username: "admin", role: "admin" } }),
+  useAuth: () => ({ user: { id: 1, username: "admin", role: "admin" }, signOut: vi.fn() }),
 }));
 
 beforeEach(() => createAsync.mockClear());

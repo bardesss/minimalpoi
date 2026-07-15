@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
 import { useAuth } from "../auth/AuthContext";
-import { useIsMobile } from "../lib/useMediaQuery";
-import { useCreateRoute, useRoute, useRoutes, useSettings } from "../queries/hooks";
-import BottomSheet from "../components/BottomSheet";
+import { useCreateRoute, useRoute, useRoutes, useSettings, useVersion } from "../queries/hooks";
+import AppLayout from "../components/AppLayout";
 import RouteTimeline from "../components/routes/RouteTimeline";
 import RouteMap from "../components/routes/RouteMap";
 import RouteAttachments from "../components/routes/RouteAttachments";
+import SettingsModal from "../components/SettingsModal";
 import { formatTravel } from "../lib/formatTravel";
 import { exportRoute } from "../api/routes";
 import { triggerDownload } from "../lib/download";
@@ -15,17 +15,24 @@ import { triggerDownload } from "../lib/download";
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
 export default function RoutesPage() {
-  const { user } = useAuth();
-  const isMobile = useIsMobile();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const routesQuery = useRoutes();
   const settingsQuery = useSettings();
+  const version = useVersion();
   const createRoute = useCreateRoute();
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const routeQuery = useRoute(selectedId);
-
   const [newName, setNewName] = useState("");
   const [newDate, setNewDate] = useState("");
+  const [collapsed, setCollapsed] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+
+  async function onLogout() {
+    await signOut();
+    navigate("/login", { replace: true });
+  }
 
   async function onCreate() {
     if (!newName.trim() || !newDate) return;
@@ -47,11 +54,6 @@ export default function RoutesPage() {
 
   const panel = (
     <div className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <h1 style={{ margin: 0, fontFamily: theme.font.ui, fontWeight: 800, fontSize: 18, color: theme.color.textPrimary }}>Routes</h1>
-        <Link to="/" style={{ ...ghostButtonStyle, padding: "6px 12px", textDecoration: "none" }}>← Map</Link>
-      </div>
-
       {selectedId == null ? (
         <>
           <p style={sectionLabel}>Your routes</p>
@@ -111,32 +113,26 @@ export default function RoutesPage() {
   );
 
   return (
-    <div style={{ position: "relative", height: "100vh", width: "100vw", background: theme.color.mapBg }}>
-      {settingsQuery.data && <RouteMap nodes={detail?.nodes ?? []} settings={settingsQuery.data} />}
-      {isMobile ? (
-        <BottomSheet label="Routes" initial="half">
-          {panel}
-        </BottomSheet>
-      ) : (
-        <div
-          style={{
-            position: "absolute",
-            top: 16,
-            left: 16,
-            bottom: 16,
-            width: 380,
-            zIndex: 800,
-            background: "#fff",
-            borderRadius: theme.radius.modal,
-            boxShadow: theme.shadow.expand,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-          }}
-        >
-          {panel}
-        </div>
-      )}
-    </div>
+    <>
+      <AppLayout
+        active="routes"
+        routesEnabled={settingsQuery.data?.routes_enabled ?? false}
+        sheetLabel="Routes"
+        collapsed={collapsed}
+        onCollapse={() => setCollapsed(true)}
+        onExpand={() => setCollapsed(false)}
+        reopenLabel="» Routes"
+        sidebar={panel}
+        main={settingsQuery.data ? <RouteMap nodes={detail?.nodes ?? []} settings={settingsQuery.data} /> : null}
+        account={{
+          username: user?.username ?? "",
+          role: user?.role ?? "member",
+          onLogout,
+          onOpenSettings: () => setSettingsModalOpen(true),
+          updateAvailable: version.data?.update_available ?? false,
+        }}
+      />
+      {settingsModalOpen && <SettingsModal onClose={() => setSettingsModalOpen(false)} />}
+    </>
   );
 }
