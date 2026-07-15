@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.3.1](https://github.com/Bardesss/minimalpoi/compare/v2.3.0...v2.3.1) (2026-07-15)
+
+
+### Bug Fixes
+
+* **routes:** edit selector always shows the route's current team ([97af3b3](https://github.com/Bardesss/minimalpoi/commit/97af3b367e0eef80dee4266847eb4cd7d552c564))
+* **routes:** team-collab review follow-ups ([472a77d](https://github.com/Bardesss/minimalpoi/commit/472a77dc5acb7fb2eccad55748288adeb86ecd74))
+* **teams:** null dangling route team_id on team delete ([1402a3f](https://github.com/Bardesss/minimalpoi/commit/1402a3f7c26e016b726cf27ca9fcc1e507067627))
+
 ## [2.3.0](https://github.com/Bardesss/minimalpoi/compare/v2.2.0...v2.3.0) (2026-07-15)
 
 
