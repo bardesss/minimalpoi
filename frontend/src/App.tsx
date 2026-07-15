@@ -5,6 +5,7 @@ import { useAuth } from "./auth/AuthContext";
 import RequireAuth from "./auth/RequireAuth";
 import AppShell from "./components/AppShell";
 import LoginPage from "./pages/LoginPage";
+import RoutesPage from "./pages/RoutesPage";
 import SetupPage from "./pages/SetupPage";
 
 export default function App() {
@@ -41,6 +42,14 @@ export default function App() {
         element={
           <RequireAuth>
             <AppShell />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/routes"
+        element={
+          <RequireAuth>
+            <RoutesPage />
           </RequireAuth>
         }
       />

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
 import { useCategories, useCreatePoi, useDeletePoi, useEnrich, useMyVisits, usePlaceDraft, usePois, useSearchPlaces, useSettings, useUpdatePoi, useUploadImage, useCheckDuplicate, useVersion } from "../queries/hooks";
@@ -243,6 +243,29 @@ export default function AppShell() {
             mapRef={mapRef}
             onMoveEnd={handleMoveEnd}
           />
+        )}
+        {settingsQuery.data?.routes_enabled && (
+          <Link
+            to="/routes"
+            style={{
+              position: "absolute",
+              top: 16,
+              right: 16,
+              zIndex: 1100,
+              background: "#fff",
+              border: `1px solid ${theme.color.borderCard}`,
+              borderRadius: 11,
+              padding: "10px 14px",
+              boxShadow: theme.shadow.expand,
+              fontFamily: theme.font.ui,
+              fontWeight: 700,
+              fontSize: 13,
+              color: theme.color.textPrimary,
+              textDecoration: "none",
+            }}
+          >
+            Routes
+          </Link>
         )}
         {!isMobile && <Legend categories={categories} counts={counts} />}
         {!isMobile && sidebarCollapsed && (

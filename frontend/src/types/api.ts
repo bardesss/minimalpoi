@@ -61,6 +61,7 @@ export interface MapSettings {
   default_map_center_lat: number;
   default_map_center_lng: number;
   default_map_zoom: number;
+  routes_enabled: boolean;
 }
 
 export interface PoiCreate {
