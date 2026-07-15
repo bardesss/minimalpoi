@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.3.0](https://github.com/Bardesss/minimalpoi/compare/v2.2.0...v2.3.0) (2026-07-15)
+
+
+### Features
+
+* **routes:** assign a route to a team; expose team_id/team_name ([6189c0d](https://github.com/Bardesss/minimalpoi/commit/6189c0ddc4bf5768984b98a4db14f8bb88825e84))
+* **routes:** team members can edit; expose can_edit; owner-only team reassign ([46939a8](https://github.com/Bardesss/minimalpoi/commit/46939a871985b26f3696cf40f3c15054321612bd))
+* **routes:** team selector + badge; gate edit on can_edit ([3ad3c47](https://github.com/Bardesss/minimalpoi/commit/3ad3c474f629ccf411d869b57e06a99b64bea180))
+* **routes:** team-scoped collaboration ([b8fb467](https://github.com/Bardesss/minimalpoi/commit/b8fb467e1fca4110bfae6f3e02a65f0ff71d7db4))
+
 ## [2.2.0](https://github.com/Bardesss/minimalpoi/compare/v2.1.0...v2.2.0) (2026-07-15)
 
 
