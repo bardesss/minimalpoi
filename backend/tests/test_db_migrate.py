@@ -37,3 +37,13 @@ def test_add_missing_columns_is_idempotent_on_a_fresh_db(tmp_path):
     dbmod._add_missing_columns(engine)  # nothing missing → no-op, no error
     assert _cols(engine, "settings") == before
     engine.dispose()
+
+
+def test_route_tables_created(data_dir):
+    from sqlalchemy import inspect
+    from app import db
+    db.reset_engine()
+    db.init_db()
+    tables = set(inspect(db.engine).get_table_names())
+    assert {"route", "routenode", "routeleg", "routeattachment"} <= tables
+    db.reset_engine()

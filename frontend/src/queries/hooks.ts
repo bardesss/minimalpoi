@@ -15,6 +15,11 @@ import { getVersion } from "../api/version";
 import { createUser, deleteUser, getUsers, updateUser } from "../api/users";
 import { createTeam, deleteTeam, getTeamCandidates, getTeams, setPreferredTeam, updateTeam } from "../api/teams";
 import { useAuth } from "../auth/AuthContext";
+import {
+  addNode, createRoute, deleteNode, deleteRoute, deleteRouteAttachment, getRoute, getRoutes,
+  updateNode, updateRoute, uploadRouteAttachment,
+} from "../api/routes";
+import type { RouteCreate, RouteDetail, RouteNodeCreate, RouteNodeUpdate, RouteUpdate } from "../types/api";
 
 export function usePois() {
   return useQuery({ queryKey: ["pois"], queryFn: getPois });
@@ -318,4 +323,50 @@ export function useSyncNow() {
     mutationFn: () => syncNow(),
     onSuccess: () => invalidateSync(qc),
   });
+}
+
+export function useRoutes() {
+  return useQuery({ queryKey: ["routes"], queryFn: getRoutes });
+}
+export function useRoute(id: number | null) {
+  return useQuery({ queryKey: ["routes", id], queryFn: () => getRoute(id as number), enabled: id != null });
+}
+export function useCreateRoute() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (b: RouteCreate) => createRoute(b),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["routes"] }) });
+}
+export function useUpdateRoute() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: ({ id, body }: { id: number; body: RouteUpdate }) => updateRoute(id, body),
+    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ["routes"] }); qc.invalidateQueries({ queryKey: ["routes", r.id] }); } });
+}
+export function useDeleteRoute() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (id: number) => deleteRoute(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["routes"] }) });
+}
+function useNodeMutation<T>(fn: (v: T) => Promise<RouteDetail>) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: fn,
+    onSuccess: (r) => { qc.setQueryData(["routes", r.id], r); qc.invalidateQueries({ queryKey: ["routes"] }); } });
+}
+export function useAddNode(routeId: number) {
+  return useNodeMutation((body: RouteNodeCreate) => addNode(routeId, body));
+}
+export function useUpdateNode(routeId: number) {
+  return useNodeMutation(({ nodeId, body }: { nodeId: number; body: RouteNodeUpdate }) => updateNode(routeId, nodeId, body));
+}
+export function useDeleteNode(routeId: number) {
+  return useNodeMutation((nodeId: number) => deleteNode(routeId, nodeId));
+}
+export function useUploadRouteAttachment(routeId: number) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: ({ file, nodeId }: { file: File; nodeId?: number }) => uploadRouteAttachment(routeId, file, nodeId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["routes", routeId] }) });
+}
+export function useDeleteRouteAttachment(routeId: number) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (aid: number) => deleteRouteAttachment(routeId, aid),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["routes", routeId] }) });
 }

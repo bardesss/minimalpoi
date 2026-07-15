@@ -26,6 +26,7 @@ export const sampleSettings: MapSettings = {
   default_map_center_lat: 52.3676,
   default_map_center_lng: 4.9041,
   default_map_zoom: 11,
+  routes_enabled: false,
 };
 
 export const handlers = [

@@ -75,3 +75,13 @@ def test_cookie_secure_enabled_when_setting_on(client):
     assert resp.status_code == 200
     set_cookie = resp.headers.get("set-cookie", "")
     assert "secure" in set_cookie.lower()
+
+
+def test_routes_enabled_defaults_false_and_toggles(client):
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
+    assert client.get("/api/settings").json()["routes_enabled"] is False
+    # Members can read the flag via the public map-settings endpoint.
+    assert client.get("/api/settings/map").json()["routes_enabled"] is False
+    client.patch("/api/settings", json={"routes_enabled": True})
+    assert client.get("/api/settings").json()["routes_enabled"] is True
+    assert client.get("/api/settings/map").json()["routes_enabled"] is True

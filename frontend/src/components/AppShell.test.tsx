@@ -8,7 +8,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { renderWithProviders } from "../test/utils";
-import { server, samplePois } from "../test/msw";
+import { server, samplePois, sampleSettings } from "../test/msw";
 import AppShell from "./AppShell";
 
 const mapPropsSpy = vi.fn();
@@ -70,6 +70,23 @@ describe("AppShell", () => {
     await user.click(screen.getByRole("button", { name: /^add place$/i })); // submit
     // After creation the invalidated GET returns "Created Place"; it appears in sidebar + detail panel
     expect((await screen.findAllByText("Created Place")).length).toBeGreaterThan(0);
+  });
+
+  it("hides the Routes nav when routes_enabled is false", async () => {
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    expect(screen.queryByRole("link", { name: /routes/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the Routes nav when routes_enabled is true", async () => {
+    server.use(
+      http.get("/api/settings/map", () =>
+        HttpResponse.json({ ...sampleSettings, routes_enabled: true }),
+      ),
+    );
+    renderWithProviders(<AppShell />);
+    const link = await screen.findByRole("link", { name: /routes/i });
+    expect(link).toHaveAttribute("href", "/routes");
   });
 
   it("deletes a place and closes the detail panel", async () => {

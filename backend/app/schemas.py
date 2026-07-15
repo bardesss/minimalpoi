@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 
 from pydantic import StringConstraints
 from sqlmodel import Field, SQLModel
 
-from .models import Role, SyncStatus
+from .models import LegSource, Role, RouteNodeKind, SyncStatus
 
 
 class StatusResponse(SQLModel):
@@ -216,6 +216,7 @@ class MapSettingsRead(SQLModel):
     default_map_center_lat: float
     default_map_center_lng: float
     default_map_zoom: float
+    routes_enabled: bool
 
 
 class SettingsRead(SQLModel):
@@ -233,6 +234,7 @@ class SettingsRead(SQLModel):
     default_map_zoom: float
     cookie_secure: bool
     trip_last_sync_at: datetime | None
+    routes_enabled: bool
 
 
 class SettingsUpdate(SQLModel):
@@ -249,6 +251,7 @@ class SettingsUpdate(SQLModel):
     default_map_center_lng: float | None = None
     default_map_zoom: float | None = None
     cookie_secure: bool | None = None
+    routes_enabled: bool | None = None
 
 
 class SyncStatusRead(SQLModel):
@@ -325,3 +328,83 @@ class TagRename(SQLModel):
 class TeamCandidate(SQLModel):
     id: int
     username: str
+
+
+class RouteCreate(SQLModel):
+    name: str
+    start_date: date
+
+
+class RouteUpdate(SQLModel):
+    name: str | None = None
+    start_date: date | None = None
+
+
+class RouteSummary(SQLModel):
+    id: int
+    name: str
+    start_date: date
+    end_date: date
+    node_count: int
+    created_by: int
+    owner_username: str
+
+
+class RouteNodeRead(SQLModel):
+    id: int
+    kind: RouteNodeKind
+    position: float
+    nights: int | None
+    notes: str | None
+    poi_id: int | None
+    name: str
+    lat: float
+    lng: float
+    arrive_date: date | None = None
+    depart_date: date | None = None
+    inbound_distance_m: int | None = None
+    inbound_duration_s: int | None = None
+
+
+class RouteLegRead(SQLModel):
+    from_node_id: int
+    to_node_id: int
+    distance_m: int
+    duration_s: int
+    source: LegSource
+
+
+class RouteNodeCreate(SQLModel):
+    kind: RouteNodeKind
+    poi_id: int | None = None
+    name: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    nights: int | None = None
+    notes: str | None = None
+    position: float | None = None
+
+
+class RouteNodeUpdate(SQLModel):
+    nights: int | None = None
+    notes: str | None = None
+    position: float | None = None
+
+
+class RouteAttachmentRead(SQLModel):
+    id: int
+    route_id: int
+    node_id: int | None
+    filename: str
+    content_type: str
+    size: int
+    uploaded_by: int
+    uploaded_at: datetime
+
+
+class RouteDetail(RouteSummary):
+    nodes: list[RouteNodeRead] = []
+    legs: list[RouteLegRead] = []
+    attachments: list[RouteAttachmentRead] = []
+    total_distance_m: int = 0
+    total_duration_s: int = 0

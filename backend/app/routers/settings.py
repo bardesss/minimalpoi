@@ -27,6 +27,7 @@ def _to_read(s: Settings) -> SettingsRead:
         default_map_zoom=s.default_map_zoom,
         cookie_secure=s.cookie_secure,
         trip_last_sync_at=s.trip_last_sync_at,
+        routes_enabled=s.routes_enabled,
     )
 
 
@@ -39,6 +40,7 @@ def read_map_settings(session: SessionDep, _: CurrentUser) -> MapSettingsRead:
         default_map_center_lat=s.default_map_center_lat,
         default_map_center_lng=s.default_map_center_lng,
         default_map_zoom=s.default_map_zoom,
+        routes_enabled=s.routes_enabled,
     )
 
 

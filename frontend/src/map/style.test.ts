@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { MapSettings } from "../types/api";
 import { resolveMapStyle } from "./style";
 
-const base: MapSettings = { map_tile_url: "", default_map_center_lat: 52, default_map_center_lng: 4, default_map_zoom: 11 };
+const base: MapSettings = { map_tile_url: "", default_map_center_lat: 52, default_map_center_lng: 4, default_map_zoom: 11, routes_enabled: false };
 
 describe("resolveMapStyle", () => {
   it("passes a style.json URL straight through", () => {
