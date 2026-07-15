@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.6.0](https://github.com/Bardesss/minimalpoi/compare/v2.5.0...v2.6.0) (2026-07-15)
+
+
+### Features
+
+* **routes:** add poisNotInRoute helper to hide already-added POIs ([e19cef9](https://github.com/Bardesss/minimalpoi/commit/e19cef9d3d9877b94995fc6e03ccf54eac417138))
+* **routes:** show nearby POIs on the route map with click-to-add ([f7d0669](https://github.com/Bardesss/minimalpoi/commit/f7d0669c056f33c9ae3a6764a7badf2f03bbf3d6))
+* **routes:** show nearby POIs on the route map with click-to-add ([b1f0bca](https://github.com/Bardesss/minimalpoi/commit/b1f0bcac038d487d2983c4e662cf4f721dfb7cf0))
+
 ## [2.5.0](https://github.com/Bardesss/minimalpoi/compare/v2.4.0...v2.5.0) (2026-07-15)
 
 
