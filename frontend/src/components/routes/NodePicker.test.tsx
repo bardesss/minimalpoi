@@ -96,4 +96,18 @@ describe("NodePicker Google mode", () => {
     fireEvent.click(screen.getByRole("button", { name: /^search$/i }));
     expect(await screen.findByText(/search failed/i)).toBeInTheDocument();
   });
+
+  it("does not submit a Google result that has no coordinates", async () => {
+    searchAsync.mockResolvedValue([{ place_id: "p2", name: "No Coords Place", address: null, lat: null, lng: null }]);
+    draftAsync.mockResolvedValue({ ...draft, name: "No Coords Place", lat: null, lng: null });
+    render(<NodePicker kind="stop" onCancel={onCancel} onSubmit={onSubmit} />);
+    fireEvent.click(screen.getByRole("button", { name: "Search Google" }));
+    fireEvent.change(screen.getByLabelText(/search google/i), { target: { value: "no coords" } });
+    fireEvent.click(screen.getByRole("button", { name: /^search$/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /no coords place/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /add stop/i }));
+    expect(await screen.findByText(/no coordinates/i)).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(createAsync).not.toHaveBeenCalled();
+  });
 });

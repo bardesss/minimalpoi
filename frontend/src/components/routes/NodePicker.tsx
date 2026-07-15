@@ -56,6 +56,14 @@ export default function NodePicker({
   function pickPoi(poiId: number) {
     onSubmit({ kind, poi_id: poiId, nights });
   }
+  function backToPick() {
+    setSelected(null);
+    setResults([]);
+    setAlsoSave(false);
+    setGError(null);
+    setGQuery("");
+    setMode("pick");
+  }
   function addManual() {
     const latN = Number(lat);
     const lngN = Number(lng);
@@ -111,6 +119,7 @@ export default function NodePicker({
       }
     } catch {
       setGError("Couldn't add that place — try again.");
+    } finally {
       setBusy(false);
     }
   }
@@ -140,7 +149,7 @@ export default function NodePicker({
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" style={primaryButtonStyle} onClick={addManual}>Add point</button>
-            <button type="button" style={ghostButtonStyle} onClick={() => setMode("pick")}>Pick a saved place instead</button>
+            <button type="button" style={ghostButtonStyle} onClick={backToPick}>Pick a saved place instead</button>
           </div>
         </div>
       ) : mode === "google" ? (
@@ -157,7 +166,7 @@ export default function NodePicker({
               </label>
               <div style={{ display: "flex", gap: 8 }}>
                 <button type="button" style={primaryButtonStyle} onClick={addSelected} disabled={busy}>Add {kind}</button>
-                <button type="button" style={ghostButtonStyle} onClick={() => { setSelected(null); setAlsoSave(false); }}>Back to results</button>
+                <button type="button" style={ghostButtonStyle} onClick={() => { setSelected(null); setAlsoSave(false); setGError(null); }}>Back to results</button>
               </div>
             </div>
           ) : (
@@ -186,7 +195,7 @@ export default function NodePicker({
             </>
           )}
           {gError && <div role="status" style={{ fontSize: 12, color: theme.color.dangerText }}>{gError}</div>}
-          <button type="button" style={ghostButtonStyle} onClick={() => setMode("pick")}>Pick a saved place instead</button>
+          <button type="button" style={ghostButtonStyle} onClick={backToPick}>Pick a saved place instead</button>
         </div>
       ) : (
         <div>
