@@ -10,7 +10,8 @@ const deleteAsync = vi.fn().mockResolvedValue(undefined);
 const detail: RouteDetail = {
   id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-20",
   scheduled_end_date: "2026-07-16", node_count: 0,
-  created_by: 1, owner_username: "admin", nodes: [], legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
+  created_by: 1, owner_username: "admin", team_id: 3, team_name: "Crew", can_edit: true,
+  nodes: [], legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
 };
 
 vi.mock("../components/routes/RouteMap", () => ({ default: () => null }));
@@ -18,9 +19,10 @@ vi.mock("../components/routes/RouteMap", () => ({ default: () => null }));
 vi.mock("../components/SettingsModal", () => ({ default: () => null }));
 
 vi.mock("../queries/hooks", () => ({
-  useRoutes: () => ({ data: [{ id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-20", scheduled_end_date: "2026-07-16", node_count: 0, created_by: 1, owner_username: "admin" }], isLoading: false }),
+  useRoutes: () => ({ data: [{ id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-20", scheduled_end_date: "2026-07-16", node_count: 0, created_by: 1, owner_username: "admin", team_id: 3, team_name: "Crew" }], isLoading: false }),
   useRoute: () => ({ data: detail, isLoading: false }),
   useSettings: () => ({ data: { map_tile_url: "", default_map_center_lat: 52, default_map_center_lng: 4, default_map_zoom: 11, routes_enabled: true } }),
+  useTeams: () => ({ data: [{ id: 3, name: "Crew", created_by: 1, member_ids: [1] }] }),
   useCreateRoute: () => ({ mutateAsync: createAsync, isPending: false }),
   useAddNode: () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateNode: () => ({ mutate: vi.fn(), isPending: false }),
@@ -91,5 +93,22 @@ describe("RoutesPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: /delete route/i }));
     fireEvent.click(screen.getByRole("button", { name: /confirm delete/i }));
     await waitFor(() => expect(deleteAsync).toHaveBeenCalledWith(5));
+  });
+
+  it("assigns a team when creating a route", async () => {
+    renderPage();
+    fireEvent.change(screen.getByLabelText(/route name/i), { target: { value: "Alps" } });
+    fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: "2026-08-01" } });
+    fireEvent.change(screen.getByLabelText(/team \(optional\)/i), { target: { value: "3" } });
+    fireEvent.click(screen.getByRole("button", { name: /create route/i }));
+    await waitFor(() =>
+      expect(createAsync).toHaveBeenCalledWith({ name: "Alps", start_date: "2026-08-01", team_id: 3 }),
+    );
+  });
+
+  it("shows the team badge on a route", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
+    expect(await screen.findAllByText(/Crew/)).not.toHaveLength(0);
   });
 });

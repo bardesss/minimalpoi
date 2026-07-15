@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
 import { useAuth } from "../auth/AuthContext";
-import { useCreateRoute, useDeleteRoute, useRoute, useRoutes, useSettings, useUpdateRoute, useVersion } from "../queries/hooks";
+import { useCreateRoute, useDeleteRoute, useRoute, useRoutes, useSettings, useTeams, useUpdateRoute, useVersion } from "../queries/hooks";
 import AppLayout from "../components/AppLayout";
 import RouteTimeline from "../components/routes/RouteTimeline";
 import RouteMap from "../components/routes/RouteMap";
@@ -23,17 +23,19 @@ export default function RoutesPage() {
   const createRoute = useCreateRoute();
   const updateRoute = useUpdateRoute();
   const deleteRoute = useDeleteRoute();
+  const teamsQuery = useTeams();
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const routeQuery = useRoute(selectedId);
   const [newName, setNewName] = useState("");
   const [newDate, setNewDate] = useState("");
   const [newEnd, setNewEnd] = useState("");
+  const [newTeam, setNewTeam] = useState("");
   const [collapsed, setCollapsed] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
-  const [edit, setEdit] = useState({ name: "", start_date: "", end_date: "" });
+  const [edit, setEdit] = useState({ name: "", start_date: "", end_date: "", team_id: "" });
 
   async function onLogout() {
     await signOut();
@@ -46,15 +48,20 @@ export default function RoutesPage() {
       name: newName.trim(),
       start_date: newDate,
       ...(newEnd ? { end_date: newEnd } : {}),
+      ...(newTeam ? { team_id: Number(newTeam) } : {}),
     });
     setNewName("");
     setNewDate("");
     setNewEnd("");
+    setNewTeam("");
     setSelectedId(created.id);
   }
 
   const detail = routeQuery.data;
-  const canEdit = !!detail && !!user && (detail.created_by === user.id || user.role === "admin");
+  const canEdit = detail?.can_edit ?? false;
+  const teams = teamsQuery.data ?? [];
+  const myTeams = user?.role === "admin" ? teams : teams.filter((t) => user != null && t.member_ids.includes(user.id));
+  const canAssignTeam = !!detail && !!user && (detail.created_by === user.id || user.role === "admin");
 
   async function onExport() {
     if (!detail) return;
@@ -63,7 +70,7 @@ export default function RoutesPage() {
 
   function openEdit() {
     if (!detail) return;
-    setEdit({ name: detail.name, start_date: detail.start_date, end_date: detail.end_date ?? "" });
+    setEdit({ name: detail.name, start_date: detail.start_date, end_date: detail.end_date ?? "", team_id: detail.team_id != null ? String(detail.team_id) : "" });
     setEditing(true);
   }
   async function saveEdit() {
@@ -71,7 +78,12 @@ export default function RoutesPage() {
     if (!edit.name.trim() || !edit.start_date) return;
     await updateRoute.mutateAsync({
       id: detail.id,
-      body: { name: edit.name.trim(), start_date: edit.start_date, end_date: edit.end_date || null },
+      body: {
+        name: edit.name.trim(),
+        start_date: edit.start_date,
+        end_date: edit.end_date || null,
+        ...(canAssignTeam ? { team_id: edit.team_id ? Number(edit.team_id) : null } : {}),
+      },
     });
     setEditing(false);
   }
@@ -100,7 +112,7 @@ export default function RoutesPage() {
               >
                 <div style={{ fontFamily: theme.font.ui, fontWeight: 700, fontSize: 14, color: theme.color.textPrimary }}>{r.name}</div>
                 <div style={{ fontSize: 12, color: theme.color.textSecondary, marginTop: 2 }}>
-                  {r.start_date} → {r.end_date ?? r.scheduled_end_date} · {r.node_count} stops · by {r.owner_username}
+                  {r.start_date} → {r.end_date ?? r.scheduled_end_date} · {r.node_count} stops · by {r.owner_username}{r.team_name ? ` · ${r.team_name}` : ""}
                 </div>
               </button>
             ))}
@@ -114,6 +126,10 @@ export default function RoutesPage() {
             <input aria-label="Route name" placeholder="Route name" style={inputStyle} value={newName} onChange={(e) => setNewName(e.target.value)} />
             <input aria-label="Start date" type="date" style={inputStyle} value={newDate} onChange={(e) => setNewDate(e.target.value)} />
             <input aria-label="End date (optional)" type="date" style={inputStyle} value={newEnd} onChange={(e) => setNewEnd(e.target.value)} />
+            <select aria-label="Team (optional)" style={inputStyle} value={newTeam} onChange={(e) => setNewTeam(e.target.value)}>
+              <option value="">No team</option>
+              {myTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
             <button type="button" style={primaryButtonStyle} onClick={onCreate} disabled={createRoute.isPending}>Create route</button>
           </div>
         </>
@@ -131,6 +147,7 @@ export default function RoutesPage() {
                     {detail.end_date && detail.end_date !== detail.scheduled_end_date && (
                       <span style={{ color: theme.color.textPlaceholder }}> · scheduled: {detail.scheduled_end_date}</span>
                     )}
+                    {detail.team_name && <span style={{ color: theme.color.textPlaceholder }}> · team: {detail.team_name}</span>}
                     {detail.total_distance_m > 0 && <> · {formatTravel(detail.total_distance_m, detail.total_duration_s)}</>}
                   </p>
                 </div>
@@ -144,6 +161,12 @@ export default function RoutesPage() {
                   <input aria-label="Edit route name" style={inputStyle} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
                   <input aria-label="Edit start date" type="date" style={inputStyle} value={edit.start_date} onChange={(e) => setEdit({ ...edit, start_date: e.target.value })} />
                   <input aria-label="Edit end date (optional)" type="date" style={inputStyle} value={edit.end_date} onChange={(e) => setEdit({ ...edit, end_date: e.target.value })} />
+                  {canAssignTeam && (
+                    <select aria-label="Edit team" style={inputStyle} value={edit.team_id} onChange={(e) => setEdit({ ...edit, team_id: e.target.value })}>
+                      <option value="">No team</option>
+                      {myTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                  )}
                   <div style={{ display: "flex", gap: 8 }}>
                     <button type="button" style={primaryButtonStyle} onClick={saveEdit} disabled={updateRoute.isPending}>Save</button>
                     <button type="button" style={ghostButtonStyle} onClick={() => setEditing(false)}>Cancel</button>
