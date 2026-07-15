@@ -116,7 +116,9 @@ def test_team_member_can_edit_but_not_reassign(client):
 
 def test_non_member_cannot_edit_team_route(client):
     _admin(client)
-    rid = client.post("/api/routes", json={"name": "T", "start_date": "2026-07-14"}).json()["id"]
+    # a team carol is NOT part of, with a route assigned to it
+    team = client.post("/api/teams", json={"name": "Crew", "member_ids": []}).json()
+    rid = client.post("/api/routes", json={"name": "T", "start_date": "2026-07-14", "team_id": team["id"]}).json()["id"]
     client.post("/api/users", json={"username": "carol", "password": "pw123456"})
     client.post("/api/auth/logout")
     client.post("/api/auth/login", json={"username": "carol", "password": "pw123456"})
