@@ -28,6 +28,7 @@ vi.mock("../queries/hooks", () => ({
   useUpdateNode: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteNode: () => ({ mutate: vi.fn(), isPending: false }),
   usePois: () => ({ data: [] }),
+  useCategories: () => ({ data: [] }),
   useUploadRouteAttachment: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteRouteAttachment: () => ({ mutate: vi.fn(), isPending: false }),
   useVersion: () => ({ data: { update_available: false } }),

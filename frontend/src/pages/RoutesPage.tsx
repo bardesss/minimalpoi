@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
 import { useAuth } from "../auth/AuthContext";
-import { useCreateRoute, useDeleteRoute, useRoute, useRoutes, useSettings, useTeams, useUpdateRoute, useVersion } from "../queries/hooks";
+import { useAddNode, useCategories, useCreateRoute, useDeleteRoute, usePois, useRoute, useRoutes, useSettings, useTeams, useUpdateRoute, useVersion } from "../queries/hooks";
+import type { RouteNodeKind } from "../types/api";
+import { poisNotInRoute } from "../map/routePois";
 import AppLayout from "../components/AppLayout";
 import RouteTimeline from "../components/routes/RouteTimeline";
 import RouteMap from "../components/routes/RouteMap";
@@ -27,6 +29,9 @@ export default function RoutesPage() {
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const routeQuery = useRoute(selectedId);
+  const poisQuery = usePois();
+  const categoriesQuery = useCategories();
+  const addNodeFromMap = useAddNode(selectedId ?? -1);
   const [newName, setNewName] = useState("");
   const [newDate, setNewDate] = useState("");
   const [newEnd, setNewEnd] = useState("");
@@ -59,6 +64,10 @@ export default function RoutesPage() {
 
   const detail = routeQuery.data;
   const canEdit = detail?.can_edit ?? false;
+  const nearbyPois = poisNotInRoute(poisQuery.data ?? [], detail?.nodes ?? []);
+  const canAddFromMap = selectedId != null && canEdit;
+  const addFromMap = (poiId: number, kind: RouteNodeKind) =>
+    addNodeFromMap.mutate({ kind, poi_id: poiId, nights: kind === "stay" ? 1 : null });
   const teams = teamsQuery.data ?? [];
   const myTeams = user?.role === "admin" ? teams : teams.filter((t) => user != null && t.member_ids.includes(user.id));
   const canAssignTeam = !!detail && !!user && (detail.created_by === user.id || user.role === "admin");
@@ -215,7 +224,17 @@ export default function RoutesPage() {
         onExpand={() => setCollapsed(false)}
         reopenLabel="» Routes"
         sidebar={panel}
-        main={settingsQuery.data ? <RouteMap nodes={detail?.nodes ?? []} legs={detail?.legs ?? []} settings={settingsQuery.data} /> : null}
+        main={settingsQuery.data ? (
+          <RouteMap
+            nodes={detail?.nodes ?? []}
+            legs={detail?.legs ?? []}
+            pois={nearbyPois}
+            categories={categoriesQuery.data ?? []}
+            settings={settingsQuery.data}
+            canAdd={canAddFromMap}
+            onAddNode={addFromMap}
+          />
+        ) : null}
         account={{
           username: user?.username ?? "",
           role: user?.role ?? "member",
