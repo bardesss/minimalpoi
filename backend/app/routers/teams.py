@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
-from ..models import SYNC_USERNAME, Team, TeamMember, User, Role
+from ..models import SYNC_USERNAME, Route, Team, TeamMember, User, Role
 from ..schemas import TeamCandidate, TeamCreate, TeamRead
 
 router = APIRouter(prefix="/api/teams", tags=["teams"])
@@ -87,6 +87,11 @@ def delete_team(team_id: int, session: SessionDep, user: CurrentUser) -> Respons
         raise HTTPException(status_code=403, detail="Not allowed")
     for row in session.exec(select(TeamMember).where(TeamMember.team_id == team_id)).all():
         session.delete(row)
+    # Null out dangling references so no Route keeps pointing at a deleted
+    # team. (POI has no team_id field, so there's nothing to clean up there.)
+    for route in session.exec(select(Route).where(Route.team_id == team_id)).all():
+        route.team_id = None
+        session.add(route)
     session.delete(team)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
