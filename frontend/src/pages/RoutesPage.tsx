@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
 import { useAuth } from "../auth/AuthContext";
-import { useCreateRoute, useRoute, useRoutes, useSettings, useVersion } from "../queries/hooks";
+import { useCreateRoute, useDeleteRoute, useRoute, useRoutes, useSettings, useUpdateRoute, useVersion } from "../queries/hooks";
 import AppLayout from "../components/AppLayout";
 import RouteTimeline from "../components/routes/RouteTimeline";
 import RouteMap from "../components/routes/RouteMap";
@@ -21,6 +21,8 @@ export default function RoutesPage() {
   const settingsQuery = useSettings();
   const version = useVersion();
   const createRoute = useCreateRoute();
+  const updateRoute = useUpdateRoute();
+  const deleteRoute = useDeleteRoute();
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const routeQuery = useRoute(selectedId);
@@ -29,6 +31,9 @@ export default function RoutesPage() {
   const [newEnd, setNewEnd] = useState("");
   const [collapsed, setCollapsed] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [edit, setEdit] = useState({ name: "", start_date: "", end_date: "" });
 
   async function onLogout() {
     await signOut();
@@ -54,6 +59,26 @@ export default function RoutesPage() {
   async function onExport() {
     if (!detail) return;
     triggerDownload(await exportRoute(detail.id), `${detail.name}.geojson`);
+  }
+
+  function openEdit() {
+    if (!detail) return;
+    setEdit({ name: detail.name, start_date: detail.start_date, end_date: detail.end_date ?? "" });
+    setEditing(true);
+  }
+  async function saveEdit() {
+    if (!detail) return;
+    await updateRoute.mutateAsync({
+      id: detail.id,
+      body: { name: edit.name.trim(), start_date: edit.start_date, end_date: edit.end_date || null },
+    });
+    setEditing(false);
+  }
+  async function onDeleteRoute() {
+    if (!detail) return;
+    await deleteRoute.mutateAsync(detail.id);
+    setConfirmDel(false);
+    setSelectedId(null);
   }
 
   const routeAttachments = (detail?.attachments ?? []).filter((a) => a.node_id == null);
@@ -108,13 +133,39 @@ export default function RoutesPage() {
                     {detail.total_distance_m > 0 && <> · {formatTravel(detail.total_distance_m, detail.total_duration_s)}</>}
                   </p>
                 </div>
-                <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }} onClick={onExport}>Export</button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {canEdit && <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={openEdit}>Edit</button>}
+                  <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }} onClick={onExport}>Export</button>
+                </div>
               </div>
+              {editing && canEdit && (
+                <div style={{ display: "grid", gap: 8, margin: "0 0 14px" }}>
+                  <input aria-label="Edit route name" style={inputStyle} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
+                  <input aria-label="Edit start date" type="date" style={inputStyle} value={edit.start_date} onChange={(e) => setEdit({ ...edit, start_date: e.target.value })} />
+                  <input aria-label="Edit end date (optional)" type="date" style={inputStyle} value={edit.end_date} onChange={(e) => setEdit({ ...edit, end_date: e.target.value })} />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button type="button" style={primaryButtonStyle} onClick={saveEdit} disabled={updateRoute.isPending}>Save</button>
+                    <button type="button" style={ghostButtonStyle} onClick={() => setEditing(false)}>Cancel</button>
+                  </div>
+                </div>
+              )}
               <RouteTimeline route={detail} canEdit={canEdit} />
               <div style={{ marginTop: 18 }}>
                 <p style={sectionLabel}>Route documents</p>
                 <RouteAttachments routeId={detail.id} nodeId={null} attachments={routeAttachments} canEdit={canEdit} />
               </div>
+              {canEdit && (
+                <div style={{ marginTop: 18 }}>
+                  {confirmDel ? (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button type="button" style={{ ...primaryButtonStyle, background: theme.color.dangerText }} onClick={onDeleteRoute} disabled={deleteRoute.isPending}>Confirm delete</button>
+                      <button type="button" style={ghostButtonStyle} onClick={() => setConfirmDel(false)}>Cancel</button>
+                    </div>
+                  ) : (
+                    <button type="button" style={ghostButtonStyle} onClick={() => setConfirmDel(true)}>Delete route</button>
+                  )}
+                </div>
+              )}
             </>
           )}
         </>
