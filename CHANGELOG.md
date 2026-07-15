@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.5.0](https://github.com/Bardesss/minimalpoi/compare/v2.4.0...v2.5.0) (2026-07-15)
+
+
+### Features
+
+* **routes:** draw the real driving path instead of straight lines ([703b665](https://github.com/Bardesss/minimalpoi/commit/703b665a077aa08bc15331b768da4bf130f9bcff))
+* **routes:** draw the real driving path instead of straight lines ([b1fcebe](https://github.com/Bardesss/minimalpoi/commit/b1fcebeb945019390d57fdc4a06b315b684a0ccb))
+
 ## [2.4.0](https://github.com/Bardesss/minimalpoi/compare/v2.3.1...v2.4.0) (2026-07-15)
 
 
