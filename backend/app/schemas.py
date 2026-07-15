@@ -391,13 +391,6 @@ class RouteNodeUpdate(SQLModel):
     position: float | None = None
 
 
-class RouteDetail(RouteSummary):
-    nodes: list[RouteNodeRead] = []
-    legs: list[RouteLegRead] = []
-    total_distance_m: int = 0
-    total_duration_s: int = 0
-
-
 class RouteAttachmentRead(SQLModel):
     id: int
     route_id: int
@@ -407,3 +400,11 @@ class RouteAttachmentRead(SQLModel):
     size: int
     uploaded_by: int
     uploaded_at: datetime
+
+
+class RouteDetail(RouteSummary):
+    nodes: list[RouteNodeRead] = []
+    legs: list[RouteLegRead] = []
+    attachments: list[RouteAttachmentRead] = []
+    total_distance_m: int = 0
+    total_duration_s: int = 0

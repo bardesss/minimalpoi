@@ -24,6 +24,16 @@ def test_upload_download_delete_pdf(client):
     assert client.delete(f"/api/routes/{rid}/attachments/{aid}").status_code == 204
 
 
+def test_route_detail_lists_attachments(client):
+    rid = _route(client)
+    client.post(f"/api/routes/{rid}/attachments",
+                files={"file": ("hotel.pdf", io.BytesIO(PDF), "application/pdf")})
+    detail = client.get(f"/api/routes/{rid}").json()
+    assert len(detail["attachments"]) == 1
+    assert detail["attachments"][0]["filename"] == "hotel.pdf"
+    assert detail["attachments"][0]["node_id"] is None
+
+
 def test_reject_disallowed_type_by_magic_bytes(client):
     rid = _route(client)
     # An HTML payload mislabeled as PDF is rejected on content sniff.

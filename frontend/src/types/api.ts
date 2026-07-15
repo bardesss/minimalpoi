@@ -292,6 +292,7 @@ export interface RouteLeg {
 export interface RouteDetail extends RouteSummary {
   nodes: RouteNode[];
   legs: RouteLeg[];
+  attachments: RouteAttachment[];
   total_distance_m: number;
   total_duration_s: number;
 }

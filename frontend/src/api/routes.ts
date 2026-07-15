@@ -2,7 +2,7 @@ import type {
   RouteAttachment, RouteCreate, RouteDetail, RouteNodeCreate, RouteNodeUpdate,
   RouteSummary, RouteUpdate,
 } from "../types/api";
-import { apiFetch } from "./client";
+import { ApiError, apiFetch } from "./client";
 
 export function getRoutes(): Promise<RouteSummary[]> {
   return apiFetch<RouteSummary[]>("/api/routes");
@@ -38,4 +38,12 @@ export function deleteRouteAttachment(routeId: number, aid: number): Promise<voi
   return apiFetch<void>(`/api/routes/${routeId}/attachments/${aid}`, { method: "DELETE" });
 }
 export const routeExportUrl = (id: number) => `/api/routes/${id}/export`;
+export async function exportRoute(id: number): Promise<Blob> {
+  const res = await fetch(routeExportUrl(id), {
+    credentials: "include",
+    headers: { Accept: "application/geo+json" },
+  });
+  if (!res.ok) throw new ApiError(res.status, res.statusText);
+  return res.blob();
+}
 export const attachmentUrl = (routeId: number, aid: number) => `/api/routes/${routeId}/attachments/${aid}`;

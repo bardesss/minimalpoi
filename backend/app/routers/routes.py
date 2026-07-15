@@ -66,6 +66,9 @@ def _detail(session, route: Route) -> RouteDetail:
             id=n.id, kind=n.kind, position=n.position, nights=n.nights, notes=n.notes,
             poi_id=n.poi_id, name=n.name, lat=n.lat, lng=n.lng, **extra,
         ))
+    attachments = session.exec(
+        select(RouteAttachment).where(RouteAttachment.route_id == route.id).order_by(RouteAttachment.uploaded_at)
+    ).all()
     return RouteDetail(
         id=route.id, name=route.name, start_date=route.start_date, end_date=d["end_date"],
         node_count=len(nodes), created_by=route.created_by,
@@ -74,6 +77,7 @@ def _detail(session, route: Route) -> RouteDetail:
         legs=[RouteLegRead(from_node_id=l.from_node_id, to_node_id=l.to_node_id,
                            distance_m=l.distance_m, duration_s=l.duration_s, source=l.source)
               for l in legs],
+        attachments=[_attach_read(a) for a in attachments],
         total_distance_m=d["totals"]["distance_m"], total_duration_s=d["totals"]["duration_s"],
     )
 

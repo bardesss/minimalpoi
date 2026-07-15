@@ -4,6 +4,7 @@ import { ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../t
 import { useAddNode, usePois, useUpdateNode } from "../../queries/hooks";
 import LegRow from "./LegRow";
 import RouteNodeRow from "./RouteNodeRow";
+import RouteAttachments from "./RouteAttachments";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
@@ -63,7 +64,14 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
                 isFirst={i === 0}
                 isLast={i === nodes.length - 1}
                 onMove={(dir) => move(i, dir)}
-              />
+              >
+                <RouteAttachments
+                  routeId={route.id}
+                  nodeId={n.id}
+                  attachments={route.attachments.filter((a) => a.node_id === n.id)}
+                  canEdit={canEdit}
+                />
+              </RouteNodeRow>
               {leg && <LegRow leg={leg} />}
             </div>
           );
