@@ -60,7 +60,7 @@ async def recompute_legs(session: Session, route_id: int) -> None:
             session.add(RouteLeg(
                 route_id=route_id, from_node_id=a.id, to_node_id=b.id,
                 distance_m=leg.distance_m, duration_s=leg.duration_s,
-                source=LegSource(leg.source),
+                source=LegSource(leg.source), geometry=leg.geometry,
             ))
     finally:
         if client:

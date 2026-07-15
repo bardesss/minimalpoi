@@ -215,7 +215,7 @@ export default function RoutesPage() {
         onExpand={() => setCollapsed(false)}
         reopenLabel="» Routes"
         sidebar={panel}
-        main={settingsQuery.data ? <RouteMap nodes={detail?.nodes ?? []} settings={settingsQuery.data} /> : null}
+        main={settingsQuery.data ? <RouteMap nodes={detail?.nodes ?? []} legs={detail?.legs ?? []} settings={settingsQuery.data} /> : null}
         account={{
           username: user?.username ?? "",
           role: user?.role ?? "member",

@@ -379,6 +379,7 @@ class RouteLegRead(SQLModel):
     distance_m: int
     duration_s: int
     source: LegSource
+    geometry: str | None = None
 
 
 class RouteNodeCreate(SQLModel):

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import maplibregl, { type GeoJSONSource, type Map as MlMap } from "maplibre-gl";
-import type { MapSettings, RouteNode } from "../../types/api";
+import type { MapSettings, RouteLeg, RouteNode } from "../../types/api";
 import { resolveMapStyle } from "../../map/style";
 import { routeLine } from "../../map/routeLine";
 
@@ -55,11 +55,13 @@ function addRouteLayers(map: MlMap) {
   });
 }
 
-export default function RouteMap({ nodes, settings }: { nodes: RouteNode[]; settings: MapSettings }) {
+export default function RouteMap({ nodes, legs, settings }: { nodes: RouteNode[]; legs: RouteLeg[]; settings: MapSettings }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
+  const legsRef = useRef(legs);
+  legsRef.current = legs;
 
   // Init once.
   useEffect(() => {
@@ -74,7 +76,7 @@ export default function RouteMap({ nodes, settings }: { nodes: RouteNode[]; sett
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
     map.on("load", () => {
-      const { line, points } = routeLine(nodesRef.current);
+      const { line, points } = routeLine(nodesRef.current, legsRef.current);
       map.addSource("route-line", { type: "geojson", data: line ?? { type: "FeatureCollection", features: [] } });
       map.addSource("route-points", { type: "geojson", data: points });
       addRouteLayers(map);
@@ -91,18 +93,18 @@ export default function RouteMap({ nodes, settings }: { nodes: RouteNode[]; sett
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Redraw when the node chain changes.
+  // Redraw when the node chain or leg geometry changes.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const lineSrc = map.getSource("route-line") as GeoJSONSource | undefined;
     const pointSrc = map.getSource("route-points") as GeoJSONSource | undefined;
     if (!lineSrc || !pointSrc) return;
-    const { line, points } = routeLine(nodes);
+    const { line, points } = routeLine(nodes, legs);
     lineSrc.setData(line ?? { type: "FeatureCollection", features: [] });
     pointSrc.setData(points);
     fitToNodes(map, nodes);
-  }, [nodes]);
+  }, [nodes, legs]);
 
   return <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />;
 }

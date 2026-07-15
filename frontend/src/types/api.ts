@@ -292,6 +292,7 @@ export interface RouteLeg {
   distance_m: number;
   duration_s: number;
   source: LegSource;
+  geometry: string | null;
 }
 
 export interface RouteDetail extends RouteSummary {
