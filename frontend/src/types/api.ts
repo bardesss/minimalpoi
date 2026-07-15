@@ -136,6 +136,7 @@ export interface Settings {
   default_map_center_lng: number;
   default_map_zoom: number;
   cookie_secure: boolean;
+  routes_enabled: boolean;
   trip_last_sync_at: string | null;
 }
 
@@ -153,6 +154,7 @@ export interface SettingsUpdate {
   default_map_center_lng?: number;
   default_map_zoom?: number;
   cookie_secure?: boolean;
+  routes_enabled?: boolean;
 }
 
 export interface TagInfo {

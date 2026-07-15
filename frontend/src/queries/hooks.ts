@@ -99,8 +99,8 @@ export function useRestoreBackup() {
   });
 }
 
-export function useFullSettings() {
-  return useQuery({ queryKey: ["settings", "full"], queryFn: getFullSettings });
+export function useFullSettings(enabled = true) {
+  return useQuery({ queryKey: ["settings", "full"], queryFn: getFullSettings, enabled });
 }
 
 export function useUpdateSettings() {

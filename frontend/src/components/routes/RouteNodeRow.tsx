@@ -1,21 +1,25 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { RouteNode } from "../../types/api";
 import { theme } from "../../theme";
+import { useIsMobile } from "../../lib/useMediaQuery";
 import { useDeleteNode, useUpdateNode } from "../../queries/hooks";
 
-const iconBtn = {
-  border: `1px solid ${theme.color.borderStd}`,
-  background: theme.color.surface0,
-  color: theme.color.textBody,
-  borderRadius: theme.radius.icon,
-  width: 24,
-  height: 24,
-  fontFamily: theme.font.ui,
-  fontWeight: 700,
-  fontSize: 13,
-  cursor: "pointer",
-  lineHeight: 1,
-} as const;
+// Comfortable tap targets on touch (~40px), compact on the desktop panel.
+function iconBtnStyle(size: number): CSSProperties {
+  return {
+    border: `1px solid ${theme.color.borderStd}`,
+    background: theme.color.surface0,
+    color: theme.color.textBody,
+    borderRadius: theme.radius.icon,
+    width: size,
+    height: size,
+    fontFamily: theme.font.ui,
+    fontWeight: 700,
+    fontSize: size >= 36 ? 16 : 13,
+    cursor: "pointer",
+    lineHeight: 1,
+  };
+}
 
 // One stop or multi-night stay in the timeline. Stays (★) show their arrive→
 // depart dates and a nights stepper; stops (·) just show their name. Reorder
@@ -39,6 +43,8 @@ export default function RouteNodeRow({
 }) {
   const updateNode = useUpdateNode(routeId);
   const deleteNode = useDeleteNode(routeId);
+  const isMobile = useIsMobile();
+  const iconBtn = iconBtnStyle(isMobile ? 40 : 24);
   const isStay = node.kind === "stay";
 
   function setNights(next: number) {
