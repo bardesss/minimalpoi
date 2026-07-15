@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
+import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
 import { useAuth } from "../auth/AuthContext";
 import { useCreateRoute, useDeleteRoute, useRoute, useRoutes, useSettings, useUpdateRoute, useVersion } from "../queries/hooks";
 import AppLayout from "../components/AppLayout";
@@ -158,7 +158,7 @@ export default function RoutesPage() {
                 <div style={{ marginTop: 18 }}>
                   {confirmDel ? (
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button type="button" style={{ ...primaryButtonStyle, background: theme.color.dangerText }} onClick={onDeleteRoute} disabled={deleteRoute.isPending}>Confirm delete</button>
+                      <button type="button" style={dangerButtonStyle} onClick={onDeleteRoute} disabled={deleteRoute.isPending}>Confirm delete</button>
                       <button type="button" style={ghostButtonStyle} onClick={() => setConfirmDel(false)}>Cancel</button>
                     </div>
                   ) : (
