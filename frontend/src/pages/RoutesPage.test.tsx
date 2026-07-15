@@ -6,7 +6,8 @@ import type { RouteDetail } from "../types/api";
 
 const createAsync = vi.fn().mockResolvedValue({ id: 5 });
 const detail: RouteDetail = {
-  id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-16", node_count: 0,
+  id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-20",
+  scheduled_end_date: "2026-07-16", node_count: 0,
   created_by: 1, owner_username: "admin", nodes: [], legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
 };
 
@@ -15,7 +16,7 @@ vi.mock("../components/routes/RouteMap", () => ({ default: () => null }));
 vi.mock("../components/SettingsModal", () => ({ default: () => null }));
 
 vi.mock("../queries/hooks", () => ({
-  useRoutes: () => ({ data: [{ id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-16", node_count: 0, created_by: 1, owner_username: "admin" }], isLoading: false }),
+  useRoutes: () => ({ data: [{ id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-20", scheduled_end_date: "2026-07-16", node_count: 0, created_by: 1, owner_username: "admin" }], isLoading: false }),
   useRoute: () => ({ data: detail, isLoading: false }),
   useSettings: () => ({ data: { map_tile_url: "", default_map_center_lat: 52, default_map_center_lng: 4, default_map_zoom: 11, routes_enabled: true } }),
   useCreateRoute: () => ({ mutateAsync: createAsync, isPending: false }),
@@ -58,5 +59,12 @@ describe("RoutesPage", () => {
     fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: "2026-08-01" } });
     fireEvent.click(screen.getByRole("button", { name: /create route/i }));
     await waitFor(() => expect(createAsync).toHaveBeenCalledWith({ name: "Alps", start_date: "2026-08-01" }));
+  });
+
+  it("shows planned end date with the scheduled hint when they differ", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
+    expect(await screen.findByText(/2026-07-20/)).toBeInTheDocument();   // planned end
+    expect(screen.getByText(/scheduled:\s*2026-07-16/i)).toBeInTheDocument();
   });
 });

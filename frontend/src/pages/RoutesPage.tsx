@@ -26,6 +26,7 @@ export default function RoutesPage() {
   const routeQuery = useRoute(selectedId);
   const [newName, setNewName] = useState("");
   const [newDate, setNewDate] = useState("");
+  const [newEnd, setNewEnd] = useState("");
   const [collapsed, setCollapsed] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
 
@@ -36,9 +37,14 @@ export default function RoutesPage() {
 
   async function onCreate() {
     if (!newName.trim() || !newDate) return;
-    const created = await createRoute.mutateAsync({ name: newName.trim(), start_date: newDate });
+    const created = await createRoute.mutateAsync({
+      name: newName.trim(),
+      start_date: newDate,
+      ...(newEnd ? { end_date: newEnd } : {}),
+    });
     setNewName("");
     setNewDate("");
+    setNewEnd("");
     setSelectedId(created.id);
   }
 
@@ -68,7 +74,7 @@ export default function RoutesPage() {
               >
                 <div style={{ fontFamily: theme.font.ui, fontWeight: 700, fontSize: 14, color: theme.color.textPrimary }}>{r.name}</div>
                 <div style={{ fontSize: 12, color: theme.color.textSecondary, marginTop: 2 }}>
-                  {r.start_date} → {r.end_date} · {r.node_count} stops · by {r.owner_username}
+                  {r.start_date} → {r.end_date ?? r.scheduled_end_date} · {r.node_count} stops · by {r.owner_username}
                 </div>
               </button>
             ))}
@@ -81,6 +87,7 @@ export default function RoutesPage() {
           <div style={{ display: "grid", gap: 8 }}>
             <input aria-label="Route name" placeholder="Route name" style={inputStyle} value={newName} onChange={(e) => setNewName(e.target.value)} />
             <input aria-label="Start date" type="date" style={inputStyle} value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+            <input aria-label="End date (optional)" type="date" style={inputStyle} value={newEnd} onChange={(e) => setNewEnd(e.target.value)} />
             <button type="button" style={primaryButtonStyle} onClick={onCreate} disabled={createRoute.isPending}>Create route</button>
           </div>
         </>
@@ -94,7 +101,10 @@ export default function RoutesPage() {
                 <div>
                   <h2 style={{ margin: "0 0 4px", fontFamily: theme.font.ui, fontWeight: 800, fontSize: 17, color: theme.color.textPrimary }}>{detail.name}</h2>
                   <p style={{ margin: "0 0 12px", fontSize: 12.5, color: theme.color.textSecondary }}>
-                    {detail.start_date} → {detail.end_date}
+                    {detail.start_date} → {detail.end_date ?? detail.scheduled_end_date}
+                    {detail.end_date && detail.end_date !== detail.scheduled_end_date && (
+                      <span style={{ color: theme.color.textPlaceholder }}> · scheduled: {detail.scheduled_end_date}</span>
+                    )}
                     {detail.total_distance_m > 0 && <> · {formatTravel(detail.total_distance_m, detail.total_duration_s)}</>}
                   </p>
                 </div>
