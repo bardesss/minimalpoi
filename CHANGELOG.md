@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.2.0](https://github.com/Bardesss/minimalpoi/compare/v2.1.0...v2.2.0) (2026-07-15)
+
+
+### Features
+
+* **routes:** add NavToggle segmented Map/Routes nav ([7bcc81c](https://github.com/Bardesss/minimalpoi/commit/7bcc81cd95192f1d79f0b400ce759752d2932408))
+* **routes:** add shared AppLayout chrome ([8fdbfc1](https://github.com/Bardesss/minimalpoi/commit/8fdbfc1edfc21b88554c4d5f5cd30a49b8120a4c))
+* **routes:** edit and delete a route from the detail view ([fe14f88](https://github.com/Bardesss/minimalpoi/commit/fe14f88a52e7ad63538b12b6b93ae033786463ac))
+* **routes:** optional end date, edit/delete, unified Map|Routes shell ([9b7e415](https://github.com/Bardesss/minimalpoi/commit/9b7e415845a7333d92636230f7efb30f21a42c57))
+* **routes:** settings toggle + round-2 UX (end date, edit/delete, unified shell) ([eab4a2d](https://github.com/Bardesss/minimalpoi/commit/eab4a2db71192416907a28fdc892b99184a13c36))
+* **routes:** show planned vs scheduled end date; optional end date on create ([c391d82](https://github.com/Bardesss/minimalpoi/commit/c391d8222555a3a7bbbcc4ef4ff640dbde2c0b59))
+* **routes:** stored optional end_date; expose derived scheduled_end_date ([886816d](https://github.com/Bardesss/minimalpoi/commit/886816de97cfa8c08ab4b4013fc745a2713cfdc7))
+
+
+### Bug Fixes
+
+* **routes:** guard blank route edits, add patch-date test, drop dead Sidebar wrapper ([1cda792](https://github.com/Bardesss/minimalpoi/commit/1cda792c3a651885416e1276b92fefca6199c2ac))
+* **routes:** reuse dangerButtonStyle for confirm-delete ([3d928fc](https://github.com/Bardesss/minimalpoi/commit/3d928fc3fe5fe949b5430347fd3cb2a1e1a0e8ac))
+* **ui:** tagline reads 'Points of Interest Manager' ([35f4687](https://github.com/Bardesss/minimalpoi/commit/35f4687cc937b0e165e629ff678d40e9a32ce5a6))
+
 ## [2.1.0](https://github.com/Bardesss/minimalpoi/compare/v2.0.0...v2.1.0) (2026-07-15)
 
 
