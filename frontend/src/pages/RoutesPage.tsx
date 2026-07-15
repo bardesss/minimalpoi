@@ -68,6 +68,7 @@ export default function RoutesPage() {
   }
   async function saveEdit() {
     if (!detail) return;
+    if (!edit.name.trim() || !edit.start_date) return;
     await updateRoute.mutateAsync({
       id: detail.id,
       body: { name: edit.name.trim(), start_date: edit.start_date, end_date: edit.end_date || null },

@@ -62,3 +62,13 @@ def test_member_sees_but_cannot_edit_others_route(client):
     assert len(client.get("/api/routes").json()) == 1          # shared visibility
     assert client.patch(f"/api/routes/{rid}", json={"name": "hax"}).status_code == 403
     assert client.delete(f"/api/routes/{rid}").status_code == 403
+
+
+def test_route_patch_end_before_start_rejected(client):
+    _admin(client)
+    rid = client.post("/api/routes", json={"name": "P", "start_date": "2026-07-14"}).json()["id"]
+    # patch an end_date before the existing start_date -> 422
+    assert client.patch(f"/api/routes/{rid}", json={"end_date": "2026-07-10"}).status_code == 422
+    # patch a start_date after the existing (stored) end_date -> 422
+    client.patch(f"/api/routes/{rid}", json={"end_date": "2026-07-20"})
+    assert client.patch(f"/api/routes/{rid}", json={"start_date": "2026-07-25"}).status_code == 422
