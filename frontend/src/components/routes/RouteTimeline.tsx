@@ -22,6 +22,19 @@ export function computeMovePosition(nodes: RouteNode[], index: number, dir: -1 |
   return after ? (nodes[target].position + after.position) / 2 : nodes[target].position + 1;
 }
 
+/** Fractional position for a node dragged from `fromIndex` to `toIndex`.
+ * Computed against the list with the dragged node removed, so `toIndex` refers
+ * to the slot among the remaining nodes. Returns null when nothing moves. */
+export function computeDropPosition(nodes: RouteNode[], fromIndex: number, toIndex: number): number | null {
+  if (fromIndex === toIndex) return null;
+  const rest = nodes.filter((_, i) => i !== fromIndex);
+  const before = rest[toIndex - 1];
+  const after = rest[toIndex];
+  if (!before) return after.position - 1;        // dropped at the very top
+  if (!after) return before.position + 1;         // dropped at the very bottom
+  return (before.position + after.position) / 2;  // between two neighbours
+}
+
 export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; canEdit: boolean }) {
   const nodes = route.nodes;
   const legByPair = useMemo(() => {

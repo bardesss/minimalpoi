@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import RouteTimeline, { computeMovePosition } from "./RouteTimeline";
+import RouteTimeline, { computeMovePosition, computeDropPosition } from "./RouteTimeline";
 import type { RouteDetail, RouteNode } from "../../types/api";
 
 const add = vi.fn();
@@ -43,6 +43,27 @@ describe("computeMovePosition", () => {
   it("moves a node down past the end", () => {
     expect(computeMovePosition(nodes, 2, 1)).toBeNull(); // already last
     expect(computeMovePosition(nodes, 1, 1)).toBe(4); // past last → pos3 + 1
+  });
+});
+
+describe("computeDropPosition", () => {
+  const nodes = [node(1, "stay", 1), node(2, "stay", 2), node(3, "stay", 3)];
+
+  it("returns null for a no-op drop", () => {
+    expect(computeDropPosition(nodes, 1, 1)).toBeNull();
+  });
+
+  it("drops a node to the top (before the first)", () => {
+    expect(computeDropPosition(nodes, 2, 0)).toBe(0); // pos1 - 1
+  });
+
+  it("drops a node to the bottom (after the last)", () => {
+    expect(computeDropPosition(nodes, 0, 2)).toBe(4); // pos3 + 1
+  });
+
+  it("drops a node into the middle between its new neighbours", () => {
+    // move node at index 0 to index 1: it lands between old node2 (2) and node3 (3)
+    expect(computeDropPosition(nodes, 0, 1)).toBe(2.5); // (2 + 3)/2
   });
 });
 
