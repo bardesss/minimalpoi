@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.8.0](https://github.com/Bardesss/minimalpoi/compare/v2.7.0...v2.8.0) (2026-07-16)
+
+
+### Features
+
+* **routes:** add formatDayLabel date-caption helper ([f35fcc9](https://github.com/Bardesss/minimalpoi/commit/f35fcc9c319343a905422c5344370b30d0e12bd5))
+* **routes:** day headers and per-day driving totals in the itinerary ([3b4b7f8](https://github.com/Bardesss/minimalpoi/commit/3b4b7f80cfcf94db9729549ea60992dbfd997910))
+* **routes:** day-by-day itinerary grouping ([3125688](https://github.com/Bardesss/minimalpoi/commit/31256883a55b284d0cec2b159cdef240f3901569))
+* **routes:** group itinerary nodes by calendar day ([55b92cb](https://github.com/Bardesss/minimalpoi/commit/55b92cbbfc0a9bad2f040166258f1db38d19def4))
+
 ## [2.7.0](https://github.com/Bardesss/minimalpoi/compare/v2.6.0...v2.7.0) (2026-07-16)
 
 
