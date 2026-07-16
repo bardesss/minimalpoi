@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { Navigation } from "lucide-react";
 import { ghostButtonStyle, theme } from "../../theme";
 import { appleMapsUrl, coordsText, googleMapsDirUrl, toGpx, type Waypoint } from "../../lib/routeNav";
@@ -36,7 +37,10 @@ export default function NavigateDayModal({ dayLabel, waypoints, onClose }: {
 
   const rowStyle = { ...ghostButtonStyle, width: "100%", textAlign: "left" as const, marginBottom: 8 };
 
-  return (
+  // Portalled to <body> so `position: fixed` resolves against the viewport.
+  // On mobile the timeline renders inside the bottom sheet's `transform`, which
+  // would otherwise become the containing block and trap the overlay in it.
+  return createPortal(
     <div
       data-testid="navmodal-backdrop"
       onClick={onClose}
@@ -58,6 +62,7 @@ export default function NavigateDayModal({ dayLabel, waypoints, onClose }: {
         <button type="button" style={rowStyle} onClick={downloadGpx}>Download GPX</button>
         <button type="button" style={{ ...rowStyle, marginBottom: 0 }} onClick={copyCoords}>Copy coordinates</button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

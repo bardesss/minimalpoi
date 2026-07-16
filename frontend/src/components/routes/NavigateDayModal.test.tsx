@@ -39,4 +39,18 @@ describe("NavigateDayModal", () => {
     await userEvent.click(screen.getByTestId("navmodal-backdrop"));
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  // On mobile the timeline lives inside a `transform`ed bottom sheet, which
+  // would trap a `position: fixed` overlay inside the sheet. Portalling to
+  // <body> escapes that containing block so the modal covers the viewport.
+  it("renders into document.body, outside any transformed ancestor", () => {
+    const { container } = render(
+      <div style={{ transform: "translateY(100px)" }}>
+        <NavigateDayModal dayLabel="THU 16 JUL" waypoints={waypoints} onClose={vi.fn()} />
+      </div>,
+    );
+    const backdrop = screen.getByTestId("navmodal-backdrop");
+    expect(container.contains(backdrop)).toBe(false);
+    expect(document.body.contains(backdrop)).toBe(true);
+  });
 });
