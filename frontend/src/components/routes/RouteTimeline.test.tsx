@@ -85,7 +85,9 @@ describe("RouteTimeline", () => {
 
   it("add-stop picks a place and calls the add mutation", () => {
     render(<RouteTimeline route={route} canEdit />);
-    fireEvent.click(screen.getByRole("button", { name: /add stop/i }));
+    // Exact name ("+ Add stop") targets the bottom control; per-day "+ Add stop"
+    // buttons carry a day-specific aria-label ("Add stop to ...") instead.
+    fireEvent.click(screen.getByRole("button", { name: "+ Add stop" }));
     fireEvent.click(screen.getByRole("button", { name: "Utrecht" }));
     expect(add).toHaveBeenCalledWith({ kind: "stop", poi_id: 7, nights: null });
   });
@@ -143,6 +145,28 @@ describe("RouteTimeline collapse", () => {
     // Only a collapsed day shows the "· N stops" suffix, so this name is unique.
     await userEvent.click(screen.getByRole("button", { name: /1 stops/ }));
     expect(screen.getByText("PastTown")).toBeInTheDocument();
+  });
+});
+
+describe("RouteTimeline per-day add", () => {
+  const multiNight: RouteDetail = {
+    ...route,
+    start_date: "2026-07-14",
+    nodes: [
+      { ...node(1, "stay", 1), name: "Hotel X", arrive_date: "2026-07-14", depart_date: "2026-07-16", nights: 2 },
+    ],
+    legs: [],
+  };
+
+  it("adds a stop to the middle day with that day's offset and an in-day position", async () => {
+    render(<RouteTimeline route={multiNight} canEdit />);
+    // Three day sections: 14 (Hotel X), 15 (empty middle = WED 15 JUL), 16 (empty departure).
+    // Each day's own "+ Add stop" has a day-specific accessible name; the bottom
+    // controls' "+ Add stop" is just "Add stop", so this query is unambiguous.
+    await userEvent.click(screen.getByRole("button", { name: /add stop to wed 15 jul/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Utrecht" })); // mocked saved POI
+    expect(add).toHaveBeenCalledWith(expect.objectContaining({ kind: "stop", poi_id: 7, day_offset: 1 }));
+    expect(add.mock.calls[0][0].position).toBeGreaterThan(1); // positioned after Hotel X (pos 1)
   });
 });
 
