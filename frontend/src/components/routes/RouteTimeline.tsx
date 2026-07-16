@@ -6,6 +6,8 @@ import LegRow from "./LegRow";
 import RouteNodeRow from "./RouteNodeRow";
 import RouteAttachments from "./RouteAttachments";
 import NodePicker from "./NodePicker";
+import { DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
@@ -48,6 +50,21 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
 
   const [adding, setAdding] = useState<RouteNodeKind | null>(null);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function onDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const from = nodes.findIndex((n) => n.id === active.id);
+    const to = nodes.findIndex((n) => n.id === over.id);
+    if (from === -1 || to === -1) return;
+    const pos = computeDropPosition(nodes, from, to);
+    if (pos != null) updateNode.mutate({ nodeId: nodes[from].id, body: { position: pos } });
+  }
+
   function move(index: number, dir: -1 | 1) {
     const pos = computeMovePosition(nodes, index, dir);
     if (pos != null) updateNode.mutate({ nodeId: nodes[index].id, body: { position: pos } });
@@ -66,8 +83,9 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
           No stops yet. Add a stay or a stop to start building the route.
         </p>
       )}
-      <div>
-        {nodes.map((n, i) => {
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={nodes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+          {nodes.map((n, i) => {
           const leg = i < nodes.length - 1 ? legByPair.get(`${n.id}:${nodes[i + 1].id}`) : undefined;
           return (
             <div key={n.id}>
@@ -90,7 +108,8 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
             </div>
           );
         })}
-      </div>
+        </SortableContext>
+      </DndContext>
 
       {canEdit && (
         <div style={{ marginTop: 12 }}>

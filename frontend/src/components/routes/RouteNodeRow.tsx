@@ -3,6 +3,9 @@ import type { RouteNode } from "../../types/api";
 import { theme } from "../../theme";
 import { useIsMobile } from "../../lib/useMediaQuery";
 import { useDeleteNode, useUpdateNode } from "../../queries/hooks";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical } from "lucide-react";
 
 // Comfortable tap targets on touch (~40px), compact on the desktop panel.
 function iconBtnStyle(size: number): CSSProperties {
@@ -47,12 +50,30 @@ export default function RouteNodeRow({
   const iconBtn = iconBtnStyle(isMobile ? 40 : 24);
   const isStay = node.kind === "stay";
 
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id, disabled: !canEdit });
+  const sortableStyle: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+
   function setNights(next: number) {
     updateNode.mutate({ nodeId: node.id, body: { nights: Math.max(0, next) } });
   }
 
   return (
-    <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0" }}>
+    <div ref={setNodeRef} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", ...sortableStyle }}>
+      {canEdit && (
+        <button
+          type="button"
+          aria-label={`Reorder ${node.name}`}
+          {...attributes}
+          {...listeners}
+          style={{ flex: "none", width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "transparent", color: theme.color.textMuted, cursor: "grab", touchAction: "none" }}
+        >
+          <GripVertical size={16} />
+        </button>
+      )}
       <span
         aria-hidden
         style={{
