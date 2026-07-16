@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
 import { useAuth } from "../auth/AuthContext";
@@ -12,6 +12,7 @@ import RouteMap from "../components/routes/RouteMap";
 import RouteAttachments from "../components/routes/RouteAttachments";
 import SettingsModal from "../components/SettingsModal";
 import { formatTravel } from "../lib/formatTravel";
+import { passedNodeIds, todayIso } from "../lib/dayState";
 import { exportRoute } from "../api/routes";
 import { triggerDownload } from "../lib/download";
 
@@ -66,6 +67,10 @@ export default function RoutesPage() {
   const detail = routeQuery.data;
   const canEdit = detail?.can_edit ?? false;
   const nearbyPois = poisNotInRoute(poisQuery.data ?? [], detail?.nodes ?? []);
+  const passed = useMemo(
+    () => (detail ? passedNodeIds(detail, todayIso()) : new Set<number>()),
+    [detail],
+  );
   const canAddFromMap = selectedId != null && canEdit;
   const addFromMap = (poiId: number, kind: RouteNodeKind) => {
     const poi = (poisQuery.data ?? []).find((p) => p.id === poiId);
@@ -242,6 +247,7 @@ export default function RoutesPage() {
             settings={settingsQuery.data}
             canAdd={canAddFromMap}
             onAddNode={addFromMap}
+            passedNodeIds={passed}
           />
         ) : null}
         account={{
