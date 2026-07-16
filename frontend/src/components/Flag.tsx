@@ -2,11 +2,11 @@
 //
 // Uses country-flag-icons (inline SVG) rather than emoji — Windows has no
 // regional-indicator flag glyphs, so flag emoji render as bare letters there.
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactElement } from "react";
 import { hasFlag } from "country-flag-icons";
 import * as Flags from "country-flag-icons/react/3x2";
 
-type FlagComponent = (props: { title?: string; style?: CSSProperties }) => JSX.Element;
+type FlagComponent = (props: { title?: string; style?: CSSProperties }) => ReactElement;
 
 export default function Flag({ code, title }: { code: string | null | undefined; title?: string }) {
   const cc = code?.trim().toUpperCase();
