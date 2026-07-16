@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.9.0](https://github.com/Bardesss/minimalpoi/compare/v2.8.0...v2.9.0) (2026-07-16)
+
+
+### Features
+
+* **routes:** day collapse/fold + per-day navigation export ([c593e06](https://github.com/Bardesss/minimalpoi/commit/c593e0678422a848a52e0198dc993954f06f5fe5))
+* **routes:** DayHeader collapse toggle, stop count, navigate button ([e07817a](https://github.com/Bardesss/minimalpoi/commit/e07817afd93d18dfb4cf74b11170d6e3e45d617b))
+* **routes:** dayState lib — passed-day + passed-node helpers ([477b2d4](https://github.com/Bardesss/minimalpoi/commit/477b2d43bea6b74f0328e65165804ef8e533fb16))
+* **routes:** de-emphasise passed days on the map ([1d9b5f5](https://github.com/Bardesss/minimalpoi/commit/1d9b5f58f02fc4c58271d2120ef5b29c23cb1f84))
+* **routes:** fold past days by default + per-day navigate export ([a2e26cf](https://github.com/Bardesss/minimalpoi/commit/a2e26cf8894ac1afc6b8e1de5bf5f524e2affee9))
+* **routes:** NavigateDayModal fallback export picker ([cc0a50e](https://github.com/Bardesss/minimalpoi/commit/cc0a50e216839c1f8cc5567209cc4be95da6c6df))
+* **routes:** routeNav lib — day waypoints + export URL/GPX builders ([dfa7b1b](https://github.com/Bardesss/minimalpoi/commit/dfa7b1bb406c379a6c257b9db98d7c125cb16f7b))
+
 ## [2.8.0](https://github.com/Bardesss/minimalpoi/compare/v2.7.0...v2.8.0) (2026-07-16)
 
 
