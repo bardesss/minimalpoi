@@ -8,6 +8,9 @@ import RouteAttachments from "./RouteAttachments";
 import NodePicker from "./NodePicker";
 import { DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { groupNodesByDay } from "../../lib/routeDays";
+import { formatDayLabel } from "../../lib/formatDayLabel";
+import DayHeader from "./DayHeader";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
@@ -44,6 +47,8 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
     for (const l of route.legs) m.set(`${l.from_node_id}:${l.to_node_id}`, l);
     return m;
   }, [route.legs]);
+  const indexById = useMemo(() => new Map(nodes.map((n, i) => [n.id, i])), [nodes]);
+  const dayGroups = useMemo(() => groupNodesByDay(route), [route]);
 
   const addNode = useAddNode(route.id);
   const updateNode = useUpdateNode(route.id);
@@ -85,29 +90,41 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
       )}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={nodes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
-          {nodes.map((n, i) => {
-          const leg = i < nodes.length - 1 ? legByPair.get(`${n.id}:${nodes[i + 1].id}`) : undefined;
-          return (
-            <div key={n.id}>
-              <RouteNodeRow
-                node={n}
-                routeId={route.id}
-                canEdit={canEdit}
-                isFirst={i === 0}
-                isLast={i === nodes.length - 1}
-                onMove={(dir) => move(i, dir)}
-              >
-                <RouteAttachments
-                  routeId={route.id}
-                  nodeId={n.id}
-                  attachments={route.attachments.filter((a) => a.node_id === n.id)}
-                  canEdit={canEdit}
-                />
-              </RouteNodeRow>
-              {leg && <LegRow leg={leg} />}
+          {dayGroups.map((group, gi) => (
+            <div key={group.dayKey}>
+              <DayHeader
+                label={formatDayLabel(group.dayKey)}
+                distance_m={group.driving_distance_m}
+                duration_s={group.driving_duration_s}
+                isFirst={gi === 0}
+              />
+              {group.nodes.map((n) => {
+                const i = indexById.get(n.id)!;
+                const prev = i > 0 ? nodes[i - 1] : undefined;
+                const inbound = prev ? legByPair.get(`${prev.id}:${n.id}`) : undefined;
+                return (
+                  <div key={n.id}>
+                    {inbound && <LegRow leg={inbound} />}
+                    <RouteNodeRow
+                      node={n}
+                      routeId={route.id}
+                      canEdit={canEdit}
+                      isFirst={i === 0}
+                      isLast={i === nodes.length - 1}
+                      onMove={(dir) => move(i, dir)}
+                    >
+                      <RouteAttachments
+                        routeId={route.id}
+                        nodeId={n.id}
+                        attachments={route.attachments.filter((a) => a.node_id === n.id)}
+                        canEdit={canEdit}
+                      />
+                    </RouteNodeRow>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          ))}
         </SortableContext>
       </DndContext>
 

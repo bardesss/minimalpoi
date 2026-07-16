@@ -1,8 +1,8 @@
 # 📍 MinimalPOI
 
-**A self-hosted, multi-user map for collecting, enriching, and organizing your points of interest.**
+**A self-hosted, multi-user map for collecting the places you love — and planning the trips that string them together.**
 
-Drop a pin, paste a link to auto-fill the details, and keep all your favorite places — restaurants, trails, shops, anything — on one shared, searchable map that you fully own.
+Drop a pin or paste a link to auto-fill the details, rate the spots you've been, and share one searchable map with your team. When you're ready to go, turn those places into a day-by-day route — all on a server you fully own, with no external services required.
 
 ![License](https://img.shields.io/badge/license-MIT-blue) ![Container](https://img.shields.io/badge/image-ghcr.io-2496ED?logo=docker&logoColor=white) ![Backend](https://img.shields.io/badge/FastAPI-Python%203.12-009688?logo=fastapi&logoColor=white) ![Frontend](https://img.shields.io/badge/React%20%2B%20Vite-MapLibre-61DAFB?logo=react&logoColor=black)
 
@@ -11,44 +11,45 @@ Drop a pin, paste a link to auto-fill the details, and keep all your favorite pl
 ## ✨ Features
 
 ### 🗺️ Map & places
-- **Interactive map** — a MapLibre map with category-colored pins. Click a pin or a list card (showing the place's city and country flag) to open its details, or click anywhere on the map to drop a new place.
+- **Interactive map** — a MapLibre map with category-colored pins; click a pin or a list card (showing the place's city and country flag) to open its details, or click anywhere to drop a new place.
 - **Search & filter** — narrow the shared list by free text, category, and **visit status** (any · visited · not visited).
-- **Two view modes** — switch the map between *fit-to-results* (auto-frames whatever the filters show) and a *fixed default center & zoom*; your choice is remembered.
+- **Two view modes** — switch between *fit-to-results* (auto-frames whatever the filters show) and a *fixed center & zoom*; your choice is remembered.
 - **Ratings at a glance** — every place shows its **average rating and review count**, aggregated across everyone's visits.
-- **Customizable basemap** — admins set the map tile source and the default center & zoom.
 - **Duplicate detection** — warns you before you save the same spot twice.
+- **Customizable basemap** — admins set the map tile source and the default center & zoom.
 - **Mobile-first** — on phones the list, filters, and detail open as draggable bottom sheets over a full-screen map.
 
 ### 🔗 Enrichment & quick entry
-- **Enrich from a link** — paste a Google Maps or website URL and MinimalPOI auto-fills the name, coordinates, address, phone, image, and description (OpenGraph + JSON-LD + Twitter Card), with an optional Google Places key and a Nominatim geocoding fallback. Every auto-filled field shows where it came from.
+- **Enrich from a link** — paste a Google Maps or website URL and MinimalPOI auto-fills the name, coordinates, address, phone, image, and description (from OpenGraph, JSON-LD, and Twitter Card metadata), with an optional Google Places key and a Nominatim geocoding fallback; every auto-filled field shows where it came from.
 - **Search Google Places** — with a key configured, search by name and pick a result to fill a new place in one step.
-- **Worldwide phone numbers** — a country-picker field normalizes entries to E.164 and shows them nicely formatted.
+- **Worldwide phone numbers** — a country-picker field normalizes entries to E.164 and displays them cleanly formatted.
 
 ### 👥 Multi-user & collaboration
-- **Accounts & roles** — first-run admin setup, secure cookie login (sessions persist ~30 days), and admin/member roles. Admins can enable/disable, re-role, or remove users.
+- **Accounts & roles** — first-run admin setup, secure cookie login (sessions persist ~30 days), and admin/member roles; admins can enable, disable, re-role, or remove users.
 - **Teams** — create teams, add members, and set a **preferred team** that's applied automatically to your new visits.
-- **Visits & reviews** — mark places visited with a **1–5 star rating** and an attributed comment; you can edit your own review, and admins can moderate.
+- **Visits & reviews** — mark a place visited with a **1–5 star rating** and an attributed comment; edit your own review, while admins can moderate.
 - **Ownership** — only a place's author (or an admin) can edit or delete it.
 
 ### 🏷️ Organization
-- **Shared place list** with full create / edit / delete.
-- **Categories** with a custom color and icon.
-- **Tags** with usage counts, plus admin-wide tag **rename & delete**.
+- **Shared place list** — full create, edit, and delete.
+- **Categories** — each with a custom color and icon.
+- **Tags** — tracked with usage counts, plus admin-wide **rename and delete**.
 
 ### 🧭 Route planner (optional)
 - **Build a journey** — an admin-enabled Route module turns your places into a named, dated trip: an ordered chain of multi-night **stays** and in-between **stops** (linked POIs or ad-hoc points).
-- **Travel per leg** — each hop shows driving distance and time via **Google Directions**, with an offline **haversine estimate** fallback (flagged *est.*); arrival/departure dates and route totals are derived from the stay nights.
-- **Map-primary editor** — a full-screen map draws the numbered polyline while a floating timeline (bottom sheet on mobile) lets you add, reorder, and re-night stops.
-- **Shared & exportable** — every member sees all routes (only the creator or an admin can edit), export any route as **GeoJSON**, and attach tickets/confirmations (PDF or image, magic-byte checked, 10 MB cap) to the route or a single stop.
+- **Day-by-day itinerary** — the timeline groups the trip under dated day headers (e.g. *THU 16 JUL*), each showing that day's **driving total**; multi-night stays span their whole date range and rest-days fall away.
+- **Travel per leg** — each hop shows driving distance and time via **Google Directions**, with an offline **haversine estimate** fallback (flagged *est.*); arrival and departure dates and route totals are derived from the stay nights.
+- **Map-primary editor** — a full-screen map draws the numbered polyline while a floating timeline (bottom sheet on mobile) lets you add, **drag-and-drop reorder**, and re-night stops.
+- **Shared & exportable** — every member sees all routes (only the creator or an admin can edit), export any route as **GeoJSON**, and attach tickets or confirmations (PDF or image, magic-byte checked, 10 MB cap) to the route or a single stop.
 
 ### 💾 Data, images & backups
-- **Import & export** — bulk-import from **GeoJSON or CSV** (server-side duplicate detection + automatic category matching) and export your whole collection as **GeoJSON**.
+- **Import & export** — bulk-import from **GeoJSON or CSV** (with server-side duplicate detection and automatic category matching), and export your whole collection as **GeoJSON**.
 - **Full backup & restore** — download a complete **ZIP archive** of everything (places, photos, users, teams, comments, ratings, settings) and restore it into a fresh instance.
-- **Local images** — enriched images are downloaded and served from your own server; manual upload works too (auto-converted to WebP, 10 MB cap).
+- **Local images** — enriched images are downloaded and served from your own server, and manual upload works too (auto-converted to WebP, 10 MB cap).
 
-### 🔁 Optional TRIP sync
-- Connect a [TRIP](https://github.com/itskovacs/trip) instance and MinimalPOI keeps categories and places reconciled **both ways** — creates, edits, and deletes propagate — on a configurable interval and conflict policy.
-- A built-in **conflict resolution view** lets you settle each clash by keeping the MinimalPOI or the TRIP version. Entirely optional — enable it only if you use TRIP.
+### 🔁 TRIP sync (optional)
+- **Two-way reconciliation** — connect a [TRIP](https://github.com/itskovacs/trip) instance and MinimalPOI keeps categories and places in sync **both ways** — creates, edits, and deletes propagate — on a configurable interval and conflict policy.
+- **Conflict resolution** — a built-in view lets you settle each clash by keeping the MinimalPOI or the TRIP version; entirely optional, so enable it only if you use TRIP.
 
 ### 🔒 Security & self-hosting
 - **Hardened by default** — per-action rate limiting, an encrypted-at-rest Google API key, auto-`Secure` login cookies over HTTPS, and a non-root, health-checked container.
