@@ -34,7 +34,11 @@ const { handlers, mapInstance, MapMock, state } = vi.hoisted(() => {
     flyTo: vi.fn(),
     fitBounds: vi.fn(),
   };
-  const MapMock = vi.fn(() => mapInstance);
+  // A regular function (not an arrow) so `new maplibregl.Map()` can construct
+  // it — Vitest 4 invokes the mock implementation as a constructor, and arrow
+  // functions have no [[Construct]]. Returning the object hands it back as the
+  // instance.
+  const MapMock = vi.fn(function () { return mapInstance; });
   return { handlers, mapInstance, MapMock, state };
 });
 
