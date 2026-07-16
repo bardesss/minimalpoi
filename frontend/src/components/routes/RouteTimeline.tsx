@@ -18,6 +18,15 @@ import NavigateDayModal from "./NavigateDayModal";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
+const dayCardStyle = {
+  border: `1px solid ${theme.color.borderCard}`,
+  borderRadius: theme.radius.card,
+  padding: 12,
+  marginBottom: 10,
+} as const;
+
+const emptyDayHint = { margin: "8px 0 0 36px", fontSize: 12.5, color: theme.color.textPlaceholder } as const;
+
 /** New fractional position that moves node at `index` one slot in `dir`. Places
  * it at the midpoint of its new neighbours (or just past the end). */
 export function computeMovePosition(nodes: RouteNode[], index: number, dir: -1 | 1): number | null {
@@ -133,18 +142,21 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
         <SortableContext items={nodes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
           {dayGroups.map((group, gi) => {
             const expanded = isExpanded(group.dayKey);
+            const isPast = isDayPassed(group.dayKey, today);
             return (
-              <div key={group.dayKey}>
+              <div key={group.dayKey} data-testid="day-card" style={dayCardStyle}>
                 <DayHeader
                   label={formatDayLabel(group.dayKey)}
+                  dayNumber={gi + 1}
                   distance_m={group.driving_distance_m}
                   duration_s={group.driving_duration_s}
-                  isFirst={gi === 0}
                   collapsed={!expanded}
+                  muted={isPast}
                   stopCount={group.nodes.length}
                   onToggle={() => toggleDay(group.dayKey)}
                   onNavigate={() => navigateDay(gi)}
                 />
+                {expanded && group.nodes.length === 0 && <p style={emptyDayHint}>No stops yet.</p>}
                 {expanded && group.nodes.map((n) => {
                   const i = indexById.get(n.id)!;
                   const prev = i > 0 ? nodes[i - 1] : undefined;

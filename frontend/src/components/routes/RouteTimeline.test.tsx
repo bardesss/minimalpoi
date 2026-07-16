@@ -122,6 +122,18 @@ describe("RouteTimeline day grouping", () => {
     // row above Skottevik render the same text — assert it appears at all.
     expect(screen.getAllByText("232 km · 4 h 28 min")).toHaveLength(2);
   });
+
+  it("renders one card per day with a Day N marker", () => {
+    render(<RouteTimeline route={twoDay} canEdit />);
+    // twoDay spans 14->15->16 (a 1-night stay followed by another), so it
+    // produces 3 day-groups: day14 (Aalborg), day15 (Skottevik + travel), and
+    // day16 (empty departure day) — same "nights + 1 groups" behavior as the
+    // multiNight fixture used elsewhere in this file.
+    expect(screen.getAllByTestId("day-card")).toHaveLength(3);
+    expect(screen.getByText("Day 1")).toBeInTheDocument();
+    expect(screen.getByText("Day 2")).toBeInTheDocument();
+    expect(screen.getByText("Day 3")).toBeInTheDocument();
+  });
 });
 
 describe("RouteTimeline collapse", () => {
@@ -168,6 +180,23 @@ describe("RouteTimeline per-day add", () => {
     await userEvent.click(screen.getByRole("button", { name: "Utrecht" })); // mocked saved POI
     expect(add).toHaveBeenCalledWith(expect.objectContaining({ kind: "stop", poi_id: 7, day_offset: 1 }));
     expect(add.mock.calls[0][0].position).toBeGreaterThan(1); // positioned after Hotel X (pos 1)
+  });
+});
+
+describe("RouteTimeline empty day", () => {
+  const multiNight: RouteDetail = {
+    ...route,
+    start_date: "2026-07-14",
+    nodes: [
+      { ...node(1, "stay", 1), name: "Hotel X", arrive_date: "2026-07-14", depart_date: "2026-07-16", nights: 2 },
+    ],
+    legs: [],
+  };
+
+  it("shows a 'No stops yet.' hint on days with no stops", () => {
+    render(<RouteTimeline route={multiNight} canEdit={false} />);
+    // Hotel X spans 14->16, so days 15 (middle) and 16 (departure) are empty.
+    expect(screen.getAllByText("No stops yet.").length).toBeGreaterThanOrEqual(1);
   });
 });
 
