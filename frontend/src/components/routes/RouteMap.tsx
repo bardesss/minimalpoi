@@ -7,6 +7,7 @@ import { toFeatureCollection } from "../../map/featureCollection";
 import { categoryColorExpression } from "../../map/colorExpression";
 
 const LINE_COLOR = "#4f46e5";
+const PASSED_COLOR = "#a8a39b"; // muted grey — de-emphasises days already travelled
 
 function fitToNodes(map: MlMap, nodes: RouteNode[]) {
   if (nodes.length === 0) return;
@@ -62,7 +63,11 @@ function addRouteLayers(map: MlMap) {
     type: "line",
     source: "route-line",
     layout: { "line-cap": "round", "line-join": "round" },
-    paint: { "line-color": LINE_COLOR, "line-width": 3, "line-opacity": 0.85 },
+    paint: {
+      "line-color": ["case", ["get", "passed"], PASSED_COLOR, LINE_COLOR],
+      "line-width": 3,
+      "line-opacity": ["case", ["get", "passed"], 0.35, 0.85],
+    },
   });
   // Stays get a filled indigo dot; stops a hollow one, both numbered by order.
   map.addLayer({
@@ -71,9 +76,11 @@ function addRouteLayers(map: MlMap) {
     source: "route-points",
     paint: {
       "circle-radius": 12,
-      "circle-color": ["case", ["==", ["get", "kind"], "stay"], LINE_COLOR, "#ffffff"],
-      "circle-stroke-color": LINE_COLOR,
+      "circle-color": ["case", ["get", "passed"], PASSED_COLOR, ["==", ["get", "kind"], "stay"], LINE_COLOR, "#ffffff"],
+      "circle-stroke-color": ["case", ["get", "passed"], PASSED_COLOR, LINE_COLOR],
       "circle-stroke-width": 2,
+      "circle-opacity": ["case", ["get", "passed"], 0.55, 1],
+      "circle-stroke-opacity": ["case", ["get", "passed"], 0.55, 1],
     },
   });
   map.addLayer({
@@ -85,7 +92,10 @@ function addRouteLayers(map: MlMap) {
       "text-font": ["Open Sans Bold"],
       "text-size": 12,
     },
-    paint: { "text-color": ["case", ["==", ["get", "kind"], "stay"], "#ffffff", LINE_COLOR] },
+    paint: {
+      "text-color": ["case", ["get", "passed"], "#ffffff", ["==", ["get", "kind"], "stay"], "#ffffff", LINE_COLOR],
+      "text-opacity": ["case", ["get", "passed"], 0.75, 1],
+    },
   });
 }
 
@@ -135,7 +145,7 @@ function openPoiPopup(
   }
 }
 
-export default function RouteMap({ nodes, legs, pois, categories, settings, canAdd, onAddNode }: {
+export default function RouteMap({ nodes, legs, pois, categories, settings, canAdd, onAddNode, passedNodeIds }: {
   nodes: RouteNode[];
   legs: RouteLeg[];
   pois: Poi[];
@@ -143,6 +153,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   settings: MapSettings;
   canAdd: boolean;
   onAddNode: (poiId: number, kind: RouteNodeKind) => void;
+  passedNodeIds: Set<number>;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -154,12 +165,14 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   const categoriesRef = useRef(categories);
   const canAddRef = useRef(canAdd);
   const onAddNodeRef = useRef(onAddNode);
+  const passedRef = useRef(passedNodeIds);
   nodesRef.current = nodes;
   legsRef.current = legs;
   poisRef.current = pois;
   categoriesRef.current = categories;
   canAddRef.current = canAdd;
   onAddNodeRef.current = onAddNode;
+  passedRef.current = passedNodeIds;
 
   // Init once.
   useEffect(() => {
@@ -183,8 +196,8 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
       });
       addPoiLayers(map, categoryColorExpression(categoriesRef.current));
 
-      const { line, points } = routeLine(nodesRef.current, legsRef.current);
-      map.addSource("route-line", { type: "geojson", data: line ?? { type: "FeatureCollection", features: [] } });
+      const { line, points } = routeLine(nodesRef.current, legsRef.current, passedRef.current);
+      map.addSource("route-line", { type: "geojson", data: line });
       map.addSource("route-points", { type: "geojson", data: points });
       addRouteLayers(map);
       fitToNodes(map, nodesRef.current);
@@ -231,11 +244,11 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
     const lineSrc = map.getSource("route-line") as GeoJSONSource | undefined;
     const pointSrc = map.getSource("route-points") as GeoJSONSource | undefined;
     if (!lineSrc || !pointSrc) return;
-    const { line, points } = routeLine(nodes, legs);
-    lineSrc.setData(line ?? { type: "FeatureCollection", features: [] });
+    const { line, points } = routeLine(nodes, legs, passedNodeIds);
+    lineSrc.setData(line);
     pointSrc.setData(points);
     fitToNodes(map, nodes);
-  }, [nodes, legs]);
+  }, [nodes, legs, passedNodeIds]);
 
   // Update the nearby-POI dots when the filtered set changes.
   useEffect(() => {

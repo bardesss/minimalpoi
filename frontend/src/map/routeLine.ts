@@ -1,34 +1,36 @@
 import type { RouteLeg, RouteNode } from "../types/api";
 import { decodePolyline } from "./polyline";
 
-export function routeLine(nodes: RouteNode[], legs: RouteLeg[] = []) {
+export function routeLine(nodes: RouteNode[], legs: RouteLeg[] = [], passedNodeIds: Set<number> = new Set()) {
   const points: GeoJSON.FeatureCollection = {
     type: "FeatureCollection",
     features: nodes.map((n, order) => ({
       type: "Feature",
       geometry: { type: "Point", coordinates: [n.lng, n.lat] },
-      properties: { order, kind: n.kind, name: n.name, id: n.id },
+      properties: { order, kind: n.kind, name: n.name, id: n.id, passed: passedNodeIds.has(n.id) },
     })),
   };
 
-  // Trace the path node-by-node, following each leg's real driving geometry when
-  // Google supplied one; otherwise draw a straight segment between the pair.
+  // One segment feature per leg, following the leg's real driving geometry when
+  // Google supplied one; otherwise a straight line between the pair. A segment
+  // is "passed" iff the node it drives INTO is passed — matching how a day's
+  // driving total attributes the inbound leg.
   const legByPair = new Map(legs.map((l) => [`${l.from_node_id}:${l.to_node_id}`, l]));
-  const coordinates: [number, number][] = [];
+  const segments: GeoJSON.Feature<GeoJSON.LineString>[] = [];
   for (let i = 0; i < nodes.length - 1; i++) {
     const a = nodes[i];
     const b = nodes[i + 1];
     const leg = legByPair.get(`${a.id}:${b.id}`);
-    if (leg?.geometry) {
-      coordinates.push(...decodePolyline(leg.geometry));
-    } else {
-      coordinates.push([a.lng, a.lat], [b.lng, b.lat]);
-    }
+    const coordinates: [number, number][] = leg?.geometry
+      ? decodePolyline(leg.geometry)
+      : [[a.lng, a.lat], [b.lng, b.lat]];
+    segments.push({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates },
+      properties: { passed: passedNodeIds.has(b.id) },
+    });
   }
 
-  const line: GeoJSON.Feature<GeoJSON.LineString> | null =
-    coordinates.length >= 2
-      ? { type: "Feature", geometry: { type: "LineString", coordinates }, properties: {} }
-      : null;
+  const line: GeoJSON.FeatureCollection<GeoJSON.LineString> = { type: "FeatureCollection", features: segments };
   return { line, points };
 }

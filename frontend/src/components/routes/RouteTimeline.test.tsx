@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import RouteTimeline, { computeMovePosition, computeDropPosition } from "./RouteTimeline";
 import type { RouteDetail, RouteNode } from "../../types/api";
 
@@ -16,6 +17,11 @@ vi.mock("../../queries/hooks", () => ({
   usePlaceDraft: () => ({ mutateAsync: vi.fn() }),
   useCreatePoi: () => ({ mutateAsync: vi.fn() }),
 }));
+
+vi.mock("../../lib/dayState", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/dayState")>();
+  return { ...actual, todayIso: () => "2026-07-01" };
+});
 
 beforeEach(() => {
   add.mockClear();
@@ -112,5 +118,55 @@ describe("RouteTimeline day grouping", () => {
     // Day 2 has exactly one inbound leg, so the day header's total and the leg
     // row above Skottevik render the same text — assert it appears at all.
     expect(screen.getAllByText("232 km · 4 h 28 min")).toHaveLength(2);
+  });
+});
+
+describe("RouteTimeline collapse", () => {
+  const pastFuture: RouteDetail = {
+    ...route,
+    start_date: "2026-06-20",
+    nodes: [
+      { ...node(1, "stay", 1), name: "PastTown", arrive_date: "2026-06-20", depart_date: "2026-06-21", nights: 1 },
+      { ...node(2, "stay", 2), name: "FutureTown", arrive_date: "2026-07-14", depart_date: "2026-07-15", nights: 1 },
+    ],
+    legs: [{ from_node_id: 1, to_node_id: 2, distance_m: 100000, duration_s: 6000, source: "estimate", geometry: null }],
+  };
+
+  it("collapses past days and expands future days by default", () => {
+    render(<RouteTimeline route={pastFuture} canEdit={false} />);
+    expect(screen.queryByText("PastTown")).not.toBeInTheDocument(); // 2026-06-20 < today → collapsed
+    expect(screen.getByText("FutureTown")).toBeInTheDocument();     // 2026-07-14 ≥ today → expanded
+  });
+
+  it("expands a collapsed past day when its header is clicked", async () => {
+    render(<RouteTimeline route={pastFuture} canEdit={false} />);
+    // Only a collapsed day shows the "· N stops" suffix, so this name is unique.
+    await userEvent.click(screen.getByRole("button", { name: /1 stops/ }));
+    expect(screen.getByText("PastTown")).toBeInTheDocument();
+  });
+});
+
+describe("RouteTimeline navigate", () => {
+  const twoDay: RouteDetail = {
+    ...route,
+    nodes: [
+      { ...node(1, "stay", 1), name: "Aalborg", arrive_date: "2026-07-14", depart_date: "2026-07-15", nights: 1 },
+      { ...node(2, "stay", 2), name: "Skottevik", arrive_date: "2026-07-15", depart_date: "2026-07-16", nights: 1 },
+    ],
+    legs: [{ from_node_id: 1, to_node_id: 2, distance_m: 232000, duration_s: 16080, source: "estimate", geometry: null }],
+  };
+
+  it("uses the OS share sheet with a Google Maps URL when available", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { share });
+    try {
+      render(<RouteTimeline route={twoDay} canEdit={false} />);
+      await userEvent.click(screen.getAllByRole("button", { name: /navigate/i })[0]);
+      expect(share).toHaveBeenCalledWith(
+        expect.objectContaining({ url: expect.stringContaining("google.com/maps/dir/") }),
+      );
+    } finally {
+      delete (navigator as unknown as { share?: unknown }).share;
+    }
   });
 });
