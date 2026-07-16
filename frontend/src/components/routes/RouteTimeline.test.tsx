@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import RouteTimeline, { computeMovePosition, computeDropPosition } from "./RouteTimeline";
+import { groupNodesByDay, dayOffsetForDrop } from "../../lib/routeDays";
 import type { RouteDetail, RouteNode } from "../../types/api";
 
 const add = vi.fn();
@@ -85,7 +86,9 @@ describe("RouteTimeline", () => {
 
   it("add-stop picks a place and calls the add mutation", () => {
     render(<RouteTimeline route={route} canEdit />);
-    fireEvent.click(screen.getByRole("button", { name: /add stop/i }));
+    // Exact name ("+ Add stop") targets the bottom control; per-day "+ Add stop"
+    // buttons carry a day-specific aria-label ("Add stop to ...") instead.
+    fireEvent.click(screen.getByRole("button", { name: "+ Add stop" }));
     fireEvent.click(screen.getByRole("button", { name: "Utrecht" }));
     expect(add).toHaveBeenCalledWith({ kind: "stop", poi_id: 7, nights: null });
   });
@@ -146,6 +149,28 @@ describe("RouteTimeline collapse", () => {
   });
 });
 
+describe("RouteTimeline per-day add", () => {
+  const multiNight: RouteDetail = {
+    ...route,
+    start_date: "2026-07-14",
+    nodes: [
+      { ...node(1, "stay", 1), name: "Hotel X", arrive_date: "2026-07-14", depart_date: "2026-07-16", nights: 2 },
+    ],
+    legs: [],
+  };
+
+  it("adds a stop to the middle day with that day's offset and an in-day position", async () => {
+    render(<RouteTimeline route={multiNight} canEdit />);
+    // Three day sections: 14 (Hotel X), 15 (empty middle = WED 15 JUL), 16 (empty departure).
+    // Each day's own "+ Add stop" has a day-specific accessible name; the bottom
+    // controls' "+ Add stop" is just "Add stop", so this query is unambiguous.
+    await userEvent.click(screen.getByRole("button", { name: /add stop to wed 15 jul/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Utrecht" })); // mocked saved POI
+    expect(add).toHaveBeenCalledWith(expect.objectContaining({ kind: "stop", poi_id: 7, day_offset: 1 }));
+    expect(add.mock.calls[0][0].position).toBeGreaterThan(1); // positioned after Hotel X (pos 1)
+  });
+});
+
 describe("RouteTimeline navigate", () => {
   const twoDay: RouteDetail = {
     ...route,
@@ -168,5 +193,28 @@ describe("RouteTimeline navigate", () => {
     } finally {
       delete (navigator as unknown as { share?: unknown }).share;
     }
+  });
+});
+
+describe("drag a stop into another day (handler math)", () => {
+  // Hotel X 2 nights (14→16). S1 sits on the arrival day (offset 0); S2 on the
+  // departure day (offset null → 16).
+  const multi: RouteDetail = {
+    ...route,
+    start_date: "2026-07-14",
+    nodes: [
+      { ...node(1, "stay", 1), name: "Hotel X", arrive_date: "2026-07-14", depart_date: "2026-07-16", nights: 2 },
+      { ...node(2, "stop", 2), name: "S1", day_offset: 0 },
+      { ...node(3, "stop", 3), name: "S2", day_offset: null },
+    ],
+    legs: [],
+  };
+
+  it("dragging the departure-day stop onto the arrival-day stop yields offset 0", () => {
+    const groups = groupNodesByDay(multi);            // [14: X, S1], [15: empty], [16: S2]
+    const position = computeDropPosition(multi.nodes, 2, 1)!; // move S2 (idx2) onto S1 (idx1) → 1.5
+    const day_offset = dayOffsetForDrop(multi, groups, multi.nodes[1].id, position, multi.nodes[2].id);
+    expect(position).toBe(1.5);
+    expect(day_offset).toBe(0); // target day is S1's arrival day (2026-07-14) → offset 0
   });
 });

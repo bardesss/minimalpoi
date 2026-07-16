@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { groupNodesByDay } from "./routeDays";
+import { addDays, daysBetween, groupNodesByDay, placeInDay, dayOffsetForDrop } from "./routeDays";
 import type { RouteDetail, RouteLeg, RouteNode } from "../types/api";
 
 function stay(id: number, position: number, name: string, arrive: string, depart: string, nights: number): RouteNode {
-  return { id, kind: "stay", position, nights, notes: null, poi_id: null, name, lat: 0, lng: 0, arrive_date: arrive, depart_date: depart, inbound_distance_m: null, inbound_duration_s: null };
+  return { id, kind: "stay", position, nights, notes: null, poi_id: null, name, lat: 0, lng: 0, arrive_date: arrive, depart_date: depart, inbound_distance_m: null, inbound_duration_s: null, day_offset: null };
 }
 function stop(id: number, position: number, name: string): RouteNode {
-  return { id, kind: "stop", position, nights: null, notes: null, poi_id: null, name, lat: 0, lng: 0, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null };
+  return { id, kind: "stop", position, nights: null, notes: null, poi_id: null, name, lat: 0, lng: 0, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null, day_offset: null };
 }
 function leg(from: number, to: number, distance_m: number, duration_s: number): RouteLeg {
   return { from_node_id: from, to_node_id: to, distance_m, duration_s, source: "estimate", geometry: null };
@@ -60,5 +60,100 @@ describe("groupNodesByDay", () => {
 
   it("returns an empty array for a route with no nodes", () => {
     expect(groupNodesByDay({ ...route, nodes: [], legs: [] })).toEqual([]);
+  });
+});
+
+describe("addDays / daysBetween", () => {
+  it("adds days without timezone shift", () => {
+    expect(addDays("2026-07-14", 2)).toBe("2026-07-16");
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+  });
+  it("counts whole days between ISO dates", () => {
+    expect(daysBetween("2026-07-14", "2026-07-16")).toBe(2);
+    expect(daysBetween("2026-07-16", "2026-07-16")).toBe(0);
+  });
+});
+
+describe("groupNodesByDay multi-night", () => {
+  // Hotel X: 2 nights (14→16). Stops on offset 0 (arrival), 1 (middle), null (departure).
+  const multi: RouteDetail = {
+    id: 2, name: "M", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-16",
+    node_count: 4, created_by: 1, owner_username: "a", team_id: null, team_name: null, can_edit: true,
+    nodes: [
+      { ...stay(1, 1, "Hotel X", "2026-07-14", "2026-07-16", 2) },
+      { ...stop(2, 2, "Arrival stop"), day_offset: 0 },
+      { ...stop(3, 3, "Middle stop"), day_offset: 1 },
+      { ...stop(4, 4, "Depart stop"), day_offset: null },
+    ],
+    legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
+  } as RouteDetail;
+
+  it("emits one group per calendar day of the stay's span", () => {
+    expect(groupNodesByDay(multi).map((g) => g.dayKey)).toEqual(["2026-07-14", "2026-07-15", "2026-07-16"]);
+  });
+
+  it("places stops on the day named by their offset (null = departure day)", () => {
+    const byDay = Object.fromEntries(groupNodesByDay(multi).map((g) => [g.dayKey, g.nodes.map((n) => n.name)]));
+    expect(byDay["2026-07-14"]).toEqual(["Hotel X", "Arrival stop"]);
+    expect(byDay["2026-07-15"]).toEqual(["Middle stop"]);
+    expect(byDay["2026-07-16"]).toEqual(["Depart stop"]);
+  });
+
+  it("keeps an empty middle day when nothing is scheduled there", () => {
+    const noMiddle = { ...multi, nodes: [multi.nodes[0]] } as RouteDetail; // just the 2-night stay
+    const groups = groupNodesByDay(noMiddle);
+    expect(groups.map((g) => g.dayKey)).toEqual(["2026-07-14", "2026-07-15", "2026-07-16"]);
+    expect(groups[1].nodes).toEqual([]); // middle day exists but is empty
+  });
+
+  it("clamps an over-range offset to the departure day", () => {
+    const over = { ...multi, nodes: [multi.nodes[0], { ...stop(9, 9, "Far"), day_offset: 5 }] } as RouteDetail;
+    const byDay = Object.fromEntries(groupNodesByDay(over).map((g) => [g.dayKey, g.nodes.map((n) => n.name)]));
+    expect(byDay["2026-07-16"]).toContain("Far"); // clamp(5, 0, 2) = 2 → departure day
+  });
+});
+
+describe("placeInDay", () => {
+  const multi: RouteDetail = {
+    id: 3, name: "P", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-16",
+    node_count: 3, created_by: 1, owner_username: "a", team_id: null, team_name: null, can_edit: true,
+    nodes: [
+      { ...stay(1, 1, "Hotel X", "2026-07-14", "2026-07-16", 2) },
+      { ...stop(2, 2, "Arrival stop"), day_offset: 0 },
+      { ...stop(3, 3, "Depart stop"), day_offset: null },
+    ],
+    legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
+  } as RouteDetail;
+  const groups = groupNodesByDay(multi); // [14: X, Arrival], [15: empty], [16: Depart]
+
+  it("targets the middle (empty) day with an offset of 1 and a position after that day's block", () => {
+    const { day_offset, position } = placeInDay(multi, groups, 1);
+    expect(day_offset).toBe(1);
+    // anchor is the last node on/before day 15 → "Arrival stop" (pos 2); next is "Depart stop" (pos 3)
+    expect(position).toBeGreaterThan(2);
+    expect(position).toBeLessThan(3);
+  });
+
+  it("targets the arrival day with offset 0", () => {
+    expect(placeInDay(multi, groups, 0).day_offset).toBe(0);
+  });
+});
+
+describe("dayOffsetForDrop", () => {
+  const multi: RouteDetail = {
+    id: 4, name: "D", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-16",
+    node_count: 3, created_by: 1, owner_username: "a", team_id: null, team_name: null, can_edit: true,
+    nodes: [
+      { ...stay(1, 1, "Hotel X", "2026-07-14", "2026-07-16", 2) },
+      { ...stop(2, 2, "S1"), day_offset: 0 },   // arrival day
+      { ...stop(3, 3, "S2"), day_offset: null }, // departure day
+    ],
+    legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
+  } as RouteDetail;
+  const groups = groupNodesByDay(multi);
+
+  it("computes the target day's offset when dropping onto a node in another day", () => {
+    // drag S1 (arrival) to just after S2 (departure day, key 2026-07-16) at position 3.5
+    expect(dayOffsetForDrop(multi, groups, 3, 3.5, 2)).toBe(2); // depart day = offset 2
   });
 });

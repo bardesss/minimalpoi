@@ -8,7 +8,7 @@ import RouteAttachments from "./RouteAttachments";
 import NodePicker from "./NodePicker";
 import { DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { groupNodesByDay } from "../../lib/routeDays";
+import { groupNodesByDay, placeInDay, dayOffsetForDrop } from "../../lib/routeDays";
 import { formatDayLabel } from "../../lib/formatDayLabel";
 import DayHeader from "./DayHeader";
 import { isDayPassed, todayIso } from "../../lib/dayState";
@@ -79,6 +79,13 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
   const updateNode = useUpdateNode(route.id);
 
   const [adding, setAdding] = useState<RouteNodeKind | null>(null);
+  const [dayAdding, setDayAdding] = useState<number | null>(null);
+
+  function submitDay(body: RouteNodeCreate, gi: number) {
+    const { position, day_offset } = placeInDay(route, dayGroups, gi);
+    addNode.mutate({ ...body, position, day_offset });
+    setDayAdding(null);
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -92,7 +99,15 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
     const to = nodes.findIndex((n) => n.id === over.id);
     if (from === -1 || to === -1) return;
     const pos = computeDropPosition(nodes, from, to);
-    if (pos != null) updateNode.mutate({ nodeId: nodes[from].id, body: { position: pos } });
+    if (pos == null) return;
+    // Stops carry a day; recompute it for the drop target so day and order stay
+    // consistent. Stays have no day_offset — move position only.
+    if (nodes[from].kind === "stop") {
+      const day_offset = dayOffsetForDrop(route, dayGroups, nodes[to].id, pos, nodes[from].id);
+      updateNode.mutate({ nodeId: nodes[from].id, body: { position: pos, day_offset } });
+    } else {
+      updateNode.mutate({ nodeId: nodes[from].id, body: { position: pos } });
+    }
   }
 
   function move(index: number, dir: -1 | 1) {
@@ -154,6 +169,22 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
                     </div>
                   );
                 })}
+                {expanded && canEdit && (
+                  <div style={{ margin: "4px 0 0 36px" }}>
+                    {dayAdding === gi ? (
+                      <NodePicker kind="stop" onCancel={() => setDayAdding(null)} onSubmit={(b) => submitDay(b, gi)} />
+                    ) : (
+                      <button
+                        type="button"
+                        aria-label={`Add stop to ${formatDayLabel(group.dayKey)}`}
+                        style={{ ...ghostButtonStyle, padding: "4px 10px", fontSize: 12 }}
+                        onClick={() => setDayAdding(gi)}
+                      >
+                        + Add stop
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

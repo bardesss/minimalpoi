@@ -59,3 +59,29 @@ def test_recompute_endpoint_owner_ok_member_forbidden(client):
     client.post("/api/auth/logout")
     client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
     assert client.post(f"/api/routes/{rid}/recompute").status_code == 403
+
+
+def test_stop_day_offset_round_trips(client):
+    rid = _route(client)
+    client.post(f"/api/routes/{rid}/nodes", json={"kind": "stay", "name": "A", "lat": 1.0, "lng": 1.0, "nights": 2})
+    detail = client.post(f"/api/routes/{rid}/nodes",
+                         json={"kind": "stop", "name": "S", "lat": 2.0, "lng": 2.0, "day_offset": 1}).json()
+    stop = next(n for n in detail["nodes"] if n["name"] == "S")
+    assert stop["day_offset"] == 1
+
+
+def test_stop_day_offset_can_be_updated(client):
+    rid = _route(client)
+    sid = client.post(f"/api/routes/{rid}/nodes", json={"kind": "stop", "name": "S", "lat": 2.0, "lng": 2.0}).json()["nodes"][0]["id"]
+    detail = client.patch(f"/api/routes/{rid}/nodes/{sid}", json={"day_offset": 2}).json()
+    stop = next(n for n in detail["nodes"] if n["id"] == sid)
+    assert stop["day_offset"] == 2
+
+
+def test_stay_day_offset_is_null(client):
+    rid = _route(client)
+    # Even if a client sends day_offset on a stay, it is not stored.
+    detail = client.post(f"/api/routes/{rid}/nodes",
+                         json={"kind": "stay", "name": "A", "lat": 1.0, "lng": 1.0, "nights": 1, "day_offset": 3}).json()
+    stay = detail["nodes"][0]
+    assert stay["day_offset"] is None

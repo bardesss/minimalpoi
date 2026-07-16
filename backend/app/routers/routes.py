@@ -71,7 +71,7 @@ def _detail(session, route: Route, user: User) -> RouteDetail:
         extra = d["stays"].get(n.id, {})
         node_reads.append(RouteNodeRead(
             id=n.id, kind=n.kind, position=n.position, nights=n.nights, notes=n.notes,
-            poi_id=n.poi_id, name=n.name, lat=n.lat, lng=n.lng, **extra,
+            poi_id=n.poi_id, name=n.name, lat=n.lat, lng=n.lng, day_offset=n.day_offset, **extra,
         ))
     attachments = session.exec(
         select(RouteAttachment).where(RouteAttachment.route_id == route.id).order_by(RouteAttachment.uploaded_at)
@@ -238,6 +238,7 @@ async def add_node(route_id: int, request: Request, body: RouteNodeCreate, sessi
     node = RouteNode(
         route_id=route_id, kind=body.kind, poi_id=poi_id, name=name, lat=lat, lng=lng,
         nights=body.nights if body.kind.value == "stay" else None,
+        day_offset=body.day_offset if body.kind.value == "stop" else None,
         notes=body.notes,
         position=body.position if body.position is not None else _next_position(session, route_id),
     )

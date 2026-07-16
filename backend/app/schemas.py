@@ -367,6 +367,7 @@ class RouteNodeRead(SQLModel):
     name: str
     lat: float
     lng: float
+    day_offset: int | None = None
     arrive_date: date | None = None
     depart_date: date | None = None
     inbound_distance_m: int | None = None
@@ -389,12 +390,14 @@ class RouteNodeCreate(SQLModel):
     lat: float | None = None
     lng: float | None = None
     nights: int | None = None
+    day_offset: int | None = None
     notes: str | None = None
     position: float | None = None
 
 
 class RouteNodeUpdate(SQLModel):
     nights: int | None = None
+    day_offset: int | None = None
     notes: str | None = None
     position: float | None = None
 

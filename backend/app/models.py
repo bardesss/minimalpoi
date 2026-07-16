@@ -118,6 +118,7 @@ class RouteNode(SQLModel, table=True):
     position: float  # fractional ordering key; insert between as (a+b)/2
     kind: RouteNodeKind
     nights: int | None = Field(default=None)  # stays only
+    day_offset: int | None = Field(default=None)  # stops only: day within base stay's span; None = departure day
     notes: str | None = Field(default=None)
     # Location: poi_id references a POI; name/lat/lng always hold a usable
     # snapshot so the node survives POI deletion.
