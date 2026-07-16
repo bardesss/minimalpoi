@@ -81,7 +81,10 @@ export function useSheetDrag(initial: Snap, hide: Record<Snap, number> = DEFAULT
     let bestDist = Infinity;
     for (const s of ORDER) {
       const dist = Math.abs(translate - vh(hide[s]));
-      if (dist < bestDist) (bestDist = dist), (best = s);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = s;
+      }
     }
     setSnap(best);
   }, [translate, hide]);
