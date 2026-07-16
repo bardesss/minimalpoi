@@ -2,44 +2,35 @@ import { Navigation } from "lucide-react";
 import { theme } from "../../theme";
 import { formatTravel } from "../../lib/formatTravel";
 
-const caption = {
-  fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em",
-  color: theme.color.textPlaceholder,
-} as const;
-
-// Quiet day divider: a click-to-fold caption on the left, the day's driving
-// total plus a Navigate button on the right. Reuses existing tokens only — no
-// new visual vocabulary. The first header omits the top rule.
-export default function DayHeader({ label, distance_m, duration_s, isFirst, collapsed, stopCount, onToggle, onNavigate }: {
+// Day-card header: a click-to-fold bar (the whole bar is the toggle, for a big
+// hit area). Left: chevron + a prominent day label with a quiet "Day N" marker;
+// the stop count shows only when collapsed. Right: the day's driving total plus
+// a Navigate button. The label mutes for past days.
+export default function DayHeader({ label, dayNumber, distance_m, duration_s, collapsed, muted, stopCount, onToggle, onNavigate }: {
   label: string;
+  dayNumber: number;
   distance_m: number;
   duration_s: number;
-  isFirst: boolean;
   collapsed: boolean;
+  muted: boolean;
   stopCount: number;
   onToggle: () => void;
   onNavigate: () => void;
 }) {
   return (
-    <div
-      style={{
-        display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8,
-        margin: isFirst ? "0 0 8px" : "16px 0 8px",
-        paddingTop: isFirst ? 0 : 12,
-        borderTop: isFirst ? "none" : `1px solid ${theme.color.borderStd}`,
-      }}
-    >
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={!collapsed}
-        style={{ ...caption, display: "flex", alignItems: "baseline", gap: 6, background: "none", border: "none", padding: 0, cursor: "pointer" }}
+        style={{ display: "flex", alignItems: "baseline", gap: 8, flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
       >
-        <span aria-hidden style={{ fontSize: 9 }}>{collapsed ? "▸" : "▾"}</span>
-        <span>{label}</span>
-        {collapsed && <span style={{ color: theme.color.textCoord, fontWeight: 700 }}>· {stopCount} stops</span>}
+        <span aria-hidden style={{ fontSize: 9, color: theme.color.textPlaceholder }}>{collapsed ? "▸" : "▾"}</span>
+        <span style={{ fontFamily: theme.font.ui, fontSize: 13, fontWeight: 800, letterSpacing: ".02em", color: muted ? theme.color.textPlaceholder : theme.color.textPrimary }}>{label}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: theme.color.textPlaceholder }}>Day {dayNumber}</span>
+        {collapsed && <span style={{ fontSize: 11, fontWeight: 700, color: theme.color.textCoord }}>· {stopCount} stops</span>}
       </button>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flex: "none" }}>
         {distance_m > 0 && (
           <span style={{ fontFamily: theme.font.mono, fontSize: 11, color: theme.color.textCoord }}>
             {formatTravel(distance_m, duration_s)}
