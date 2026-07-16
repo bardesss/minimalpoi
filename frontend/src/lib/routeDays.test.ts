@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, daysBetween, groupNodesByDay } from "./routeDays";
+import { addDays, daysBetween, groupNodesByDay, placeInDay, dayOffsetForDrop } from "./routeDays";
 import type { RouteDetail, RouteLeg, RouteNode } from "../types/api";
 
 function stay(id: number, position: number, name: string, arrive: string, depart: string, nights: number): RouteNode {
@@ -110,5 +110,50 @@ describe("groupNodesByDay multi-night", () => {
     const over = { ...multi, nodes: [multi.nodes[0], { ...stop(9, 9, "Far"), day_offset: 5 }] } as RouteDetail;
     const byDay = Object.fromEntries(groupNodesByDay(over).map((g) => [g.dayKey, g.nodes.map((n) => n.name)]));
     expect(byDay["2026-07-16"]).toContain("Far"); // clamp(5, 0, 2) = 2 → departure day
+  });
+});
+
+describe("placeInDay", () => {
+  const multi: RouteDetail = {
+    id: 3, name: "P", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-16",
+    node_count: 3, created_by: 1, owner_username: "a", team_id: null, team_name: null, can_edit: true,
+    nodes: [
+      { ...stay(1, 1, "Hotel X", "2026-07-14", "2026-07-16", 2) },
+      { ...stop(2, 2, "Arrival stop"), day_offset: 0 },
+      { ...stop(3, 3, "Depart stop"), day_offset: null },
+    ],
+    legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
+  } as RouteDetail;
+  const groups = groupNodesByDay(multi); // [14: X, Arrival], [15: empty], [16: Depart]
+
+  it("targets the middle (empty) day with an offset of 1 and a position after that day's block", () => {
+    const { day_offset, position } = placeInDay(multi, groups, 1);
+    expect(day_offset).toBe(1);
+    // anchor is the last node on/before day 15 → "Arrival stop" (pos 2); next is "Depart stop" (pos 3)
+    expect(position).toBeGreaterThan(2);
+    expect(position).toBeLessThan(3);
+  });
+
+  it("targets the arrival day with offset 0", () => {
+    expect(placeInDay(multi, groups, 0).day_offset).toBe(0);
+  });
+});
+
+describe("dayOffsetForDrop", () => {
+  const multi: RouteDetail = {
+    id: 4, name: "D", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-16",
+    node_count: 3, created_by: 1, owner_username: "a", team_id: null, team_name: null, can_edit: true,
+    nodes: [
+      { ...stay(1, 1, "Hotel X", "2026-07-14", "2026-07-16", 2) },
+      { ...stop(2, 2, "S1"), day_offset: 0 },   // arrival day
+      { ...stop(3, 3, "S2"), day_offset: null }, // departure day
+    ],
+    legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
+  } as RouteDetail;
+  const groups = groupNodesByDay(multi);
+
+  it("computes the target day's offset when dropping onto a node in another day", () => {
+    // drag S1 (arrival) to just after S2 (departure day, key 2026-07-16) at position 3.5
+    expect(dayOffsetForDrop(multi, groups, 3, 3.5, 2)).toBe(2); // depart day = offset 2
   });
 });

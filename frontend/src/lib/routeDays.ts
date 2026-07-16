@@ -87,3 +87,59 @@ export function groupNodesByDay(route: RouteDetail): DayGroup[] {
 
   return order;
 }
+
+/** Base stay (arrival date + span in days) governing list position `pos`,
+ * ignoring the node with id `ignoreId`. Walks position order up to `pos`. */
+function baseStayAt(route: RouteDetail, pos: number, ignoreId: number): { arrive: string; span: number } {
+  let arrive = route.start_date;
+  let span = 0;
+  const ordered = [...route.nodes].filter((n) => n.id !== ignoreId).sort((a, b) => a.position - b.position);
+  for (const n of ordered) {
+    if (n.position >= pos) break;
+    if (n.kind === "stay") {
+      const a = n.arrive_date ?? arrive;
+      const d = n.depart_date ?? addDays(a, n.nights ?? 0);
+      arrive = a;
+      span = Math.max(0, daysBetween(a, d));
+    }
+  }
+  return { arrive, span };
+}
+
+/** Where to insert a new stop so it lands in day-group `groupIndex`: a list
+ * position at the end of that day's block, and the matching `day_offset`.
+ * Position and offset are derived together so they can never disagree. */
+export function placeInDay(route: RouteDetail, groups: DayGroup[], groupIndex: number): { position: number; day_offset: number } {
+  const target = groups[groupIndex];
+  const nodes = route.nodes;
+
+  // Anchor: last node (list order) on the target day or the nearest earlier day.
+  let anchor: RouteNode | null = null;
+  for (let k = groupIndex; k >= 0; k--) {
+    const g = groups[k];
+    if (g.nodes.length) { anchor = g.nodes[g.nodes.length - 1]; break; }
+  }
+
+  let position: number;
+  if (!anchor) {
+    position = nodes.length ? nodes[0].position - 1 : 1;
+  } else {
+    const i = nodes.findIndex((n) => n.id === anchor!.id);
+    const next = nodes[i + 1];
+    position = next ? (anchor.position + next.position) / 2 : anchor.position + 1;
+  }
+
+  const base = baseStayAt(route, position, -1);
+  const day_offset = clamp(daysBetween(base.arrive, target.dayKey), 0, base.span);
+  return { position, day_offset };
+}
+
+/** New `day_offset` for a stop dragged to list `position` and dropped onto the
+ * node `overId` (whose day is the target). Excludes the dragged node from the
+ * base-stay scan so it doesn't count itself. */
+export function dayOffsetForDrop(route: RouteDetail, groups: DayGroup[], overId: number, position: number, draggedId: number): number {
+  const targetGroup = groups.find((g) => g.nodes.some((n) => n.id === overId));
+  if (!targetGroup) return 0;
+  const base = baseStayAt(route, position, draggedId);
+  return clamp(daysBetween(base.arrive, targetGroup.dayKey), 0, base.span);
+}
