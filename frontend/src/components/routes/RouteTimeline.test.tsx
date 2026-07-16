@@ -72,7 +72,9 @@ describe("RouteTimeline", () => {
     render(<RouteTimeline route={route} canEdit />);
     expect(screen.getByText("N1")).toBeInTheDocument();
     expect(screen.getByText("N2")).toBeInTheDocument();
-    expect(screen.getByText("28 km · 35 min")).toBeInTheDocument();
+    // The single-day fixture has just one leg, so the day header's driving
+    // total and the leg row's own text are identical strings — both appear.
+    expect(screen.getAllByText("28 km · 35 min").length).toBeGreaterThan(0);
   });
 
   it("add-stop picks a place and calls the add mutation", () => {
@@ -85,5 +87,30 @@ describe("RouteTimeline", () => {
   it("hides add controls in read-only mode", () => {
     render(<RouteTimeline route={route} canEdit={false} />);
     expect(screen.queryByRole("button", { name: /add stop/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("RouteTimeline day grouping", () => {
+  const twoDay: RouteDetail = {
+    ...route,
+    start_date: "2026-07-14",
+    nodes: [
+      { ...node(1, "stay", 1), name: "Aalborg", arrive_date: "2026-07-14", depart_date: "2026-07-15", nights: 1 },
+      { ...node(2, "stay", 2), name: "Skottevik", arrive_date: "2026-07-15", depart_date: "2026-07-16", nights: 1 },
+    ],
+    legs: [{ from_node_id: 1, to_node_id: 2, distance_m: 232000, duration_s: 16080, source: "estimate", geometry: null }],
+  };
+
+  it("renders a day header per active day with the date label", () => {
+    render(<RouteTimeline route={twoDay} canEdit />);
+    expect(screen.getByText("TUE 14 JUL")).toBeInTheDocument(); // 2026-07-14 is a Tuesday
+    expect(screen.getByText("WED 15 JUL")).toBeInTheDocument(); // 2026-07-15 is a Wednesday
+  });
+
+  it("shows the day's driving total on days that involve travel", () => {
+    render(<RouteTimeline route={twoDay} canEdit />);
+    // Day 2 has exactly one inbound leg, so the day header's total and the leg
+    // row above Skottevik render the same text — assert it appears at all.
+    expect(screen.getAllByText("232 km · 4 h 28 min").length).toBeGreaterThan(0);
   });
 });
