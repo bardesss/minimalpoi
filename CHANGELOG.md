@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.11.1](https://github.com/Bardesss/minimalpoi/compare/v2.11.0...v2.11.1) (2026-07-16)
+
+
+### Bug Fixes
+
+* **routes:** navigate/share modal covers full screen on mobile ([83ac292](https://github.com/Bardesss/minimalpoi/commit/83ac29208408149950f03e3dd199ddfd3ca99e99))
+* **routes:** portal navigate modal to body so it covers the viewport on mobile ([002ae92](https://github.com/Bardesss/minimalpoi/commit/002ae929e17761fa639c09ec547512e4b502aa59))
+
 ## [2.11.0](https://github.com/Bardesss/minimalpoi/compare/v2.10.0...v2.11.0) (2026-07-16)
 
 
