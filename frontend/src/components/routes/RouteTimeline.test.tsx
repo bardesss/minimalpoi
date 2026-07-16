@@ -74,7 +74,7 @@ describe("RouteTimeline", () => {
     expect(screen.getByText("N2")).toBeInTheDocument();
     // The single-day fixture has just one leg, so the day header's driving
     // total and the leg row's own text are identical strings — both appear.
-    expect(screen.getAllByText("28 km · 35 min").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("28 km · 35 min")).toHaveLength(2);
   });
 
   it("add-stop picks a place and calls the add mutation", () => {
@@ -111,6 +111,6 @@ describe("RouteTimeline day grouping", () => {
     render(<RouteTimeline route={twoDay} canEdit />);
     // Day 2 has exactly one inbound leg, so the day header's total and the leg
     // row above Skottevik render the same text — assert it appears at all.
-    expect(screen.getAllByText("232 km · 4 h 28 min").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("232 km · 4 h 28 min")).toHaveLength(2);
   });
 });
