@@ -11,6 +11,9 @@ import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrate
 import { groupNodesByDay } from "../../lib/routeDays";
 import { formatDayLabel } from "../../lib/formatDayLabel";
 import DayHeader from "./DayHeader";
+import { isDayPassed, todayIso } from "../../lib/dayState";
+import { dayWaypoints, googleMapsDirUrl } from "../../lib/routeNav";
+import NavigateDayModal from "./NavigateDayModal";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
@@ -49,6 +52,28 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
   }, [route.legs]);
   const indexById = useMemo(() => new Map(nodes.map((n, i) => [n.id, i])), [nodes]);
   const dayGroups = useMemo(() => groupNodesByDay(route), [route]);
+
+  const [today] = useState(todayIso);
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const [navIndex, setNavIndex] = useState<number | null>(null);
+
+  const isExpanded = (dayKey: string) => overrides[dayKey] ?? !isDayPassed(dayKey, today);
+  const toggleDay = (dayKey: string) => setOverrides((o) => ({ ...o, [dayKey]: !isExpanded(dayKey) }));
+
+  async function navigateDay(gi: number) {
+    const pts = dayWaypoints(dayGroups, gi);
+    if (pts.length === 0) return;
+    const label = formatDayLabel(dayGroups[gi].dayKey);
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: label, text: `${label}: ${pts.map((p) => p.name).join(" → ")}`, url: googleMapsDirUrl(pts) });
+      } catch {
+        /* user dismissed the share sheet */
+      }
+      return;
+    }
+    setNavIndex(gi);
+  }
 
   const addNode = useAddNode(route.id);
   const updateNode = useUpdateNode(route.id);
@@ -90,43 +115,58 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
       )}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={nodes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
-          {dayGroups.map((group, gi) => (
-            <div key={group.dayKey}>
-              <DayHeader
-                label={formatDayLabel(group.dayKey)}
-                distance_m={group.driving_distance_m}
-                duration_s={group.driving_duration_s}
-                isFirst={gi === 0}
-              />
-              {group.nodes.map((n) => {
-                const i = indexById.get(n.id)!;
-                const prev = i > 0 ? nodes[i - 1] : undefined;
-                const inbound = prev ? legByPair.get(`${prev.id}:${n.id}`) : undefined;
-                return (
-                  <div key={n.id}>
-                    {inbound && <LegRow leg={inbound} />}
-                    <RouteNodeRow
-                      node={n}
-                      routeId={route.id}
-                      canEdit={canEdit}
-                      isFirst={i === 0}
-                      isLast={i === nodes.length - 1}
-                      onMove={(dir) => move(i, dir)}
-                    >
-                      <RouteAttachments
+          {dayGroups.map((group, gi) => {
+            const expanded = isExpanded(group.dayKey);
+            return (
+              <div key={group.dayKey}>
+                <DayHeader
+                  label={formatDayLabel(group.dayKey)}
+                  distance_m={group.driving_distance_m}
+                  duration_s={group.driving_duration_s}
+                  isFirst={gi === 0}
+                  collapsed={!expanded}
+                  stopCount={group.nodes.length}
+                  onToggle={() => toggleDay(group.dayKey)}
+                  onNavigate={() => navigateDay(gi)}
+                />
+                {expanded && group.nodes.map((n) => {
+                  const i = indexById.get(n.id)!;
+                  const prev = i > 0 ? nodes[i - 1] : undefined;
+                  const inbound = prev ? legByPair.get(`${prev.id}:${n.id}`) : undefined;
+                  return (
+                    <div key={n.id}>
+                      {inbound && <LegRow leg={inbound} />}
+                      <RouteNodeRow
+                        node={n}
                         routeId={route.id}
-                        nodeId={n.id}
-                        attachments={route.attachments.filter((a) => a.node_id === n.id)}
                         canEdit={canEdit}
-                      />
-                    </RouteNodeRow>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+                        isFirst={i === 0}
+                        isLast={i === nodes.length - 1}
+                        onMove={(dir) => move(i, dir)}
+                      >
+                        <RouteAttachments
+                          routeId={route.id}
+                          nodeId={n.id}
+                          attachments={route.attachments.filter((a) => a.node_id === n.id)}
+                          canEdit={canEdit}
+                        />
+                      </RouteNodeRow>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </SortableContext>
       </DndContext>
+
+      {navIndex !== null && (
+        <NavigateDayModal
+          dayLabel={formatDayLabel(dayGroups[navIndex].dayKey)}
+          waypoints={dayWaypoints(dayGroups, navIndex)}
+          onClose={() => setNavIndex(null)}
+        />
+      )}
 
       {canEdit && (
         <div style={{ marginTop: 12 }}>
