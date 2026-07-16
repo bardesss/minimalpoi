@@ -100,8 +100,8 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
       style: resolveMapStyle(settings),
       center: [settings.default_map_center_lng, settings.default_map_center_lat],
       zoom: settings.default_map_zoom,
-      // attributionControl defaults to showing; maplibre-gl v4 types accept
-      // false | AttributionControlOptions, not true — so we omit it here.
+      // attributionControl defaults to showing; the option takes
+      // false | AttributionControlOptions (not true), so we omit it here.
     });
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
