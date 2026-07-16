@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.12.0](https://github.com/Bardesss/minimalpoi/compare/v2.11.2...v2.12.0) (2026-07-16)
+
+
+### Features
+
+* **routes:** contained day cards in the itinerary ([aa35184](https://github.com/Bardesss/minimalpoi/commit/aa3518492a108a4f1397f2bd3e9f7a72b8c8d750))
+* **routes:** restyle DayHeader into a day-card header with Day N marker ([f268a36](https://github.com/Bardesss/minimalpoi/commit/f268a36e2e2ee4fef864f7de5830995b4b1b7e25))
+* **routes:** wrap each itinerary day in a card with an empty-day hint ([fdebeea](https://github.com/Bardesss/minimalpoi/commit/fdebeeaa6c37aac4148c768b1e490747e77cdff5))
+
 ## [2.11.2](https://github.com/Bardesss/minimalpoi/compare/v2.11.1...v2.11.2) (2026-07-16)
 
 
