@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.11.2](https://github.com/Bardesss/minimalpoi/compare/v2.11.1...v2.11.2) (2026-07-16)
+
+
+### Bug Fixes
+
+* **routes:** drag no longer snaps a stop into the previous day ([71a9d7c](https://github.com/Bardesss/minimalpoi/commit/71a9d7cecf04dd4204cadbe6e6879bc932011d20))
+* **routes:** stop drag snapping a stop into the previous day at a day boundary ([37fb328](https://github.com/Bardesss/minimalpoi/commit/37fb3285c40007db3339eca24551a8b7e105e29e))
+
 ## [2.11.1](https://github.com/Bardesss/minimalpoi/compare/v2.11.0...v2.11.1) (2026-07-16)
 
 
