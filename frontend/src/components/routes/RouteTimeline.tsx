@@ -6,9 +6,10 @@ import LegRow from "./LegRow";
 import RouteNodeRow from "./RouteNodeRow";
 import RouteAttachments from "./RouteAttachments";
 import NodePicker from "./NodePicker";
-import { DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { groupNodesByDay, placeInDay, dayOffsetForDrop } from "../../lib/routeDays";
+import { sortableCollision } from "../../lib/routeCollision";
 import { formatDayLabel } from "../../lib/formatDayLabel";
 import DayHeader from "./DayHeader";
 import { isDayPassed, todayIso } from "../../lib/dayState";
@@ -128,7 +129,7 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
           No stops yet. Add a stay or a stop to start building the route.
         </p>
       )}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={sortableCollision} onDragEnd={onDragEnd}>
         <SortableContext items={nodes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
           {dayGroups.map((group, gi) => {
             const expanded = isExpanded(group.dayKey);
