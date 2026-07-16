@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.7.0](https://github.com/Bardesss/minimalpoi/compare/v2.6.0...v2.7.0) (2026-07-16)
+
+
+### Features
+
+* **routes:** add cheapest-insertion position helper ([6e74993](https://github.com/Bardesss/minimalpoi/commit/6e74993368b4d30dbd291add49b1da93b28423bf))
+* **routes:** add computeDropPosition reorder helper ([c8d8a5a](https://github.com/Bardesss/minimalpoi/commit/c8d8a5af3a1ce1d6fd9ca2affb85b7c850d44a49))
+* **routes:** drag-and-drop reorder for the itinerary ([10e3cc7](https://github.com/Bardesss/minimalpoi/commit/10e3cc7ea8d10baea397f271d8d07d273e28cdb4))
+* **routes:** insert map-added POIs at their cheapest position ([ccd4545](https://github.com/Bardesss/minimalpoi/commit/ccd4545267612ab5a3929fa0b3eb5d648cc86e5d))
+* **routes:** nearby POIs on the map — cheapest-insertion add + drag-and-drop reorder ([d8f1b1d](https://github.com/Bardesss/minimalpoi/commit/d8f1b1d90923588b8e148ea2edf4e2ffe743788f))
+
 ## [2.6.0](https://github.com/Bardesss/minimalpoi/compare/v2.5.0...v2.6.0) (2026-07-15)
 
 
