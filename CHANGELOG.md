@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.11.0](https://github.com/Bardesss/minimalpoi/compare/v2.10.0...v2.11.0) (2026-07-16)
+
+
+### Features
+
+* **routes:** replace Navigate text with lucide Navigation icon ([5f5396f](https://github.com/Bardesss/minimalpoi/commit/5f5396fd7b15039210ad3495ed118a5df3d86419))
+* **routes:** replace Navigate text with Navigation icon ([7df0944](https://github.com/Bardesss/minimalpoi/commit/7df0944e4fd01c180720dff07d6512e97497e613))
+
 ## [2.10.0](https://github.com/Bardesss/minimalpoi/compare/v2.9.0...v2.10.0) (2026-07-16)
 
 
