@@ -1,3 +1,4 @@
+import { Navigation } from "lucide-react";
 import { theme } from "../../theme";
 import { formatTravel } from "../../lib/formatTravel";
 
@@ -48,9 +49,10 @@ export default function DayHeader({ label, distance_m, duration_s, isFirst, coll
           type="button"
           onClick={onNavigate}
           aria-label={`Navigate ${label}`}
-          style={{ ...caption, color: theme.color.link, background: "none", border: "none", padding: 0, cursor: "pointer" }}
+          title="Navigate"
+          style={{ color: theme.color.link, background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}
         >
-          Navigate
+          <Navigation size={16} aria-hidden />
         </button>
       </div>
     </div>

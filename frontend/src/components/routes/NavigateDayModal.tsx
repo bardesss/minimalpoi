@@ -1,3 +1,4 @@
+import { Navigation } from "lucide-react";
 import { ghostButtonStyle, theme } from "../../theme";
 import { appleMapsUrl, coordsText, googleMapsDirUrl, toGpx, type Waypoint } from "../../lib/routeNav";
 
@@ -46,7 +47,10 @@ export default function NavigateDayModal({ dayLabel, waypoints, onClose }: {
         style={{ background: theme.color.surface0, borderRadius: theme.radius.modal, boxShadow: theme.shadow.modal, padding: 20, width: 320, maxWidth: "92vw" }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <strong style={{ fontSize: 14, color: theme.color.textPrimary }}>Navigate {dayLabel}</strong>
+          <strong style={{ fontSize: 14, color: theme.color.textPrimary, display: "flex", alignItems: "center", gap: 8 }}>
+            <Navigation size={16} aria-hidden />
+            {dayLabel}
+          </strong>
           <button type="button" aria-label="Close" onClick={onClose} style={{ width: 28, height: 28, borderRadius: theme.radius.icon, border: "none", background: theme.color.surface1, color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
         </div>
         <button type="button" style={rowStyle} onClick={() => openUrl(googleMapsDirUrl(waypoints))}>Open in Google Maps</button>
