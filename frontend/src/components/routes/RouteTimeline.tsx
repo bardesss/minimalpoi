@@ -8,7 +8,7 @@ import RouteAttachments from "./RouteAttachments";
 import NodePicker from "./NodePicker";
 import { DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { groupNodesByDay, placeInDay } from "../../lib/routeDays";
+import { groupNodesByDay, placeInDay, dayOffsetForDrop } from "../../lib/routeDays";
 import { formatDayLabel } from "../../lib/formatDayLabel";
 import DayHeader from "./DayHeader";
 import { isDayPassed, todayIso } from "../../lib/dayState";
@@ -99,7 +99,15 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
     const to = nodes.findIndex((n) => n.id === over.id);
     if (from === -1 || to === -1) return;
     const pos = computeDropPosition(nodes, from, to);
-    if (pos != null) updateNode.mutate({ nodeId: nodes[from].id, body: { position: pos } });
+    if (pos == null) return;
+    // Stops carry a day; recompute it for the drop target so day and order stay
+    // consistent. Stays have no day_offset — move position only.
+    if (nodes[from].kind === "stop") {
+      const day_offset = dayOffsetForDrop(route, dayGroups, nodes[to].id, pos, nodes[from].id);
+      updateNode.mutate({ nodeId: nodes[from].id, body: { position: pos, day_offset } });
+    } else {
+      updateNode.mutate({ nodeId: nodes[from].id, body: { position: pos } });
+    }
   }
 
   function move(index: number, dir: -1 | 1) {
