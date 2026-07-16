@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useAddNode, useCategories, useCreateRoute, useDeleteRoute, usePois, useRoute, useRoutes, useSettings, useTeams, useUpdateRoute, useVersion } from "../queries/hooks";
 import type { RouteNodeKind } from "../types/api";
 import { poisNotInRoute } from "../map/routePois";
+import { computeInsertPosition } from "../map/insertPosition";
 import AppLayout from "../components/AppLayout";
 import RouteTimeline from "../components/routes/RouteTimeline";
 import RouteMap from "../components/routes/RouteMap";
@@ -66,8 +67,16 @@ export default function RoutesPage() {
   const canEdit = detail?.can_edit ?? false;
   const nearbyPois = poisNotInRoute(poisQuery.data ?? [], detail?.nodes ?? []);
   const canAddFromMap = selectedId != null && canEdit;
-  const addFromMap = (poiId: number, kind: RouteNodeKind) =>
-    addNodeFromMap.mutate({ kind, poi_id: poiId, nights: kind === "stay" ? 1 : null });
+  const addFromMap = (poiId: number, kind: RouteNodeKind) => {
+    const poi = (poisQuery.data ?? []).find((p) => p.id === poiId);
+    const position = poi ? computeInsertPosition(detail?.nodes ?? [], poi) : null;
+    addNodeFromMap.mutate({
+      kind,
+      poi_id: poiId,
+      nights: kind === "stay" ? 1 : null,
+      ...(position != null ? { position } : {}),
+    });
+  };
   const teams = teamsQuery.data ?? [];
   const myTeams = user?.role === "admin" ? teams : teams.filter((t) => user != null && t.member_ids.includes(user.id));
   const canAssignTeam = !!detail && !!user && (detail.created_by === user.id || user.role === "admin");
