@@ -284,6 +284,7 @@ export interface RouteNode {
   depart_date: string | null;
   inbound_distance_m: number | null;
   inbound_duration_s: number | null;
+  day_offset?: number | null;
 }
 
 export interface RouteLeg {
@@ -326,5 +327,6 @@ export interface RouteNodeCreate {
   nights?: number | null;
   notes?: string | null;
   position?: number | null;
+  day_offset?: number | null;
 }
-export interface RouteNodeUpdate { nights?: number | null; notes?: string | null; position?: number | null; }
+export interface RouteNodeUpdate { nights?: number | null; notes?: string | null; position?: number | null; day_offset?: number | null; }
