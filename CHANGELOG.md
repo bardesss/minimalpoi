@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.10.0](https://github.com/Bardesss/minimalpoi/compare/v2.9.0...v2.10.0) (2026-07-16)
+
+
+### Features
+
+* **routes:** day_offset on stops (backend model, schema, endpoints) ([5f9578e](https://github.com/Bardesss/minimalpoi/commit/5f9578e3c051d769460ed6b4f5571969fb544ef5))
+* **routes:** dragging a stop into another day updates its day_offset ([96d71ef](https://github.com/Bardesss/minimalpoi/commit/96d71ef14f73560b3496613a8a69f933441012d3))
+* **routes:** expand multi-night stays into per-day groups ([f1a5aa3](https://github.com/Bardesss/minimalpoi/commit/f1a5aa3c13b095c170e7393533affe4f5325570b))
+* **routes:** per-day + Add stop for multi-night stays ([55bc7d1](https://github.com/Bardesss/minimalpoi/commit/55bc7d1ff86325b59c6fba49e1e9fa1f766e6f46))
+* **routes:** per-day stops within a multi-night stay ([fad5929](https://github.com/Bardesss/minimalpoi/commit/fad592969586754c73d545b5568bed1de24e3400))
+* **routes:** placeInDay + dayOffsetForDrop placement helpers ([7331880](https://github.com/Bardesss/minimalpoi/commit/7331880fb68766a3322df91623322be97e1fa395))
+
 ## [2.9.0](https://github.com/Bardesss/minimalpoi/compare/v2.8.0...v2.9.0) (2026-07-16)
 
 
