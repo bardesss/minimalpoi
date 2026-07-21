@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.13.0](https://github.com/Bardesss/minimalpoi/compare/v2.12.0...v2.13.0) (2026-07-21)
+
+
+### Features
+
+* **routes:** add node role + round_trip columns and schema fields ([b96938c](https://github.com/Bardesss/minimalpoi/commit/b96938c308ff88ce56c95badea16c046b7e790ee))
+* **routes:** badge itinerary rows that are saved POIs ([6b6139a](https://github.com/Bardesss/minimalpoi/commit/6b6139a625a32fa080f4d6c1399e40716d25f742))
+* **routes:** frontend types for node role and round_trip ([8421c0f](https://github.com/Bardesss/minimalpoi/commit/8421c0f66948918618a611b1c4d4a5b0af40e80c))
+* **routes:** full-row drag handle, remove reorder arrows ([347100c](https://github.com/Bardesss/minimalpoi/commit/347100c07db286705ca792d69290a6fcafa70ccf))
+* **routes:** hover an itinerary row to highlight it on the map ([43c2f98](https://github.com/Bardesss/minimalpoi/commit/43c2f98369072c7f064db37b011557d1ede0e0f2))
+* **routes:** mirror start place onto a generated end for round trips ([e19e31f](https://github.com/Bardesss/minimalpoi/commit/e19e31f2a70724bb745867822f833bfb6ce0af56))
+* **routes:** order nodes with start/end pinned to the ends ([86e433b](https://github.com/Bardesss/minimalpoi/commit/86e433b0343786c5f20de6b366a69e5a13217f31))
+* **routes:** pinned start/end rows with round-trip toggle ([a830414](https://github.com/Bardesss/minimalpoi/commit/a83041475cc14e054216201ebcf3dc9aa38adcf8))
+* **routes:** show map-matching order numbers in the itinerary ([f17ad0e](https://github.com/Bardesss/minimalpoi/commit/f17ad0e602ebe4a7c2543eeb24fb658fda015f75))
+* **routes:** start/end glyphs and middle-only seq numbering on the map ([cbbb7c9](https://github.com/Bardesss/minimalpoi/commit/cbbb7c9a8bdf3beba7dca67033a966bcf13a1341))
+* **routes:** store node role, enforce one start/end, coerce to stop ([6b40986](https://github.com/Bardesss/minimalpoi/commit/6b4098644f334845336fd630c84b6a4c4a726849))
+* **routes:** timeline polish — start/end places, full-row drag, shared numbers, hover-highlight ([3cb224a](https://github.com/Bardesss/minimalpoi/commit/3cb224afb979b7fcb56acfada1057fd5e90d5af3))
+
+
+### Bug Fixes
+
+* **routes:** don't insert a mapped POI into a passed day ([a2f6387](https://github.com/Bardesss/minimalpoi/commit/a2f6387efea3388b5576f523309d7f62dfdda5ec))
+* **routes:** ignore pinned start/end when inserting a mapped POI ([5daec3f](https://github.com/Bardesss/minimalpoi/commit/5daec3f4dbd403052142203422ea081ca32934cd))
+
 ## [2.12.0](https://github.com/Bardesss/minimalpoi/compare/v2.11.2...v2.12.0) (2026-07-16)
 
 
