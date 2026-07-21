@@ -81,8 +81,8 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
         </div>
 
         <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" style={primaryButtonStyle} onClick={onDownload} disabled={!blob || busy}>Download</button>
-          {canShare && <button type="button" style={ghostButtonStyle} onClick={onShare} disabled={!blob || busy}>Share</button>}
+          <button type="button" style={primaryButtonStyle} onClick={onDownload} disabled={!blob || busy || !!error}>Download</button>
+          {canShare && <button type="button" style={ghostButtonStyle} onClick={onShare} disabled={!blob || busy || !!error}>Share</button>}
         </div>
       </div>
     </div>,

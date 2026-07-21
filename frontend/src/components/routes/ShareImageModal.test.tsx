@@ -31,4 +31,15 @@ describe("ShareImageModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /download/i }));
     expect(downloadSpy).toHaveBeenCalledWith(fakeBlob, "Trip - square - map.png");
   });
+
+  it("disables download and shows an error when rendering fails", async () => {
+    render(<ShareImageModal route={route} settings={settings} onClose={vi.fn()} />);
+    await waitFor(() => expect(renderSpy).toHaveBeenCalled());
+    expect(screen.getByRole("button", { name: /download/i })).not.toBeDisabled();
+
+    renderSpy.mockRejectedValueOnce(new Error("boom"));
+    fireEvent.click(screen.getByRole("button", { name: /landscape/i }));
+    expect(await screen.findByText(/couldn't render the image/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /download/i })).toBeDisabled();
+  });
 });
