@@ -31,12 +31,14 @@ export default function RouteNodeRow({
   routeId,
   canEdit,
   pinned = false,
+  seq,
   children,
 }: {
   node: RouteNode;
   routeId: number;
   canEdit: boolean;
   pinned?: boolean;
+  seq?: number;
   children?: ReactNode;
 }) {
   const updateNode = useUpdateNode(routeId);
@@ -94,12 +96,14 @@ export default function RouteNodeRow({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: isStay ? 13 : 16,
+          fontSize: 13,
+          fontFamily: theme.font.ui,
+          fontWeight: 700,
           background: isStay ? theme.color.tintBg : theme.color.surface1,
           color: isStay ? theme.color.deepIndigoText : theme.color.textMuted,
         }}
       >
-        {isStay ? "★" : "·"}
+        {node.role === "start" ? "▶" : node.role === "end" ? "■" : seq != null ? seq : isStay ? "★" : "·"}
       </span>
 
       <div style={{ flex: 1, minWidth: 0 }}>

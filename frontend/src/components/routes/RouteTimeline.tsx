@@ -201,6 +201,7 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
                         node={n}
                         routeId={route.id}
                         canEdit={canEdit}
+                        seq={(indexById.get(n.id) ?? 0) + 1}
                       >
                         <RouteAttachments
                           routeId={route.id}

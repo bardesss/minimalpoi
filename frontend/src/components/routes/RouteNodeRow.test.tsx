@@ -62,3 +62,14 @@ describe("saved-POI badge", () => {
     expect(screen.queryByLabelText("Saved place")).not.toBeInTheDocument();
   });
 });
+
+describe("order number in the circle", () => {
+  it("shows the seq number for a middle node", () => {
+    render(<RouteNodeRow node={{ ...stay, role: null }} routeId={1} canEdit seq={3} />);
+    expect(screen.getByText("3")).toBeInTheDocument();
+  });
+  it("shows a start glyph for a start node regardless of seq", () => {
+    render(<RouteNodeRow node={{ ...stay, kind: "stop", role: "start" }} routeId={1} canEdit pinned />);
+    expect(screen.getByText("▶")).toBeInTheDocument();
+  });
+});
