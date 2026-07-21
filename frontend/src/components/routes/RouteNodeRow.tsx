@@ -33,6 +33,7 @@ export default function RouteNodeRow({
   pinned = false,
   seq,
   children,
+  onHover,
 }: {
   node: RouteNode;
   routeId: number;
@@ -40,6 +41,7 @@ export default function RouteNodeRow({
   pinned?: boolean;
   seq?: number;
   children?: ReactNode;
+  onHover?: (id: number | null) => void;
 }) {
   const updateNode = useUpdateNode(routeId);
   const deleteNode = useDeleteNode(routeId);
@@ -71,6 +73,10 @@ export default function RouteNodeRow({
     <div
       ref={setNodeRef}
       {...dragProps}
+      onMouseEnter={() => onHover?.(node.id)}
+      onMouseLeave={() => onHover?.(null)}
+      onFocus={() => onHover?.(node.id)}
+      onBlur={() => onHover?.(null)}
       style={{
         display: "flex",
         gap: 10,

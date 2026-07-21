@@ -40,7 +40,7 @@ export function computeDropPosition(nodes: RouteNode[], fromIndex: number, toInd
   return (before.position + after.position) / 2;  // between two neighbours
 }
 
-export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; canEdit: boolean }) {
+export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: RouteDetail; canEdit: boolean; onHoverNode?: (id: number | null) => void }) {
   const nodes = route.nodes;
   const legByPair = useMemo(() => {
     const m = new Map<string, RouteDetail["legs"][number]>();
@@ -126,7 +126,7 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
     <div style={{ marginBottom: 10 }}>
       <p style={sectionLabel}>Start</p>
       {startNode ? (
-        <RouteNodeRow node={startNode} routeId={route.id} canEdit={canEdit} pinned />
+        <RouteNodeRow node={startNode} routeId={route.id} canEdit={canEdit} pinned onHover={onHoverNode} />
       ) : canEdit && pick === "start" ? (
         <NodePicker kind="stop" role="start" onCancel={() => setPick(null)} onSubmit={submitEndpoint} />
       ) : canEdit ? (
@@ -143,7 +143,7 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
           Return to {startNode?.name ?? "start"}
         </p>
       ) : endNode ? (
-        <RouteNodeRow node={endNode} routeId={route.id} canEdit={canEdit} pinned />
+        <RouteNodeRow node={endNode} routeId={route.id} canEdit={canEdit} pinned onHover={onHoverNode} />
       ) : canEdit && pick === "end" ? (
         <NodePicker kind="stop" role="end" onCancel={() => setPick(null)} onSubmit={submitEndpoint} />
       ) : canEdit ? (
@@ -202,6 +202,7 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
                         routeId={route.id}
                         canEdit={canEdit}
                         seq={(indexById.get(n.id) ?? 0) + 1}
+                        onHover={onHoverNode}
                       >
                         <RouteAttachments
                           routeId={route.id}

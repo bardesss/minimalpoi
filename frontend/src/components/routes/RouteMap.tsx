@@ -158,7 +158,7 @@ function openPoiPopup(
   }
 }
 
-export default function RouteMap({ nodes, legs, pois, categories, settings, canAdd, onAddNode, passedNodeIds }: {
+export default function RouteMap({ nodes, legs, pois, categories, settings, canAdd, onAddNode, passedNodeIds, highlightNodeId }: {
   nodes: RouteNode[];
   legs: RouteLeg[];
   pois: Poi[];
@@ -167,6 +167,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   canAdd: boolean;
   onAddNode: (poiId: number, kind: RouteNodeKind) => void;
   passedNodeIds: Set<number>;
+  highlightNodeId: number | null;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -179,6 +180,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   const canAddRef = useRef(canAdd);
   const onAddNodeRef = useRef(onAddNode);
   const passedRef = useRef(passedNodeIds);
+  const highlightRef = useRef(highlightNodeId);
   nodesRef.current = nodes;
   legsRef.current = legs;
   poisRef.current = pois;
@@ -186,6 +188,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   canAddRef.current = canAdd;
   onAddNodeRef.current = onAddNode;
   passedRef.current = passedNodeIds;
+  highlightRef.current = highlightNodeId;
 
   // Init once.
   useEffect(() => {
@@ -213,6 +216,18 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
       map.addSource("route-line", { type: "geojson", data: line });
       map.addSource("route-points", { type: "geojson", data: points });
       addRouteLayers(map);
+      map.addLayer({
+        id: "route-point-highlight",
+        type: "circle",
+        source: "route-points",
+        filter: ["==", ["get", "id"], highlightRef.current ?? -1],
+        paint: {
+          "circle-radius": 17,
+          "circle-color": "rgba(0,0,0,0)",
+          "circle-stroke-color": "#f59e0b",
+          "circle-stroke-width": 3,
+        },
+      });
       fitToNodes(map, nodesRef.current);
     });
 
@@ -276,6 +291,13 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
     if (!map || !map.getLayer("route-poi-unclustered")) return;
     map.setPaintProperty("route-poi-unclustered", "circle-color", categoryColorExpression(categories) as never);
   }, [categories]);
+
+  // Highlight the hovered/focused itinerary row's point on the map.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.getLayer("route-point-highlight")) return;
+    map.setFilter("route-point-highlight", ["==", ["get", "id"], highlightNodeId ?? -1]);
+  }, [highlightNodeId]);
 
   return <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />;
 }

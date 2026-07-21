@@ -73,3 +73,15 @@ describe("order number in the circle", () => {
     expect(screen.getByText("▶")).toBeInTheDocument();
   });
 });
+
+describe("hover highlight", () => {
+  it("fires onHover with the id on enter and null on leave", () => {
+    const onHover = vi.fn();
+    render(<RouteNodeRow node={stay} routeId={1} canEdit onHover={onHover} />);
+    const row = screen.getByText("Amsterdam").closest("div")!.parentElement!;
+    fireEvent.mouseEnter(row);
+    expect(onHover).toHaveBeenCalledWith(5);
+    fireEvent.mouseLeave(row);
+    expect(onHover).toHaveBeenCalledWith(null);
+  });
+});
