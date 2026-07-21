@@ -3,7 +3,7 @@ import { computeInsertPosition } from "./insertPosition";
 import type { RouteNode } from "../types/api";
 
 function node(id: number, position: number, lat: number, lng: number): RouteNode {
-  return { id, kind: "stop", position, nights: null, notes: null, poi_id: null, name: `N${id}`, lat, lng, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null };
+  return { id, kind: "stop", position, nights: null, notes: null, poi_id: null, name: `N${id}`, lat, lng, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null, role: null };
 }
 
 describe("computeInsertPosition", () => {

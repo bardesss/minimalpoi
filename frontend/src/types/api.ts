@@ -255,6 +255,7 @@ export interface SyncResolve {
 }
 
 export type RouteNodeKind = "stay" | "stop";
+export type RouteNodeRole = "start" | "end";
 export type LegSource = "google" | "estimate";
 
 export interface RouteSummary {
@@ -268,6 +269,7 @@ export interface RouteSummary {
   owner_username: string;
   team_id: number | null;
   team_name: string | null;
+  round_trip: boolean;
 }
 
 export interface RouteNode {
@@ -285,6 +287,7 @@ export interface RouteNode {
   inbound_distance_m: number | null;
   inbound_duration_s: number | null;
   day_offset?: number | null;
+  role: RouteNodeRole | null;
 }
 
 export interface RouteLeg {
@@ -316,8 +319,8 @@ export interface RouteAttachment {
   uploaded_at: string;
 }
 
-export interface RouteCreate { name: string; start_date: string; end_date?: string | null; team_id?: number | null; }
-export interface RouteUpdate { name?: string; start_date?: string; end_date?: string | null; team_id?: number | null; }
+export interface RouteCreate { name: string; start_date: string; end_date?: string | null; team_id?: number | null; round_trip?: boolean; }
+export interface RouteUpdate { name?: string; start_date?: string; end_date?: string | null; team_id?: number | null; round_trip?: boolean; }
 export interface RouteNodeCreate {
   kind: RouteNodeKind;
   poi_id?: number | null;
@@ -328,5 +331,6 @@ export interface RouteNodeCreate {
   notes?: string | null;
   position?: number | null;
   day_offset?: number | null;
+  role?: RouteNodeRole | null;
 }
 export interface RouteNodeUpdate { nights?: number | null; notes?: string | null; position?: number | null; day_offset?: number | null; }

@@ -3,14 +3,14 @@ import { isDayPassed, passedNodeIds, todayIso } from "./dayState";
 import type { RouteDetail, RouteNode } from "../types/api";
 
 function stay(id: number, position: number, name: string, arrive: string, depart: string): RouteNode {
-  return { id, kind: "stay", position, nights: 1, notes: null, poi_id: null, name, lat: 0, lng: 0, arrive_date: arrive, depart_date: depart, inbound_distance_m: null, inbound_duration_s: null };
+  return { id, kind: "stay", position, nights: 1, notes: null, poi_id: null, name, lat: 0, lng: 0, arrive_date: arrive, depart_date: depart, inbound_distance_m: null, inbound_duration_s: null, role: null };
 }
 function stop(id: number, position: number, name: string): RouteNode {
-  return { id, kind: "stop", position, nights: null, notes: null, poi_id: null, name, lat: 0, lng: 0, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null };
+  return { id, kind: "stop", position, nights: null, notes: null, poi_id: null, name, lat: 0, lng: 0, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null, role: null };
 }
 const route: RouteDetail = {
   id: 1, name: "T", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-17",
-  node_count: 4, created_by: 1, owner_username: "a", team_id: null, team_name: null, can_edit: true,
+  node_count: 4, created_by: 1, owner_username: "a", team_id: null, team_name: null, round_trip: false, can_edit: true,
   nodes: [
     stay(1, 1, "A", "2026-07-14", "2026-07-15"),
     stay(2, 2, "B", "2026-07-15", "2026-07-16"),

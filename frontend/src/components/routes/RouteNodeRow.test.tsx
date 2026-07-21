@@ -16,7 +16,7 @@ const stay: RouteNode = {
   id: 5, kind: "stay", position: 1, nights: 2, notes: null, poi_id: null,
   name: "Amsterdam", lat: 52.3, lng: 4.9,
   arrive_date: "2026-07-14", depart_date: "2026-07-16",
-  inbound_distance_m: 0, inbound_duration_s: 0,
+  inbound_distance_m: 0, inbound_duration_s: 0, role: null,
 };
 
 describe("RouteNodeRow", () => {
