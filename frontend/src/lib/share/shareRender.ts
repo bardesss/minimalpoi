@@ -26,29 +26,43 @@ function bounds(route: RouteDetail): LngLatBoundsLike | null {
   return [[minLng, minLat], [maxLng, maxLat]];
 }
 
-/** Build a hidden preserveDrawingBuffer map, fit the route, wait for tiles. */
+/** Build a hidden preserveDrawingBuffer map, fit the route, wait for tiles.
+ * Rejects (and cleans up the map + container) if the style/tiles never settle. */
 async function idleMap(opts: ShareRenderOptions): Promise<{ map: MlMap; container: HTMLDivElement }> {
   const container = document.createElement("div");
   container.style.cssText = `position:fixed;left:-99999px;top:0;width:${opts.format.width}px;height:${opts.format.height}px;`;
   document.body.appendChild(container);
-  const map = new maplibregl.Map({
-    container,
-    style: resolveMapStyle(opts.settings),
-    center: [opts.settings.default_map_center_lng, opts.settings.default_map_center_lat],
-    zoom: opts.settings.default_map_zoom,
-    // maplibre-gl 5.24 moved `preserveDrawingBuffer` off MapOptions and into
-    // `canvasContextAttributes` (WebGLContextAttributesWithType); the brief's
-    // top-level `preserveDrawingBuffer: true` no longer type-checks.
-    canvasContextAttributes: { preserveDrawingBuffer: true },
-    // maplibre types this as `false | AttributionControlOptions` — pass `{}` (not `true`).
-    attributionControl: opts.variant === "map" ? {} : false,
-    interactive: false,
-  });
-  await new Promise<void>((res) => map.once("load", () => res()));
-  const b = bounds(opts.route);
-  if (b) map.fitBounds(b, { padding: opts.format.fitPadding, duration: 0, maxZoom: 14 });
-  await new Promise<void>((res) => map.once("idle", () => res()));
-  return { map, container };
+  let map: MlMap | undefined;
+  try {
+    map = new maplibregl.Map({
+      container,
+      style: resolveMapStyle(opts.settings),
+      center: [opts.settings.default_map_center_lng, opts.settings.default_map_center_lat],
+      zoom: opts.settings.default_map_zoom,
+      // maplibre-gl 5.24 moved `preserveDrawingBuffer` off MapOptions and into
+      // `canvasContextAttributes` (WebGLContextAttributesWithType); the brief's
+      // top-level `preserveDrawingBuffer: true` no longer type-checks.
+      canvasContextAttributes: { preserveDrawingBuffer: true },
+      // maplibre types this as `false | AttributionControlOptions` — pass `{}` (not `true`).
+      attributionControl: opts.variant === "map" ? {} : false,
+      interactive: false,
+    });
+    const m = map;
+    const waitFor = (ev: "load" | "idle", ms: number) =>
+      new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`Map "${ev}" timed out`)), ms);
+        m.once(ev, () => { clearTimeout(timer); resolve(); });
+      });
+    await waitFor("load", 15000);
+    const b = bounds(opts.route);
+    if (b) m.fitBounds(b, { padding: opts.format.fitPadding, duration: 0, maxZoom: 14 });
+    await waitFor("idle", 15000);
+    return { map, container };
+  } catch (err) {
+    map?.remove();
+    container.remove();
+    throw err;
+  }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
