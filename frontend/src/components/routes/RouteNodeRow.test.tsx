@@ -51,3 +51,14 @@ describe("RouteNodeRow", () => {
     expect(del).toHaveBeenCalledWith(5);
   });
 });
+
+describe("saved-POI badge", () => {
+  it("shows a Saved place badge when the node is a saved POI", () => {
+    render(<RouteNodeRow node={{ ...stay, poi_id: 42 }} routeId={1} canEdit />);
+    expect(screen.getByLabelText("Saved place")).toBeInTheDocument();
+  });
+  it("shows no badge for an ad-hoc point", () => {
+    render(<RouteNodeRow node={{ ...stay, poi_id: null }} routeId={1} canEdit />);
+    expect(screen.queryByLabelText("Saved place")).not.toBeInTheDocument();
+  });
+});

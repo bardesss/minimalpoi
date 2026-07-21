@@ -5,7 +5,7 @@ import { useIsMobile } from "../../lib/useMediaQuery";
 import { useDeleteNode, useUpdateNode } from "../../queries/hooks";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Bookmark } from "lucide-react";
 
 function iconBtnStyle(size: number): CSSProperties {
   return {
@@ -105,6 +105,11 @@ export default function RouteNodeRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontFamily: theme.font.ui, fontWeight: 700, fontSize: 14, color: theme.color.textPrimary }}>{node.name}</span>
+          {node.poi_id != null && (
+            <span aria-label="Saved place" title="Saved place" style={{ flex: "none", display: "inline-flex", color: theme.color.textMuted }}>
+              <Bookmark size={13} />
+            </span>
+          )}
           {canEdit && (
             <span style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
               <button
