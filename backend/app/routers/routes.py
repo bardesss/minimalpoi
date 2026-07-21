@@ -55,7 +55,7 @@ def _summary(session, route: Route) -> RouteSummary:
     d = derive(nodes, legs_for(session, route.id), route.start_date)
     return RouteSummary(
         id=route.id, name=route.name, start_date=route.start_date,
-        end_date=route.end_date, scheduled_end_date=d["end_date"],
+        end_date=route.end_date, round_trip=route.round_trip, scheduled_end_date=d["end_date"],
         node_count=len(nodes), created_by=route.created_by,
         owner_username=_username(session, route.created_by),
         team_id=route.team_id, team_name=_team_name(session, route.team_id),
@@ -70,7 +70,7 @@ def _detail(session, route: Route, user: User) -> RouteDetail:
     for n in nodes:
         extra = d["stays"].get(n.id, {})
         node_reads.append(RouteNodeRead(
-            id=n.id, kind=n.kind, position=n.position, nights=n.nights, notes=n.notes,
+            id=n.id, kind=n.kind, role=n.role, position=n.position, nights=n.nights, notes=n.notes,
             poi_id=n.poi_id, name=n.name, lat=n.lat, lng=n.lng, day_offset=n.day_offset, **extra,
         ))
     attachments = session.exec(
@@ -78,7 +78,7 @@ def _detail(session, route: Route, user: User) -> RouteDetail:
     ).all()
     return RouteDetail(
         id=route.id, name=route.name, start_date=route.start_date,
-        end_date=route.end_date, scheduled_end_date=d["end_date"],
+        end_date=route.end_date, round_trip=route.round_trip, scheduled_end_date=d["end_date"],
         node_count=len(nodes), created_by=route.created_by,
         owner_username=_username(session, route.created_by),
         team_id=route.team_id, team_name=_team_name(session, route.team_id),
@@ -150,7 +150,7 @@ def create_route(request: Request, body: RouteCreate, session: SessionDep, user:
     if body.team_id is not None:
         _assert_can_assign_team(session, body.team_id, user)
     route = Route(name=body.name, start_date=body.start_date, end_date=body.end_date,
-                  team_id=body.team_id, created_by=user.id)
+                  round_trip=body.round_trip, team_id=body.team_id, created_by=user.id)
     session.add(route)
     session.commit()
     session.refresh(route)

@@ -96,6 +96,11 @@ class RouteNodeKind(str, Enum):
     STOP = "stop"
 
 
+class NodeRole(str, Enum):
+    START = "start"
+    END = "end"
+
+
 class LegSource(str, Enum):
     GOOGLE = "google"
     ESTIMATE = "estimate"
@@ -106,6 +111,7 @@ class Route(SQLModel, table=True):
     name: str
     start_date: date
     end_date: date | None = Field(default=None)
+    round_trip: bool = Field(default=False)
     team_id: int | None = Field(default=None, foreign_key="team.id")
     created_by: int = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=utcnow)
@@ -117,6 +123,7 @@ class RouteNode(SQLModel, table=True):
     route_id: int = Field(foreign_key="route.id", index=True)
     position: float  # fractional ordering key; insert between as (a+b)/2
     kind: RouteNodeKind
+    role: NodeRole | None = Field(default=None)
     nights: int | None = Field(default=None)  # stays only
     day_offset: int | None = Field(default=None)  # stops only: day within base stay's span; None = departure day
     notes: str | None = Field(default=None)

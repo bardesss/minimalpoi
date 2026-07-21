@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from pydantic import StringConstraints
 from sqlmodel import Field, SQLModel
 
-from .models import LegSource, Role, RouteNodeKind, SyncStatus
+from .models import LegSource, NodeRole, Role, RouteNodeKind, SyncStatus
 
 
 class StatusResponse(SQLModel):
@@ -334,6 +334,7 @@ class RouteCreate(SQLModel):
     name: str
     start_date: date
     end_date: date | None = None
+    round_trip: bool = False
     team_id: int | None = None
 
 
@@ -341,6 +342,7 @@ class RouteUpdate(SQLModel):
     name: str | None = None
     start_date: date | None = None
     end_date: date | None = None
+    round_trip: bool | None = None
     team_id: int | None = None
 
 
@@ -349,6 +351,7 @@ class RouteSummary(SQLModel):
     name: str
     start_date: date
     end_date: date | None = None
+    round_trip: bool = False
     scheduled_end_date: date
     node_count: int
     created_by: int
@@ -360,6 +363,7 @@ class RouteSummary(SQLModel):
 class RouteNodeRead(SQLModel):
     id: int
     kind: RouteNodeKind
+    role: NodeRole | None = None
     position: float
     nights: int | None
     notes: str | None
@@ -385,6 +389,7 @@ class RouteLegRead(SQLModel):
 
 class RouteNodeCreate(SQLModel):
     kind: RouteNodeKind
+    role: NodeRole | None = None
     poi_id: int | None = None
     name: str | None = None
     lat: float | None = None
