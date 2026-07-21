@@ -66,3 +66,9 @@ def test_append_lands_after_middles_not_at_the_pinned_end(client):
     detail = _add(client, rid, kind="stop", name="M2", lat=3.0, lng=3.0)
     names = [n["name"] for n in detail["nodes"]]
     assert names == ["Home", "M1", "M2", "Finish"]
+    nodes = {n["name"]: n for n in detail["nodes"]}
+    # Appended middles must get distinct, increasing positions (the _next_position fix).
+    # Note: start/end position values are NOT pinned to extreme values in this model —
+    # ordered_nodes() sorts by (role_rank, position), so role rank alone (not the raw
+    # position number) keeps start/end at the ends regardless of their position value.
+    assert nodes["M1"]["position"] < nodes["M2"]["position"]
