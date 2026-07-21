@@ -52,7 +52,7 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
   const chip = (active: boolean) => ({ ...ghostButtonStyle, padding: "6px 12px", ...(active ? { borderColor: theme.color.deepIndigoText, color: theme.color.deepIndigoText } : {}) });
 
   // Portalled to document.body (matches NavigateDayModal) so it escapes the
-  // transformed mobile bottom-sheet containing-block; z-index/​radius match the
+  // transformed mobile bottom-sheet containing-block; z-index/radius match the
   // house modal style.
   return createPortal(
     <div role="dialog" aria-modal="true" aria-label="Share route image" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100 }} onClick={onClose}>
