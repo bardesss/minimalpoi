@@ -27,19 +27,6 @@ const dayCardStyle = {
 
 const emptyDayHint = { margin: "8px 0 0 36px", fontSize: 12.5, color: theme.color.textPlaceholder } as const;
 
-/** New fractional position that moves node at `index` one slot in `dir`. Places
- * it at the midpoint of its new neighbours (or just past the end). */
-export function computeMovePosition(nodes: RouteNode[], index: number, dir: -1 | 1): number | null {
-  const target = index + dir;
-  if (target < 0 || target >= nodes.length) return null;
-  if (dir === -1) {
-    const before = nodes[target - 1];
-    return before ? (before.position + nodes[target].position) / 2 : nodes[target].position - 1;
-  }
-  const after = nodes[target + 1];
-  return after ? (nodes[target].position + after.position) / 2 : nodes[target].position + 1;
-}
-
 /** Fractional position for a node dragged from `fromIndex` to `toIndex`.
  * Computed against the list with the dragged node removed, so `toIndex` refers
  * to the slot among the remaining nodes. Returns null when nothing moves. */
@@ -120,11 +107,6 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
     }
   }
 
-  function move(index: number, dir: -1 | 1) {
-    const pos = computeMovePosition(nodes, index, dir);
-    if (pos != null) updateNode.mutate({ nodeId: nodes[index].id, body: { position: pos } });
-  }
-
   function submit(body: RouteNodeCreate) {
     addNode.mutate(body);
     setAdding(null);
@@ -168,9 +150,6 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
                         node={n}
                         routeId={route.id}
                         canEdit={canEdit}
-                        isFirst={i === 0}
-                        isLast={i === nodes.length - 1}
-                        onMove={(dir) => move(i, dir)}
                       >
                         <RouteAttachments
                           routeId={route.id}

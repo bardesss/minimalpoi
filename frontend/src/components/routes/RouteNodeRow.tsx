@@ -7,7 +7,6 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 
-// Comfortable tap targets on touch (~40px), compact on the desktop panel.
 function iconBtnStyle(size: number): CSSProperties {
   return {
     border: `1px solid ${theme.color.borderStd}`,
@@ -24,24 +23,20 @@ function iconBtnStyle(size: number): CSSProperties {
   };
 }
 
-// One stop or multi-night stay in the timeline. Stays (★) show their arrive→
-// depart dates and a nights stepper; stops (·) just show their name. Reorder
-// via move up/down (the parent computes the new fractional position).
+// One stop or multi-night stay. The whole row is the drag handle (press and drag
+// anywhere) unless `pinned` (start/end places, which never reorder). Stays (★)
+// show arrive→depart dates and a nights stepper; stops (·) just show their name.
 export default function RouteNodeRow({
   node,
   routeId,
   canEdit,
-  isFirst,
-  isLast,
-  onMove,
+  pinned = false,
   children,
 }: {
   node: RouteNode;
   routeId: number;
   canEdit: boolean;
-  isFirst: boolean;
-  isLast: boolean;
-  onMove: (dir: -1 | 1) => void;
+  pinned?: boolean;
   children?: ReactNode;
 }) {
   const updateNode = useUpdateNode(routeId);
@@ -49,8 +44,10 @@ export default function RouteNodeRow({
   const isMobile = useIsMobile();
   const iconBtn = iconBtnStyle(isMobile ? 40 : 24);
   const isStay = node.kind === "stay";
+  const draggable = canEdit && !pinned;
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id, disabled: !canEdit });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: node.id, disabled: !draggable });
   const sortableStyle: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -61,18 +58,31 @@ export default function RouteNodeRow({
     updateNode.mutate({ nodeId: node.id, body: { nights: Math.max(0, next) } });
   }
 
+  // Drag props live on the row container so the entire row is the target. The
+  // PointerSensor only activates after 5px of movement, so taps on the nested
+  // remove/nights buttons still fire their onClick without starting a drag.
+  const dragProps = draggable
+    ? { ...attributes, ...listeners, "aria-label": `Reorder ${node.name}`, role: "button" as const }
+    : {};
+
   return (
-    <div ref={setNodeRef} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", ...sortableStyle }}>
-      {canEdit && (
-        <button
-          type="button"
-          aria-label={`Reorder ${node.name}`}
-          {...attributes}
-          {...listeners}
-          style={{ flex: "none", width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "transparent", color: theme.color.textMuted, cursor: "grab", touchAction: "none" }}
-        >
+    <div
+      ref={setNodeRef}
+      {...dragProps}
+      style={{
+        display: "flex",
+        gap: 10,
+        alignItems: "flex-start",
+        padding: "8px 0",
+        cursor: draggable ? "grab" : "default",
+        touchAction: draggable ? "none" : undefined,
+        ...sortableStyle,
+      }}
+    >
+      {draggable && (
+        <span aria-hidden style={{ flex: "none", width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", color: theme.color.textMuted }}>
           <GripVertical size={16} />
-        </button>
+        </span>
       )}
       <span
         aria-hidden
@@ -97,8 +107,6 @@ export default function RouteNodeRow({
           <span style={{ fontFamily: theme.font.ui, fontWeight: 700, fontSize: 14, color: theme.color.textPrimary }}>{node.name}</span>
           {canEdit && (
             <span style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
-              <button type="button" aria-label="Move up" style={iconBtn} disabled={isFirst} onClick={() => onMove(-1)}>↑</button>
-              <button type="button" aria-label="Move down" style={iconBtn} disabled={isLast} onClick={() => onMove(1)}>↓</button>
               <button
                 type="button"
                 aria-label={`Remove ${node.name}`}

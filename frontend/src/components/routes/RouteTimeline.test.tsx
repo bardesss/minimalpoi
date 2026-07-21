@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import RouteTimeline, { computeMovePosition, computeDropPosition } from "./RouteTimeline";
+import RouteTimeline, { computeDropPosition } from "./RouteTimeline";
 import { groupNodesByDay, dayOffsetForDrop } from "../../lib/routeDays";
 import type { RouteDetail, RouteNode } from "../../types/api";
 
@@ -41,17 +41,6 @@ const route: RouteDetail = {
   attachments: [],
   total_distance_m: 28000, total_duration_s: 2100,
 };
-
-describe("computeMovePosition", () => {
-  const nodes = [node(1, "stay", 1), node(2, "stay", 2), node(3, "stay", 3)];
-  it("moves the middle node up between its new neighbours", () => {
-    expect(computeMovePosition(nodes, 1, -1)).toBe(0); // before index 0 → pos0 - 1
-  });
-  it("moves a node down past the end", () => {
-    expect(computeMovePosition(nodes, 2, 1)).toBeNull(); // already last
-    expect(computeMovePosition(nodes, 1, 1)).toBe(4); // past last → pos3 + 1
-  });
-});
 
 describe("computeDropPosition", () => {
   const nodes = [node(1, "stay", 1), node(2, "stay", 2), node(3, "stay", 3)];
