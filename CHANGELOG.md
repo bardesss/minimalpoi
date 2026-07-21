@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.14.0](https://github.com/Bardesss/minimalpoi/compare/v2.13.0...v2.14.0) (2026-07-21)
+
+
+### Features
+
+* **share:** canvas composite renderer for route share images ([50ef6bc](https://github.com/Bardesss/minimalpoi/commit/50ef6bc9a775263702d1d9896f944210d73fb1ee))
+* **share:** Share image button opens the export modal on a route ([baffbd2](https://github.com/Bardesss/minimalpoi/commit/baffbd21a9cb80a5ee822646b512474a0cfbebae))
+* **share:** share-image modal with format/variant, preview, download ([401e397](https://github.com/Bardesss/minimalpoi/commit/401e397e05a19b8ed8484c7ca9f6efa0ee98ff49))
+* **share:** Strava-style shareable route image ([cf29ce2](https://github.com/Bardesss/minimalpoi/commit/cf29ce28313e2ea412d473fd9693689d40215566))
+
+
+### Bug Fixes
+
+* **share:** disable download/share when the render errored ([6e93138](https://github.com/Bardesss/minimalpoi/commit/6e931388c3f30bc515f4f7434ce9231ea8871fe4))
+* **share:** remove irregular whitespace tripping eslint ([744ae65](https://github.com/Bardesss/minimalpoi/commit/744ae65b1e8afd75d3022d40663979981bd463d7))
+* **share:** time out and clean up the hidden map on render failure ([606e911](https://github.com/Bardesss/minimalpoi/commit/606e9115220631e180825d48c01293d0f5c450e0))
+
 ## [2.13.0](https://github.com/Bardesss/minimalpoi/compare/v2.12.0...v2.13.0) (2026-07-21)
 
 
