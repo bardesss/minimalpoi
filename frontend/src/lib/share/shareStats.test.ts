@@ -18,4 +18,8 @@ describe("shareStats", () => {
     const r = { ...route, scheduled_end_date: "2026-07-14", nodes: [{ id: 1, role: null }] } as unknown as RouteDetail;
     expect(shareStats(r)).toMatchObject({ days: "1 day", stops: "1 stop" });
   });
+  it("uses end_date when the route has one", () => {
+    const r = { ...route, end_date: "2026-07-15", scheduled_end_date: "2026-07-20" } as unknown as RouteDetail;
+    expect(shareStats(r).days).toBe("2 days"); // 14→15 inclusive = 2
+  });
 });

@@ -11,4 +11,7 @@ describe("shareFormats", () => {
   it("has a positive fit padding for each", () => {
     for (const f of SHARE_FORMATS) expect(f.fitPadding).toBeGreaterThan(0);
   });
+  it("throws on an unknown format", () => {
+    expect(() => shareFormat("bogus" as any)).toThrow();
+  });
 });

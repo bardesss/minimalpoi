@@ -11,4 +11,7 @@ describe("shareFilename", () => {
   it("falls back to 'route' when the name is empty", () => {
     expect(shareFilename("   ", "landscape", "map")).toBe("route - landscape - map.png");
   });
+  it("collapses internal whitespace", () => {
+    expect(shareFilename("A   B\tC", "square", "map")).toBe("A B C - square - map.png");
+  });
 });
