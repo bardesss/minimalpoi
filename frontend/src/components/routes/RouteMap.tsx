@@ -87,8 +87,9 @@ function addRouteLayers(map: MlMap) {
     id: "route-point-labels",
     type: "symbol",
     source: "route-points",
+    filter: ["has", "seq"],  // middle nodes only; start/end get a glyph
     layout: {
-      "text-field": ["to-string", ["+", ["get", "order"], 1]],
+      "text-field": ["to-string", ["get", "seq"]],
       "text-font": ["Open Sans Bold"],
       "text-size": 12,
     },
@@ -96,6 +97,18 @@ function addRouteLayers(map: MlMap) {
       "text-color": ["case", ["get", "passed"], "#ffffff", ["==", ["get", "kind"], "stay"], "#ffffff", LINE_COLOR],
       "text-opacity": ["case", ["get", "passed"], 0.75, 1],
     },
+  });
+  map.addLayer({
+    id: "route-point-role",
+    type: "symbol",
+    source: "route-points",
+    filter: ["has", "role"],
+    layout: {
+      "text-field": ["match", ["get", "role"], "start", "▶", "end", "■", ""],
+      "text-font": ["Open Sans Bold"],
+      "text-size": 13,
+    },
+    paint: { "text-color": "#ffffff" },
   });
 }
 

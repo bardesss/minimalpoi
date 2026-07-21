@@ -2,13 +2,23 @@ import type { RouteLeg, RouteNode } from "../types/api";
 import { decodePolyline } from "./polyline";
 
 export function routeLine(nodes: RouteNode[], legs: RouteLeg[] = [], passedNodeIds: Set<number> = new Set()) {
+  let seq = 0;
   const points: GeoJSON.FeatureCollection = {
     type: "FeatureCollection",
-    features: nodes.map((n, order) => ({
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [n.lng, n.lat] },
-      properties: { order, kind: n.kind, name: n.name, id: n.id, passed: passedNodeIds.has(n.id) },
-    })),
+    features: nodes.map((n, order) => {
+      const properties: Record<string, unknown> = {
+        order, kind: n.kind, name: n.name, id: n.id, passed: passedNodeIds.has(n.id),
+      };
+      // Role nodes (start/end) get a glyph; every other node gets the next
+      // sequence number. This counter is the numbering the itinerary mirrors.
+      if (n.role) properties.role = n.role;
+      else properties.seq = ++seq;
+      return {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [n.lng, n.lat] },
+        properties,
+      };
+    }),
   };
 
   // One segment feature per leg, following the leg's real driving geometry when
