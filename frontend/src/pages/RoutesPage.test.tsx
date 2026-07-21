@@ -18,6 +18,10 @@ vi.mock("../components/routes/RouteMap", () => ({ default: () => null }));
 
 vi.mock("../components/SettingsModal", () => ({ default: () => null }));
 
+vi.mock("../components/routes/ShareImageModal", () => ({
+  default: () => <div data-testid="share-modal" />,
+}));
+
 vi.mock("../queries/hooks", () => ({
   useRoutes: () => ({ data: [{ id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-20", scheduled_end_date: "2026-07-16", node_count: 0, created_by: 1, owner_username: "admin", team_id: 3, team_name: "Crew" }], isLoading: false }),
   useRoute: () => ({ data: detail, isLoading: false }),
@@ -111,6 +115,12 @@ describe("RoutesPage", () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
     expect(await screen.findAllByText(/Ghosts/)).not.toHaveLength(0);
+  });
+
+  it("shows a Share image button, disabled for a node-less route", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
+    expect(await screen.findByRole("button", { name: /share image/i })).toBeDisabled();
   });
 
   it("edit team selector includes the route's current team even if not in my teams", async () => {
