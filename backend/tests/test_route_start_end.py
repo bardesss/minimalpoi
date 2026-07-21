@@ -36,3 +36,33 @@ def test_start_and_end_pin_to_the_ends_regardless_of_position(client):
     assert names[-1] == "Finish"
     assert detail["nodes"][0]["role"] == "start"
     assert detail["nodes"][-1]["role"] == "end"
+
+
+def test_second_start_is_conflict(client):
+    _setup(client)
+    rid = _route(client)["id"]
+    _add(client, rid, kind="stop", role="start", name="Home", lat=1.0, lng=1.0)
+    r = client.post(f"/api/routes/{rid}/nodes", json={"kind": "stop", "role": "start", "name": "Other", "lat": 9.0, "lng": 9.0})
+    assert r.status_code == 409
+
+
+def test_role_node_is_forced_to_stop_without_nights(client):
+    _setup(client)
+    rid = _route(client)["id"]
+    detail = client.post(f"/api/routes/{rid}/nodes",
+                         json={"kind": "stay", "role": "start", "name": "Home", "lat": 1.0, "lng": 1.0, "nights": 4}).json()
+    start = detail["nodes"][0]
+    assert start["kind"] == "stop"
+    assert start["nights"] is None
+
+
+def test_append_lands_after_middles_not_at_the_pinned_end(client):
+    _setup(client)
+    rid = _route(client)["id"]
+    # start + end pins first, then two appended middle stops must stay between them.
+    _add(client, rid, kind="stop", role="start", name="Home", lat=1.0, lng=1.0)
+    _add(client, rid, kind="stop", role="end", name="Finish", lat=9.0, lng=9.0)
+    _add(client, rid, kind="stop", name="M1", lat=2.0, lng=2.0)
+    detail = _add(client, rid, kind="stop", name="M2", lat=3.0, lng=3.0)
+    names = [n["name"] for n in detail["nodes"]]
+    assert names == ["Home", "M1", "M2", "Finish"]

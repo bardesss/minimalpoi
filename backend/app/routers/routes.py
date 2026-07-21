@@ -8,11 +8,13 @@ from .. import attachments as att
 from ..deps import CurrentUser, SessionDep
 from ..models import (
     POI,
+    NodeRole,
     Role,
     Route,
     RouteAttachment,
     RouteLeg,
     RouteNode,
+    RouteNodeKind,
     Team,
     TeamMember,
     User,
@@ -212,8 +214,15 @@ def delete_route(route_id: int, request: Request, session: SessionDep, user: Cur
 
 
 def _next_position(session, route_id: int) -> float:
-    nodes = ordered_nodes(session, route_id)
-    return (nodes[-1].position + 1.0) if nodes else 1.0
+    """Append after the last MIDDLE node. Role nodes (start/end) are pinned by
+    rank in ordered_nodes and must NOT drive the append position, or a pinned
+    end would push new nodes past it / into position collisions."""
+    positions = [
+        n.position for n in session.exec(
+            select(RouteNode).where(RouteNode.route_id == route_id, RouteNode.role.is_(None))
+        ).all()
+    ]
+    return (max(positions) + 1.0) if positions else 1.0
 
 
 def _resolve_location(session, body: RouteNodeCreate) -> tuple[int | None, str, float, float]:
@@ -234,11 +243,19 @@ def _resolve_location(session, body: RouteNodeCreate) -> tuple[int | None, str, 
 async def add_node(route_id: int, request: Request, body: RouteNodeCreate, session: SessionDep, user: CurrentUser) -> RouteDetail:
     route = _get_route_or_404(session, route_id)
     require_route_editor(session, route, user)
+    if body.role is not None:
+        exists = session.exec(
+            select(RouteNode).where(RouteNode.route_id == route_id, RouteNode.role == body.role)
+        ).first()
+        if exists:
+            raise HTTPException(status_code=409, detail=f"Route already has a {body.role.value}")
     poi_id, name, lat, lng = _resolve_location(session, body)
+    # A start/end place is always a single point: coerce to a stop, drop nights.
+    kind = RouteNodeKind.STOP if body.role is not None else body.kind
     node = RouteNode(
-        route_id=route_id, kind=body.kind, role=body.role, poi_id=poi_id, name=name, lat=lat, lng=lng,
-        nights=body.nights if body.kind.value == "stay" else None,
-        day_offset=body.day_offset if body.kind.value == "stop" else None,
+        route_id=route_id, kind=kind, role=body.role, poi_id=poi_id, name=name, lat=lat, lng=lng,
+        nights=body.nights if kind.value == "stay" else None,
+        day_offset=body.day_offset if kind.value == "stop" and body.role is None else None,
         notes=body.notes,
         position=body.position if body.position is not None else _next_position(session, route_id),
     )
