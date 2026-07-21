@@ -236,7 +236,7 @@ async def add_node(route_id: int, request: Request, body: RouteNodeCreate, sessi
     require_route_editor(session, route, user)
     poi_id, name, lat, lng = _resolve_location(session, body)
     node = RouteNode(
-        route_id=route_id, kind=body.kind, poi_id=poi_id, name=name, lat=lat, lng=lng,
+        route_id=route_id, kind=body.kind, role=body.role, poi_id=poi_id, name=name, lat=lat, lng=lng,
         nights=body.nights if body.kind.value == "stay" else None,
         day_offset=body.day_offset if body.kind.value == "stop" else None,
         notes=body.notes,
