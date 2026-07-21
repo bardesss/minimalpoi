@@ -75,7 +75,7 @@ export default function RoutesPage() {
   const canAddFromMap = selectedId != null && canEdit;
   const addFromMap = (poiId: number, kind: RouteNodeKind) => {
     const poi = (poisQuery.data ?? []).find((p) => p.id === poiId);
-    const position = poi ? computeInsertPosition(detail?.nodes ?? [], poi) : null;
+    const position = poi ? computeInsertPosition(detail?.nodes ?? [], poi, passed) : null;
     addNodeFromMap.mutate({
       kind,
       poi_id: poiId,

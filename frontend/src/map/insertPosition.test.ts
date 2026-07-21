@@ -33,4 +33,27 @@ describe("computeInsertPosition", () => {
     const nodes = [node(1, 1, 52, 5), node(2, 2, 52, 6)];
     expect(computeInsertPosition(nodes, { lat: 52, lng: 9 })).toBe(3); // 2 + 1
   });
+
+  it("never inserts before or into a passed day", () => {
+    // Two passed nodes at positions 1 and 2, one future node at 3. A POI closest
+    // to the passed pair must still land AFTER the last passed node (pos > 2).
+    const nodes = [
+      { id: 1, position: 1, lat: 0, lng: 0 },
+      { id: 2, position: 2, lat: 0.1, lng: 0.1 },
+      { id: 3, position: 3, lat: 10, lng: 10 },
+    ] as any;
+    const passed = new Set([1, 2]);
+    const poi = { lat: 0.05, lng: 0.05 }; // geographically between the passed pair
+    const pos = computeInsertPosition(nodes, poi, passed);
+    expect(pos).toBeGreaterThan(2);
+  });
+
+  it("is unaffected when nothing has passed", () => {
+    const nodes = [
+      { id: 1, position: 1, lat: 0, lng: 0 },
+      { id: 2, position: 2, lat: 10, lng: 10 },
+    ] as any;
+    const pos = computeInsertPosition(nodes, { lat: 0.1, lng: 0.1 }, new Set());
+    expect(pos).toBe(1.5); // cheapest slot is between the two nodes
+  });
 });
