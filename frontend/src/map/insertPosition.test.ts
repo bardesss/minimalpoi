@@ -56,4 +56,15 @@ describe("computeInsertPosition", () => {
     const pos = computeInsertPosition(nodes, { lat: 0.1, lng: 0.1 }, new Set());
     expect(pos).toBe(1.5); // cheapest slot is between the two nodes
   });
+
+  it("ignores pinned start/end nodes when choosing a slot", () => {
+    const nodes = [
+      { id: 1, role: "start", position: 1, lat: 0, lng: 0 },
+      { id: 2, role: null, position: 2, lat: 1, lng: 1 },
+      { id: 3, role: null, position: 3, lat: 2, lng: 2 },
+      { id: 4, role: "end", position: 1, lat: 10, lng: 10 }, // end.position is NOT the max
+    ] as any;
+    const pos = computeInsertPosition(nodes, { lat: 2.1, lng: 2.1 }); // nearest M2 → append after it
+    expect(pos).toBeGreaterThan(3);
+  });
 });

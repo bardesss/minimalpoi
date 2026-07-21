@@ -16,16 +16,20 @@ export function computeInsertPosition(
   poi: { lat: number; lng: number },
   passedNodeIds: Set<number> = new Set(),
 ): number | null {
-  if (nodes.length === 0) return null;
+  // Only the middle (role-less) nodes carry meaningful fractional positions;
+  // pinned start/end nodes are ordered by role rank, not position, so including
+  // them here would break the "first/last is the position extreme" assumption.
+  const chain = nodes.filter((n) => n.role == null);
+  if (chain.length === 0) return null;
 
   let floor = -Infinity;
-  for (const n of nodes) if (passedNodeIds.has(n.id)) floor = Math.max(floor, n.position);
+  for (const n of chain) if (passedNodeIds.has(n.id)) floor = Math.max(floor, n.position);
   const allowed = (pos: number) => pos > floor;
 
-  if (nodes.length === 1) return nodes[0].position + 1;
+  if (chain.length === 1) return chain[0].position + 1;
 
-  const first = nodes[0];
-  const last = nodes[nodes.length - 1];
+  const first = chain[0];
+  const last = chain[chain.length - 1];
 
   // Append is always past the last passed node, so it is the guaranteed incumbent.
   let bestCost = distanceKm(last.lat, last.lng, poi.lat, poi.lng);
@@ -37,9 +41,9 @@ export function computeInsertPosition(
     if (c < bestCost) { bestCost = c; bestPos = prependPos; }
   }
 
-  for (let i = 0; i < nodes.length - 1; i++) {
-    const a = nodes[i];
-    const b = nodes[i + 1];
+  for (let i = 0; i < chain.length - 1; i++) {
+    const a = chain[i];
+    const b = chain[i + 1];
     const mid = (a.position + b.position) / 2;
     if (!allowed(mid)) continue;
     const detour =
