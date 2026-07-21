@@ -72,3 +72,21 @@ def test_append_lands_after_middles_not_at_the_pinned_end(client):
     # ordered_nodes() sorts by (role_rank, position), so role rank alone (not the raw
     # position number) keeps start/end at the ends regardless of their position value.
     assert nodes["M1"]["position"] < nodes["M2"]["position"]
+
+
+def test_round_trip_mirrors_start_to_a_generated_end(client):
+    _setup(client)
+    rid = _route(client, round_trip=True)["id"]
+    detail = _add(client, rid, kind="stop", role="start", name="Home", lat=1.0, lng=2.0)
+    end = detail["nodes"][-1]
+    assert end["role"] == "end"
+    assert end["name"] == "Home" and end["lat"] == 1.0 and end["lng"] == 2.0
+
+
+def test_toggling_round_trip_on_generates_end_from_existing_start(client):
+    _setup(client)
+    rid = _route(client)["id"]
+    _add(client, rid, kind="stop", role="start", name="Home", lat=1.0, lng=2.0)
+    detail = client.patch(f"/api/routes/{rid}", json={"round_trip": True}).json()
+    assert detail["nodes"][-1]["role"] == "end"
+    assert detail["nodes"][-1]["name"] == "Home"

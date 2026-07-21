@@ -174,7 +174,7 @@ def export_route(route_id: int, request: Request, session: SessionDep, _: Curren
 
 @router.patch("/{route_id}", response_model=RouteDetail, dependencies=[Gate])
 @limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
-def update_route(route_id: int, request: Request, body: RouteUpdate, session: SessionDep, user: CurrentUser) -> RouteDetail:
+async def update_route(route_id: int, request: Request, body: RouteUpdate, session: SessionDep, user: CurrentUser) -> RouteDetail:
     route = _get_route_or_404(session, route_id)
     require_route_editor(session, route, user)
     data = body.model_dump(exclude_unset=True)
@@ -192,6 +192,10 @@ def update_route(route_id: int, request: Request, body: RouteUpdate, session: Se
     route.updated_at = utcnow()
     session.add(route)
     session.commit()
+    if "round_trip" in data:
+        session.refresh(route)
+        _sync_round_trip(session, route)
+        await recompute_legs(session, route_id)
     session.refresh(route)
     return _detail(session, route, user)
 
@@ -223,6 +227,27 @@ def _next_position(session, route_id: int) -> float:
         ).all()
     ]
     return (max(positions) + 1.0) if positions else 1.0
+
+
+def _sync_round_trip(session, route: Route) -> None:
+    """Keep an end node mirroring the start place while round_trip is on. No-op
+    when round_trip is off or there is no start yet. Idempotent."""
+    if not route.round_trip:
+        return
+    nodes = session.exec(select(RouteNode).where(RouteNode.route_id == route.id)).all()
+    start = next((n for n in nodes if n.role == NodeRole.START), None)
+    if start is None:
+        return
+    end = next((n for n in nodes if n.role == NodeRole.END), None)
+    if end is None:
+        end = RouteNode(route_id=route.id, kind=RouteNodeKind.STOP, role=NodeRole.END,
+                        position=_next_position(session, route.id), name=start.name, lat=start.lat, lng=start.lng)
+    end.poi_id = start.poi_id
+    end.name = start.name
+    end.lat = start.lat
+    end.lng = start.lng
+    session.add(end)
+    session.commit()
 
 
 def _resolve_location(session, body: RouteNodeCreate) -> tuple[int | None, str, float, float]:
@@ -261,6 +286,7 @@ async def add_node(route_id: int, request: Request, body: RouteNodeCreate, sessi
     )
     session.add(node)
     session.commit()
+    _sync_round_trip(session, route)
     await recompute_legs(session, route_id)
     return _detail(session, route, user)
 
@@ -296,6 +322,7 @@ async def delete_node(route_id: int, node_id: int, request: Request, session: Se
         session.delete(a)
     session.delete(node)
     session.commit()
+    _sync_round_trip(session, route)
     await recompute_legs(session, route_id)
     return _detail(session, route, user)
 
