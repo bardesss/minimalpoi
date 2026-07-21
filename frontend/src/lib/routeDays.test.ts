@@ -3,10 +3,10 @@ import { addDays, daysBetween, groupNodesByDay, placeInDay, dayOffsetForDrop } f
 import type { RouteDetail, RouteLeg, RouteNode } from "../types/api";
 
 function stay(id: number, position: number, name: string, arrive: string, depart: string, nights: number): RouteNode {
-  return { id, kind: "stay", position, nights, notes: null, poi_id: null, name, lat: 0, lng: 0, arrive_date: arrive, depart_date: depart, inbound_distance_m: null, inbound_duration_s: null, day_offset: null };
+  return { id, kind: "stay", position, nights, notes: null, poi_id: null, name, lat: 0, lng: 0, arrive_date: arrive, depart_date: depart, inbound_distance_m: null, inbound_duration_s: null, day_offset: null, role: null };
 }
 function stop(id: number, position: number, name: string): RouteNode {
-  return { id, kind: "stop", position, nights: null, notes: null, poi_id: null, name, lat: 0, lng: 0, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null, day_offset: null };
+  return { id, kind: "stop", position, nights: null, notes: null, poi_id: null, name, lat: 0, lng: 0, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null, day_offset: null, role: null };
 }
 function leg(from: number, to: number, distance_m: number, duration_s: number): RouteLeg {
   return { from_node_id: from, to_node_id: to, distance_m, duration_s, source: "estimate", geometry: null };
@@ -15,7 +15,7 @@ function leg(from: number, to: number, distance_m: number, duration_s: number): 
 // Aalborg(14→15) · Skottevik(15→16) · Fennefossen,Reiårsfossen(stops,16) · Silver(16→17) · Låtefossen,Bondhus(stops,17)
 const route: RouteDetail = {
   id: 1, name: "NL", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-17",
-  node_count: 7, created_by: 1, owner_username: "admin", team_id: null, team_name: null, can_edit: true,
+  node_count: 7, created_by: 1, owner_username: "admin", team_id: null, team_name: null, round_trip: false, can_edit: true,
   nodes: [
     stay(1, 1, "Aalborg", "2026-07-14", "2026-07-15", 1),
     stay(2, 2, "Skottevik", "2026-07-15", "2026-07-16", 1),
@@ -78,7 +78,7 @@ describe("groupNodesByDay multi-night", () => {
   // Hotel X: 2 nights (14→16). Stops on offset 0 (arrival), 1 (middle), null (departure).
   const multi: RouteDetail = {
     id: 2, name: "M", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-16",
-    node_count: 4, created_by: 1, owner_username: "a", team_id: null, team_name: null, can_edit: true,
+    node_count: 4, created_by: 1, owner_username: "a", team_id: null, team_name: null, round_trip: false, can_edit: true,
     nodes: [
       { ...stay(1, 1, "Hotel X", "2026-07-14", "2026-07-16", 2) },
       { ...stop(2, 2, "Arrival stop"), day_offset: 0 },
@@ -116,7 +116,7 @@ describe("groupNodesByDay multi-night", () => {
 describe("placeInDay", () => {
   const multi: RouteDetail = {
     id: 3, name: "P", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-16",
-    node_count: 3, created_by: 1, owner_username: "a", team_id: null, team_name: null, can_edit: true,
+    node_count: 3, created_by: 1, owner_username: "a", team_id: null, team_name: null, round_trip: false, can_edit: true,
     nodes: [
       { ...stay(1, 1, "Hotel X", "2026-07-14", "2026-07-16", 2) },
       { ...stop(2, 2, "Arrival stop"), day_offset: 0 },
@@ -142,7 +142,7 @@ describe("placeInDay", () => {
 describe("dayOffsetForDrop", () => {
   const multi: RouteDetail = {
     id: 4, name: "D", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-16",
-    node_count: 3, created_by: 1, owner_username: "a", team_id: null, team_name: null, can_edit: true,
+    node_count: 3, created_by: 1, owner_username: "a", team_id: null, team_name: null, round_trip: false, can_edit: true,
     nodes: [
       { ...stay(1, 1, "Hotel X", "2026-07-14", "2026-07-16", 2) },
       { ...stop(2, 2, "S1"), day_offset: 0 },   // arrival day

@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from ..enrich.service import _google_key
 from ..models import (
     LegSource,
+    NodeRole,
     Route,
     RouteLeg,
     RouteNode,
@@ -23,11 +24,19 @@ def resolve_calc(settings: Settings) -> tuple[GoogleCalc | None, HaversineCalc]:
     return google, HaversineCalc()
 
 
+def _role_rank(role) -> int:
+    if role == NodeRole.START:
+        return 0
+    if role == NodeRole.END:
+        return 2
+    return 1
+
+
 def ordered_nodes(session: Session, route_id: int) -> list[RouteNode]:
-    """Public helper — the ONLY definition; imported by routers/routes.py too."""
-    return list(session.exec(
-        select(RouteNode).where(RouteNode.route_id == route_id).order_by(RouteNode.position)
-    ).all())
+    """Public helper — the ONLY definition; imported by routers/routes.py too.
+    Start pins first, end pins last; middle nodes keep fractional-position order."""
+    rows = session.exec(select(RouteNode).where(RouteNode.route_id == route_id)).all()
+    return sorted(rows, key=lambda n: (_role_rank(n.role), n.position))
 
 
 def legs_for(session: Session, route_id: int) -> list[RouteLeg]:

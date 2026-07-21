@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { PlaceSearchResult, PoiCreate, PoiDraft, RouteNodeCreate, RouteNodeKind } from "../../types/api";
+import type { PlaceSearchResult, PoiCreate, PoiDraft, RouteNodeCreate, RouteNodeKind, RouteNodeRole } from "../../types/api";
 import { ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../theme";
 import { useCreatePoi, usePlaceDraft, usePois, useSearchPlaces } from "../../queries/hooks";
 
@@ -25,10 +25,12 @@ export function toPoiCreate(draft: PoiDraft): PoiCreate {
 
 export default function NodePicker({
   kind,
+  role,
   onCancel,
   onSubmit,
 }: {
   kind: RouteNodeKind;
+  role?: RouteNodeRole | null;
   onCancel: () => void;
   onSubmit: (body: RouteNodeCreate) => void;
 }) {
@@ -54,7 +56,7 @@ export default function NodePicker({
   const pois = (poisQuery.data ?? []).filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
 
   function pickPoi(poiId: number) {
-    onSubmit({ kind, poi_id: poiId, nights });
+    onSubmit({ kind, ...(role ? { role } : {}), poi_id: poiId, nights });
   }
   function backToPick() {
     setSelected(null);
@@ -68,7 +70,7 @@ export default function NodePicker({
     const latN = Number(lat);
     const lngN = Number(lng);
     if (!name.trim() || Number.isNaN(latN) || Number.isNaN(lngN)) return;
-    onSubmit({ kind, name: name.trim(), lat: latN, lng: lngN, nights });
+    onSubmit({ kind, ...(role ? { role } : {}), name: name.trim(), lat: latN, lng: lngN, nights });
   }
 
   async function runSearch() {
@@ -113,9 +115,9 @@ export default function NodePicker({
     try {
       if (alsoSave) {
         const poi = await createPoi.mutateAsync(toPoiCreate(selected));
-        onSubmit({ kind, poi_id: poi.id, nights });
+        onSubmit({ kind, ...(role ? { role } : {}), poi_id: poi.id, nights });
       } else {
-        onSubmit({ kind, name: selected.name ?? "", lat: selected.lat, lng: selected.lng, nights });
+        onSubmit({ kind, ...(role ? { role } : {}), name: selected.name ?? "", lat: selected.lat, lng: selected.lng, nights });
       }
     } catch {
       setGError("Couldn't add that place — try again.");

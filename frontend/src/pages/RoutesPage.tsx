@@ -43,6 +43,7 @@ export default function RoutesPage() {
   const [editing, setEditing] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [edit, setEdit] = useState({ name: "", start_date: "", end_date: "", team_id: "" });
+  const [hoverNodeId, setHoverNodeId] = useState<number | null>(null);
 
   async function onLogout() {
     await signOut();
@@ -74,7 +75,7 @@ export default function RoutesPage() {
   const canAddFromMap = selectedId != null && canEdit;
   const addFromMap = (poiId: number, kind: RouteNodeKind) => {
     const poi = (poisQuery.data ?? []).find((p) => p.id === poiId);
-    const position = poi ? computeInsertPosition(detail?.nodes ?? [], poi) : null;
+    const position = poi ? computeInsertPosition(detail?.nodes ?? [], poi, passed) : null;
     addNodeFromMap.mutate({
       kind,
       poi_id: poiId,
@@ -203,7 +204,7 @@ export default function RoutesPage() {
                   </div>
                 </div>
               )}
-              <RouteTimeline route={detail} canEdit={canEdit} />
+              <RouteTimeline route={detail} canEdit={canEdit} onHoverNode={setHoverNodeId} />
               <div style={{ marginTop: 18 }}>
                 <p style={sectionLabel}>Route documents</p>
                 <RouteAttachments routeId={detail.id} nodeId={null} attachments={routeAttachments} canEdit={canEdit} />
@@ -248,6 +249,7 @@ export default function RoutesPage() {
             canAdd={canAddFromMap}
             onAddNode={addFromMap}
             passedNodeIds={passed}
+            highlightNodeId={hoverNodeId}
           />
         ) : null}
         account={{

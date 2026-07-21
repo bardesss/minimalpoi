@@ -4,7 +4,7 @@ import type { DayGroup } from "./routeDays";
 import type { RouteNode } from "../types/api";
 
 function node(id: number, name: string, lat: number, lng: number): RouteNode {
-  return { id, kind: "stop", position: id, nights: null, notes: null, poi_id: null, name, lat, lng, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null };
+  return { id, kind: "stop", position: id, nights: null, notes: null, poi_id: null, name, lat, lng, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null, role: null };
 }
 const groups: DayGroup[] = [
   { dayKey: "2026-07-14", driving_distance_m: 0, driving_duration_s: 0, nodes: [node(1, "Home", 52.0, 4.0)] },

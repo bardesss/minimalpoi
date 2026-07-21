@@ -10,7 +10,7 @@ const deleteAsync = vi.fn().mockResolvedValue(undefined);
 const detail: RouteDetail = {
   id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-20",
   scheduled_end_date: "2026-07-16", node_count: 0,
-  created_by: 1, owner_username: "admin", team_id: 9, team_name: "Ghosts", can_edit: true,
+  created_by: 1, owner_username: "admin", team_id: 9, team_name: "Ghosts", round_trip: false, can_edit: true,
   nodes: [], legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
 };
 

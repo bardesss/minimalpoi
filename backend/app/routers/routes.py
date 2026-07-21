@@ -8,11 +8,13 @@ from .. import attachments as att
 from ..deps import CurrentUser, SessionDep
 from ..models import (
     POI,
+    NodeRole,
     Role,
     Route,
     RouteAttachment,
     RouteLeg,
     RouteNode,
+    RouteNodeKind,
     Team,
     TeamMember,
     User,
@@ -55,7 +57,7 @@ def _summary(session, route: Route) -> RouteSummary:
     d = derive(nodes, legs_for(session, route.id), route.start_date)
     return RouteSummary(
         id=route.id, name=route.name, start_date=route.start_date,
-        end_date=route.end_date, scheduled_end_date=d["end_date"],
+        end_date=route.end_date, round_trip=route.round_trip, scheduled_end_date=d["end_date"],
         node_count=len(nodes), created_by=route.created_by,
         owner_username=_username(session, route.created_by),
         team_id=route.team_id, team_name=_team_name(session, route.team_id),
@@ -70,7 +72,7 @@ def _detail(session, route: Route, user: User) -> RouteDetail:
     for n in nodes:
         extra = d["stays"].get(n.id, {})
         node_reads.append(RouteNodeRead(
-            id=n.id, kind=n.kind, position=n.position, nights=n.nights, notes=n.notes,
+            id=n.id, kind=n.kind, role=n.role, position=n.position, nights=n.nights, notes=n.notes,
             poi_id=n.poi_id, name=n.name, lat=n.lat, lng=n.lng, day_offset=n.day_offset, **extra,
         ))
     attachments = session.exec(
@@ -78,7 +80,7 @@ def _detail(session, route: Route, user: User) -> RouteDetail:
     ).all()
     return RouteDetail(
         id=route.id, name=route.name, start_date=route.start_date,
-        end_date=route.end_date, scheduled_end_date=d["end_date"],
+        end_date=route.end_date, round_trip=route.round_trip, scheduled_end_date=d["end_date"],
         node_count=len(nodes), created_by=route.created_by,
         owner_username=_username(session, route.created_by),
         team_id=route.team_id, team_name=_team_name(session, route.team_id),
@@ -150,7 +152,7 @@ def create_route(request: Request, body: RouteCreate, session: SessionDep, user:
     if body.team_id is not None:
         _assert_can_assign_team(session, body.team_id, user)
     route = Route(name=body.name, start_date=body.start_date, end_date=body.end_date,
-                  team_id=body.team_id, created_by=user.id)
+                  round_trip=body.round_trip, team_id=body.team_id, created_by=user.id)
     session.add(route)
     session.commit()
     session.refresh(route)
@@ -172,7 +174,7 @@ def export_route(route_id: int, request: Request, session: SessionDep, _: Curren
 
 @router.patch("/{route_id}", response_model=RouteDetail, dependencies=[Gate])
 @limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
-def update_route(route_id: int, request: Request, body: RouteUpdate, session: SessionDep, user: CurrentUser) -> RouteDetail:
+async def update_route(route_id: int, request: Request, body: RouteUpdate, session: SessionDep, user: CurrentUser) -> RouteDetail:
     route = _get_route_or_404(session, route_id)
     require_route_editor(session, route, user)
     data = body.model_dump(exclude_unset=True)
@@ -190,6 +192,10 @@ def update_route(route_id: int, request: Request, body: RouteUpdate, session: Se
     route.updated_at = utcnow()
     session.add(route)
     session.commit()
+    if "round_trip" in data:
+        session.refresh(route)
+        _sync_round_trip(session, route)
+        await recompute_legs(session, route_id)
     session.refresh(route)
     return _detail(session, route, user)
 
@@ -212,8 +218,36 @@ def delete_route(route_id: int, request: Request, session: SessionDep, user: Cur
 
 
 def _next_position(session, route_id: int) -> float:
-    nodes = ordered_nodes(session, route_id)
-    return (nodes[-1].position + 1.0) if nodes else 1.0
+    """Append after the last MIDDLE node. Role nodes (start/end) are pinned by
+    rank in ordered_nodes and must NOT drive the append position, or a pinned
+    end would push new nodes past it / into position collisions."""
+    positions = [
+        n.position for n in session.exec(
+            select(RouteNode).where(RouteNode.route_id == route_id, RouteNode.role.is_(None))
+        ).all()
+    ]
+    return (max(positions) + 1.0) if positions else 1.0
+
+
+def _sync_round_trip(session, route: Route) -> None:
+    """Keep an end node mirroring the start place while round_trip is on. No-op
+    when round_trip is off or there is no start yet. Idempotent."""
+    if not route.round_trip:
+        return
+    nodes = session.exec(select(RouteNode).where(RouteNode.route_id == route.id)).all()
+    start = next((n for n in nodes if n.role == NodeRole.START), None)
+    if start is None:
+        return
+    end = next((n for n in nodes if n.role == NodeRole.END), None)
+    if end is None:
+        end = RouteNode(route_id=route.id, kind=RouteNodeKind.STOP, role=NodeRole.END,
+                        position=_next_position(session, route.id), name=start.name, lat=start.lat, lng=start.lng)
+    end.poi_id = start.poi_id
+    end.name = start.name
+    end.lat = start.lat
+    end.lng = start.lng
+    session.add(end)
+    session.commit()
 
 
 def _resolve_location(session, body: RouteNodeCreate) -> tuple[int | None, str, float, float]:
@@ -234,16 +268,25 @@ def _resolve_location(session, body: RouteNodeCreate) -> tuple[int | None, str, 
 async def add_node(route_id: int, request: Request, body: RouteNodeCreate, session: SessionDep, user: CurrentUser) -> RouteDetail:
     route = _get_route_or_404(session, route_id)
     require_route_editor(session, route, user)
+    if body.role is not None:
+        exists = session.exec(
+            select(RouteNode).where(RouteNode.route_id == route_id, RouteNode.role == body.role)
+        ).first()
+        if exists:
+            raise HTTPException(status_code=409, detail=f"Route already has a {body.role.value}")
     poi_id, name, lat, lng = _resolve_location(session, body)
+    # A start/end place is always a single point: coerce to a stop, drop nights.
+    kind = RouteNodeKind.STOP if body.role is not None else body.kind
     node = RouteNode(
-        route_id=route_id, kind=body.kind, poi_id=poi_id, name=name, lat=lat, lng=lng,
-        nights=body.nights if body.kind.value == "stay" else None,
-        day_offset=body.day_offset if body.kind.value == "stop" else None,
+        route_id=route_id, kind=kind, role=body.role, poi_id=poi_id, name=name, lat=lat, lng=lng,
+        nights=body.nights if kind.value == "stay" else None,
+        day_offset=body.day_offset if kind.value == "stop" and body.role is None else None,
         notes=body.notes,
         position=body.position if body.position is not None else _next_position(session, route_id),
     )
     session.add(node)
     session.commit()
+    _sync_round_trip(session, route)
     await recompute_legs(session, route_id)
     return _detail(session, route, user)
 
@@ -279,6 +322,7 @@ async def delete_node(route_id: int, node_id: int, request: Request, session: Se
         session.delete(a)
     session.delete(node)
     session.commit()
+    _sync_round_trip(session, route)
     await recompute_legs(session, route_id)
     return _detail(session, route, user)
 

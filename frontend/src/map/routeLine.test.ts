@@ -51,4 +51,21 @@ describe("routeLine", () => {
     expect(points.features[0].properties!.passed).toBe(false); // node 1 not passed
     expect(points.features[1].properties!.passed).toBe(true);  // node 2 passed
   });
+
+  it("numbers middle nodes 1..N by seq and skips role nodes", () => {
+    const mk = (id: number, role: string | null) => ({
+      id, kind: "stop", role, position: id, nights: null, notes: null, poi_id: null,
+      name: `n${id}`, lat: id, lng: id, arrive_date: null, depart_date: null,
+      inbound_distance_m: null, inbound_duration_s: null,
+    });
+    const nodes = [mk(1, "start"), mk(2, null), mk(3, null), mk(4, "end")] as any;
+    const { points } = routeLine(nodes);
+    const p = points.features.map((f) => f.properties!);
+    expect(p[0].role).toBe("start");
+    expect(p[0].seq).toBeUndefined();
+    expect(p[1].seq).toBe(1);
+    expect(p[2].seq).toBe(2);
+    expect(p[3].role).toBe("end");
+    expect(p[3].seq).toBeUndefined();
+  });
 });
