@@ -1,16 +1,19 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import RouteTimeline, { computeDropPosition } from "./RouteTimeline";
 import { groupNodesByDay, dayOffsetForDrop } from "../../lib/routeDays";
 import type { RouteDetail, RouteNode } from "../../types/api";
 
 const add = vi.fn();
 const update = vi.fn();
+const updateRoute = vi.fn();
 vi.mock("../../queries/hooks", () => ({
   useAddNode: () => ({ mutate: add, isPending: false }),
   useUpdateNode: () => ({ mutate: update, isPending: false }),
   useDeleteNode: () => ({ mutate: vi.fn(), isPending: false }),
+  useUpdateRoute: () => ({ mutate: updateRoute, isPending: false }),
   usePois: () => ({ data: [{ id: 7, name: "Utrecht", lat: 52.09, lng: 5.12 }] }),
   useUploadRouteAttachment: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteRouteAttachment: () => ({ mutate: vi.fn(), isPending: false }),
@@ -18,6 +21,11 @@ vi.mock("../../queries/hooks", () => ({
   usePlaceDraft: () => ({ mutateAsync: vi.fn() }),
   useCreatePoi: () => ({ mutateAsync: vi.fn() }),
 }));
+
+function wrap(ui: React.ReactNode) {
+  const qc = new QueryClient();
+  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
 
 vi.mock("../../lib/dayState", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../lib/dayState")>();
@@ -234,5 +242,34 @@ describe("drag a stop into another day (handler math)", () => {
     const day_offset = dayOffsetForDrop(multi, groups, multi.nodes[1].id, position, multi.nodes[2].id);
     expect(position).toBe(1.5);
     expect(day_offset).toBe(0); // target day is S1's arrival day (2026-07-14) → offset 0
+  });
+});
+
+describe("RouteTimeline start/end rows", () => {
+  const base: RouteDetail = {
+    id: 1, name: "Trip", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-14",
+    node_count: 0, created_by: 1, owner_username: "a", team_id: null, team_name: null, round_trip: false,
+    can_edit: true, nodes: [], legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
+  };
+
+  const start = { id: 10, kind: "stop", role: "start", position: 0, nights: null, notes: null, poi_id: null,
+    name: "Home", lat: 1, lng: 1, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null } as const;
+
+  it("shows a Set start place button when no start exists", () => {
+    wrap(<RouteTimeline route={base} canEdit />);
+    expect(screen.getByRole("button", { name: /set start place/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /set end place/i })).toBeInTheDocument();
+  });
+
+  it("renders the start place pinned and not draggable", () => {
+    wrap(<RouteTimeline route={{ ...base, nodes: [start] }} canEdit />);
+    expect(screen.getByText("Home")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /reorder home/i })).not.toBeInTheDocument();
+  });
+
+  it("collapses the End row to 'Return to' when round trip is on", () => {
+    wrap(<RouteTimeline route={{ ...base, round_trip: true, nodes: [start] }} canEdit />);
+    expect(screen.getByText(/return to home/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /set end place/i })).not.toBeInTheDocument();
   });
 });

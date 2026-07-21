@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { RouteDetail, RouteNode, RouteNodeCreate, RouteNodeKind } from "../../types/api";
 import { ghostButtonStyle, theme } from "../../theme";
-import { useAddNode, useUpdateNode } from "../../queries/hooks";
+import { useAddNode, useUpdateNode, useUpdateRoute } from "../../queries/hooks";
 import LegRow from "./LegRow";
 import RouteNodeRow from "./RouteNodeRow";
 import RouteAttachments from "./RouteAttachments";
@@ -47,8 +47,13 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
     for (const l of route.legs) m.set(`${l.from_node_id}:${l.to_node_id}`, l);
     return m;
   }, [route.legs]);
-  const indexById = useMemo(() => new Map(nodes.map((n, i) => [n.id, i])), [nodes]);
-  const dayGroups = useMemo(() => groupNodesByDay(route), [route]);
+  const startNode = nodes.find((n) => n.role === "start") ?? null;
+  const endNode = nodes.find((n) => n.role === "end") ?? null;
+  const middle = useMemo(() => nodes.filter((n) => n.role == null), [nodes]);
+  const updateRoute = useUpdateRoute();
+  const [pick, setPick] = useState<"start" | "end" | null>(null);
+  const indexById = useMemo(() => new Map(middle.map((n, i) => [n.id, i])), [middle]);
+  const dayGroups = useMemo(() => groupNodesByDay({ ...route, nodes: middle }), [route, middle]);
 
   const [today] = useState(todayIso);
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
@@ -92,18 +97,18 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
   function onDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const from = nodes.findIndex((n) => n.id === active.id);
-    const to = nodes.findIndex((n) => n.id === over.id);
+    const from = middle.findIndex((n) => n.id === active.id);
+    const to = middle.findIndex((n) => n.id === over.id);
     if (from === -1 || to === -1) return;
-    const pos = computeDropPosition(nodes, from, to);
+    const pos = computeDropPosition(middle, from, to);
     if (pos == null) return;
     // Stops carry a day; recompute it for the drop target so day and order stay
     // consistent. Stays have no day_offset — move position only.
-    if (nodes[from].kind === "stop") {
-      const day_offset = dayOffsetForDrop(route, dayGroups, nodes[to].id, pos, nodes[from].id);
-      updateNode.mutate({ nodeId: nodes[from].id, body: { position: pos, day_offset } });
+    if (middle[from].kind === "stop") {
+      const day_offset = dayOffsetForDrop(route, dayGroups, middle[to].id, pos, middle[from].id);
+      updateNode.mutate({ nodeId: middle[from].id, body: { position: pos, day_offset } });
     } else {
-      updateNode.mutate({ nodeId: nodes[from].id, body: { position: pos } });
+      updateNode.mutate({ nodeId: middle[from].id, body: { position: pos } });
     }
   }
 
@@ -112,16 +117,62 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
     setAdding(null);
   }
 
+  function submitEndpoint(body: RouteNodeCreate) {
+    addNode.mutate(body);
+    setPick(null);
+  }
+
+  const startBlock = (
+    <div style={{ marginBottom: 10 }}>
+      <p style={sectionLabel}>Start</p>
+      {startNode ? (
+        <RouteNodeRow node={startNode} routeId={route.id} canEdit={canEdit} pinned />
+      ) : canEdit && pick === "start" ? (
+        <NodePicker kind="stop" role="start" onCancel={() => setPick(null)} onSubmit={submitEndpoint} />
+      ) : canEdit ? (
+        <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={() => setPick("start")}>+ Set start place</button>
+      ) : null}
+    </div>
+  );
+
+  const endBlock = (
+    <div style={{ marginTop: 12 }}>
+      <p style={sectionLabel}>End</p>
+      {route.round_trip ? (
+        <p style={{ margin: "0 0 6px", fontSize: 13, color: theme.color.textSecondary }}>
+          Return to {startNode?.name ?? "start"}
+        </p>
+      ) : endNode ? (
+        <RouteNodeRow node={endNode} routeId={route.id} canEdit={canEdit} pinned />
+      ) : canEdit && pick === "end" ? (
+        <NodePicker kind="stop" role="end" onCancel={() => setPick(null)} onSubmit={submitEndpoint} />
+      ) : canEdit ? (
+        <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={() => setPick("end")}>+ Set end place</button>
+      ) : null}
+      {canEdit && (
+        <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 12.5, color: theme.color.textBody }}>
+          <input
+            type="checkbox"
+            checked={route.round_trip}
+            onChange={(e) => updateRoute.mutate({ id: route.id, body: { round_trip: e.target.checked } })}
+          />
+          Round trip (return to start)
+        </label>
+      )}
+    </div>
+  );
+
   return (
     <div>
       <p style={sectionLabel}>Itinerary</p>
-      {nodes.length === 0 && (
+      {startBlock}
+      {middle.length === 0 && (
         <p style={{ margin: "0 0 12px", fontSize: 13, color: theme.color.textPlaceholder }}>
           No stops yet. Add a stay or a stop to start building the route.
         </p>
       )}
       <DndContext sensors={sensors} collisionDetection={sortableCollision} onDragEnd={onDragEnd}>
-        <SortableContext items={nodes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={middle.map((n) => n.id)} strategy={verticalListSortingStrategy}>
           {dayGroups.map((group, gi) => {
             const expanded = isExpanded(group.dayKey);
             const isPast = isDayPassed(group.dayKey, today);
@@ -141,7 +192,7 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
                 {expanded && group.nodes.length === 0 && <p style={emptyDayHint}>No stops yet.</p>}
                 {expanded && group.nodes.map((n) => {
                   const i = indexById.get(n.id)!;
-                  const prev = i > 0 ? nodes[i - 1] : undefined;
+                  const prev = i > 0 ? middle[i - 1] : undefined;
                   const inbound = prev ? legByPair.get(`${prev.id}:${n.id}`) : undefined;
                   return (
                     <div key={n.id}>
@@ -182,6 +233,8 @@ export default function RouteTimeline({ route, canEdit }: { route: RouteDetail; 
           })}
         </SortableContext>
       </DndContext>
+
+      {endBlock}
 
       {navIndex !== null && (
         <NavigateDayModal
