@@ -36,10 +36,10 @@ Drop a pin or paste a link to auto-fill the details, rate the spots you've been,
 - **Tags** — tracked with usage counts, plus admin-wide **rename and delete**.
 
 ### 🧭 Route planner (optional)
-- **Build a journey** — an admin-enabled Route module turns your places into a named, dated trip: an ordered chain of multi-night **stays** and in-between **stops** (linked POIs or ad-hoc points).
+- **Build a journey** — an admin-enabled Route module turns your places into a named, dated trip: a **pinned start and end place** (with an optional **round trip** back to the start) wrapping an ordered chain of multi-night **stays** and in-between **stops** (linked POIs or ad-hoc points).
 - **Day-by-day itinerary** — the timeline groups the trip under dated day headers (e.g. *THU 16 JUL*), each showing that day's **driving total**; multi-night stays span their whole date range and rest-days fall away.
 - **Travel per leg** — each hop shows driving distance and time via **Google Directions**, with an offline **haversine estimate** fallback (flagged *est.*); arrival and departure dates and route totals are derived from the stay nights.
-- **Map-primary editor** — a full-screen map draws the numbered polyline while a floating timeline (bottom sheet on mobile) lets you add, **drag-and-drop reorder**, and re-night stops.
+- **Map-primary editor** — a full-screen map draws the numbered polyline while a floating timeline (bottom sheet on mobile) lets you add and **drag a whole row to reorder** stops and re-night stays; **matching numbers** tie each list row to its map pin, **hovering a row highlights** its marker, a **bookmark** flags stops you've saved as places, and adding a place from the map slots it into the best **upcoming** day (never one that's already passed).
 - **Shared & exportable** — every member sees all routes (only the creator or an admin can edit), export any route as **GeoJSON**, and attach tickets or confirmations (PDF or image, magic-byte checked, 10 MB cap) to the route or a single stop.
 
 ### 💾 Data, images & backups
