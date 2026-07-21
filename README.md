@@ -40,6 +40,7 @@ Drop a pin or paste a link to auto-fill the details, rate the spots you've been,
 - **Day-by-day itinerary** — the timeline groups the trip under dated day headers (e.g. *THU 16 JUL*), each showing that day's **driving total**; multi-night stays span their whole date range and rest-days fall away.
 - **Travel per leg** — each hop shows driving distance and time via **Google Directions**, with an offline **haversine estimate** fallback (flagged *est.*); arrival and departure dates and route totals are derived from the stay nights.
 - **Map-primary editor** — a full-screen map draws the numbered polyline while a floating timeline (bottom sheet on mobile) lets you add and **drag a whole row to reorder** stops and re-night stays; **matching numbers** tie each list row to its map pin, **hovering a row highlights** its marker, a **bookmark** flags stops you've saved as places, and adding a place from the map slots it into the best **upcoming** day (never one that's already passed).
+- **Share your route** — export a **Strava-style image** of the whole trip in three social formats (square, story, landscape), either over the **map** or as a **transparent overlay** to drop on your own photo, with MinimalPOI branding, the route name and dates, and a distance / days / stops stat strip.
 - **Shared & exportable** — every member sees all routes (only the creator or an admin can edit), export any route as **GeoJSON**, and attach tickets or confirmations (PDF or image, magic-byte checked, 10 MB cap) to the route or a single stop.
 
 ### 💾 Data, images & backups
