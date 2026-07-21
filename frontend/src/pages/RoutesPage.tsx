@@ -11,6 +11,7 @@ import RouteTimeline from "../components/routes/RouteTimeline";
 import RouteMap from "../components/routes/RouteMap";
 import RouteAttachments from "../components/routes/RouteAttachments";
 import SettingsModal from "../components/SettingsModal";
+import ShareImageModal from "../components/routes/ShareImageModal";
 import { formatTravel } from "../lib/formatTravel";
 import { passedNodeIds, todayIso } from "../lib/dayState";
 import { exportRoute } from "../api/routes";
@@ -40,6 +41,7 @@ export default function RoutesPage() {
   const [newTeam, setNewTeam] = useState("");
   const [collapsed, setCollapsed] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [edit, setEdit] = useState({ name: "", start_date: "", end_date: "", team_id: "" });
@@ -185,6 +187,14 @@ export default function RoutesPage() {
                 <div style={{ display: "flex", gap: 8 }}>
                   {canEdit && <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={openEdit}>Edit</button>}
                   <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }} onClick={onExport}>Export</button>
+                  <button
+                    type="button"
+                    style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }}
+                    onClick={() => setShareOpen(true)}
+                    disabled={(detail.nodes.length ?? 0) === 0}
+                  >
+                    Share image
+                  </button>
                 </div>
               </div>
               {editing && canEdit && (
@@ -261,6 +271,9 @@ export default function RoutesPage() {
         }}
       />
       {settingsModalOpen && <SettingsModal onClose={() => setSettingsModalOpen(false)} />}
+      {shareOpen && detail && settingsQuery.data && (
+        <ShareImageModal route={detail} settings={settingsQuery.data} onClose={() => setShareOpen(false)} />
+      )}
     </>
   );
 }
