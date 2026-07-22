@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.16.0](https://github.com/Bardesss/minimalpoi/compare/v2.15.0...v2.16.0) (2026-07-22)
+
+
+### Features
+
+* **routes:** create routes in a modal with a required start place ([b27105d](https://github.com/Bardesss/minimalpoi/commit/b27105d7bb05e4c783e2c9166a520f4af4f21d35))
+* **routes:** route-creation modal, share logo, start/end in itinerary ([1b25bd6](https://github.com/Bardesss/minimalpoi/commit/1b25bd615014cc4c22f4941386b90d14752bab00))
+* **routes:** show start/end as the first/last stops of the itinerary ([0b98268](https://github.com/Bardesss/minimalpoi/commit/0b98268688b2b267e2fca758edbf34043240b58e))
+
+
+### Bug Fixes
+
+* **share:** draw the real MapPin logo mark in the share image ([b210ad8](https://github.com/Bardesss/minimalpoi/commit/b210ad8ea4501f5ef26520521c8379ef53025283))
+
 ## [2.15.0](https://github.com/Bardesss/minimalpoi/compare/v2.14.0...v2.15.0) (2026-07-22)
 
 
