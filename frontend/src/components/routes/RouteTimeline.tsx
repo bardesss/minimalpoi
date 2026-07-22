@@ -6,7 +6,7 @@ import LegRow from "./LegRow";
 import RouteNodeRow from "./RouteNodeRow";
 import RouteAttachments from "./RouteAttachments";
 import NodePicker from "./NodePicker";
-import { DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, MouseSensor, TouchSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { groupNodesByDay, placeInDay, dayOffsetForDrop } from "../../lib/routeDays";
 import { sortableCollision } from "../../lib/routeCollision";
@@ -89,8 +89,13 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
     setDayAdding(null);
   }
 
+  // Mouse: a small drag threshold, so clicks on the row's nested buttons still
+  // fire. Touch: a press-and-hold delay with a movement tolerance, so a finger
+  // swipe scrolls the sheet and only a deliberate hold on the grip starts a
+  // reorder — this is what kills the "fat finger" accidental drags on mobile.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 

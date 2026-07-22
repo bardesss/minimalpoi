@@ -62,17 +62,21 @@ export default function RouteNodeRow({
     updateNode.mutate({ nodeId: node.id, body: { nights: Math.max(0, next) } });
   }
 
-  // Drag props live on the row container so the entire row is the target. The
-  // PointerSensor only activates after 5px of movement, so taps on the nested
-  // remove/nights buttons still fire their onClick without starting a drag.
-  const dragProps = draggable
+  const dragHandleProps = draggable
     ? { ...attributes, ...listeners, "aria-label": `Reorder ${node.name}`, role: "button" as const }
     : {};
+
+  // Desktop: the whole row is the drag target — roomy and mouse-friendly, and
+  // the MouseSensor's 5px threshold keeps nested button clicks working. Mobile:
+  // only the grip handle drags, so a finger can scroll the sheet by touching the
+  // row body instead of accidentally reordering it (the "fat finger" fix).
+  const rowDrag = draggable && !isMobile ? dragHandleProps : {};
+  const handleDrag = draggable && isMobile ? dragHandleProps : {};
 
   return (
     <div
       ref={setNodeRef}
-      {...dragProps}
+      {...rowDrag}
       onMouseEnter={() => onHover?.(node.id)}
       onMouseLeave={() => onHover?.(null)}
       onFocus={() => onHover?.(node.id)}
@@ -82,14 +86,28 @@ export default function RouteNodeRow({
         gap: 10,
         alignItems: "flex-start",
         padding: "8px 0",
-        cursor: draggable ? "grab" : "default",
-        touchAction: draggable ? "none" : undefined,
+        cursor: draggable && !isMobile ? "grab" : "default",
+        touchAction: draggable && !isMobile ? "none" : undefined,
         ...sortableStyle,
       }}
     >
       {draggable && (
-        <span aria-hidden style={{ flex: "none", width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", color: theme.color.textMuted }}>
-          <GripVertical size={16} />
+        <span
+          {...handleDrag}
+          aria-hidden={isMobile ? undefined : true}
+          style={{
+            flex: "none",
+            width: isMobile ? 40 : 26,
+            height: isMobile ? 40 : 26,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: theme.color.textMuted,
+            cursor: isMobile ? "grab" : undefined,
+            touchAction: isMobile ? "none" : undefined,
+          }}
+        >
+          <GripVertical size={isMobile ? 20 : 16} />
         </span>
       )}
       <span
