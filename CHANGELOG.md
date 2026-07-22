@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.18.0](https://github.com/Bardesss/minimalpoi/compare/v2.17.1...v2.18.0) (2026-07-22)
+
+
+### Features
+
+* **routes:** export routes as GPX and KML ([0aeda4c](https://github.com/Bardesss/minimalpoi/commit/0aeda4c0554a9279486d4ff98ea96c6df58060d0))
+* **routes:** GPX/KML exports; purge orphaned route-level attachments ([81db3d3](https://github.com/Bardesss/minimalpoi/commit/81db3d301e772a84660e28fd3d708d36de46d526))
+
+
+### Bug Fixes
+
+* **routes:** purge orphaned route-level attachments on startup ([40c8b3e](https://github.com/Bardesss/minimalpoi/commit/40c8b3e3104ae7221cfaebac3d727516f9960d14))
+
 ## [2.17.1](https://github.com/Bardesss/minimalpoi/compare/v2.17.0...v2.17.1) (2026-07-22)
 
 
