@@ -65,6 +65,26 @@ async function idleMap(opts: ShareRenderOptions): Promise<{ map: MlMap; containe
   }
 }
 
+// The lucide "map-pin" icon (24×24 viewBox) — the exact path BrandLogo renders,
+// so the share image's mark matches the app logo instead of a plain dot.
+const MAP_PIN_PATH = "M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0";
+
+function drawMapPin(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+  const s = size / 24;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2.4; // matches BrandLogo's strokeWidth, measured in the 24-unit space
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.stroke(new Path2D(MAP_PIN_PATH));
+  ctx.beginPath();
+  ctx.arc(12, 10, 3, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -179,10 +199,8 @@ export async function renderShareImage(opts: ShareRenderOptions): Promise<Blob> 
     ctx.fillStyle = grad;
     roundRect(ctx, L.logo.x, L.logo.y, L.logo.size, L.logo.size, Math.round(L.logo.size * 0.28));
     ctx.fill();
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.arc(L.logo.x + L.logo.size / 2, L.logo.y + L.logo.size * 0.42, L.logo.size * 0.16, 0, Math.PI * 2);
-    ctx.fill();
+    const iconSize = L.logo.size * 0.56;
+    drawMapPin(ctx, L.logo.x + (L.logo.size - iconSize) / 2, L.logo.y + (L.logo.size - iconSize) / 2, iconSize);
     ctx.fillStyle = ink;
     ctx.font = `800 ${L.wordmark.fontSize}px system-ui, sans-serif`;
     ctx.fillText("MinimalPOI", L.wordmark.x, L.wordmark.y);

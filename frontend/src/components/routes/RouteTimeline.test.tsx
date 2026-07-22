@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import RouteTimeline, { computeDropPosition } from "./RouteTimeline";
@@ -271,5 +271,22 @@ describe("RouteTimeline start/end rows", () => {
     wrap(<RouteTimeline route={{ ...base, round_trip: true, nodes: [start] }} canEdit />);
     expect(screen.getByText(/return to home/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /set end place/i })).not.toBeInTheDocument();
+  });
+
+  it("labels the start as the first stop of the first day", () => {
+    const withDays: RouteDetail = {
+      ...base,
+      nodes: [
+        start,
+        { ...node(1, "stay", 1), name: "Aalborg", arrive_date: "2026-07-14", depart_date: "2026-07-15", nights: 1 },
+      ],
+    };
+    wrap(<RouteTimeline route={withDays} canEdit />);
+    const cards = screen.getAllByTestId("day-card");
+    // The start place sits inside the first day card, captioned "Starting point".
+    expect(within(cards[0]).getByText(/starting point/i)).toBeInTheDocument();
+    expect(within(cards[0]).getByText("Home")).toBeInTheDocument();
+    // The ending point caption rides in the last day card.
+    expect(within(cards[cards.length - 1]).getByText(/ending point/i)).toBeInTheDocument();
   });
 });

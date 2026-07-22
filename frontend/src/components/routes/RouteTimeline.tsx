@@ -127,33 +127,41 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
     setPick(null);
   }
 
-  const startBlock = (
-    <div style={{ marginBottom: 10 }}>
-      <p style={sectionLabel}>Start</p>
-      {startNode ? (
-        <RouteNodeRow node={startNode} routeId={route.id} canEdit={canEdit} pinned onHover={onHoverNode} />
-      ) : canEdit && pick === "start" ? (
-        <NodePicker kind="stop" role="start" onCancel={() => setPick(null)} onSubmit={submitEndpoint} />
-      ) : canEdit ? (
-        <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={() => setPick("start")}>+ Set start place</button>
-      ) : null}
+  // Start/end are pinned bookends of the itinerary: the start rides at the top of
+  // the first day, the end at the bottom of the last day, each with a clear
+  // "Starting point" / "Ending point" caption. Both collapse to nothing when
+  // there's nothing to show (read-only route with no endpoints set).
+  const pinLabel = { fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".05em", color: theme.color.deepIndigoText, margin: "0 0 4px" } as const;
+
+  const startContent = startNode ? (
+    <RouteNodeRow node={startNode} routeId={route.id} canEdit={canEdit} pinned onHover={onHoverNode} />
+  ) : canEdit && pick === "start" ? (
+    <NodePicker kind="stop" role="start" onCancel={() => setPick(null)} onSubmit={submitEndpoint} />
+  ) : canEdit ? (
+    <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={() => setPick("start")}>+ Set start place</button>
+  ) : null;
+  const startSlot = startContent && (
+    <div style={{ marginBottom: 6 }}>
+      <p style={pinLabel}>Starting point</p>
+      {startContent}
     </div>
   );
 
-  const endBlock = (
-    <div style={{ marginTop: 12 }}>
-      <p style={sectionLabel}>End</p>
-      {route.round_trip ? (
-        <p style={{ margin: "0 0 6px", fontSize: 13, color: theme.color.textSecondary }}>
-          Return to {startNode?.name ?? "start"}
-        </p>
-      ) : endNode ? (
-        <RouteNodeRow node={endNode} routeId={route.id} canEdit={canEdit} pinned onHover={onHoverNode} />
-      ) : canEdit && pick === "end" ? (
-        <NodePicker kind="stop" role="end" onCancel={() => setPick(null)} onSubmit={submitEndpoint} />
-      ) : canEdit ? (
-        <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={() => setPick("end")}>+ Set end place</button>
-      ) : null}
+  const endContent = route.round_trip ? (
+    <p style={{ margin: "0 0 6px", fontSize: 13, color: theme.color.textSecondary }}>
+      Return to {startNode?.name ?? "start"}
+    </p>
+  ) : endNode ? (
+    <RouteNodeRow node={endNode} routeId={route.id} canEdit={canEdit} pinned onHover={onHoverNode} />
+  ) : canEdit && pick === "end" ? (
+    <NodePicker kind="stop" role="end" onCancel={() => setPick(null)} onSubmit={submitEndpoint} />
+  ) : canEdit ? (
+    <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={() => setPick("end")}>+ Set end place</button>
+  ) : null;
+  const endSlot = (endContent || canEdit) && (
+    <div style={{ marginTop: 8 }}>
+      <p style={pinLabel}>Ending point</p>
+      {endContent}
       {canEdit && (
         <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 12.5, color: theme.color.textBody }}>
           <input
@@ -170,12 +178,6 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
   return (
     <div>
       <p style={sectionLabel}>Itinerary</p>
-      {startBlock}
-      {middle.length === 0 && (
-        <p style={{ margin: "0 0 12px", fontSize: 13, color: theme.color.textPlaceholder }}>
-          No stops yet. Add a stay or a stop to start building the route.
-        </p>
-      )}
       <DndContext sensors={sensors} collisionDetection={sortableCollision} onDragEnd={onDragEnd}>
         <SortableContext items={middle.map((n) => n.id)} strategy={verticalListSortingStrategy}>
           {dayGroups.map((group, gi) => {
@@ -194,6 +196,7 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
                   onToggle={() => toggleDay(group.dayKey)}
                   onNavigate={() => navigateDay(gi)}
                 />
+                {gi === 0 && startSlot && <div style={{ marginTop: 8 }}>{startSlot}</div>}
                 {expanded && group.nodes.length === 0 && <p style={emptyDayHint}>No stops yet.</p>}
                 {expanded && group.nodes.map((n) => {
                   const i = indexById.get(n.id)!;
@@ -235,13 +238,25 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
                     )}
                   </div>
                 )}
+                {gi === dayGroups.length - 1 && endSlot && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${theme.color.borderSubtle}` }}>{endSlot}</div>
+                )}
               </div>
             );
           })}
+          {dayGroups.length === 0 && (
+            <div data-testid="day-card" style={dayCardStyle}>
+              {startSlot}
+              {middle.length === 0 && (
+                <p style={{ margin: "10px 0", fontSize: 13, color: theme.color.textPlaceholder }}>
+                  No stops yet. Add a stay or a stop to start building the route.
+                </p>
+              )}
+              {endSlot}
+            </div>
+          )}
         </SortableContext>
       </DndContext>
-
-      {endBlock}
 
       {navIndex !== null && (
         <NavigateDayModal

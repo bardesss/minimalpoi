@@ -341,6 +341,29 @@ export function useUpdateRoute() {
   return useMutation({ mutationFn: ({ id, body }: { id: number; body: RouteUpdate }) => updateRoute(id, body),
     onSuccess: (r) => { qc.invalidateQueries({ queryKey: ["routes"] }); qc.invalidateQueries({ queryKey: ["routes", r.id] }); } });
 }
+
+export interface RoutePlan {
+  route: RouteCreate;         // name/dates/team; round_trip is derived below
+  start: RouteNodeCreate;     // required start place (role: "start")
+  end: RouteNodeCreate | null; // custom end place (role: "end"); null ⇒ round trip
+}
+
+// Create a route together with its start (and end) in one call. The route is
+// created with round_trip off, the start node is added, then either the end
+// node is added, or round_trip is switched on so the backend mirrors the start
+// as the end — the same path the timeline's round-trip toggle already uses.
+export function useCreateRoutePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ route, start, end }: RoutePlan): Promise<RouteDetail> => {
+      const created = await createRoute({ ...route, round_trip: false });
+      await addNode(created.id, start);
+      if (end) return addNode(created.id, end);
+      return updateRoute(created.id, { round_trip: true });
+    },
+    onSuccess: (r) => { qc.setQueryData(["routes", r.id], r); qc.invalidateQueries({ queryKey: ["routes"] }); },
+  });
+}
 export function useDeleteRoute() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (id: number) => deleteRoute(id),

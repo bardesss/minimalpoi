@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import RoutesPage from "./RoutesPage";
 import type { RouteDetail } from "../types/api";
 
-const createAsync = vi.fn().mockResolvedValue({ id: 5 });
+const createPlanAsync = vi.fn().mockResolvedValue({ id: 5 });
 const updateAsync = vi.fn().mockResolvedValue({ id: 5 });
 const deleteAsync = vi.fn().mockResolvedValue(undefined);
 const detail: RouteDetail = {
@@ -27,7 +27,10 @@ vi.mock("../queries/hooks", () => ({
   useRoute: () => ({ data: detail, isLoading: false }),
   useSettings: () => ({ data: { map_tile_url: "", default_map_center_lat: 52, default_map_center_lng: 4, default_map_zoom: 11, routes_enabled: true } }),
   useTeams: () => ({ data: [{ id: 3, name: "Crew", created_by: 1, member_ids: [1] }] }),
-  useCreateRoute: () => ({ mutateAsync: createAsync, isPending: false }),
+  useCreateRoutePlan: () => ({ mutateAsync: createPlanAsync, isPending: false }),
+  useSearchPlaces: () => ({ mutateAsync: vi.fn() }),
+  usePlaceDraft: () => ({ mutateAsync: vi.fn() }),
+  useCreatePoi: () => ({ mutateAsync: vi.fn() }),
   useAddNode: () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateNode: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteNode: () => ({ mutate: vi.fn(), isPending: false }),
@@ -45,7 +48,7 @@ vi.mock("../auth/AuthContext", () => ({
 }));
 
 beforeEach(() => {
-  createAsync.mockClear();
+  createPlanAsync.mockClear();
   updateAsync.mockClear();
   deleteAsync.mockClear();
 });
@@ -58,6 +61,19 @@ function renderPage() {
   );
 }
 
+/** Open the New route modal and set the required start place as an ad-hoc point. */
+function openModalWithStart(name: string, start: string) {
+  fireEvent.click(screen.getByRole("button", { name: /new route/i }));
+  fireEvent.change(screen.getByLabelText(/route name/i), { target: { value: name } });
+  fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: start } });
+  fireEvent.click(screen.getByRole("button", { name: /set start place/i }));
+  fireEvent.click(screen.getByRole("button", { name: /add a point manually/i }));
+  fireEvent.change(screen.getByLabelText(/point name/i), { target: { value: "Chamonix" } });
+  fireEvent.change(screen.getByLabelText(/^latitude$/i), { target: { value: "45.9" } });
+  fireEvent.change(screen.getByLabelText(/^longitude$/i), { target: { value: "6.87" } });
+  fireEvent.click(screen.getByRole("button", { name: /add point/i }));
+}
+
 describe("RoutesPage", () => {
   it("lists routes and opens the timeline on select", async () => {
     renderPage();
@@ -66,12 +82,39 @@ describe("RoutesPage", () => {
     expect(screen.getByRole("button", { name: /add stay/i })).toBeInTheDocument();
   });
 
-  it("creates a route from the form", async () => {
+  it("creates a route with a required start place, round trip by default", async () => {
     renderPage();
+    openModalWithStart("Alps", "2026-08-01");
+    fireEvent.click(screen.getByRole("button", { name: /create route/i }));
+    await waitFor(() => expect(createPlanAsync).toHaveBeenCalledWith({
+      route: { name: "Alps", start_date: "2026-08-01" },
+      start: { kind: "stop", role: "start", name: "Chamonix", lat: 45.9, lng: 6.87, nights: null },
+      end: null,
+    }));
+  });
+
+  it("requires a start place before the route can be created", () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /new route/i }));
     fireEvent.change(screen.getByLabelText(/route name/i), { target: { value: "Alps" } });
     fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: "2026-08-01" } });
+    expect(screen.getByRole("button", { name: /create route/i })).toBeDisabled();
+  });
+
+  it("adds a custom end place when round trip is unchecked", async () => {
+    renderPage();
+    openModalWithStart("Alps", "2026-08-01");
+    fireEvent.click(screen.getByLabelText(/round trip/i)); // uncheck
+    fireEvent.click(screen.getByRole("button", { name: /set end place/i }));
+    fireEvent.click(screen.getByRole("button", { name: /add a point manually/i }));
+    fireEvent.change(screen.getByLabelText(/point name/i), { target: { value: "Nice" } });
+    fireEvent.change(screen.getByLabelText(/^latitude$/i), { target: { value: "43.7" } });
+    fireEvent.change(screen.getByLabelText(/^longitude$/i), { target: { value: "7.26" } });
+    fireEvent.click(screen.getByRole("button", { name: /add point/i }));
     fireEvent.click(screen.getByRole("button", { name: /create route/i }));
-    await waitFor(() => expect(createAsync).toHaveBeenCalledWith({ name: "Alps", start_date: "2026-08-01" }));
+    await waitFor(() => expect(createPlanAsync).toHaveBeenCalledWith(expect.objectContaining({
+      end: { kind: "stop", role: "end", name: "Nice", lat: 43.7, lng: 7.26, nights: null },
+    })));
   });
 
   it("shows planned end date with the scheduled hint when they differ", async () => {
@@ -102,12 +145,21 @@ describe("RoutesPage", () => {
 
   it("assigns a team when creating a route", async () => {
     renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /new route/i }));
     fireEvent.change(screen.getByLabelText(/route name/i), { target: { value: "Alps" } });
     fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: "2026-08-01" } });
     fireEvent.change(screen.getByLabelText(/team \(optional\)/i), { target: { value: "3" } });
+    fireEvent.click(screen.getByRole("button", { name: /set start place/i }));
+    fireEvent.click(screen.getByRole("button", { name: /add a point manually/i }));
+    fireEvent.change(screen.getByLabelText(/point name/i), { target: { value: "Chamonix" } });
+    fireEvent.change(screen.getByLabelText(/^latitude$/i), { target: { value: "45.9" } });
+    fireEvent.change(screen.getByLabelText(/^longitude$/i), { target: { value: "6.87" } });
+    fireEvent.click(screen.getByRole("button", { name: /add point/i }));
     fireEvent.click(screen.getByRole("button", { name: /create route/i }));
     await waitFor(() =>
-      expect(createAsync).toHaveBeenCalledWith({ name: "Alps", start_date: "2026-08-01", team_id: 3 }),
+      expect(createPlanAsync).toHaveBeenCalledWith(expect.objectContaining({
+        route: { name: "Alps", start_date: "2026-08-01", team_id: 3 },
+      })),
     );
   });
 
