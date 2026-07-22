@@ -85,11 +85,39 @@ def _add_missing_columns(engine) -> None:
                 logger.warning("Could not add column %s.%s: %s", table.name, col.name, exc)
 
 
+def _purge_orphan_route_attachments() -> None:
+    """Route-level attachments (node_id NULL) are unreachable now that documents
+    attach to a stop or stay. Delete any leftovers — rows and their files — once.
+    Idempotent: a no-op after the first run leaves nothing to purge."""
+    from sqlmodel import Session, select
+
+    from . import attachments as att
+    from .models import RouteAttachment
+
+    # The table may not exist yet if create_all ran before the models were
+    # imported (e.g. in a fresh test process); nothing to purge in that case.
+    if "routeattachment" not in inspect(engine).get_table_names():
+        return
+
+    with Session(engine) as session:
+        orphans = session.exec(
+            select(RouteAttachment).where(RouteAttachment.node_id.is_(None))
+        ).all()
+        if not orphans:
+            return
+        for a in orphans:
+            att.remove(a.stored_filename)
+            session.delete(a)
+        session.commit()
+        logger.info("Purged %d orphaned route-level attachment(s)", len(orphans))
+
+
 def init_db() -> None:
     if engine is None:
         reset_engine()
     SQLModel.metadata.create_all(engine)
     _add_missing_columns(engine)
+    _purge_orphan_route_attachments()
 
 
 def get_session() -> Iterator[Session]:
