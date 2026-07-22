@@ -11,6 +11,31 @@ export function splitTags(text: string): string[] {
   return text.split(/[,;|]/).map((t) => t.trim()).filter(Boolean);
 }
 
+// Parse a single coordinate field into a finite number, or null when it isn't
+// usable. Accepts a decimal comma ("52,3676") as long as it's a lone value —
+// so a pasted "lat, lng" pair (handled by parseCoordPair) isn't mistaken for
+// one number.
+export function parseCoord(raw: string): number | null {
+  const s = raw.trim();
+  if (s === "") return null;
+  const normalized = /^-?\d+,\d+$/.test(s) ? s.replace(",", ".") : s;
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
+// A "lat, lng" pair pasted into one field → the two numbers. Only splits when
+// it's unambiguous: separated by whitespace, or dot-decimals split by a comma.
+// A lone "52,3676" stays a decimal-comma value.
+export function parseCoordPair(raw: string): { lat: number; lng: number } | null {
+  const s = raw.trim();
+  if (!/\s/.test(s) && !(s.includes(".") && s.includes(","))) return null;
+  const m = s.match(/^(-?\d+(?:[.,]\d+)?)\s*[,\s]\s*(-?\d+(?:[.,]\d+)?)$/);
+  if (!m) return null;
+  const lat = parseCoord(m[1]);
+  const lng = parseCoord(m[2]);
+  return lat != null && lng != null ? { lat, lng } : null;
+}
+
 export interface PoiFormInitial {
   name: string;
   address: string | null;
@@ -48,7 +73,7 @@ export default function PoiFormModal({
   initial: PoiFormInitial | null;
   categories: Category[];
   coords: { lng: number; lat: number } | null;
-  onSubmit: (payload: PoiCreate) => void;
+  onSubmit: (payload: PoiCreate) => void | Promise<void>;
   onClose: () => void;
   onCheckDuplicate: (body: { name: string; lat: number; lng: number }) => void;
   duplicateId: number | null;
@@ -86,6 +111,9 @@ export default function PoiFormModal({
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [results, setResults] = useState<PlaceSearchResult[]>([]);
+
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Click-to-place / map-center updates flow in via `coords` (add mode only).
   useEffect(() => {
@@ -185,14 +213,28 @@ export default function PoiFormModal({
       <span style={{ fontFamily: theme.font.mono, fontSize: 11, color: theme.color.textPlaceholder }}>from {fieldSources[field]}</span>
     ) : null;
 
-  function submit() {
+  async function submit() {
+    const latNum = parseCoord(lat);
+    const lngNum = parseCoord(lng);
+    if (name.trim() === "") {
+      setSaveError("Give the place a name.");
+      return;
+    }
+    if (latNum === null || lngNum === null) {
+      setSaveError("Enter valid coordinates, e.g. 52.3676, 4.9041.");
+      return;
+    }
+    if (latNum < -90 || latNum > 90 || lngNum < -180 || lngNum > 180) {
+      setSaveError("Coordinates are out of range (latitude ±90, longitude ±180).");
+      return;
+    }
     const payload: PoiCreate = {
       name: name.trim(),
       address: nn(address),
       city,
       country_code: countryCode,
-      lat: Number(lat),
-      lng: Number(lng),
+      lat: latNum,
+      lng: lngNum,
       category_id: categoryId === "" ? null : Number(categoryId),
       tags: splitTags(tagsText),
       notes: nn(notes),
@@ -201,7 +243,15 @@ export default function PoiFormModal({
       website: nn(website),
       image_url: imageUrl,
     };
-    onSubmit(payload);
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSubmit(payload);
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : "Couldn't save — please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function maybeCheckDuplicate() {
@@ -321,12 +371,28 @@ export default function PoiFormModal({
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <label style={label} htmlFor="poi-lat">Latitude</label>
-              <input id="poi-lat" style={monoInputStyle} value={lat} onChange={(e) => setLat(e.target.value)} onBlur={maybeCheckDuplicate} placeholder="52.3676" />
+              <input
+                id="poi-lat"
+                style={monoInputStyle}
+                value={lat}
+                onChange={(e) => {
+                  setSaveError(null);
+                  const pair = parseCoordPair(e.target.value);
+                  if (pair) {
+                    setLat(String(pair.lat));
+                    setLng(String(pair.lng));
+                  } else {
+                    setLat(e.target.value);
+                  }
+                }}
+                onBlur={maybeCheckDuplicate}
+                placeholder="52.3676"
+              />
               {caption("lat")}
             </div>
             <div style={{ flex: 1 }}>
               <label style={label} htmlFor="poi-lng">Longitude</label>
-              <input id="poi-lng" style={monoInputStyle} value={lng} onChange={(e) => setLng(e.target.value)} onBlur={maybeCheckDuplicate} placeholder="4.9041" />
+              <input id="poi-lng" style={monoInputStyle} value={lng} onChange={(e) => { setSaveError(null); setLng(e.target.value); }} onBlur={maybeCheckDuplicate} placeholder="4.9041" />
               {caption("lng")}
             </div>
           </div>
@@ -355,9 +421,14 @@ export default function PoiFormModal({
           </div>
         </div>
 
-        <div style={{ position: "sticky", bottom: 0, background: "#fff", display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 24px 22px" }}>
-          <button type="button" onClick={onClose} style={ghostButtonStyle}>Cancel</button>
-          <button type="button" onClick={submit} style={primaryButtonStyle}>{mode === "add" ? "Add place" : "Save changes"}</button>
+        <div style={{ position: "sticky", bottom: 0, background: "#fff", display: "flex", flexDirection: "column", gap: 8, padding: "14px 24px 22px" }}>
+          {saveError && (
+            <div role="alert" style={{ fontSize: 12.5, color: theme.color.dangerText, textAlign: "right" }}>{saveError}</div>
+          )}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <button type="button" onClick={onClose} style={ghostButtonStyle}>Cancel</button>
+            <button type="button" onClick={submit} disabled={saving} style={primaryButtonStyle}>{saving ? "Saving…" : mode === "add" ? "Add place" : "Save changes"}</button>
+          </div>
         </div>
       </div>
     </div>

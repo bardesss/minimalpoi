@@ -1,10 +1,40 @@
 // frontend/src/components/PoiFormModal.test.tsx
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Category, PoiDraft } from "../types/api";
 import { ApiError } from "../api/client";
-import PoiFormModal, { splitTags } from "./PoiFormModal";
+import PoiFormModal, { splitTags, parseCoord, parseCoordPair } from "./PoiFormModal";
+
+describe("parseCoord", () => {
+  it("parses a plain number", () => {
+    expect(parseCoord("52.3676")).toBe(52.3676);
+    expect(parseCoord(" -4.5 ")).toBe(-4.5);
+  });
+  it("accepts a lone decimal comma", () => {
+    expect(parseCoord("52,3676")).toBe(52.3676);
+  });
+  it("rejects junk and empties", () => {
+    expect(parseCoord("")).toBeNull();
+    expect(parseCoord("abc")).toBeNull();
+    expect(parseCoord("52.3, 4.9")).toBeNull();
+  });
+});
+
+describe("parseCoordPair", () => {
+  it("splits a pasted dot-decimal pair", () => {
+    expect(parseCoordPair("52.3676, 4.9041")).toEqual({ lat: 52.3676, lng: 4.9041 });
+  });
+  it("splits a whitespace-separated pair", () => {
+    expect(parseCoordPair("52.3676 4.9041")).toEqual({ lat: 52.3676, lng: 4.9041 });
+  });
+  it("does not treat a lone decimal comma as a pair", () => {
+    expect(parseCoordPair("52,3676")).toBeNull();
+  });
+  it("returns null for a single value", () => {
+    expect(parseCoordPair("52.3676")).toBeNull();
+  });
+});
 
 const cats: Category[] = [{ id: 1, name: "Restaurants", color: "#E1574C", icon: null, created_by: 1, trip_category_id: null, trip_sync_status: "s" }];
 
@@ -23,6 +53,30 @@ describe("PoiFormModal", () => {
     await userEvent.type(screen.getByLabelText(/^tags$/i), "a, b");
     await userEvent.click(screen.getByRole("button", { name: /add place/i }));
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: "New Spot", lat: 52.37, lng: 4.9, tags: ["a", "b"] }));
+  });
+
+  it("splits a pasted 'lat, lng' pair across both coordinate fields", () => {
+    render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    fireEvent.change(screen.getByLabelText(/latitude/i), { target: { value: "52.3676, 4.9041" } });
+    expect(screen.getByLabelText(/latitude/i)).toHaveValue("52.3676");
+    expect(screen.getByLabelText(/longitude/i)).toHaveValue("4.9041");
+  });
+
+  it("blocks save and warns when coordinates are invalid", async () => {
+    const onSubmit = vi.fn();
+    render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={onSubmit} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    await userEvent.type(screen.getByLabelText(/^name$/i), "No Coords");
+    await userEvent.click(screen.getByRole("button", { name: /add place/i }));
+    expect(await screen.findByText(/enter valid coordinates/i)).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a backend error instead of failing silently", async () => {
+    const onSubmit = vi.fn().mockRejectedValue(new ApiError(422, "Coordinates required"));
+    render(<PoiFormModal mode="add" initial={null} categories={cats} coords={{ lng: 4.9, lat: 52.37 }} onSubmit={onSubmit} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    await userEvent.type(screen.getByLabelText(/^name$/i), "Boom");
+    await userEvent.click(screen.getByRole("button", { name: /add place/i }));
+    expect(await screen.findByText(/coordinates required/i)).toBeInTheDocument();
   });
 
   it("checks for duplicates on name blur and warns", async () => {
