@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.19.0](https://github.com/Bardesss/minimalpoi/compare/v2.18.0...v2.19.0) (2026-07-22)
+
+
+### Features
+
+* **routes:** scope route attachments to the team ([620f81a](https://github.com/Bardesss/minimalpoi/commit/620f81aca978639b6df121d8ad62fb3918058ae2))
+* **routes:** scope route attachments to the team ([c9c3185](https://github.com/Bardesss/minimalpoi/commit/c9c318512d42c34362ec2fb42bd8f22d33fc82ac))
+
 ## [2.18.0](https://github.com/Bardesss/minimalpoi/compare/v2.17.1...v2.18.0) (2026-07-22)
 
 
