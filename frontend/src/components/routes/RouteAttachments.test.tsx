@@ -22,27 +22,27 @@ const pdf: RouteAttachment = {
 
 describe("RouteAttachments", () => {
   it("uploads a chosen file with the node id", () => {
-    render(<RouteAttachments routeId={1} nodeId={null} attachments={[]} canEdit />);
+    render(<RouteAttachments routeId={1} nodeId={5} attachments={[]} canEdit />);
     const file = new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], "hotel.pdf", { type: "application/pdf" });
     const input = screen.getByLabelText(/add file/i) as HTMLInputElement;
     fireEvent.change(input, { target: { files: [file] } });
-    expect(upload).toHaveBeenCalledWith({ file, nodeId: undefined });
+    expect(upload).toHaveBeenCalledWith({ file, nodeId: 5 });
   });
 
   it("lists an existing attachment with a download link", () => {
-    render(<RouteAttachments routeId={1} nodeId={null} attachments={[pdf]} canEdit />);
+    render(<RouteAttachments routeId={1} nodeId={5} attachments={[pdf]} canEdit />);
     const link = screen.getByRole("link", { name: /hotel\.pdf/i });
     expect(link).toHaveAttribute("href", "/api/routes/1/attachments/3");
   });
 
   it("deletes an attachment when editable", () => {
-    render(<RouteAttachments routeId={1} nodeId={null} attachments={[pdf]} canEdit />);
+    render(<RouteAttachments routeId={1} nodeId={5} attachments={[pdf]} canEdit />);
     fireEvent.click(screen.getByRole("button", { name: /delete hotel\.pdf/i }));
     expect(del).toHaveBeenCalledWith(3);
   });
 
   it("hides upload and delete controls in read-only mode", () => {
-    render(<RouteAttachments routeId={1} nodeId={null} attachments={[pdf]} canEdit={false} />);
+    render(<RouteAttachments routeId={1} nodeId={5} attachments={[pdf]} canEdit={false} />);
     expect(screen.queryByLabelText(/add file/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /delete hotel\.pdf/i })).not.toBeInTheDocument();
   });

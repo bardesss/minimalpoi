@@ -12,8 +12,8 @@ function prettySize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-// Tickets/confirmations for a route (nodeId null) or a single stop/stay. PDF +
-// image uploads; the backend enforces the magic-byte allowlist and size cap.
+// Tickets/confirmations for a single stop or stay. PDF + image uploads; the
+// backend enforces the magic-byte allowlist and size cap.
 export default function RouteAttachments({
   routeId,
   nodeId,
@@ -21,7 +21,7 @@ export default function RouteAttachments({
   canEdit,
 }: {
   routeId: number;
-  nodeId: number | null;
+  nodeId: number;
   attachments: RouteAttachment[];
   canEdit: boolean;
 }) {
@@ -31,7 +31,7 @@ export default function RouteAttachments({
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) upload.mutate({ file, nodeId: nodeId ?? undefined });
+    if (file) upload.mutate({ file, nodeId });
     e.target.value = ""; // allow re-picking the same file
   }
 
