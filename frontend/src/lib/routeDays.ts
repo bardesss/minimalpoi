@@ -134,6 +134,36 @@ export function placeInDay(route: RouteDetail, groups: DayGroup[], groupIndex: n
   return { position, day_offset };
 }
 
+/** Where to drop an existing node so it lands in day-group `groupIndex`: a list
+ * position at the end of that day's block and the matching `day_offset`, with the
+ * dragged node itself excluded from the scan. Used when a node is dropped onto an
+ * empty day, which has no sortable row of its own to anchor against. */
+export function dropIntoDay(route: RouteDetail, groups: DayGroup[], groupIndex: number, draggedId: number): { position: number; day_offset: number } {
+  const target = groups[groupIndex];
+  const ordered = [...route.nodes].filter((n) => n.id !== draggedId).sort((a, b) => a.position - b.position);
+
+  // Anchor: last node (excluding the dragged one) on the target day or the
+  // nearest earlier day.
+  let anchor: RouteNode | null = null;
+  for (let k = groupIndex; k >= 0; k--) {
+    const ns = groups[k].nodes.filter((n) => n.id !== draggedId);
+    if (ns.length) { anchor = ns[ns.length - 1]; break; }
+  }
+
+  let position: number;
+  if (!anchor) {
+    position = ordered.length ? ordered[0].position - 1 : 1;
+  } else {
+    const i = ordered.findIndex((n) => n.id === anchor!.id);
+    const next = ordered[i + 1];
+    position = next ? (anchor.position + next.position) / 2 : anchor.position + 1;
+  }
+
+  const base = baseStayAt(route, position, draggedId);
+  const day_offset = clamp(daysBetween(base.arrive, target.dayKey), 0, base.span);
+  return { position, day_offset };
+}
+
 /** New `day_offset` for a stop dragged to list `position` and dropped onto the
  * node `overId` (whose day is the target). Excludes the dragged node from the
  * base-stay scan so it doesn't count itself. */
