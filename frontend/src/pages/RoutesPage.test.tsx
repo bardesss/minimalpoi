@@ -5,7 +5,6 @@ import RoutesPage from "./RoutesPage";
 import type { RouteDetail } from "../types/api";
 
 const createPlanAsync = vi.fn().mockResolvedValue({ id: 5 });
-const updateAsync = vi.fn().mockResolvedValue({ id: 5 });
 const deleteAsync = vi.fn().mockResolvedValue(undefined);
 const detail: RouteDetail = {
   id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-20",
@@ -40,7 +39,6 @@ vi.mock("../queries/hooks", () => ({
   useUploadRouteAttachment: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteRouteAttachment: () => ({ mutate: vi.fn(), isPending: false }),
   useVersion: () => ({ data: { update_available: false } }),
-  useUpdateRoute: () => ({ mutateAsync: updateAsync, isPending: false }),
   useDeleteRoute: () => ({ mutateAsync: deleteAsync, isPending: false }),
 }));
 
@@ -50,7 +48,6 @@ vi.mock("../auth/AuthContext", () => ({
 
 beforeEach(() => {
   createPlanAsync.mockClear();
-  updateAsync.mockClear();
   deleteAsync.mockClear();
 });
 

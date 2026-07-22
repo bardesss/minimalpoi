@@ -20,4 +20,12 @@ describe("ManualPointPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /add point/i }));
     expect(onPick).not.toHaveBeenCalled();
   });
+
+  it("does nothing when the name is filled but coordinates are blank", () => {
+    const onPick = vi.fn();
+    render(<ManualPointPanel onPick={onPick} />);
+    fireEvent.change(screen.getByLabelText("Point name"), { target: { value: "Camp" } });
+    fireEvent.click(screen.getByRole("button", { name: /add point/i }));
+    expect(onPick).not.toHaveBeenCalled();
+  });
 });

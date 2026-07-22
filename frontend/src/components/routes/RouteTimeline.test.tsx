@@ -8,12 +8,10 @@ import type { RouteDetail, RouteNode } from "../../types/api";
 
 const add = vi.fn();
 const update = vi.fn();
-const updateRoute = vi.fn();
 vi.mock("../../queries/hooks", () => ({
   useAddNode: () => ({ mutate: add, isPending: false }),
   useUpdateNode: () => ({ mutate: update, isPending: false }),
   useDeleteNode: () => ({ mutate: vi.fn(), isPending: false }),
-  useUpdateRoute: () => ({ mutate: updateRoute, isPending: false }),
   usePois: () => ({ data: [{ id: 7, name: "Utrecht", lat: 52.09, lng: 5.12 }] }),
   useUploadRouteAttachment: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteRouteAttachment: () => ({ mutate: vi.fn(), isPending: false }),

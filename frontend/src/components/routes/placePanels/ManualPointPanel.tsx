@@ -10,7 +10,7 @@ export default function ManualPointPanel({ onPick }: { onPick: (sel: PlaceSelect
   function add() {
     const latN = Number(lat);
     const lngN = Number(lng);
-    if (!name.trim() || Number.isNaN(latN) || Number.isNaN(lngN)) return;
+    if (!name.trim() || lat.trim() === "" || lng.trim() === "" || Number.isNaN(latN) || Number.isNaN(lngN)) return;
     onPick({ name: name.trim(), lat: latN, lng: lngN });
   }
 
