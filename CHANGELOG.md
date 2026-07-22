@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.17.1](https://github.com/Bardesss/minimalpoi/compare/v2.17.0...v2.17.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* **routes:** drop a stop onto an empty day instead of the next one ([37c2e0a](https://github.com/Bardesss/minimalpoi/commit/37c2e0aebedd64b7ad2d22da053c5d5801b8648d))
+* **routes:** drop stops onto empty days; node-scope attachments ([7dccd6b](https://github.com/Bardesss/minimalpoi/commit/7dccd6beac22ebbcb2ca02290d0321ebadaa9edd))
+
 ## [2.17.0](https://github.com/Bardesss/minimalpoi/compare/v2.16.0...v2.17.0) (2026-07-22)
 
 
