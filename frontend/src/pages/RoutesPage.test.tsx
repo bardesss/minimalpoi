@@ -5,7 +5,6 @@ import RoutesPage from "./RoutesPage";
 import type { RouteDetail } from "../types/api";
 
 const createPlanAsync = vi.fn().mockResolvedValue({ id: 5 });
-const updateAsync = vi.fn().mockResolvedValue({ id: 5 });
 const deleteAsync = vi.fn().mockResolvedValue(undefined);
 const detail: RouteDetail = {
   id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-20",
@@ -28,6 +27,7 @@ vi.mock("../queries/hooks", () => ({
   useSettings: () => ({ data: { map_tile_url: "", default_map_center_lat: 52, default_map_center_lng: 4, default_map_zoom: 11, routes_enabled: true } }),
   useTeams: () => ({ data: [{ id: 3, name: "Crew", created_by: 1, member_ids: [1] }] }),
   useCreateRoutePlan: () => ({ mutateAsync: createPlanAsync, isPending: false }),
+  useUpdateRoutePlan: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSearchPlaces: () => ({ mutateAsync: vi.fn() }),
   usePlaceDraft: () => ({ mutateAsync: vi.fn() }),
   useCreatePoi: () => ({ mutateAsync: vi.fn() }),
@@ -39,7 +39,6 @@ vi.mock("../queries/hooks", () => ({
   useUploadRouteAttachment: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteRouteAttachment: () => ({ mutate: vi.fn(), isPending: false }),
   useVersion: () => ({ data: { update_available: false } }),
-  useUpdateRoute: () => ({ mutateAsync: updateAsync, isPending: false }),
   useDeleteRoute: () => ({ mutateAsync: deleteAsync, isPending: false }),
 }));
 
@@ -49,7 +48,6 @@ vi.mock("../auth/AuthContext", () => ({
 
 beforeEach(() => {
   createPlanAsync.mockClear();
-  updateAsync.mockClear();
   deleteAsync.mockClear();
 });
 
@@ -67,7 +65,7 @@ function openModalWithStart(name: string, start: string) {
   fireEvent.change(screen.getByLabelText(/route name/i), { target: { value: name } });
   fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: start } });
   fireEvent.click(screen.getByRole("button", { name: /set start place/i }));
-  fireEvent.click(screen.getByRole("button", { name: /add a point manually/i }));
+  fireEvent.click(screen.getByRole("button", { name: /enter coordinates/i }));
   fireEvent.change(screen.getByLabelText(/point name/i), { target: { value: "Chamonix" } });
   fireEvent.change(screen.getByLabelText(/^latitude$/i), { target: { value: "45.9" } });
   fireEvent.change(screen.getByLabelText(/^longitude$/i), { target: { value: "6.87" } });
@@ -106,7 +104,7 @@ describe("RoutesPage", () => {
     openModalWithStart("Alps", "2026-08-01");
     fireEvent.click(screen.getByLabelText(/round trip/i)); // uncheck
     fireEvent.click(screen.getByRole("button", { name: /set end place/i }));
-    fireEvent.click(screen.getByRole("button", { name: /add a point manually/i }));
+    fireEvent.click(screen.getByRole("button", { name: /enter coordinates/i }));
     fireEvent.change(screen.getByLabelText(/point name/i), { target: { value: "Nice" } });
     fireEvent.change(screen.getByLabelText(/^latitude$/i), { target: { value: "43.7" } });
     fireEvent.change(screen.getByLabelText(/^longitude$/i), { target: { value: "7.26" } });
@@ -124,15 +122,12 @@ describe("RoutesPage", () => {
     expect(screen.getByText(/scheduled:\s*2026-07-16/i)).toBeInTheDocument();
   });
 
-  it("edits a route's name and dates", async () => {
+  it("opens the route form modal in edit mode from the Edit button", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
     fireEvent.click(await screen.findByRole("button", { name: /^edit$/i }));
-    fireEvent.change(screen.getByLabelText(/edit route name/i), { target: { value: "NL trip 2" } });
-    fireEvent.click(screen.getByRole("button", { name: /save/i }));
-    await waitFor(() =>
-      expect(updateAsync).toHaveBeenCalledWith({ id: 5, body: expect.objectContaining({ name: "NL trip 2" }) }),
-    );
+    expect(screen.getByText(/edit route/i)).toBeInTheDocument();
+    expect((screen.getByLabelText(/route name/i) as HTMLInputElement).value).toBe("NL trip");
   });
 
   it("deletes a route after confirm", async () => {
@@ -150,7 +145,7 @@ describe("RoutesPage", () => {
     fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: "2026-08-01" } });
     fireEvent.change(screen.getByLabelText(/team \(optional\)/i), { target: { value: "3" } });
     fireEvent.click(screen.getByRole("button", { name: /set start place/i }));
-    fireEvent.click(screen.getByRole("button", { name: /add a point manually/i }));
+    fireEvent.click(screen.getByRole("button", { name: /enter coordinates/i }));
     fireEvent.change(screen.getByLabelText(/point name/i), { target: { value: "Chamonix" } });
     fireEvent.change(screen.getByLabelText(/^latitude$/i), { target: { value: "45.9" } });
     fireEvent.change(screen.getByLabelText(/^longitude$/i), { target: { value: "6.87" } });
@@ -175,14 +170,11 @@ describe("RoutesPage", () => {
     expect(await screen.findByRole("button", { name: /share image/i })).toBeDisabled();
   });
 
-  it("edit team selector includes the route's current team even if not in my teams", async () => {
+  it("edit route modal offers the caller's teams to reassign", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
     fireEvent.click(await screen.findByRole("button", { name: /^edit$/i }));
-    const select = screen.getByLabelText(/edit team/i) as HTMLSelectElement;
-    // the currently-assigned team (id 9, "Ghosts") must be an option and selected,
-    // even though it is not in the mocked useTeams list (only team 3 "Crew" is).
-    expect(within(select).getByRole("option", { name: "Ghosts" })).toBeInTheDocument();
-    expect(select.value).toBe("9");
+    const select = screen.getByLabelText(/team \(optional\)/i) as HTMLSelectElement;
+    expect(within(select).getByRole("option", { name: "Crew" })).toBeInTheDocument();
   });
 });

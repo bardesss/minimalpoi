@@ -336,12 +336,6 @@ export function useCreateRoute() {
   return useMutation({ mutationFn: (b: RouteCreate) => createRoute(b),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["routes"] }) });
 }
-export function useUpdateRoute() {
-  const qc = useQueryClient();
-  return useMutation({ mutationFn: ({ id, body }: { id: number; body: RouteUpdate }) => updateRoute(id, body),
-    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ["routes"] }); qc.invalidateQueries({ queryKey: ["routes", r.id] }); } });
-}
-
 export interface RoutePlan {
   route: RouteCreate;         // name/dates/team; round_trip is derived below
   start: RouteNodeCreate;     // required start place (role: "start")
@@ -351,7 +345,7 @@ export interface RoutePlan {
 // Create a route together with its start (and end) in one call. The route is
 // created with round_trip off, the start node is added, then either the end
 // node is added, or round_trip is switched on so the backend mirrors the start
-// as the end — the same path the timeline's round-trip toggle already uses.
+// as the end.
 export function useCreateRoutePlan() {
   const qc = useQueryClient();
   return useMutation({
@@ -360,6 +354,43 @@ export function useCreateRoutePlan() {
       await addNode(created.id, start);
       if (end) return addNode(created.id, end);
       return updateRoute(created.id, { round_trip: true });
+    },
+    onSuccess: (r) => { qc.setQueryData(["routes", r.id], r); qc.invalidateQueries({ queryKey: ["routes"] }); },
+  });
+}
+export interface RouteEditPlan {
+  id: number;
+  route: RouteUpdate;            // name/dates/team; round_trip is passed separately
+  roundTrip: boolean;
+  start: RouteNodeCreate | null; // new start location if the user re-picked it
+  end: RouteNodeCreate | null;   // new end location if re-picked (round trip off)
+  startNodeId: number | null;    // existing start node id, or null if none yet
+  endNodeId: number | null;      // existing end node id, or null if none yet
+}
+
+// A relocation update carries only the location subset of RouteNodeUpdate.
+function locationBody(sel: RouteNodeCreate): RouteNodeUpdate {
+  return sel.poi_id != null ? { poi_id: sel.poi_id } : { name: sel.name, lat: sel.lat, lng: sel.lng };
+}
+
+// Save an edited route: patch metadata + round trip, then relocate (or add) the
+// start and end. Mirrors useCreateRoutePlan; the backend re-syncs a round-trip end.
+export function useUpdateRoutePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, route, roundTrip, start, end, startNodeId, endNodeId }: RouteEditPlan): Promise<RouteDetail> => {
+      let detail = await updateRoute(id, { ...route, round_trip: roundTrip });
+      if (start) {
+        detail = startNodeId != null
+          ? await updateNode(id, startNodeId, locationBody(start))
+          : await addNode(id, { ...start, role: "start" });
+      }
+      if (!roundTrip && end) {
+        detail = endNodeId != null
+          ? await updateNode(id, endNodeId, locationBody(end))
+          : await addNode(id, { ...end, role: "end" });
+      }
+      return detail;
     },
     onSuccess: (r) => { qc.setQueryData(["routes", r.id], r); qc.invalidateQueries({ queryKey: ["routes"] }); },
   });

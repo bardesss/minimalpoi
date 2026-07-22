@@ -405,6 +405,10 @@ class RouteNodeUpdate(SQLModel):
     day_offset: int | None = None
     notes: str | None = None
     position: float | None = None
+    poi_id: int | None = None
+    name: str | None = None
+    lat: float | None = None
+    lng: float | None = None
 
 
 class RouteAttachmentRead(SQLModel):

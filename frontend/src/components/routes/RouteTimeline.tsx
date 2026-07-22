@@ -1,11 +1,11 @@
 import { useMemo, useState, type ReactNode } from "react";
 import type { RouteDetail, RouteNode, RouteNodeCreate, RouteNodeKind } from "../../types/api";
 import { ghostButtonStyle, theme } from "../../theme";
-import { useAddNode, useUpdateNode, useUpdateRoute } from "../../queries/hooks";
+import { useAddNode, useUpdateNode } from "../../queries/hooks";
 import LegRow from "./LegRow";
 import RouteNodeRow from "./RouteNodeRow";
 import RouteAttachments from "./RouteAttachments";
-import NodePicker from "./NodePicker";
+import AddPlaceModal from "./AddPlaceModal";
 import { DndContext, MouseSensor, TouchSensor, KeyboardSensor, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { groupNodesByDay, placeInDay, dayOffsetForDrop, dropIntoDay } from "../../lib/routeDays";
@@ -72,8 +72,6 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
   const startNode = nodes.find((n) => n.role === "start") ?? null;
   const endNode = nodes.find((n) => n.role === "end") ?? null;
   const middle = useMemo(() => nodes.filter((n) => n.role == null), [nodes]);
-  const updateRoute = useUpdateRoute();
-  const [pick, setPick] = useState<"start" | "end" | null>(null);
   const indexById = useMemo(() => new Map(middle.map((n, i) => [n.id, i])), [middle]);
   const dayGroups = useMemo(() => groupNodesByDay({ ...route, nodes: middle }), [route, middle]);
 
@@ -102,17 +100,17 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
   const addNode = useAddNode(route.id);
   const updateNode = useUpdateNode(route.id);
 
-  // `adding` drives the first-stop picker on an empty route (no day cards yet);
-  // `dayAdding` drives the per-day picker, tagged with the day and the kind.
-  const [adding, setAdding] = useState<RouteNodeKind | null>(null);
-  const [dayAdding, setDayAdding] = useState<{ gi: number; kind: RouteNodeKind } | null>(null);
+  // `addTarget` drives the single AddPlaceModal used for both the first-stop add
+  // on an empty route (no day cards yet) and the per-day add, tagged with the
+  // day and the kind.
+  type AddTarget = { scope: "day"; gi: number; kind: RouteNodeKind } | { scope: "empty"; kind: RouteNodeKind };
+  const [addTarget, setAddTarget] = useState<AddTarget | null>(null);
 
   function submitDay(body: RouteNodeCreate, gi: number) {
     const { position, day_offset } = placeInDay(route, dayGroups, gi);
     // Stops belong to a specific day (day_offset); stays define their own span,
     // so they take a position only — matching the drag handler's rule.
     addNode.mutate(body.kind === "stay" ? { ...body, position } : { ...body, position, day_offset });
-    setDayAdding(null);
   }
 
   // Mouse: a small drag threshold, so clicks on the row's nested buttons still
@@ -160,29 +158,24 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
 
   function submit(body: RouteNodeCreate) {
     addNode.mutate(body);
-    setAdding(null);
   }
 
-  function submitEndpoint(body: RouteNodeCreate) {
-    addNode.mutate(body);
-    setPick(null);
-  }
-
-  // Start/end are pinned bookends of the itinerary: the start rides at the top of
-  // the first day, the end at the bottom of the last day, each with a clear
-  // "Starting point" / "Ending point" caption. Both collapse to nothing when
-  // there's nothing to show (read-only route with no endpoints set).
+  // Start/end are pinned, display-only bookends of the itinerary: the start
+  // rides at the top of the first day, the end at the bottom of the last day,
+  // each with a clear "Starting point" / "Ending point" caption. They're edited
+  // via the route form modal, not inline — here they either render the row or a
+  // muted hint. Both collapse to nothing when there's nothing to show (read-only
+  // route with no endpoints set).
   const pinLabel = { fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".05em", color: theme.color.deepIndigoText, margin: "0 0 4px" } as const;
+  const hintStyle = { margin: 0, fontSize: 12.5, color: theme.color.textPlaceholder } as const;
 
   const startContent = startNode ? (
-    <RouteNodeRow node={startNode} routeId={route.id} canEdit={canEdit} pinned onHover={onHoverNode} />
-  ) : canEdit && pick === "start" ? (
-    <NodePicker kind="stop" role="start" onCancel={() => setPick(null)} onSubmit={submitEndpoint} />
+    <RouteNodeRow node={startNode} routeId={route.id} canEdit={false} pinned onHover={onHoverNode} />
   ) : canEdit ? (
-    <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={() => setPick("start")}>+ Set start place</button>
+    <p style={hintStyle}>No start set — use Edit.</p>
   ) : null;
   const startSlot = startContent && (
-    <div style={{ marginBottom: 6 }}>
+    <div style={{ paddingBottom: 8, marginBottom: 4, borderBottom: `1px solid ${theme.color.borderSubtle}` }}>
       <p style={pinLabel}>Starting point</p>
       {startContent}
     </div>
@@ -207,26 +200,14 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
       </p>
     )
   ) : endNode ? (
-    <RouteNodeRow node={endNode} routeId={route.id} canEdit={canEdit} pinned onHover={onHoverNode} />
-  ) : canEdit && pick === "end" ? (
-    <NodePicker kind="stop" role="end" onCancel={() => setPick(null)} onSubmit={submitEndpoint} />
+    <RouteNodeRow node={endNode} routeId={route.id} canEdit={false} pinned onHover={onHoverNode} />
   ) : canEdit ? (
-    <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={() => setPick("end")}>+ Set end place</button>
+    <p style={hintStyle}>No end set — use Edit.</p>
   ) : null;
-  const endSlot = (endContent || canEdit) && (
-    <div style={{ marginTop: 8 }}>
+  const endSlot = endContent && (
+    <div style={{ paddingTop: 8, marginTop: 4, borderTop: `1px solid ${theme.color.borderSubtle}` }}>
       <p style={pinLabel}>Ending point</p>
       {endContent}
-      {canEdit && (
-        <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 12.5, color: theme.color.textBody }}>
-          <input
-            type="checkbox"
-            checked={route.round_trip}
-            onChange={(e) => updateRoute.mutate({ id: route.id, body: { round_trip: e.target.checked } })}
-          />
-          Round trip (return to start)
-        </label>
-      )}
     </div>
   );
 
@@ -283,35 +264,29 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
                 })}
                 {expanded && canEdit && (
                   <div style={{ margin: "4px 0 0 36px" }}>
-                    {dayAdding?.gi === gi ? (
-                      <NodePicker kind={dayAdding.kind} onCancel={() => setDayAdding(null)} onSubmit={(b) => submitDay(b, gi)} />
-                    ) : (
-                      <div style={{ display: "flex", gap: 8 }}>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        type="button"
+                        aria-label={`Add stop to ${formatDayLabel(group.dayKey)}`}
+                        style={{ ...ghostButtonStyle, padding: "4px 10px", fontSize: 12 }}
+                        onClick={() => setAddTarget({ scope: "day", gi, kind: "stop" })}
+                      >
+                        + Add stop
+                      </button>
+                      {!group.nodes.some((n) => n.kind === "stay") && (
                         <button
                           type="button"
-                          aria-label={`Add stop to ${formatDayLabel(group.dayKey)}`}
+                          aria-label={`Add stay to ${formatDayLabel(group.dayKey)}`}
                           style={{ ...ghostButtonStyle, padding: "4px 10px", fontSize: 12 }}
-                          onClick={() => setDayAdding({ gi, kind: "stop" })}
+                          onClick={() => setAddTarget({ scope: "day", gi, kind: "stay" })}
                         >
-                          + Add stop
+                          + Add stay
                         </button>
-                        {!group.nodes.some((n) => n.kind === "stay") && (
-                          <button
-                            type="button"
-                            aria-label={`Add stay to ${formatDayLabel(group.dayKey)}`}
-                            style={{ ...ghostButtonStyle, padding: "4px 10px", fontSize: 12 }}
-                            onClick={() => setDayAdding({ gi, kind: "stay" })}
-                          >
-                            + Add stay
-                          </button>
-                        )}
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )}
-                {expanded && gi === dayGroups.length - 1 && endSlot && (
-                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${theme.color.borderSubtle}` }}>{endSlot}</div>
-                )}
+                {expanded && gi === dayGroups.length - 1 && endSlot && <div style={{ marginTop: 8 }}>{endSlot}</div>}
               </div>
             );
           })}
@@ -320,14 +295,10 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
               {startSlot}
               {canEdit ? (
                 <div style={{ margin: "10px 0" }}>
-                  {adding ? (
-                    <NodePicker kind={adding} onCancel={() => setAdding(null)} onSubmit={submit} />
-                  ) : (
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button type="button" style={ghostButtonStyle} onClick={() => setAdding("stay")}>+ Add stay</button>
-                      <button type="button" style={ghostButtonStyle} onClick={() => setAdding("stop")}>+ Add stop</button>
-                    </div>
-                  )}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button type="button" style={ghostButtonStyle} onClick={() => setAddTarget({ scope: "empty", kind: "stay" })}>+ Add stay</button>
+                    <button type="button" style={ghostButtonStyle} onClick={() => setAddTarget({ scope: "empty", kind: "stop" })}>+ Add stop</button>
+                  </div>
                 </div>
               ) : (
                 <p style={{ margin: "10px 0", fontSize: 13, color: theme.color.textPlaceholder }}>No stops yet.</p>
@@ -343,6 +314,18 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
           dayLabel={formatDayLabel(dayGroups[navIndex].dayKey)}
           waypoints={dayWaypoints(dayGroups, navIndex)}
           onClose={() => setNavIndex(null)}
+        />
+      )}
+
+      {addTarget && (
+        <AddPlaceModal
+          kind={addTarget.kind}
+          onClose={() => setAddTarget(null)}
+          onSubmit={(body) => {
+            if (addTarget.scope === "day") submitDay(body, addTarget.gi);
+            else submit(body);
+            setAddTarget(null);
+          }}
         />
       )}
     </div>

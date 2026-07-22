@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
+import { dangerButtonStyle, ghostButtonStyle, primaryButtonStyle, theme } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 import { useAuth } from "../auth/AuthContext";
-import { useAddNode, useCategories, useDeleteRoute, usePois, useRoute, useRoutes, useSettings, useTeams, useUpdateRoute, useVersion } from "../queries/hooks";
+import { useAddNode, useCategories, useDeleteRoute, usePois, useRoute, useRoutes, useSettings, useTeams, useVersion } from "../queries/hooks";
 import type { RouteNodeKind } from "../types/api";
 import { poisNotInRoute } from "../map/routePois";
 import { computeInsertPosition } from "../map/insertPosition";
@@ -12,7 +12,7 @@ import RouteTimeline from "../components/routes/RouteTimeline";
 import RouteMap from "../components/routes/RouteMap";
 import SettingsModal from "../components/SettingsModal";
 import ShareImageModal from "../components/routes/ShareImageModal";
-import RouteCreateModal from "../components/routes/RouteCreateModal";
+import RouteFormModal from "../components/routes/RouteFormModal";
 import { formatTravel } from "../lib/formatTravel";
 import { passedNodeIds, todayIso } from "../lib/dayState";
 import { exportRoute, type RouteExportFormat } from "../api/routes";
@@ -27,7 +27,6 @@ export default function RoutesPage() {
   const routesQuery = useRoutes();
   const settingsQuery = useSettings();
   const version = useVersion();
-  const updateRoute = useUpdateRoute();
   const deleteRoute = useDeleteRoute();
   const teamsQuery = useTeams();
 
@@ -41,9 +40,8 @@ export default function RoutesPage() {
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [editingRoute, setEditingRoute] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
-  const [edit, setEdit] = useState({ name: "", start_date: "", end_date: "", team_id: "" });
   const [hoverNodeId, setHoverNodeId] = useState<number | null>(null);
 
   async function onLogout() {
@@ -72,14 +70,6 @@ export default function RoutesPage() {
   };
   const teams = teamsQuery.data ?? [];
   const myTeams = user?.role === "admin" ? teams : teams.filter((t) => user != null && t.member_ids.includes(user.id));
-  const canAssignTeam = !!detail && !!user && (detail.created_by === user.id || user.role === "admin");
-  const editTeamOptions = (() => {
-    const opts = myTeams.map((t) => ({ id: t.id, name: t.name }));
-    if (detail?.team_id != null && !opts.some((o) => o.id === detail.team_id)) {
-      opts.unshift({ id: detail.team_id, name: detail.team_name ?? `Team ${detail.team_id}` });
-    }
-    return opts;
-  })();
 
   async function onExport(format: RouteExportFormat) {
     if (!detail) return;
@@ -87,25 +77,6 @@ export default function RoutesPage() {
     triggerDownload(await exportRoute(detail.id, format), `${detail.name}.${format}`);
   }
 
-  function openEdit() {
-    if (!detail) return;
-    setEdit({ name: detail.name, start_date: detail.start_date, end_date: detail.end_date ?? "", team_id: detail.team_id != null ? String(detail.team_id) : "" });
-    setEditing(true);
-  }
-  async function saveEdit() {
-    if (!detail) return;
-    if (!edit.name.trim() || !edit.start_date) return;
-    await updateRoute.mutateAsync({
-      id: detail.id,
-      body: {
-        name: edit.name.trim(),
-        start_date: edit.start_date,
-        end_date: edit.end_date || null,
-        ...(canAssignTeam ? { team_id: edit.team_id ? Number(edit.team_id) : null } : {}),
-      },
-    });
-    setEditing(false);
-  }
   async function onDeleteRoute() {
     if (!detail) return;
     await deleteRoute.mutateAsync(detail.id);
@@ -160,7 +131,7 @@ export default function RoutesPage() {
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: 8, flex: "none", flexWrap: "wrap", justifyContent: isMobile ? "flex-start" : "flex-end", marginBottom: isMobile ? 4 : 0 }}>
-                  {canEdit && <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={openEdit}>Edit</button>}
+                  {canEdit && <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={() => setEditingRoute(true)}>Edit</button>}
                   <div style={{ position: "relative" }}>
                     <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }} onClick={() => setExportOpen((o) => !o)} aria-haspopup="menu" aria-expanded={exportOpen}>Export ▾</button>
                     {exportOpen && (
@@ -186,23 +157,6 @@ export default function RoutesPage() {
                   </button>
                 </div>
               </div>
-              {editing && canEdit && (
-                <div style={{ display: "grid", gap: 8, margin: "0 0 14px" }}>
-                  <input aria-label="Edit route name" style={inputStyle} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
-                  <input aria-label="Edit start date" type="date" style={inputStyle} value={edit.start_date} onChange={(e) => setEdit({ ...edit, start_date: e.target.value })} />
-                  <input aria-label="Edit end date (optional)" type="date" style={inputStyle} value={edit.end_date} onChange={(e) => setEdit({ ...edit, end_date: e.target.value })} />
-                  {canAssignTeam && (
-                    <select aria-label="Edit team" style={inputStyle} value={edit.team_id} onChange={(e) => setEdit({ ...edit, team_id: e.target.value })}>
-                      <option value="">No team</option>
-                      {editTeamOptions.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </select>
-                  )}
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button type="button" style={primaryButtonStyle} onClick={saveEdit} disabled={updateRoute.isPending}>Save</button>
-                    <button type="button" style={ghostButtonStyle} onClick={() => setEditing(false)}>Cancel</button>
-                  </div>
-                </div>
-              )}
               <RouteTimeline route={detail} canEdit={canEdit} onHoverNode={setHoverNodeId} />
               {canEdit && (
                 <div style={{ marginTop: 18 }}>
@@ -260,10 +214,19 @@ export default function RoutesPage() {
         <ShareImageModal route={detail} settings={settingsQuery.data} onClose={() => setShareOpen(false)} />
       )}
       {newRouteOpen && (
-        <RouteCreateModal
+        <RouteFormModal
           teams={myTeams.map((t) => ({ id: t.id, name: t.name }))}
+          existing={null}
           onClose={() => setNewRouteOpen(false)}
-          onCreated={(route) => { setNewRouteOpen(false); setSelectedId(route.id); }}
+          onSaved={(route) => { setNewRouteOpen(false); setSelectedId(route.id); }}
+        />
+      )}
+      {editingRoute && detail && (
+        <RouteFormModal
+          teams={myTeams.map((t) => ({ id: t.id, name: t.name }))}
+          existing={detail}
+          onClose={() => setEditingRoute(false)}
+          onSaved={() => setEditingRoute(false)}
         />
       )}
     </>

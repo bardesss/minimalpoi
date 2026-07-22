@@ -312,11 +312,20 @@ async def update_node(route_id: int, node_id: int, request: Request, body: Route
     if not node or node.route_id != route_id:
         raise HTTPException(status_code=404, detail="Not found")
     data = body.model_dump(exclude_unset=True)
+    # A location change (poi_id, or name+lat+lng) re-resolves the point and is set
+    # atomically; nights/notes/position/day_offset keep the generic path.
+    location_keys = {"poi_id", "name", "lat", "lng"}
+    if location_keys & data.keys():
+        poi_id, name, lat, lng = _resolve_location(session, body)
+        node.poi_id, node.name, node.lat, node.lng = poi_id, name, lat, lng
+        for k in location_keys:
+            data.pop(k, None)
     for k, v in data.items():
         setattr(node, k, v)
     session.add(node)
     session.commit()
-    await recompute_legs(session, route_id)  # position may have changed the order
+    _sync_round_trip(session, route)  # relocating the start re-mirrors the end
+    await recompute_legs(session, route_id)  # position/location may change the order
     return _detail(session, route, user)
 
 
