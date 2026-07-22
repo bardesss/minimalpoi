@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
 import { useCategories, useCreatePoi, useDeletePoi, useEnrich, useMyVisits, usePlaceDraft, usePois, useSearchPlaces, useSettings, useUpdatePoi, useUploadImage, useCheckDuplicate, useVersion } from "../queries/hooks";
-import { filterPois } from "../lib/filterPois";
+import { filterPois, UNCATEGORIZED_ID } from "../lib/filterPois";
 import type { Category, Poi, PoiCreate, VisitedFilter } from "../types/api";
 import { boundsOf } from "../map/bounds";
 import { readMapViewMode, writeMapViewMode, type MapViewMode } from "../lib/mapViewPref";
@@ -84,9 +84,19 @@ export default function AppShell() {
 
   const counts = useMemo(() => {
     const acc: Record<number, number> = {};
-    for (const p of filtered) if (p.category_id != null) acc[p.category_id] = (acc[p.category_id] ?? 0) + 1;
+    for (const p of filtered) {
+      const key = p.category_id ?? UNCATEGORIZED_ID;
+      acc[key] = (acc[key] ?? 0) + 1;
+    }
     return acc;
   }, [filtered]);
+
+  // Show the "Uncategorized" bucket only when some place actually lacks a
+  // category (checked against the full set, not the current filter).
+  const hasUncategorized = useMemo(
+    () => (poisQuery.data ?? []).some((p) => p.category_id == null),
+    [poisQuery.data],
+  );
 
   const selectedPoi = (poisQuery.data ?? []).find((p) => p.id === selectedId) ?? null;
   const addMode = formState?.mode === "add";
@@ -201,6 +211,7 @@ export default function AppShell() {
       activeCategoryIds={activeCategoryIds}
       onToggleCategory={toggleCategory}
       onClearCategories={() => setActiveCategoryIds([])}
+      hasUncategorized={hasUncategorized}
       visited={visitedFilter}
       onVisitedChange={setVisitedFilter}
       pois={sorted}
@@ -235,7 +246,7 @@ export default function AppShell() {
           onMoveEnd={handleMoveEnd}
         />
       )}
-      {!isMobile && <Legend categories={categories} counts={counts} />}
+      {!isMobile && <Legend categories={categories} counts={counts} uncategorizedCount={hasUncategorized ? counts[UNCATEGORIZED_ID] ?? 0 : 0} />}
       {selectedPoi && (
         <DetailPanel
           poi={selectedPoi}

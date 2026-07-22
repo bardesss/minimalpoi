@@ -1,5 +1,6 @@
 import type { Category } from "../../types/api";
 import { theme } from "../../theme";
+import { UNCATEGORIZED_ID } from "../../lib/filterPois";
 
 export default function CategoryChips({
   categories,
@@ -7,6 +8,7 @@ export default function CategoryChips({
   onToggle,
   onClear,
   scroll = false,
+  showUncategorized = false,
 }: {
   categories: Category[];
   activeIds: number[];
@@ -14,6 +16,8 @@ export default function CategoryChips({
   onClear: () => void;
   /** Mobile: lay chips out in a single horizontally scrollable row. */
   scroll?: boolean;
+  /** Show an "Uncategorized" chip for places with no category. */
+  showUncategorized?: boolean;
 }) {
   const layout = scroll
     ? ({ flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch" } as const)
@@ -30,6 +34,15 @@ export default function CategoryChips({
           </button>
         );
       })}
+      {showUncategorized && (() => {
+        const active = activeIds.includes(UNCATEGORIZED_ID);
+        return (
+          <button type="button" onClick={() => onToggle(UNCATEGORIZED_ID)} style={chip(active, theme.color.fallbackPin, scroll)} aria-pressed={active}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: active ? "#fff" : theme.color.fallbackPin, display: "inline-block", flex: "none" }} />
+            Uncategorized
+          </button>
+        );
+      })()}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Poi, PoiFilter } from "../types/api";
-import { filterPois } from "./filterPois";
+import { filterPois, UNCATEGORIZED_ID } from "./filterPois";
 
 const mk = (over: Partial<Poi>): Poi => ({ id: 0, name: "", address: null, city: null, country_code: null, lat: 0, lng: 0, category_id: null, tags: [], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "synced", avg_rating: null, rating_count: 0, ...over });
 
@@ -25,6 +25,18 @@ describe("filterPois", () => {
   it("filters by category (AND with search)", () => {
     expect(filterPois(pois, f({ categoryIds: [2] }), ctx).map((p) => p.id)).toEqual([2]);
     expect(filterPois(pois, f({ search: "café", categoryIds: [2] }), ctx)).toHaveLength(0);
+  });
+  it("filters uncategorized places via the sentinel id", () => {
+    const local = [
+      mk({ id: 1, name: "Has category", category_id: 5 }),
+      mk({ id: 2, name: "No category", category_id: null }),
+    ];
+    const c = { myVisitedPoiIds: new Set<number>() };
+    expect(filterPois(local, f({ categoryIds: [UNCATEGORIZED_ID] }), c).map((p) => p.id)).toEqual([2]);
+    // Uncategorized can be combined with a real category.
+    expect(filterPois(local, f({ categoryIds: [UNCATEGORIZED_ID, 5] }), c).map((p) => p.id)).toEqual([1, 2]);
+    // A real-category filter still excludes uncategorized places.
+    expect(filterPois(local, f({ categoryIds: [5] }), c).map((p) => p.id)).toEqual([1]);
   });
   it("filters by visited-by-me", () => {
     expect(filterPois(pois, f({ visited: "visited" }), ctx).map((p) => p.id)).toEqual([1]);
