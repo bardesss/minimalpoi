@@ -288,6 +288,60 @@ describe("RouteTimeline start/end rows", () => {
     expect(screen.queryByRole("button", { name: /set end place/i })).not.toBeInTheDocument();
   });
 
+  it("renders the round-trip return as a proper last-stop row, not a caption", () => {
+    // With a start set, the backend mirrors it onto an end node. The return should
+    // read as an actual pinned row on the last day — and stay read-only (no Remove
+    // button; the Round trip checkbox governs it).
+    const roundTrip: RouteDetail = {
+      ...base,
+      round_trip: true,
+      nodes: [
+        start,
+        { ...node(1, "stay", 1), name: "Aalborg", arrive_date: "2026-07-14", depart_date: "2026-07-15", nights: 1 },
+        { ...end, name: "Home" }, // end mirrors the start place
+      ],
+    };
+    wrap(<RouteTimeline route={roundTrip} canEdit />);
+    const cards = screen.getAllByTestId("day-card");
+    const last = cards[cards.length - 1];
+    expect(within(last).getByText(/return to home/i)).toBeInTheDocument();
+    // Read-only: the mirrored return can't be deleted directly.
+    expect(within(last).queryByRole("button", { name: /remove return to home/i })).not.toBeInTheDocument();
+  });
+
+  const end = { id: 20, kind: "stop", role: "end", position: 6, nights: null, notes: null, poi_id: null,
+    name: "Finish", lat: 9, lng: 9, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null } as const;
+
+  // Regression: the pinned start/end must fold WITH the day when it collapses.
+  // A start rendered over a collapsed first day looked like the stay was wiped
+  // and blocked adding stops (its + buttons were hidden with the day body).
+  const pastTrip: RouteDetail = {
+    ...base,
+    start_date: "2026-06-20", // before the mocked today (2026-07-01) → collapsed
+    nodes: [
+      start,
+      { ...node(1, "stay", 1), name: "PastStay", arrive_date: "2026-06-20", depart_date: "2026-06-21", nights: 1 },
+      end,
+    ],
+  };
+
+  it("folds the pinned start and end away when their day is collapsed", () => {
+    wrap(<RouteTimeline route={pastTrip} canEdit />);
+    // The whole day body folds: the stay, the add controls, AND the bookends —
+    // no phantom "start over an empty day".
+    expect(screen.queryByText("Home")).not.toBeInTheDocument();
+    expect(screen.queryByText("PastStay")).not.toBeInTheDocument();
+    expect(screen.queryByText("Finish")).not.toBeInTheDocument();
+  });
+
+  it("reveals the start, the stay, and the add controls when the collapsed day is expanded", async () => {
+    wrap(<RouteTimeline route={pastTrip} canEdit />);
+    await userEvent.click(screen.getByRole("button", { name: /1 stops/ })); // expand day 20 Jun
+    expect(screen.getByText("Home")).toBeInTheDocument();
+    expect(screen.getByText("PastStay")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add stop to sat 20 jun/i })).toBeInTheDocument();
+  });
+
   it("labels the start as the first stop of the first day", () => {
     const withDays: RouteDetail = {
       ...base,
