@@ -37,12 +37,11 @@ export function uploadRouteAttachment(routeId: number, file: File, nodeId?: numb
 export function deleteRouteAttachment(routeId: number, aid: number): Promise<void> {
   return apiFetch<void>(`/api/routes/${routeId}/attachments/${aid}`, { method: "DELETE" });
 }
-export const routeExportUrl = (id: number) => `/api/routes/${id}/export`;
-export async function exportRoute(id: number): Promise<Blob> {
-  const res = await fetch(routeExportUrl(id), {
-    credentials: "include",
-    headers: { Accept: "application/geo+json" },
-  });
+export type RouteExportFormat = "geojson" | "gpx" | "kml";
+export const routeExportUrl = (id: number, format: RouteExportFormat = "geojson") =>
+  `/api/routes/${id}/export?format=${format}`;
+export async function exportRoute(id: number, format: RouteExportFormat = "geojson"): Promise<Blob> {
+  const res = await fetch(routeExportUrl(id, format), { credentials: "include" });
   if (!res.ok) throw new ApiError(res.status, res.statusText);
   return res.blob();
 }

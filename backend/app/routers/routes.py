@@ -22,7 +22,7 @@ from ..models import (
     utcnow,
 )
 from ..ratelimit import GOOGLE_LIMIT, UPLOAD_LIMIT, WRITE_LIMIT, limiter, user_or_ip
-from ..routes_export import route_to_geojson
+from ..routes_export import route_to_geojson, route_to_gpx, route_to_kml
 from ..routing.service import derive, legs_for, ordered_nodes, recompute_legs
 from ..schemas import (
     RouteAttachmentRead,
@@ -166,10 +166,18 @@ def get_route(route_id: int, session: SessionDep, user: CurrentUser) -> RouteDet
 
 @router.get("/{route_id}/export", dependencies=[Gate])
 @limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
-def export_route(route_id: int, request: Request, session: SessionDep, _: CurrentUser) -> dict:
-    """Any member may read — a route is a shared collection, so no owner check."""
+def export_route(route_id: int, request: Request, session: SessionDep, _: CurrentUser, format: str = "geojson"):
+    """Any member may read — a route is a shared collection, so no owner check.
+    `format` selects GeoJSON (default), GPX, or KML."""
     route = _get_route_or_404(session, route_id)
-    return route_to_geojson(route.name, ordered_nodes(session, route_id))
+    nodes = ordered_nodes(session, route_id)
+    if format == "gpx":
+        return Response(content=route_to_gpx(route.name, nodes), media_type="application/gpx+xml")
+    if format == "kml":
+        return Response(content=route_to_kml(route.name, nodes), media_type="application/vnd.google-earth.kml+xml")
+    if format != "geojson":
+        raise HTTPException(status_code=400, detail="Unknown format (use geojson, gpx, or kml)")
+    return route_to_geojson(route.name, nodes)
 
 
 @router.patch("/{route_id}", response_model=RouteDetail, dependencies=[Gate])
