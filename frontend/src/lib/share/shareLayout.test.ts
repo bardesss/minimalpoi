@@ -18,7 +18,13 @@ describe("shareLayout", () => {
       expect(L.stats.y).toBeLessThanOrEqual(spec.height);
       expect(L.stats.x + L.stats.gap * 2).toBeLessThanOrEqual(spec.width);   // 3 stat cells at x, x+gap, x+2*gap
       expect(L.scrimHeight).toBeLessThanOrEqual(spec.height);
+      expect(L.topScrimHeight).toBeLessThanOrEqual(spec.height);
       expect(L.margin).toBeGreaterThan(0);
+      // Brand sits at the top, the title clears it, and the stats strip stays in
+      // the bottom band — so the logo never overlaps the trip info.
+      expect(L.logo.y).toBe(L.margin);
+      expect(L.title.y - L.title.fontSize).toBeGreaterThanOrEqual(L.logo.y + L.logo.size);
+      expect(L.dates.y).toBeLessThan(L.stats.y);
     }
   });
 });
