@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.17.0](https://github.com/Bardesss/minimalpoi/compare/v2.16.0...v2.17.0) (2026-07-22)
+
+
+### Features
+
+* **routes:** add stops and stays per day, drop the itinerary-level add ([814c644](https://github.com/Bardesss/minimalpoi/commit/814c644ce7c61f773a9b3ebad603fb098aab9039))
+* **routes:** per-day add stop/stay; documents on stops/stays only ([6becd0d](https://github.com/Bardesss/minimalpoi/commit/6becd0daaf6bc30d724e255e69cf0ac14302aee1))
+
 ## [2.16.0](https://github.com/Bardesss/minimalpoi/compare/v2.15.0...v2.16.0) (2026-07-22)
 
 
