@@ -13,6 +13,8 @@ export interface SidebarContentProps {
   activeCategoryIds: number[];
   onToggleCategory: (id: number) => void;
   onClearCategories: () => void;
+  /** Whether any place has no category (drives the "Uncategorized" chip). */
+  hasUncategorized: boolean;
   visited: VisitedFilter;
   onVisitedChange: (v: VisitedFilter) => void;
   pois: Poi[];
@@ -42,6 +44,7 @@ export default function SidebarContent(props: SidebarContentProps) {
         onToggle={props.onToggleCategory}
         onClear={props.onClearCategories}
         scroll={props.mobile}
+        showUncategorized={props.hasUncategorized}
       />
       <ListToolbar
         count={props.pois.length}

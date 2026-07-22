@@ -1,6 +1,10 @@
 import type { Poi, PoiFilter } from "../types/api";
 import { countryNameFromCode } from "./country";
 
+// Sentinel category id for "no category". Real category ids are positive DB
+// integers, so 0 is a safe stand-in the filter/legend/chips can share.
+export const UNCATEGORIZED_ID = 0;
+
 export interface FilterContext {
   myVisitedPoiIds: Set<number>;
 }
@@ -45,11 +49,13 @@ function matchesQuery(hay: string, q: string): boolean {
 export function filterPois(pois: Poi[], filter: PoiFilter, ctx: FilterContext): Poi[] {
   const q = fold(filter.search.trim());
   return pois.filter((p) => {
-    if (
-      filter.categoryIds.length > 0 &&
-      (p.category_id == null || !filter.categoryIds.includes(p.category_id))
-    ) {
-      return false;
+    if (filter.categoryIds.length > 0) {
+      // A null category matches only when "Uncategorized" is selected.
+      const matches =
+        p.category_id == null
+          ? filter.categoryIds.includes(UNCATEGORIZED_ID)
+          : filter.categoryIds.includes(p.category_id);
+      if (!matches) return false;
     }
     if (q && !matchesQuery(searchHaystack(p), q)) return false;
     if (filter.visited === "visited" && !ctx.myVisitedPoiIds.has(p.id)) return false;

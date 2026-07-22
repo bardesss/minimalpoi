@@ -20,4 +20,13 @@ describe("CategoryChips", () => {
     expect(onClear).toHaveBeenCalled();
     expect(screen.getByRole("button", { name: /restaurants/i })).toHaveAttribute("aria-pressed", "true");
   });
+
+  it("shows an Uncategorized chip only when requested and toggles it", async () => {
+    const onToggle = vi.fn();
+    const { rerender } = render(<CategoryChips categories={cats} activeIds={[]} onToggle={onToggle} onClear={() => {}} />);
+    expect(screen.queryByRole("button", { name: /uncategorized/i })).not.toBeInTheDocument();
+    rerender(<CategoryChips categories={cats} activeIds={[]} onToggle={onToggle} onClear={() => {}} showUncategorized />);
+    await userEvent.click(screen.getByRole("button", { name: /uncategorized/i }));
+    expect(onToggle).toHaveBeenCalledWith(0);
+  });
 });

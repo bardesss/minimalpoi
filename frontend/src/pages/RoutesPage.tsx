@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
+import { useIsMobile } from "../lib/useMediaQuery";
 import { useAuth } from "../auth/AuthContext";
 import { useAddNode, useCategories, useCreateRoute, useDeleteRoute, usePois, useRoute, useRoutes, useSettings, useTeams, useUpdateRoute, useVersion } from "../queries/hooks";
 import type { RouteNodeKind } from "../types/api";
@@ -21,6 +22,7 @@ const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase"
 
 export default function RoutesPage() {
   const { user, signOut } = useAuth();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const routesQuery = useRoutes();
   const settingsQuery = useSettings();
@@ -172,10 +174,10 @@ export default function RoutesPage() {
           {routeQuery.isLoading && <p style={{ fontSize: 13, color: theme.color.textPlaceholder }}>Loading…</p>}
           {detail && (
             <>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                <div>
+              <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "flex-start", justifyContent: "space-between", gap: isMobile ? 10 : 8 }}>
+                <div style={{ minWidth: 0 }}>
                   <h2 style={{ margin: "0 0 4px", fontFamily: theme.font.ui, fontWeight: 800, fontSize: 17, color: theme.color.textPrimary }}>{detail.name}</h2>
-                  <p style={{ margin: "0 0 12px", fontSize: 12.5, color: theme.color.textSecondary }}>
+                  <p style={{ margin: isMobile ? 0 : "0 0 12px", fontSize: 12.5, color: theme.color.textSecondary }}>
                     {detail.start_date} → {detail.end_date ?? detail.scheduled_end_date}
                     {detail.end_date && detail.end_date !== detail.scheduled_end_date && (
                       <span style={{ color: theme.color.textPlaceholder }}> · scheduled: {detail.scheduled_end_date}</span>
@@ -184,7 +186,7 @@ export default function RoutesPage() {
                     {detail.total_distance_m > 0 && <> · {formatTravel(detail.total_distance_m, detail.total_duration_s)}</>}
                   </p>
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, flex: "none", flexWrap: "wrap", justifyContent: isMobile ? "flex-start" : "flex-end", marginBottom: isMobile ? 4 : 0 }}>
                   {canEdit && <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={openEdit}>Edit</button>}
                   <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }} onClick={onExport}>Export</button>
                   <button

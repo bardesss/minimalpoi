@@ -137,12 +137,12 @@ export async function renderShareImage(opts: ShareRenderOptions): Promise<Blob> 
       g.addColorStop(1, "rgba(0,0,0,0.55)");
       ctx.fillStyle = g;
       ctx.fillRect(0, format.height - L.scrimHeight, format.width, L.scrimHeight);
-      // Top scrim behind the title.
-      const gt = ctx.createLinearGradient(0, 0, 0, L.scrimHeight * 0.7);
+      // Top scrim behind the brand + title block.
+      const gt = ctx.createLinearGradient(0, 0, 0, L.topScrimHeight);
       gt.addColorStop(0, "rgba(0,0,0,0.5)");
       gt.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = gt;
-      ctx.fillRect(0, 0, format.width, L.scrimHeight * 0.7);
+      ctx.fillRect(0, 0, format.width, L.topScrimHeight);
     }
 
     const onDark = variant === "map";
