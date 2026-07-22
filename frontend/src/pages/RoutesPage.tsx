@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 import { useAuth } from "../auth/AuthContext";
-import { useAddNode, useCategories, useCreateRoute, useDeleteRoute, usePois, useRoute, useRoutes, useSettings, useTeams, useUpdateRoute, useVersion } from "../queries/hooks";
+import { useAddNode, useCategories, useDeleteRoute, usePois, useRoute, useRoutes, useSettings, useTeams, useUpdateRoute, useVersion } from "../queries/hooks";
 import type { RouteNodeKind } from "../types/api";
 import { poisNotInRoute } from "../map/routePois";
 import { computeInsertPosition } from "../map/insertPosition";
@@ -13,6 +13,7 @@ import RouteMap from "../components/routes/RouteMap";
 import RouteAttachments from "../components/routes/RouteAttachments";
 import SettingsModal from "../components/SettingsModal";
 import ShareImageModal from "../components/routes/ShareImageModal";
+import RouteCreateModal from "../components/routes/RouteCreateModal";
 import { formatTravel } from "../lib/formatTravel";
 import { passedNodeIds, todayIso } from "../lib/dayState";
 import { exportRoute } from "../api/routes";
@@ -27,7 +28,6 @@ export default function RoutesPage() {
   const routesQuery = useRoutes();
   const settingsQuery = useSettings();
   const version = useVersion();
-  const createRoute = useCreateRoute();
   const updateRoute = useUpdateRoute();
   const deleteRoute = useDeleteRoute();
   const teamsQuery = useTeams();
@@ -37,10 +37,7 @@ export default function RoutesPage() {
   const poisQuery = usePois();
   const categoriesQuery = useCategories();
   const addNodeFromMap = useAddNode(selectedId ?? -1);
-  const [newName, setNewName] = useState("");
-  const [newDate, setNewDate] = useState("");
-  const [newEnd, setNewEnd] = useState("");
-  const [newTeam, setNewTeam] = useState("");
+  const [newRouteOpen, setNewRouteOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -54,20 +51,6 @@ export default function RoutesPage() {
     navigate("/login", { replace: true });
   }
 
-  async function onCreate() {
-    if (!newName.trim() || !newDate) return;
-    const created = await createRoute.mutateAsync({
-      name: newName.trim(),
-      start_date: newDate,
-      ...(newEnd ? { end_date: newEnd } : {}),
-      ...(newTeam ? { team_id: Number(newTeam) } : {}),
-    });
-    setNewName("");
-    setNewDate("");
-    setNewEnd("");
-    setNewTeam("");
-    setSelectedId(created.id);
-  }
 
   const detail = routeQuery.data;
   const canEdit = detail?.can_edit ?? false;
@@ -152,21 +135,11 @@ export default function RoutesPage() {
               </button>
             ))}
             {routesQuery.data?.length === 0 && (
-              <p style={{ margin: 0, fontSize: 13, color: theme.color.textPlaceholder }}>No routes yet. Create your first below.</p>
+              <p style={{ margin: 0, fontSize: 13, color: theme.color.textPlaceholder }}>No routes yet. Create your first one.</p>
             )}
           </div>
 
-          <p style={sectionLabel}>New route</p>
-          <div style={{ display: "grid", gap: 8 }}>
-            <input aria-label="Route name" placeholder="Route name" style={inputStyle} value={newName} onChange={(e) => setNewName(e.target.value)} />
-            <input aria-label="Start date" type="date" style={inputStyle} value={newDate} onChange={(e) => setNewDate(e.target.value)} />
-            <input aria-label="End date (optional)" type="date" style={inputStyle} value={newEnd} onChange={(e) => setNewEnd(e.target.value)} />
-            <select aria-label="Team (optional)" style={inputStyle} value={newTeam} onChange={(e) => setNewTeam(e.target.value)}>
-              <option value="">No team</option>
-              {myTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-            <button type="button" style={primaryButtonStyle} onClick={onCreate} disabled={createRoute.isPending}>Create route</button>
-          </div>
+          <button type="button" style={primaryButtonStyle} onClick={() => setNewRouteOpen(true)}>+ New route</button>
         </>
       ) : (
         <>
@@ -275,6 +248,13 @@ export default function RoutesPage() {
       {settingsModalOpen && <SettingsModal onClose={() => setSettingsModalOpen(false)} />}
       {shareOpen && detail && settingsQuery.data && (
         <ShareImageModal route={detail} settings={settingsQuery.data} onClose={() => setShareOpen(false)} />
+      )}
+      {newRouteOpen && (
+        <RouteCreateModal
+          teams={myTeams.map((t) => ({ id: t.id, name: t.name }))}
+          onClose={() => setNewRouteOpen(false)}
+          onCreated={(route) => { setNewRouteOpen(false); setSelectedId(route.id); }}
+        />
       )}
     </>
   );
