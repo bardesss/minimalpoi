@@ -84,6 +84,7 @@ describe("RouteTimeline", () => {
   it("add-stop picks a place and calls the add mutation with the day", () => {
     render(<RouteTimeline route={route} canEdit />);
     fireEvent.click(screen.getByRole("button", { name: /add stop to tue 14 jul/i }));
+    fireEvent.click(screen.getByRole("button", { name: /saved place/i }));
     fireEvent.click(screen.getByRole("button", { name: "Utrecht" }));
     expect(add).toHaveBeenCalledWith(expect.objectContaining({ kind: "stop", poi_id: 7 }));
     expect(add.mock.calls[0][0]).toHaveProperty("day_offset");
@@ -99,6 +100,7 @@ describe("RouteTimeline", () => {
   it("adds a stay to a stay-less day with a position but no day_offset", () => {
     render(<RouteTimeline route={route} canEdit />);
     fireEvent.click(screen.getByRole("button", { name: /add stay to thu 16 jul/i }));
+    fireEvent.click(screen.getByRole("button", { name: /saved place/i }));
     fireEvent.click(screen.getByRole("button", { name: "Utrecht" }));
     expect(add).toHaveBeenCalledWith(expect.objectContaining({ kind: "stay", poi_id: 7 }));
     expect(add.mock.calls[0][0]).toHaveProperty("position");
@@ -189,6 +191,7 @@ describe("RouteTimeline per-day add", () => {
     // Each day's own "+ Add stop" has a day-specific accessible name; the bottom
     // controls' "+ Add stop" is just "Add stop", so this query is unambiguous.
     await userEvent.click(screen.getByRole("button", { name: /add stop to wed 15 jul/i }));
+    await userEvent.click(screen.getByRole("button", { name: /saved place/i }));
     await userEvent.click(screen.getByRole("button", { name: "Utrecht" })); // mocked saved POI
     expect(add).toHaveBeenCalledWith(expect.objectContaining({ kind: "stop", poi_id: 7, day_offset: 1 }));
     expect(add.mock.calls[0][0].position).toBeGreaterThan(1); // positioned after Hotel X (pos 1)
@@ -270,12 +273,6 @@ describe("RouteTimeline start/end rows", () => {
   const start = { id: 10, kind: "stop", role: "start", position: 0, nights: null, notes: null, poi_id: null,
     name: "Home", lat: 1, lng: 1, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null } as const;
 
-  it("shows a Set start place button when no start exists", () => {
-    wrap(<RouteTimeline route={base} canEdit />);
-    expect(screen.getByRole("button", { name: /set start place/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /set end place/i })).toBeInTheDocument();
-  });
-
   it("renders the start place pinned and not draggable", () => {
     wrap(<RouteTimeline route={{ ...base, nodes: [start] }} canEdit />);
     expect(screen.getByText("Home")).toBeInTheDocument();
@@ -285,7 +282,6 @@ describe("RouteTimeline start/end rows", () => {
   it("collapses the End row to 'Return to' when round trip is on", () => {
     wrap(<RouteTimeline route={{ ...base, round_trip: true, nodes: [start] }} canEdit />);
     expect(screen.getByText(/return to home/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /set end place/i })).not.toBeInTheDocument();
   });
 
   it("renders the round-trip return as a proper last-stop row, not a caption", () => {
@@ -357,5 +353,27 @@ describe("RouteTimeline start/end rows", () => {
     expect(within(cards[0]).getByText("Home")).toBeInTheDocument();
     // The ending point caption rides in the last day card.
     expect(within(cards[cards.length - 1]).getByText(/ending point/i)).toBeInTheDocument();
+  });
+
+  it("shows the start and end as display-only rows (no inline pickers, no round-trip checkbox)", () => {
+    const withEnds: RouteDetail = {
+      ...base,
+      nodes: [
+        start,
+        { ...node(1, "stay", 1), name: "Aalborg", arrive_date: "2026-07-14", depart_date: "2026-07-15", nights: 1 },
+        end,
+      ],
+    };
+    wrap(<RouteTimeline route={withEnds} canEdit />);
+    expect(screen.getByText("Home")).toBeInTheDocument();
+    expect(screen.getByText("Finish")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /set start place/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /set end place/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /round trip/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a muted hint when there is no start yet", () => {
+    wrap(<RouteTimeline route={{ ...base, nodes: [] }} canEdit />);
+    expect(screen.getByText(/no start set/i)).toBeInTheDocument();
   });
 });
