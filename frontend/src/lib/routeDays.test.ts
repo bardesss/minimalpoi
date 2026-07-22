@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, daysBetween, groupNodesByDay, placeInDay, dayOffsetForDrop } from "./routeDays";
+import { addDays, daysBetween, groupNodesByDay, placeInDay, dayOffsetForDrop, dropIntoDay } from "./routeDays";
 import type { RouteDetail, RouteLeg, RouteNode } from "../types/api";
 
 function stay(id: number, position: number, name: string, arrive: string, depart: string, nights: number): RouteNode {
@@ -155,5 +155,33 @@ describe("dayOffsetForDrop", () => {
   it("computes the target day's offset when dropping onto a node in another day", () => {
     // drag S1 (arrival) to just after S2 (departure day, key 2026-07-16) at position 3.5
     expect(dayOffsetForDrop(multi, groups, 3, 3.5, 2)).toBe(2); // depart day = offset 2
+  });
+});
+
+describe("dropIntoDay", () => {
+  const multi: RouteDetail = {
+    id: 5, name: "E", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-16",
+    node_count: 3, created_by: 1, owner_username: "a", team_id: null, team_name: null, round_trip: false, can_edit: true,
+    nodes: [
+      { ...stay(1, 1, "Hotel X", "2026-07-14", "2026-07-16", 2) },
+      { ...stop(2, 2, "S1"), day_offset: 0 },   // arrival day (14)
+      { ...stop(3, 3, "S2"), day_offset: null }, // departure day (16)
+    ],
+    legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
+  } as RouteDetail;
+  const groups = groupNodesByDay(multi); // [14: X, S1], [15: empty], [16: S2]
+
+  it("drops a stop onto the empty middle day with that day's offset, excluding itself", () => {
+    // Drag S2 onto the empty day 15 (index 1).
+    const { day_offset, position } = dropIntoDay(multi, groups, 1, 3);
+    expect(day_offset).toBe(1);              // 2026-07-15 is one day into the stay
+    expect(position).toBe(3);                // after S1 (the last node before day 15)
+  });
+
+  it("anchors on the target day's own nodes when it isn't empty", () => {
+    // Drag S1 onto day 16 (index 2), which holds S2.
+    const { day_offset, position } = dropIntoDay(multi, groups, 2, 2);
+    expect(day_offset).toBe(2);              // departure day
+    expect(position).toBe(4);                // after S2 (pos 3)
   });
 });

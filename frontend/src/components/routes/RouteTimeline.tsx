@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { RouteDetail, RouteNode, RouteNodeCreate, RouteNodeKind } from "../../types/api";
 import { ghostButtonStyle, theme } from "../../theme";
 import { useAddNode, useUpdateNode, useUpdateRoute } from "../../queries/hooks";
@@ -6,9 +6,9 @@ import LegRow from "./LegRow";
 import RouteNodeRow from "./RouteNodeRow";
 import RouteAttachments from "./RouteAttachments";
 import NodePicker from "./NodePicker";
-import { DndContext, MouseSensor, TouchSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, MouseSensor, TouchSensor, KeyboardSensor, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { groupNodesByDay, placeInDay, dayOffsetForDrop } from "../../lib/routeDays";
+import { groupNodesByDay, placeInDay, dayOffsetForDrop, dropIntoDay } from "../../lib/routeDays";
 import { sortableCollision } from "../../lib/routeCollision";
 import { formatDayLabel } from "../../lib/formatDayLabel";
 import DayHeader from "./DayHeader";
@@ -25,7 +25,29 @@ const dayCardStyle = {
   marginBottom: 10,
 } as const;
 
-const emptyDayHint = { margin: "8px 0 0 36px", fontSize: 12.5, color: theme.color.textPlaceholder } as const;
+// A droppable target for an empty day, so a stop dragged there lands on that day
+// instead of snapping to the nearest node in an adjacent day. Highlights while a
+// drag hovers it.
+function EmptyDayDropZone({ id, expanded, children }: { id: string; expanded: boolean; children?: ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        marginLeft: 36,
+        minHeight: expanded ? undefined : 12,
+        borderRadius: theme.radius.input,
+        border: `1.5px dashed ${isOver ? theme.color.primary : "transparent"}`,
+        background: isOver ? theme.color.tintBg : "transparent",
+        padding: expanded ? "8px 10px" : 2,
+        marginTop: 6,
+        transition: "background .12s, border-color .12s",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 /** Fractional position for a node dragged from `fromIndex` to `toIndex`.
  * Computed against the list with the dragged node removed, so `toIndex` refers
@@ -107,17 +129,32 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
     const { active, over } = e;
     if (!over || active.id === over.id) return;
     const from = middle.findIndex((n) => n.id === active.id);
+    if (from === -1) return;
+    const dragged = middle[from];
+
+    // Dropped onto an empty day's zone ("day:<index>") — land the node on that
+    // day and expand it so the drop is visible.
+    if (typeof over.id === "string" && over.id.startsWith("day:")) {
+      const gi = Number(over.id.slice(4));
+      const group = dayGroups[gi];
+      if (!group) return;
+      const { position, day_offset } = dropIntoDay(route, dayGroups, gi, dragged.id);
+      updateNode.mutate({ nodeId: dragged.id, body: dragged.kind === "stop" ? { position, day_offset } : { position } });
+      setOverrides((o) => ({ ...o, [group.dayKey]: true }));
+      return;
+    }
+
     const to = middle.findIndex((n) => n.id === over.id);
-    if (from === -1 || to === -1) return;
+    if (to === -1) return;
     const pos = computeDropPosition(middle, from, to);
     if (pos == null) return;
     // Stops carry a day; recompute it for the drop target so day and order stay
     // consistent. Stays have no day_offset — move position only.
-    if (middle[from].kind === "stop") {
-      const day_offset = dayOffsetForDrop(route, dayGroups, middle[to].id, pos, middle[from].id);
-      updateNode.mutate({ nodeId: middle[from].id, body: { position: pos, day_offset } });
+    if (dragged.kind === "stop") {
+      const day_offset = dayOffsetForDrop(route, dayGroups, middle[to].id, pos, dragged.id);
+      updateNode.mutate({ nodeId: dragged.id, body: { position: pos, day_offset } });
     } else {
-      updateNode.mutate({ nodeId: middle[from].id, body: { position: pos } });
+      updateNode.mutate({ nodeId: dragged.id, body: { position: pos } });
     }
   }
 
@@ -201,7 +238,11 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
                   onNavigate={() => navigateDay(gi)}
                 />
                 {gi === 0 && startSlot && <div style={{ marginTop: 8 }}>{startSlot}</div>}
-                {expanded && group.nodes.length === 0 && <p style={emptyDayHint}>No stops yet.</p>}
+                {group.nodes.length === 0 && (
+                  <EmptyDayDropZone id={`day:${gi}`} expanded={expanded}>
+                    {expanded && <p style={{ margin: 0, fontSize: 12.5, color: theme.color.textPlaceholder }}>No stops yet.</p>}
+                  </EmptyDayDropZone>
+                )}
                 {expanded && group.nodes.map((n) => {
                   const i = indexById.get(n.id)!;
                   const prev = i > 0 ? middle[i - 1] : undefined;
