@@ -288,6 +288,39 @@ describe("RouteTimeline start/end rows", () => {
     expect(screen.queryByRole("button", { name: /set end place/i })).not.toBeInTheDocument();
   });
 
+  const end = { id: 20, kind: "stop", role: "end", position: 6, nights: null, notes: null, poi_id: null,
+    name: "Finish", lat: 9, lng: 9, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null } as const;
+
+  // Regression: the pinned start/end must fold WITH the day when it collapses.
+  // A start rendered over a collapsed first day looked like the stay was wiped
+  // and blocked adding stops (its + buttons were hidden with the day body).
+  const pastTrip: RouteDetail = {
+    ...base,
+    start_date: "2026-06-20", // before the mocked today (2026-07-01) → collapsed
+    nodes: [
+      start,
+      { ...node(1, "stay", 1), name: "PastStay", arrive_date: "2026-06-20", depart_date: "2026-06-21", nights: 1 },
+      end,
+    ],
+  };
+
+  it("folds the pinned start and end away when their day is collapsed", () => {
+    wrap(<RouteTimeline route={pastTrip} canEdit />);
+    // The whole day body folds: the stay, the add controls, AND the bookends —
+    // no phantom "start over an empty day".
+    expect(screen.queryByText("Home")).not.toBeInTheDocument();
+    expect(screen.queryByText("PastStay")).not.toBeInTheDocument();
+    expect(screen.queryByText("Finish")).not.toBeInTheDocument();
+  });
+
+  it("reveals the start, the stay, and the add controls when the collapsed day is expanded", async () => {
+    wrap(<RouteTimeline route={pastTrip} canEdit />);
+    await userEvent.click(screen.getByRole("button", { name: /1 stops/ })); // expand day 20 Jun
+    expect(screen.getByText("Home")).toBeInTheDocument();
+    expect(screen.getByText("PastStay")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add stop to sat 20 jun/i })).toBeInTheDocument();
+  });
+
   it("labels the start as the first stop of the first day", () => {
     const withDays: RouteDetail = {
       ...base,

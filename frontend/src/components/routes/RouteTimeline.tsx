@@ -237,7 +237,7 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
                   onToggle={() => toggleDay(group.dayKey)}
                   onNavigate={() => navigateDay(gi)}
                 />
-                {gi === 0 && startSlot && <div style={{ marginTop: 8 }}>{startSlot}</div>}
+                {expanded && gi === 0 && startSlot && <div style={{ marginTop: 8 }}>{startSlot}</div>}
                 {group.nodes.length === 0 && (
                   <EmptyDayDropZone id={`day:${gi}`} expanded={expanded}>
                     {expanded && <p style={{ margin: 0, fontSize: 12.5, color: theme.color.textPlaceholder }}>No stops yet.</p>}
@@ -295,7 +295,7 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
                     )}
                   </div>
                 )}
-                {gi === dayGroups.length - 1 && endSlot && (
+                {expanded && gi === dayGroups.length - 1 && endSlot && (
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${theme.color.borderSubtle}` }}>{endSlot}</div>
                 )}
               </div>
