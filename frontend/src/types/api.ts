@@ -333,4 +333,4 @@ export interface RouteNodeCreate {
   day_offset?: number | null;
   role?: RouteNodeRole | null;
 }
-export interface RouteNodeUpdate { nights?: number | null; notes?: string | null; position?: number | null; day_offset?: number | null; }
+export interface RouteNodeUpdate { nights?: number | null; notes?: string | null; position?: number | null; day_offset?: number | null; poi_id?: number | null; name?: string | null; lat?: number | null; lng?: number | null; }
