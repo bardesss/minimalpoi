@@ -75,16 +75,20 @@ def _detail(session, route: Route, user: User) -> RouteDetail:
             id=n.id, kind=n.kind, role=n.role, position=n.position, nights=n.nights, notes=n.notes,
             poi_id=n.poi_id, name=n.name, lat=n.lat, lng=n.lng, day_offset=n.day_offset, **extra,
         ))
+    # Attachments (tickets/confirmations) can carry personal data, so they are
+    # scoped to the route's team — visible only to the owner, its team, and
+    # admins — unlike the otherwise shared route metadata.
+    can_edit = _can_edit_route(session, route, user)
     attachments = session.exec(
         select(RouteAttachment).where(RouteAttachment.route_id == route.id).order_by(RouteAttachment.uploaded_at)
-    ).all()
+    ).all() if can_edit else []
     return RouteDetail(
         id=route.id, name=route.name, start_date=route.start_date,
         end_date=route.end_date, round_trip=route.round_trip, scheduled_end_date=d["end_date"],
         node_count=len(nodes), created_by=route.created_by,
         owner_username=_username(session, route.created_by),
         team_id=route.team_id, team_name=_team_name(session, route.team_id),
-        can_edit=_can_edit_route(session, route, user),
+        can_edit=can_edit,
         nodes=node_reads,
         legs=[RouteLegRead(from_node_id=l.from_node_id, to_node_id=l.to_node_id,
                            distance_m=l.distance_m, duration_s=l.duration_s, source=l.source,
@@ -381,8 +385,11 @@ async def upload_attachment(route_id: int, request: Request, session: SessionDep
 
 
 @router.get("/{route_id}/attachments/{aid}", dependencies=[Gate])
-def download_attachment(route_id: int, aid: int, session: SessionDep, _: CurrentUser):
-    """Any member may read — a route is a shared collection, so no owner check."""
+def download_attachment(route_id: int, aid: int, session: SessionDep, user: CurrentUser):
+    """Attachments are team-scoped: only the owner, the route's team, and admins
+    may download them."""
+    route = _get_route_or_404(session, route_id)
+    require_route_editor(session, route, user)
     row = session.get(RouteAttachment, aid)
     if not row or row.route_id != route_id:
         raise HTTPException(status_code=404, detail="Not found")

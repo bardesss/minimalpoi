@@ -74,6 +74,37 @@ def test_upload_requires_owner(client):
     assert r.status_code == 403
 
 
+def test_attachments_hidden_from_non_team_members(client):
+    """A non-member can see the shared route but not its attachments (list is
+    empty) and cannot download them."""
+    rid = _route(client)  # admin owns it, no team
+    aid = client.post(f"/api/routes/{rid}/attachments",
+                      files={"file": ("hotel.pdf", io.BytesIO(PDF), "application/pdf")}).json()["id"]
+    client.post("/api/users", json={"username": "bob", "password": "pw123456"})
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
+    detail = client.get(f"/api/routes/{rid}").json()
+    assert detail["attachments"] == []                                   # not listed
+    assert client.get(f"/api/routes/{rid}/attachments/{aid}").status_code == 403  # not downloadable
+
+
+def test_team_member_sees_and_downloads_attachments(client):
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
+    client.patch("/api/settings", json={"routes_enabled": True})
+    bob = client.post("/api/users", json={"username": "bob", "password": "pw123456"}).json()
+    team = client.post("/api/teams", json={"name": "Crew", "member_ids": [bob["id"]]}).json()
+    rid = client.post("/api/routes",
+                      json={"name": "T", "start_date": "2026-07-14", "team_id": team["id"]}).json()["id"]
+    aid = client.post(f"/api/routes/{rid}/attachments",
+                      files={"file": ("hotel.pdf", io.BytesIO(PDF), "application/pdf")}).json()["id"]
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
+    detail = client.get(f"/api/routes/{rid}").json()
+    assert len(detail["attachments"]) == 1
+    got = client.get(f"/api/routes/{rid}/attachments/{aid}")
+    assert got.status_code == 200 and got.content == PDF
+
+
 def test_purge_orphan_route_level_attachments(client):
     """Route-level (node_id NULL) attachments are unreachable now; init-time
     purge deletes them and their files, keeping node-scoped ones."""
