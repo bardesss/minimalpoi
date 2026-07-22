@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.20.0](https://github.com/Bardesss/minimalpoi/compare/v2.19.1...v2.20.0) (2026-07-22)
+
+
+### Features
+
+* **routes:** add-place chooser modal + unified route form modal ([a47d56b](https://github.com/Bardesss/minimalpoi/commit/a47d56b964da1ac0b7412c2300b8010a132a5e46))
+* **routes:** AddPlaceModal with a method chooser and nights field ([7588481](https://github.com/Bardesss/minimalpoi/commit/7588481c0c524535ba5cd72c1c4e9fcd0af53905))
+* **routes:** edit a route through the route form modal ([b7402e8](https://github.com/Bardesss/minimalpoi/commit/b7402e806f1434656c24862fc1df68314674a395))
+* **routes:** extract ManualPointPanel for the place picker ([2afce8f](https://github.com/Bardesss/minimalpoi/commit/2afce8ff56d6042ebc195b2e29c415c89b56b9ec))
+* **routes:** extract SavedPlacePanel for the place picker ([c035884](https://github.com/Bardesss/minimalpoi/commit/c035884fb53116c85bf8b8c25ab2f2603ba12b2e))
+* **routes:** extract SearchPlacePanel for the place picker ([d0dbe53](https://github.com/Bardesss/minimalpoi/commit/d0dbe53e4d28f2976eebe896cc5a8855a065dff5))
+* **routes:** itinerary bookends are display-only and symmetric; adds use the modal ([0645650](https://github.com/Bardesss/minimalpoi/commit/0645650e4ad5e2389ab621c3dc71f04bb471a7e9))
+* **routes:** relocate a node in place, re-syncing the round-trip end ([0b09bd5](https://github.com/Bardesss/minimalpoi/commit/0b09bd50b122971e73571d0ddd91e3764cb36e4d))
+* **routes:** RouteFormModal serves both New route and Edit route ([c3957f0](https://github.com/Bardesss/minimalpoi/commit/c3957f04dddd8cee270acb1e2dca54d6f025c55b))
+* **routes:** useUpdateRoutePlan reconciles an edited route ([9938876](https://github.com/Bardesss/minimalpoi/commit/9938876b034a5d46bd8ad7839d449e8360ddcf35))
+
+
+### Bug Fixes
+
+* **routes:** guard blank manual coordinates; drop dead useUpdateRoute + stale comment ([0a926d5](https://github.com/Bardesss/minimalpoi/commit/0a926d5188c102fadfd1628f6f88ab3a531be452))
+
 ## [2.19.1](https://github.com/Bardesss/minimalpoi/compare/v2.19.0...v2.19.1) (2026-07-22)
 
 
