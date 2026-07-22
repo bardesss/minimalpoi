@@ -80,12 +80,16 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
   const addNode = useAddNode(route.id);
   const updateNode = useUpdateNode(route.id);
 
+  // `adding` drives the first-stop picker on an empty route (no day cards yet);
+  // `dayAdding` drives the per-day picker, tagged with the day and the kind.
   const [adding, setAdding] = useState<RouteNodeKind | null>(null);
-  const [dayAdding, setDayAdding] = useState<number | null>(null);
+  const [dayAdding, setDayAdding] = useState<{ gi: number; kind: RouteNodeKind } | null>(null);
 
   function submitDay(body: RouteNodeCreate, gi: number) {
     const { position, day_offset } = placeInDay(route, dayGroups, gi);
-    addNode.mutate({ ...body, position, day_offset });
+    // Stops belong to a specific day (day_offset); stays define their own span,
+    // so they take a position only — matching the drag handler's rule.
+    addNode.mutate(body.kind === "stay" ? { ...body, position } : { ...body, position, day_offset });
     setDayAdding(null);
   }
 
@@ -224,17 +228,29 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
                 })}
                 {expanded && canEdit && (
                   <div style={{ margin: "4px 0 0 36px" }}>
-                    {dayAdding === gi ? (
-                      <NodePicker kind="stop" onCancel={() => setDayAdding(null)} onSubmit={(b) => submitDay(b, gi)} />
+                    {dayAdding?.gi === gi ? (
+                      <NodePicker kind={dayAdding.kind} onCancel={() => setDayAdding(null)} onSubmit={(b) => submitDay(b, gi)} />
                     ) : (
-                      <button
-                        type="button"
-                        aria-label={`Add stop to ${formatDayLabel(group.dayKey)}`}
-                        style={{ ...ghostButtonStyle, padding: "4px 10px", fontSize: 12 }}
-                        onClick={() => setDayAdding(gi)}
-                      >
-                        + Add stop
-                      </button>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          type="button"
+                          aria-label={`Add stop to ${formatDayLabel(group.dayKey)}`}
+                          style={{ ...ghostButtonStyle, padding: "4px 10px", fontSize: 12 }}
+                          onClick={() => setDayAdding({ gi, kind: "stop" })}
+                        >
+                          + Add stop
+                        </button>
+                        {!group.nodes.some((n) => n.kind === "stay") && (
+                          <button
+                            type="button"
+                            aria-label={`Add stay to ${formatDayLabel(group.dayKey)}`}
+                            style={{ ...ghostButtonStyle, padding: "4px 10px", fontSize: 12 }}
+                            onClick={() => setDayAdding({ gi, kind: "stay" })}
+                          >
+                            + Add stay
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -247,10 +263,19 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
           {dayGroups.length === 0 && (
             <div data-testid="day-card" style={dayCardStyle}>
               {startSlot}
-              {middle.length === 0 && (
-                <p style={{ margin: "10px 0", fontSize: 13, color: theme.color.textPlaceholder }}>
-                  No stops yet. Add a stay or a stop to start building the route.
-                </p>
+              {canEdit ? (
+                <div style={{ margin: "10px 0" }}>
+                  {adding ? (
+                    <NodePicker kind={adding} onCancel={() => setAdding(null)} onSubmit={submit} />
+                  ) : (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button type="button" style={ghostButtonStyle} onClick={() => setAdding("stay")}>+ Add stay</button>
+                      <button type="button" style={ghostButtonStyle} onClick={() => setAdding("stop")}>+ Add stop</button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p style={{ margin: "10px 0", fontSize: 13, color: theme.color.textPlaceholder }}>No stops yet.</p>
               )}
               {endSlot}
             </div>
@@ -264,19 +289,6 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
           waypoints={dayWaypoints(dayGroups, navIndex)}
           onClose={() => setNavIndex(null)}
         />
-      )}
-
-      {canEdit && (
-        <div style={{ marginTop: 12 }}>
-          {adding ? (
-            <NodePicker kind={adding} onCancel={() => setAdding(null)} onSubmit={submit} />
-          ) : (
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" style={ghostButtonStyle} onClick={() => setAdding("stay")}>+ Add stay</button>
-              <button type="button" style={ghostButtonStyle} onClick={() => setAdding("stop")}>+ Add stop</button>
-            </div>
-          )}
-        </div>
       )}
     </div>
   );
