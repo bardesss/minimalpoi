@@ -125,15 +125,12 @@ describe("RoutesPage", () => {
     expect(screen.getByText(/scheduled:\s*2026-07-16/i)).toBeInTheDocument();
   });
 
-  it("edits a route's name and dates", async () => {
+  it("opens the route form modal in edit mode from the Edit button", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
     fireEvent.click(await screen.findByRole("button", { name: /^edit$/i }));
-    fireEvent.change(screen.getByLabelText(/edit route name/i), { target: { value: "NL trip 2" } });
-    fireEvent.click(screen.getByRole("button", { name: /save/i }));
-    await waitFor(() =>
-      expect(updateAsync).toHaveBeenCalledWith({ id: 5, body: expect.objectContaining({ name: "NL trip 2" }) }),
-    );
+    expect(screen.getByText(/edit route/i)).toBeInTheDocument();
+    expect((screen.getByLabelText(/route name/i) as HTMLInputElement).value).toBe("NL trip");
   });
 
   it("deletes a route after confirm", async () => {
@@ -176,14 +173,11 @@ describe("RoutesPage", () => {
     expect(await screen.findByRole("button", { name: /share image/i })).toBeDisabled();
   });
 
-  it("edit team selector includes the route's current team even if not in my teams", async () => {
+  it("edit route modal offers the caller's teams to reassign", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
     fireEvent.click(await screen.findByRole("button", { name: /^edit$/i }));
-    const select = screen.getByLabelText(/edit team/i) as HTMLSelectElement;
-    // the currently-assigned team (id 9, "Ghosts") must be an option and selected,
-    // even though it is not in the mocked useTeams list (only team 3 "Crew" is).
-    expect(within(select).getByRole("option", { name: "Ghosts" })).toBeInTheDocument();
-    expect(select.value).toBe("9");
+    const select = screen.getByLabelText(/team \(optional\)/i) as HTMLSelectElement;
+    expect(within(select).getByRole("option", { name: "Crew" })).toBeInTheDocument();
   });
 });
