@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.15.0](https://github.com/Bardesss/minimalpoi/compare/v2.14.0...v2.15.0) (2026-07-22)
+
+
+### Features
+
+* **poi:** add an Uncategorized filter chip and legend row ([eaf3e7e](https://github.com/Bardesss/minimalpoi/commit/eaf3e7e991658cfd5511eb9026ee4f5325dc9e1a))
+* route share image + POI/routes bug fixes ([d7493c1](https://github.com/Bardesss/minimalpoi/commit/d7493c1419a6f9764e02ab777f4d6701c0d85fb3))
+
+
+### Bug Fixes
+
+* **poi:** validate coordinates and surface save failures ([2d1d549](https://github.com/Bardesss/minimalpoi/commit/2d1d549730027b682ab5e23db1e30c061f47deb4))
+* **routes:** declutter the mobile route header ([1a78b51](https://github.com/Bardesss/minimalpoi/commit/1a78b51ffd9b42c76332d93730add830ba61c482))
+* **routes:** touch-friendly itinerary drag on mobile ([e7b63bf](https://github.com/Bardesss/minimalpoi/commit/e7b63bf416a2e477c40c0fb444e191a3d70a7889))
+* **share:** move brand to top so it no longer overlaps the stats ([950a9ef](https://github.com/Bardesss/minimalpoi/commit/950a9ef488aad42fdb0124b2ae32539ded6a7374))
+
 ## [2.14.0](https://github.com/Bardesss/minimalpoi/compare/v2.13.0...v2.14.0) (2026-07-21)
 
 
