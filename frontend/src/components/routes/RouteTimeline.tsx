@@ -189,9 +189,23 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
   );
 
   const endContent = route.round_trip ? (
-    <p style={{ margin: "0 0 6px", fontSize: 13, color: theme.color.textSecondary }}>
-      Return to {startNode?.name ?? "start"}
-    </p>
+    // Round trip: the return to the start IS the last stop, so show it as a proper
+    // pinned row (matching the start row) rather than a faint caption. The backend
+    // mirrors the start onto an end node; fall back to a caption only if it isn't
+    // there yet (e.g. no start set).
+    endNode ? (
+      <RouteNodeRow
+        node={{ ...endNode, name: `Return to ${startNode?.name ?? "start"}` }}
+        routeId={route.id}
+        canEdit={false}
+        pinned
+        onHover={onHoverNode}
+      />
+    ) : (
+      <p style={{ margin: "0 0 6px", fontSize: 13, color: theme.color.textSecondary }}>
+        Return to {startNode?.name ?? "start"}
+      </p>
+    )
   ) : endNode ? (
     <RouteNodeRow node={endNode} routeId={route.id} canEdit={canEdit} pinned onHover={onHoverNode} />
   ) : canEdit && pick === "end" ? (

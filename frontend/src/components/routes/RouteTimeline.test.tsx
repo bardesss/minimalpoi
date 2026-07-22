@@ -288,6 +288,27 @@ describe("RouteTimeline start/end rows", () => {
     expect(screen.queryByRole("button", { name: /set end place/i })).not.toBeInTheDocument();
   });
 
+  it("renders the round-trip return as a proper last-stop row, not a caption", () => {
+    // With a start set, the backend mirrors it onto an end node. The return should
+    // read as an actual pinned row on the last day — and stay read-only (no Remove
+    // button; the Round trip checkbox governs it).
+    const roundTrip: RouteDetail = {
+      ...base,
+      round_trip: true,
+      nodes: [
+        start,
+        { ...node(1, "stay", 1), name: "Aalborg", arrive_date: "2026-07-14", depart_date: "2026-07-15", nights: 1 },
+        { ...end, name: "Home" }, // end mirrors the start place
+      ],
+    };
+    wrap(<RouteTimeline route={roundTrip} canEdit />);
+    const cards = screen.getAllByTestId("day-card");
+    const last = cards[cards.length - 1];
+    expect(within(last).getByText(/return to home/i)).toBeInTheDocument();
+    // Read-only: the mirrored return can't be deleted directly.
+    expect(within(last).queryByRole("button", { name: /remove return to home/i })).not.toBeInTheDocument();
+  });
+
   const end = { id: 20, kind: "stop", role: "end", position: 6, nights: null, notes: null, poi_id: null,
     name: "Finish", lat: 9, lng: 9, arrive_date: null, depart_date: null, inbound_distance_m: null, inbound_duration_s: null } as const;
 
