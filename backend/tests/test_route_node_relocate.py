@@ -44,3 +44,14 @@ def test_non_location_update_still_works(client):
     stay = detail["nodes"][0]
     detail = _patch(client, rid, stay["id"], nights=3)
     assert next(n for n in detail["nodes"] if n["id"] == stay["id"])["nights"] == 3
+
+
+def test_relocate_and_reposition_in_one_patch(client):
+    _setup(client)
+    rid = _route(client)["id"]
+    detail = _add(client, rid, kind="stop", name="M1", lat=1.0, lng=1.0)
+    m = detail["nodes"][0]
+    detail = _patch(client, rid, m["id"], name="M2", lat=5.0, lng=6.0, position=9.0)
+    moved = next(n for n in detail["nodes"] if n["id"] == m["id"])
+    assert moved["name"] == "M2" and moved["lat"] == 5.0 and moved["lng"] == 6.0
+    assert moved["position"] == 9.0

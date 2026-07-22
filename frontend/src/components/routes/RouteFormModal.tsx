@@ -50,6 +50,13 @@ export default function RouteFormModal({
   const startLabel = startBody ? pointLabel(startBody, poiName) : startNode?.name ?? null;
   const endLabel = endBody ? pointLabel(endBody, poiName) : endNode?.name ?? null;
 
+  // Ensure the route's current team is representable in the select even if it's
+  // no longer in the caller's `teams` list (e.g. team was removed from the user's set).
+  const teamOptions =
+    existing?.team_id != null && !teams.some((t) => t.id === existing.team_id)
+      ? [...teams, { id: existing.team_id, name: existing.team_name ?? `Team ${existing.team_id}` }]
+      : teams;
+
   const canSave = name.trim() !== "" && startDate !== ""
     && (editing ? (startNode != null || startBody != null) : startBody != null)
     && (roundTrip || (editing ? (endNode != null || endBody != null) : endBody != null));
@@ -122,12 +129,12 @@ export default function RouteFormModal({
             </div>
           </div>
 
-          {teams.length > 0 && (
+          {teamOptions.length > 0 && (
             <div>
               <label style={label} htmlFor="route-team">Team (optional)</label>
               <select id="route-team" aria-label="Team (optional)" style={inputStyle} value={teamId} onChange={(e) => setTeamId(e.target.value)}>
                 <option value="">No team</option>
-                {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                {teamOptions.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </div>
           )}

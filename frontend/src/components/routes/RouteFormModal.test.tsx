@@ -37,6 +37,14 @@ describe("RouteFormModal", () => {
     await vi.waitFor(() => expect(updatePlan).toHaveBeenCalledWith(expect.objectContaining({ id: 1, roundTrip: true, start: null, startNodeId: 10 })));
   });
 
+  it("shows the route's current team even when it's not in the teams prop", async () => {
+    const existingWithTeam: RouteDetail = { ...existing, team_id: 42, team_name: "Roaming Crew" };
+    wrap(<RouteFormModal teams={[{ id: 2, name: "Other Team" }]} existing={existingWithTeam} onClose={vi.fn()} onSaved={vi.fn()} />);
+    const select = screen.getByLabelText(/team \(optional\)/i) as HTMLSelectElement;
+    expect(select.value).toBe("42");
+    expect(screen.getByRole("option", { name: "Roaming Crew" })).toBeInTheDocument();
+  });
+
   it("create mode still opens the place chooser and creates", async () => {
     wrap(<RouteFormModal teams={[]} existing={null} onClose={vi.fn()} onSaved={vi.fn()} />);
     expect(screen.getByText(/new route/i)).toBeInTheDocument();
