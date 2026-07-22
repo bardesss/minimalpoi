@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.19.1](https://github.com/Bardesss/minimalpoi/compare/v2.19.0...v2.19.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* **routes:** fold pinned start/end with a collapsed day ([f1eb9ad](https://github.com/Bardesss/minimalpoi/commit/f1eb9ad905520f8c1e1d1708ee8eca94715d68f0))
+* **routes:** itinerary collapse + round-trip return display ([a0ec78d](https://github.com/Bardesss/minimalpoi/commit/a0ec78daf8e20605d81041aa9954a2963052d03c))
+* **routes:** show the round-trip return as a real last-stop row ([753622e](https://github.com/Bardesss/minimalpoi/commit/753622ef65c2b188a21faad939fac165994eded3))
+
 ## [2.19.0](https://github.com/Bardesss/minimalpoi/compare/v2.18.0...v2.19.0) (2026-07-22)
 
 
