@@ -15,7 +15,7 @@ import ShareImageModal from "../components/routes/ShareImageModal";
 import RouteCreateModal from "../components/routes/RouteCreateModal";
 import { formatTravel } from "../lib/formatTravel";
 import { passedNodeIds, todayIso } from "../lib/dayState";
-import { exportRoute } from "../api/routes";
+import { exportRoute, type RouteExportFormat } from "../api/routes";
 import { triggerDownload } from "../lib/download";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
@@ -40,6 +40,7 @@ export default function RoutesPage() {
   const [collapsed, setCollapsed] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [edit, setEdit] = useState({ name: "", start_date: "", end_date: "", team_id: "" });
@@ -80,9 +81,10 @@ export default function RoutesPage() {
     return opts;
   })();
 
-  async function onExport() {
+  async function onExport(format: RouteExportFormat) {
     if (!detail) return;
-    triggerDownload(await exportRoute(detail.id), `${detail.name}.geojson`);
+    setExportOpen(false);
+    triggerDownload(await exportRoute(detail.id, format), `${detail.name}.${format}`);
   }
 
   function openEdit() {
@@ -159,7 +161,21 @@ export default function RoutesPage() {
                 </div>
                 <div style={{ display: "flex", gap: 8, flex: "none", flexWrap: "wrap", justifyContent: isMobile ? "flex-start" : "flex-end", marginBottom: isMobile ? 4 : 0 }}>
                   {canEdit && <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={openEdit}>Edit</button>}
-                  <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }} onClick={onExport}>Export</button>
+                  <div style={{ position: "relative" }}>
+                    <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }} onClick={() => setExportOpen((o) => !o)} aria-haspopup="menu" aria-expanded={exportOpen}>Export ▾</button>
+                    {exportOpen && (
+                      <>
+                        <div onClick={() => setExportOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />
+                        <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 11, background: "#fff", border: `1px solid ${theme.color.borderCard}`, borderRadius: theme.radius.input, boxShadow: theme.shadow.modal, display: "flex", flexDirection: "column", minWidth: 130, overflow: "hidden" }}>
+                          {(["geojson", "gpx", "kml"] as const).map((f) => (
+                            <button key={f} type="button" role="menuitem" onClick={() => onExport(f)} style={{ textAlign: "left", padding: "8px 12px", background: "transparent", border: "none", cursor: "pointer", fontFamily: theme.font.ui, fontSize: 13, fontWeight: 600, color: theme.color.textBody }}>
+                              {f === "geojson" ? "GeoJSON" : f.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                   <button
                     type="button"
                     style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }}
