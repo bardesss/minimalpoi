@@ -10,7 +10,6 @@ import { computeInsertPosition } from "../map/insertPosition";
 import AppLayout from "../components/AppLayout";
 import RouteTimeline from "../components/routes/RouteTimeline";
 import RouteMap from "../components/routes/RouteMap";
-import RouteAttachments from "../components/routes/RouteAttachments";
 import SettingsModal from "../components/SettingsModal";
 import ShareImageModal from "../components/routes/ShareImageModal";
 import RouteCreateModal from "../components/routes/RouteCreateModal";
@@ -112,7 +111,6 @@ export default function RoutesPage() {
     setSelectedId(null);
   }
 
-  const routeAttachments = (detail?.attachments ?? []).filter((a) => a.node_id == null);
 
   const panel = (
     <div className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16 }}>
@@ -190,10 +188,6 @@ export default function RoutesPage() {
                 </div>
               )}
               <RouteTimeline route={detail} canEdit={canEdit} onHoverNode={setHoverNodeId} />
-              <div style={{ marginTop: 18 }}>
-                <p style={sectionLabel}>Route documents</p>
-                <RouteAttachments routeId={detail.id} nodeId={null} attachments={routeAttachments} canEdit={canEdit} />
-              </div>
               {canEdit && (
                 <div style={{ marginTop: 18 }}>
                   {confirmDel ? (

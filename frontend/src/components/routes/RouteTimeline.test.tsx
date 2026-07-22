@@ -81,13 +81,28 @@ describe("RouteTimeline", () => {
     expect(screen.getAllByText("28 km · 35 min")).toHaveLength(2);
   });
 
-  it("add-stop picks a place and calls the add mutation", () => {
+  it("add-stop picks a place and calls the add mutation with the day", () => {
     render(<RouteTimeline route={route} canEdit />);
-    // Exact name ("+ Add stop") targets the bottom control; per-day "+ Add stop"
-    // buttons carry a day-specific aria-label ("Add stop to ...") instead.
-    fireEvent.click(screen.getByRole("button", { name: "+ Add stop" }));
+    fireEvent.click(screen.getByRole("button", { name: /add stop to tue 14 jul/i }));
     fireEvent.click(screen.getByRole("button", { name: "Utrecht" }));
-    expect(add).toHaveBeenCalledWith({ kind: "stop", poi_id: 7, nights: null });
+    expect(add).toHaveBeenCalledWith(expect.objectContaining({ kind: "stop", poi_id: 7 }));
+    expect(add.mock.calls[0][0]).toHaveProperty("day_offset");
+  });
+
+  it("offers Add stay only on a day that has no stay", () => {
+    render(<RouteTimeline route={route} canEdit />);
+    // Day 14 already holds a stay (N1) → no Add stay; day 16 is empty → offers it.
+    expect(screen.queryByRole("button", { name: /add stay to tue 14 jul/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add stay to thu 16 jul/i })).toBeInTheDocument();
+  });
+
+  it("adds a stay to a stay-less day with a position but no day_offset", () => {
+    render(<RouteTimeline route={route} canEdit />);
+    fireEvent.click(screen.getByRole("button", { name: /add stay to thu 16 jul/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Utrecht" }));
+    expect(add).toHaveBeenCalledWith(expect.objectContaining({ kind: "stay", poi_id: 7 }));
+    expect(add.mock.calls[0][0]).toHaveProperty("position");
+    expect(add.mock.calls[0][0]).not.toHaveProperty("day_offset");
   });
 
   it("hides add controls in read-only mode", () => {
