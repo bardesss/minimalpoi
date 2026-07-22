@@ -12,7 +12,7 @@ import RouteTimeline from "../components/routes/RouteTimeline";
 import RouteMap from "../components/routes/RouteMap";
 import SettingsModal from "../components/SettingsModal";
 import ShareImageModal from "../components/routes/ShareImageModal";
-import RouteCreateModal from "../components/routes/RouteCreateModal";
+import RouteFormModal from "../components/routes/RouteFormModal";
 import { formatTravel } from "../lib/formatTravel";
 import { passedNodeIds, todayIso } from "../lib/dayState";
 import { exportRoute, type RouteExportFormat } from "../api/routes";
@@ -260,10 +260,11 @@ export default function RoutesPage() {
         <ShareImageModal route={detail} settings={settingsQuery.data} onClose={() => setShareOpen(false)} />
       )}
       {newRouteOpen && (
-        <RouteCreateModal
+        <RouteFormModal
           teams={myTeams.map((t) => ({ id: t.id, name: t.name }))}
+          existing={null}
           onClose={() => setNewRouteOpen(false)}
-          onCreated={(route) => { setNewRouteOpen(false); setSelectedId(route.id); }}
+          onSaved={(route) => { setNewRouteOpen(false); setSelectedId(route.id); }}
         />
       )}
     </>

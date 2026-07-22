@@ -28,6 +28,7 @@ vi.mock("../queries/hooks", () => ({
   useSettings: () => ({ data: { map_tile_url: "", default_map_center_lat: 52, default_map_center_lng: 4, default_map_zoom: 11, routes_enabled: true } }),
   useTeams: () => ({ data: [{ id: 3, name: "Crew", created_by: 1, member_ids: [1] }] }),
   useCreateRoutePlan: () => ({ mutateAsync: createPlanAsync, isPending: false }),
+  useUpdateRoutePlan: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSearchPlaces: () => ({ mutateAsync: vi.fn() }),
   usePlaceDraft: () => ({ mutateAsync: vi.fn() }),
   useCreatePoi: () => ({ mutateAsync: vi.fn() }),
@@ -67,7 +68,7 @@ function openModalWithStart(name: string, start: string) {
   fireEvent.change(screen.getByLabelText(/route name/i), { target: { value: name } });
   fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: start } });
   fireEvent.click(screen.getByRole("button", { name: /set start place/i }));
-  fireEvent.click(screen.getByRole("button", { name: /add a point manually/i }));
+  fireEvent.click(screen.getByRole("button", { name: /enter coordinates/i }));
   fireEvent.change(screen.getByLabelText(/point name/i), { target: { value: "Chamonix" } });
   fireEvent.change(screen.getByLabelText(/^latitude$/i), { target: { value: "45.9" } });
   fireEvent.change(screen.getByLabelText(/^longitude$/i), { target: { value: "6.87" } });
@@ -106,7 +107,7 @@ describe("RoutesPage", () => {
     openModalWithStart("Alps", "2026-08-01");
     fireEvent.click(screen.getByLabelText(/round trip/i)); // uncheck
     fireEvent.click(screen.getByRole("button", { name: /set end place/i }));
-    fireEvent.click(screen.getByRole("button", { name: /add a point manually/i }));
+    fireEvent.click(screen.getByRole("button", { name: /enter coordinates/i }));
     fireEvent.change(screen.getByLabelText(/point name/i), { target: { value: "Nice" } });
     fireEvent.change(screen.getByLabelText(/^latitude$/i), { target: { value: "43.7" } });
     fireEvent.change(screen.getByLabelText(/^longitude$/i), { target: { value: "7.26" } });
@@ -150,7 +151,7 @@ describe("RoutesPage", () => {
     fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: "2026-08-01" } });
     fireEvent.change(screen.getByLabelText(/team \(optional\)/i), { target: { value: "3" } });
     fireEvent.click(screen.getByRole("button", { name: /set start place/i }));
-    fireEvent.click(screen.getByRole("button", { name: /add a point manually/i }));
+    fireEvent.click(screen.getByRole("button", { name: /enter coordinates/i }));
     fireEvent.change(screen.getByLabelText(/point name/i), { target: { value: "Chamonix" } });
     fireEvent.change(screen.getByLabelText(/^latitude$/i), { target: { value: "45.9" } });
     fireEvent.change(screen.getByLabelText(/^longitude$/i), { target: { value: "6.87" } });
