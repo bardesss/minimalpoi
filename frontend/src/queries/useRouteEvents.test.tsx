@@ -77,6 +77,24 @@ describe("useRouteEvents", () => {
     expect(cached.attachments).toHaveLength(1); // own attachments preserved
   });
 
+  it("does not trust the broadcast can_edit when there is no prior cache entry", () => {
+    // An update racing ahead of the initial REST fetch: the broadcast carries the
+    // mutating editor's can_edit=true, which must NOT flash on a non-team viewer.
+    const qc = new QueryClient();
+    renderHook(() => useRouteEvents(1), { wrapper: wrapper(qc) });
+
+    act(() => {
+      MockEventSource.instances[0].emit(JSON.stringify({
+        type: "update", client_id: "other",
+        route: detail({ node_count: 3, can_edit: true, attachments: [] }),
+      }));
+    });
+
+    const cached = qc.getQueryData<RouteDetail>(["routes", 1])!;
+    expect(cached.node_count).toBe(3);   // itinerary still applied
+    expect(cached.can_edit).toBe(false); // forced safe until the refetch settles truth
+  });
+
   it("ignores its own echo", () => {
     const qc = new QueryClient();
     qc.setQueryData(["routes", 1], detail({ node_count: 0 }));

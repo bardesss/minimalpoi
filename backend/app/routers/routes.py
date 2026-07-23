@@ -26,7 +26,7 @@ from ..models import (
 )
 from ..ratelimit import GOOGLE_LIMIT, UPLOAD_LIMIT, WRITE_LIMIT, limiter, user_or_ip
 from ..routes_export import route_to_geojson, route_to_gpx, route_to_kml
-from ..routing.events import route_hub
+from ..routing.events import RouteEventHub, route_hub
 from ..routing.service import derive, legs_for, ordered_nodes, recompute_legs
 from ..schemas import (
     RouteAttachmentRead,
@@ -189,7 +189,7 @@ def get_route(route_id: int, session: SessionDep, user: CurrentUser) -> RouteDet
     return _detail(session, _get_route_or_404(session, route_id), user)
 
 
-async def _route_event_stream(request: Request, hub, route_id: int):
+async def _route_event_stream(request: Request, hub: RouteEventHub, route_id: int):
     """Async generator behind the SSE endpoint. Module-level (not a closure) so
     it can be driven directly in tests: this repo's sync TestClient drains the
     whole ASGI response before returning, which would hang on an infinite stream."""

@@ -11,7 +11,13 @@ interface RouteEventEnvelope {
 
 function applyUpdate(qc: QueryClient, routeId: number, incoming: RouteDetail) {
   qc.setQueryData<RouteDetail>(["routes", routeId], (prev) =>
-    prev ? { ...incoming, can_edit: prev.can_edit, attachments: prev.attachments } : incoming,
+    // Preserve the viewer's own can_edit/attachments. With no prior cache entry
+    // (an update racing ahead of the initial REST fetch), don't trust the
+    // broadcast's can_edit — it's the mutating editor's — nor its empty
+    // attachments; force safe defaults until the refetch below settles the truth.
+    prev
+      ? { ...incoming, can_edit: prev.can_edit, attachments: prev.attachments }
+      : { ...incoming, can_edit: false, attachments: [] },
   );
   qc.invalidateQueries({ queryKey: ["routes"] });
 }
