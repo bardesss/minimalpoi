@@ -36,3 +36,10 @@ def test_publish_drops_when_a_subscriber_queue_is_full():
 def test_publish_to_a_route_with_no_subscribers_is_a_noop():
     hub = RouteEventHub()
     hub.publish(99, {"x": 1})  # must not raise
+
+
+def test_hub_is_available_on_app_state_after_startup(client):
+    # The `client` fixture runs the FastAPI lifespan, which must create the hub.
+    from app.main import app
+    from app.routing.events import RouteEventHub
+    assert isinstance(app.state.route_hub, RouteEventHub)
