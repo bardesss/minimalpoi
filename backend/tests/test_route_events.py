@@ -100,3 +100,39 @@ def test_event_stream_emits_preamble_then_data_then_unsubscribes():
         assert hub._subs.get(7) in (None, set())  # finally-block unsubscribed
 
     asyncio.run(scenario())
+
+
+def test_adding_a_node_publishes_an_update_with_client_id(client):
+    rid = _make_route(client)
+    from app.main import app
+    q = app.state.route_hub.subscribe(rid)
+
+    client.post(
+        f"/api/routes/{rid}/nodes",
+        json={"kind": "stop", "name": "Cafe", "lat": 52.1, "lng": 4.3},
+        headers={"X-Route-Client": "tab-abc"},
+    )
+
+    event = q.get_nowait()
+    assert event["type"] == "update"
+    assert event["client_id"] == "tab-abc"
+    assert event["route"]["node_count"] == 1
+
+
+def test_broadcast_payload_omits_attachments(client):
+    rid = _make_route(client)
+    from app.main import app
+    q = app.state.route_hub.subscribe(rid)
+    client.post(f"/api/routes/{rid}/nodes", json={"kind": "stop", "name": "X", "lat": 1.0, "lng": 2.0})
+    event = q.get_nowait()
+    assert event["route"]["attachments"] == []  # team-private data is never broadcast
+
+
+def test_deleting_a_route_publishes_a_deleted_event(client):
+    rid = _make_route(client)
+    from app.main import app
+    q = app.state.route_hub.subscribe(rid)
+    client.delete(f"/api/routes/{rid}")
+    event = q.get_nowait()
+    assert event["type"] == "deleted"
+    assert event["route"] is None

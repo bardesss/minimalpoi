@@ -103,6 +103,23 @@ def _detail(session, route: Route, user: User) -> RouteDetail:
     )
 
 
+def _detail_and_publish(request: Request, session, route: Route, user: User) -> RouteDetail:
+    """Build the route detail (returned to the caller unchanged) and broadcast a
+    copy to live subscribers. The broadcast copy drops attachments (team-private)
+    and its can_edit is ignored by clients, which keep their own."""
+    detail = _detail(session, route, user)
+    hub = route_hub(request)
+    if hub is not None:
+        payload = detail.model_dump(mode="json")
+        payload["attachments"] = []
+        hub.publish(route.id, {
+            "type": "update",
+            "client_id": request.headers.get("X-Route-Client"),
+            "route": payload,
+        })
+    return detail
+
+
 def _get_route_or_404(session, route_id: int) -> Route:
     route = session.get(Route, route_id)
     if not route:
@@ -164,7 +181,7 @@ def create_route(request: Request, body: RouteCreate, session: SessionDep, user:
     session.add(route)
     session.commit()
     session.refresh(route)
-    return _detail(session, route, user)
+    return _detail_and_publish(request, session, route, user)
 
 
 @router.get("/{route_id}", response_model=RouteDetail, dependencies=[Gate])
@@ -256,7 +273,7 @@ async def update_route(route_id: int, request: Request, body: RouteUpdate, sessi
         _sync_round_trip(session, route)
         await recompute_legs(session, route_id)
     session.refresh(route)
-    return _detail(session, route, user)
+    return _detail_and_publish(request, session, route, user)
 
 
 @router.delete("/{route_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Gate])
@@ -273,6 +290,13 @@ def delete_route(route_id: int, request: Request, session: SessionDep, user: Cur
             session.delete(row)
     session.delete(route)
     session.commit()
+    hub = route_hub(request)
+    if hub is not None:
+        hub.publish(route_id, {
+            "type": "deleted",
+            "client_id": request.headers.get("X-Route-Client"),
+            "route": None,
+        })
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -347,7 +371,7 @@ async def add_node(route_id: int, request: Request, body: RouteNodeCreate, sessi
     session.commit()
     _sync_round_trip(session, route)
     await recompute_legs(session, route_id)
-    return _detail(session, route, user)
+    return _detail_and_publish(request, session, route, user)
 
 
 @router.patch("/{route_id}/nodes/{node_id}", response_model=RouteDetail, dependencies=[Gate])
@@ -373,7 +397,7 @@ async def update_node(route_id: int, node_id: int, request: Request, body: Route
     session.commit()
     _sync_round_trip(session, route)  # relocating the start re-mirrors the end
     await recompute_legs(session, route_id)  # position/location may change the order
-    return _detail(session, route, user)
+    return _detail_and_publish(request, session, route, user)
 
 
 @router.delete("/{route_id}/nodes/{node_id}", response_model=RouteDetail, dependencies=[Gate])
@@ -392,7 +416,7 @@ async def delete_node(route_id: int, node_id: int, request: Request, session: Se
     session.commit()
     _sync_round_trip(session, route)
     await recompute_legs(session, route_id)
-    return _detail(session, route, user)
+    return _detail_and_publish(request, session, route, user)
 
 
 @router.post("/{route_id}/recompute", response_model=RouteDetail, dependencies=[Gate])
@@ -403,7 +427,7 @@ async def recompute_route(route_id: int, request: Request, session: SessionDep, 
     route = _get_route_or_404(session, route_id)
     require_route_editor(session, route, user)
     await recompute_legs(session, route_id)
-    return _detail(session, route, user)
+    return _detail_and_publish(request, session, route, user)
 
 
 def _attach_read(a: RouteAttachment) -> RouteAttachmentRead:
