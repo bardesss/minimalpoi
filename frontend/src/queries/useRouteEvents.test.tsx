@@ -157,4 +157,34 @@ describe("useRouteEvents", () => {
     expect(r2.id).toBe(2);
     expect(r2.node_count).toBe(5);
   });
+
+  it("does not resurrect a deleted route from a buffered update", () => {
+    const qc = new QueryClient();
+    qc.setQueryData(["routes", 1], detail({ id: 1, node_count: 0 }));
+    const { rerender } = renderHook(
+      ({ s }: { s: boolean }) => useRouteEvents(1, { suspended: s }),
+      { wrapper: wrapper(qc), initialProps: { s: true } },
+    );
+    const es = MockEventSource.instances[0];
+    act(() => es.emit(JSON.stringify({ type: "update", client_id: "o", route: detail({ id: 1, node_count: 9 }) })));
+    act(() => es.emit(JSON.stringify({ type: "deleted", client_id: "o", route: null })));
+    act(() => rerender({ s: false }));   // unsuspend — the buffered update must NOT come back
+    expect(qc.getQueryData(["routes", 1])).toBeUndefined();
+  });
+
+  it("discards an unflushed buffer once you navigate away, even if you return", () => {
+    const qc = new QueryClient();
+    qc.setQueryData(["routes", 1], detail({ id: 1, node_count: 0 }));
+    qc.setQueryData(["routes", 2], detail({ id: 2, node_count: 5 }));
+    const { rerender } = renderHook(
+      ({ id, s }: { id: number; s: boolean }) => useRouteEvents(id, { suspended: s }),
+      { wrapper: wrapper(qc), initialProps: { id: 1, s: true } },
+    );
+    act(() => MockEventSource.instances[0].emit(
+      JSON.stringify({ type: "update", client_id: "o", route: detail({ id: 1, node_count: 9 }) }),
+    ));
+    act(() => rerender({ id: 2, s: true }));   // leave route 1 (still suspended) → buffer dropped
+    act(() => rerender({ id: 1, s: false }));  // return to route 1, unsuspended
+    expect(qc.getQueryData<RouteDetail>(["routes", 1])!.node_count).toBe(0);
+  });
 });

@@ -36,8 +36,14 @@ export function useRouteEvents(
   // Track suspension and flush the last buffered payload when it lifts.
   useEffect(() => {
     suspendedRef.current = suspended;
-    if (!suspended && bufferRef.current && bufferRef.current.forRouteId === routeId) {
-      applyUpdate(qc, routeId, bufferRef.current.route);
+    const buffered = bufferRef.current;
+    if (buffered && buffered.forRouteId !== routeId) {
+      bufferRef.current = null;                 // buffer belongs to a route we left — drop it
+    } else if (!suspended && buffered && routeId != null) {
+      // `routeId != null` is a no-op at runtime here (buffered.forRouteId is always a
+      // number, and the branch above already ruled out forRouteId !== routeId, so
+      // routeId must equal it) — kept only so TS can narrow routeId for applyUpdate.
+      applyUpdate(qc, routeId, buffered.route);
       bufferRef.current = null;
     }
   }, [suspended, qc, routeId]);
@@ -60,6 +66,7 @@ export function useRouteEvents(
       }
       if (msg.client_id && msg.client_id === clientId) return; // self-echo
       if (msg.type === "deleted") {
+        bufferRef.current = null;               // don't let a buffered update resurrect it
         qc.removeQueries({ queryKey: ["routes", routeId] });
         qc.invalidateQueries({ queryKey: ["routes"] });
         onDeletedRef.current?.();
