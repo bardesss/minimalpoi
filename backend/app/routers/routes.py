@@ -1,7 +1,10 @@
+import asyncio
+import json
+import queue as _queue
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlmodel import select
 
 from .. import attachments as att
@@ -23,6 +26,7 @@ from ..models import (
 )
 from ..ratelimit import GOOGLE_LIMIT, UPLOAD_LIMIT, WRITE_LIMIT, limiter, user_or_ip
 from ..routes_export import route_to_geojson, route_to_gpx, route_to_kml
+from ..routing.events import route_hub
 from ..routing.service import derive, legs_for, ordered_nodes, recompute_legs
 from ..schemas import (
     RouteAttachmentRead,
@@ -166,6 +170,49 @@ def create_route(request: Request, body: RouteCreate, session: SessionDep, user:
 @router.get("/{route_id}", response_model=RouteDetail, dependencies=[Gate])
 def get_route(route_id: int, session: SessionDep, user: CurrentUser) -> RouteDetail:
     return _detail(session, _get_route_or_404(session, route_id), user)
+
+
+async def _route_event_stream(request: Request, hub, route_id: int):
+    """Async generator behind the SSE endpoint. Module-level (not a closure) so
+    it can be driven directly in tests: this repo's sync TestClient drains the
+    whole ASGI response before returning, which would hang on an infinite stream."""
+    q = hub.subscribe(route_id)
+    try:
+        yield ": connected\n\n"
+        idle = 0
+        while True:
+            if await request.is_disconnected():
+                break
+            try:
+                event = q.get_nowait()
+            except _queue.Empty:
+                event = None
+            if event is not None:
+                yield "data: " + json.dumps(event) + "\n\n"
+                idle = 0
+                continue
+            await asyncio.sleep(0.25)
+            idle += 1
+            if idle >= 80:
+                yield ": keepalive\n\n"
+                idle = 0
+    finally:
+        hub.unsubscribe(route_id, q)
+
+
+@router.get("/{route_id}/events", dependencies=[Gate])
+async def route_events(route_id: int, request: Request, session: SessionDep, _: CurrentUser):
+    """SSE stream of live route updates. Readable by any authenticated user
+    (mirrors get_route). Emits JSON envelopes: {type, client_id, route}."""
+    _get_route_or_404(session, route_id)
+    hub = route_hub(request)
+    if hub is None:
+        raise HTTPException(status_code=503, detail="Live updates unavailable")
+    return StreamingResponse(
+        _route_event_stream(request, hub, route_id),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
+    )
 
 
 @router.get("/{route_id}/export", dependencies=[Gate])
