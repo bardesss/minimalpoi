@@ -150,7 +150,7 @@ describe("useRouteEvents", () => {
     act(() => MockEventSource.instances[0].emit(
       JSON.stringify({ type: "update", client_id: "o", route: detail({ id: 1, node_count: 9 }) }),
     ));
-    act(() => rerender({ id: 2, s: true }));
+    // switch route AND lift suspension in a SINGLE commit — the ordering race
     act(() => rerender({ id: 2, s: false }));
 
     const r2 = qc.getQueryData<RouteDetail>(["routes", 2])!;

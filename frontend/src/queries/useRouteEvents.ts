@@ -26,24 +26,24 @@ export function useRouteEvents(
   const qc = useQueryClient();
   const suspended = opts.suspended ?? false;
   const suspendedRef = useRef(suspended);
-  const bufferRef = useRef<RouteDetail | null>(null);
+  // The buffer is tagged with the route it was captured for, so a flush can
+  // never land under a different ["routes", id] key — even if `suspended`
+  // lifts and `routeId` changes in the same commit (effect-order independent).
+  const bufferRef = useRef<{ forRouteId: number; route: RouteDetail } | null>(null);
   const onDeletedRef = useRef(opts.onDeleted);
   onDeletedRef.current = opts.onDeleted;
 
   // Track suspension and flush the last buffered payload when it lifts.
   useEffect(() => {
     suspendedRef.current = suspended;
-    if (!suspended && bufferRef.current && routeId != null) {
-      applyUpdate(qc, routeId, bufferRef.current);
+    if (!suspended && bufferRef.current && bufferRef.current.forRouteId === routeId) {
+      applyUpdate(qc, routeId, bufferRef.current.route);
       bufferRef.current = null;
     }
   }, [suspended, qc, routeId]);
 
   useEffect(() => {
     if (routeId == null) return;
-    // New route id: drop any payload buffered for the previous route so a
-    // pending flush can never land under the wrong ["routes", id] key.
-    bufferRef.current = null;
     const es = new EventSource(`/api/routes/${routeId}/events`, { withCredentials: true });
     let hasConnected = false;
 
@@ -67,7 +67,7 @@ export function useRouteEvents(
       }
       if (msg.type === "update" && msg.route) {
         if (suspendedRef.current) {
-          bufferRef.current = msg.route;
+          bufferRef.current = { forRouteId: routeId, route: msg.route };
           return;
         }
         applyUpdate(qc, routeId, msg.route);
