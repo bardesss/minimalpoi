@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.21.0](https://github.com/Bardesss/minimalpoi/compare/v2.20.0...v2.21.0) (2026-07-23)
+
+
+### Features
+
+* **routes:** broadcast itinerary updates + deletes to live subscribers ([e966abc](https://github.com/Bardesss/minimalpoi/commit/e966abc627ee1d7dff52c090d8b9c8df0588a890))
+* **routes:** create RouteEventHub in app lifespan ([f603128](https://github.com/Bardesss/minimalpoi/commit/f603128ef65ca1f723160df3e76542a08923bd31))
+* **routes:** in-process RouteEventHub for live-sync fan-out ([31ad362](https://github.com/Bardesss/minimalpoi/commit/31ad3626350dadb43f93e735cb4c04c06413426a))
+* **routes:** LAN-friendly live route collaboration (SSE) ([930561b](https://github.com/Bardesss/minimalpoi/commit/930561b1032e23933e0fda0388598ac5f3b3a08f))
+* **routes:** per-tab clientId + X-Route-Client header on mutations ([4aa4b0a](https://github.com/Bardesss/minimalpoi/commit/4aa4b0a99c296aeb01e7eb08264604cb5eca63d8))
+* **routes:** SSE endpoint streaming live route updates ([fa2c1be](https://github.com/Bardesss/minimalpoi/commit/fa2c1beeea137b8b9bf66df7f1de18e79da9b9c7))
+* **routes:** useRouteEvents live-sync hook ([e2e7d82](https://github.com/Bardesss/minimalpoi/commit/e2e7d82a56644ac96725dbb37f2c3a594ffb1e0d))
+* **routes:** wire live sync into RoutesPage + timeline edit guard ([43c682a](https://github.com/Bardesss/minimalpoi/commit/43c682a588e0115e0f66db69058d661e1c754cca))
+
+
+### Bug Fixes
+
+* **routes:** clear live-sync buffer on delete and on leaving a route ([a98bbd4](https://github.com/Bardesss/minimalpoi/commit/a98bbd46b6c0aaa99f2741bb8607415064525801))
+* **routes:** clear live-sync buffer on route change + cover reconnect ([3cbf672](https://github.com/Bardesss/minimalpoi/commit/3cbf672099d6ec382f2f736d99db7f34f52568c5))
+* **routes:** don't trust broadcast can_edit before initial fetch; type hub param ([c3c1096](https://github.com/Bardesss/minimalpoi/commit/c3c10966dbab126f9db34aac5ac8e4745a9abf4b))
+* **routes:** tag live-sync buffer with its route to close same-commit race ([edd8887](https://github.com/Bardesss/minimalpoi/commit/edd8887fd13be4fe51dcc2397f2149e9c4cf8b7a))
+
 ## [2.20.0](https://github.com/Bardesss/minimalpoi/compare/v2.19.1...v2.20.0) (2026-07-22)
 
 
