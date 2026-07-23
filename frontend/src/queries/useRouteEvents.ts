@@ -41,6 +41,9 @@ export function useRouteEvents(
 
   useEffect(() => {
     if (routeId == null) return;
+    // New route id: drop any payload buffered for the previous route so a
+    // pending flush can never land under the wrong ["routes", id] key.
+    bufferRef.current = null;
     const es = new EventSource(`/api/routes/${routeId}/events`, { withCredentials: true });
     let hasConnected = false;
 

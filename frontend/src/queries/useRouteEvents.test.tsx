@@ -122,4 +122,39 @@ describe("useRouteEvents", () => {
     expect(qc.getQueryData(["routes", 1])).toBeUndefined();
     expect(onDeleted).toHaveBeenCalledOnce();
   });
+
+  it("invalidates the route detail on reconnect but not on the first open", () => {
+    const qc = new QueryClient();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const detailKey = (c: unknown[]) =>
+      JSON.stringify((c[0] as { queryKey?: unknown })?.queryKey) === JSON.stringify(["routes", 1]);
+    renderHook(() => useRouteEvents(1), { wrapper: wrapper(qc) });
+    const es = MockEventSource.instances[0];
+
+    act(() => es.open());   // first open — must NOT invalidate the detail key
+    expect(spy.mock.calls.filter(detailKey)).toHaveLength(0);
+
+    act(() => es.open());   // reconnect — must invalidate the detail key once
+    expect(spy.mock.calls.filter(detailKey)).toHaveLength(1);
+  });
+
+  it("drops a buffered update when routeId changes while suspended (no cross-route clobber)", () => {
+    const qc = new QueryClient();
+    qc.setQueryData(["routes", 1], detail({ id: 1, node_count: 0 }));
+    qc.setQueryData(["routes", 2], detail({ id: 2, node_count: 5 }));
+    const { rerender } = renderHook(
+      ({ id, s }: { id: number; s: boolean }) => useRouteEvents(id, { suspended: s }),
+      { wrapper: wrapper(qc), initialProps: { id: 1, s: true } },
+    );
+
+    act(() => MockEventSource.instances[0].emit(
+      JSON.stringify({ type: "update", client_id: "o", route: detail({ id: 1, node_count: 9 }) }),
+    ));
+    act(() => rerender({ id: 2, s: true }));
+    act(() => rerender({ id: 2, s: false }));
+
+    const r2 = qc.getQueryData<RouteDetail>(["routes", 2])!;
+    expect(r2.id).toBe(2);
+    expect(r2.node_count).toBe(5);
+  });
 });
