@@ -11,6 +11,7 @@ from slowapi.errors import RateLimitExceeded
 from . import db
 from .enrich.images import images_dir
 from .ratelimit import limiter
+from .routing.events import RouteEventHub
 from .routers import auth, backup, categories, comments, enrich, images, me, places, pois, routes, settings, tags, teams, users, version, visits
 from .routers import sync as sync_router_module
 from .trip.service import start_worker, stop_worker
@@ -23,6 +24,7 @@ def spa_dist_dir() -> Path:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
+    app.state.route_hub = RouteEventHub()
     start_worker(app)
     try:
         yield

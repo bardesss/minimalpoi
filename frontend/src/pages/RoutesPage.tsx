@@ -17,6 +17,8 @@ import { formatTravel } from "../lib/formatTravel";
 import { passedNodeIds, todayIso } from "../lib/dayState";
 import { exportRoute, type RouteExportFormat } from "../api/routes";
 import { triggerDownload } from "../lib/download";
+import { useRouteEvents } from "../queries/useRouteEvents";
+import { useToast } from "../components/Toast";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
@@ -43,6 +45,13 @@ export default function RoutesPage() {
   const [editingRoute, setEditingRoute] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [hoverNodeId, setHoverNodeId] = useState<number | null>(null);
+  const [timelineBusy, setTimelineBusy] = useState(false);
+  const toast = useToast();
+
+  useRouteEvents(selectedId, {
+    suspended: newRouteOpen || editingRoute || timelineBusy,
+    onDeleted: () => { toast.notify("This route was deleted", "error"); setSelectedId(null); },
+  });
 
   async function onLogout() {
     await signOut();
@@ -157,7 +166,7 @@ export default function RoutesPage() {
                   </button>
                 </div>
               </div>
-              <RouteTimeline route={detail} canEdit={canEdit} onHoverNode={setHoverNodeId} />
+              <RouteTimeline route={detail} canEdit={canEdit} onHoverNode={setHoverNodeId} onInteractingChange={setTimelineBusy} />
               {canEdit && (
                 <div style={{ marginTop: 18 }}>
                   {confirmDel ? (

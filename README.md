@@ -99,6 +99,15 @@ Then open **http://localhost:7676** and create your admin account on the first-r
 | `SECRET_KEY` | auto-generated in `/data/secret.key` | Signing key for login cookies — set it yourself only if you'd rather manage it. |
 | `SESSION_LIFETIME_DAYS` | `30` | How long a login stays valid before you have to sign in again. |
 
+### Live route collaboration
+
+Team members editing a shared route see each other's changes live (Server-Sent
+Events). This works fully offline on a LAN — it needs no internet and no extra
+services. It relies on the default **single-worker** server process: do not run
+uvicorn with `--workers > 1` (in-memory update fan-out is per-process). Scaling
+to multiple workers would require an external pub/sub (e.g. Redis), which is not
+included.
+
 ---
 
 ## 🔄 Releases
