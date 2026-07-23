@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import RoutesPage from "./RoutesPage";
 import type { RouteDetail } from "../types/api";
+import { ToastProvider } from "../components/Toast";
 
 const createPlanAsync = vi.fn().mockResolvedValue({ id: 5 });
 const deleteAsync = vi.fn().mockResolvedValue(undefined);
@@ -46,6 +47,8 @@ vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ user: { id: 1, username: "admin", role: "admin" }, signOut: vi.fn() }),
 }));
 
+vi.mock("../queries/useRouteEvents", () => ({ useRouteEvents: () => {} }));
+
 beforeEach(() => {
   createPlanAsync.mockClear();
   deleteAsync.mockClear();
@@ -53,9 +56,11 @@ beforeEach(() => {
 
 function renderPage() {
   return render(
-    <MemoryRouter>
-      <RoutesPage />
-    </MemoryRouter>,
+    <ToastProvider>
+      <MemoryRouter>
+        <RoutesPage />
+      </MemoryRouter>
+    </ToastProvider>,
   );
 }
 

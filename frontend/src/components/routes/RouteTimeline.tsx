@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { RouteDetail, RouteNode, RouteNodeCreate, RouteNodeKind } from "../../types/api";
 import { ghostButtonStyle, theme } from "../../theme";
 import { useAddNode, useUpdateNode } from "../../queries/hooks";
@@ -62,7 +62,7 @@ export function computeDropPosition(nodes: RouteNode[], fromIndex: number, toInd
   return (before.position + after.position) / 2;  // between two neighbours
 }
 
-export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: RouteDetail; canEdit: boolean; onHoverNode?: (id: number | null) => void }) {
+export default function RouteTimeline({ route, canEdit, onHoverNode, onInteractingChange }: { route: RouteDetail; canEdit: boolean; onHoverNode?: (id: number | null) => void; onInteractingChange?: (active: boolean) => void }) {
   const nodes = route.nodes;
   const legByPair = useMemo(() => {
     const m = new Map<string, RouteDetail["legs"][number]>();
@@ -105,6 +105,12 @@ export default function RouteTimeline({ route, canEdit, onHoverNode }: { route: 
   // day and the kind.
   type AddTarget = { scope: "day"; gi: number; kind: RouteNodeKind } | { scope: "empty"; kind: RouteNodeKind };
   const [addTarget, setAddTarget] = useState<AddTarget | null>(null);
+
+  // Tell the page when an edit surface (the add-place modal) is open, so live
+  // sync can buffer remote changes instead of reshuffling under the modal.
+  useEffect(() => {
+    onInteractingChange?.(addTarget != null);
+  }, [addTarget, onInteractingChange]);
 
   function submitDay(body: RouteNodeCreate, gi: number) {
     const { position, day_offset } = placeInDay(route, dayGroups, gi);
