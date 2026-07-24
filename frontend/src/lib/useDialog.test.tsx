@@ -87,4 +87,18 @@ describe("useDialog", () => {
     // Focus should still be on last (not wrapped to first)
     expect(document.activeElement).toBe(lastButton);
   });
+
+  it("closes on a popstate (hardware back)", () => {
+    const onClose = vi.fn();
+    render(<Dialog onClose={onClose} />);
+    act(() => { window.dispatchEvent(new PopStateEvent("popstate")); });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("pushes a history entry on open", () => {
+    const push = vi.spyOn(window.history, "pushState");
+    const { unmount } = render(<Dialog onClose={() => {}} />);
+    expect(push).toHaveBeenCalled();
+    unmount();
+  });
 });

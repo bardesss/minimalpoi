@@ -54,6 +54,23 @@ export function useDialog<T extends HTMLElement = HTMLElement>(
     };
   }, [trapFocus]);
 
+  // Mobile hardware Back / iOS edge-swipe: consume a dedicated history entry so
+  // Back closes the dialog instead of navigating the SPA away. A programmatic
+  // close (Escape/backdrop/×) unmounts the hook and pops our own entry.
+  useEffect(() => {
+    let closedByPop = false;
+    window.history.pushState({ __dialog: true }, "");
+    function onPop() {
+      closedByPop = true;
+      onCloseRef.current();
+    }
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      if (!closedByPop) window.history.back();
+    };
+  }, []);
+
   function onBackdropClick(e: MouseEvent) {
     if (closeOnBackdrop && e.target === e.currentTarget) onCloseRef.current();
   }
