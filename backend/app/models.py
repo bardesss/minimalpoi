@@ -160,6 +160,16 @@ class RouteAttachment(SQLModel, table=True):
     uploaded_at: datetime = Field(default_factory=utcnow)
 
 
+class RouteShare(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    token: str = Field(unique=True, index=True)
+    route_id: int = Field(foreign_key="route.id", unique=True, index=True)
+    created_by: int = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=utcnow)
+    expires_at: datetime | None = Field(default=None)
+    password_hash: str | None = Field(default=None)
+
+
 class Tombstone(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     entity_type: str  # "place" | "category"

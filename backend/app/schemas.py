@@ -422,6 +422,48 @@ class RouteAttachmentRead(SQLModel):
     uploaded_at: datetime
 
 
+class ShareSettingsUpdate(SQLModel):
+    # expires_at: null clears expiry; a datetime sets it.
+    expires_at: datetime | None = None
+    # password: a non-empty string sets/replaces it. remove_password clears it.
+    # Both omitted => leave the password unchanged.
+    password: Password | None = None
+    remove_password: bool = False
+
+
+class ShareInfo(SQLModel):
+    token: str
+    url: str
+    expires_at: datetime | None = None
+    password_set: bool = False
+
+
+class PublicMapSettings(SQLModel):
+    map_tile_url: str
+    default_map_center_lat: float
+    default_map_center_lng: float
+    default_map_zoom: float
+
+
+class PublicRouteView(SQLModel):
+    name: str
+    start_date: date
+    end_date: date | None = None
+    round_trip: bool = False
+    scheduled_end_date: date
+    node_count: int
+    nodes: list[RouteNodeRead] = []
+    legs: list[RouteLegRead] = []
+    total_distance_m: int = 0
+    total_duration_s: int = 0
+    map: PublicMapSettings
+
+
+class PublicRouteResponse(SQLModel):
+    locked: bool = False
+    route: PublicRouteView | None = None
+
+
 class RouteDetail(RouteSummary):
     can_edit: bool = False
     nodes: list[RouteNodeRead] = []
@@ -429,3 +471,4 @@ class RouteDetail(RouteSummary):
     attachments: list[RouteAttachmentRead] = []
     total_distance_m: int = 0
     total_duration_s: int = 0
+    share: ShareInfo | None = None   # populated only when can_edit
