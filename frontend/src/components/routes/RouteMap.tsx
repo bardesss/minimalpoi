@@ -5,6 +5,7 @@ import { resolveMapStyle } from "../../map/style";
 import { routeLine } from "../../map/routeLine";
 import { toFeatureCollection } from "../../map/featureCollection";
 import { categoryColorExpression } from "../../map/colorExpression";
+import { routeSignature } from "../../lib/routeSignature";
 
 const LINE_COLOR = "#4f46e5";
 const PASSED_COLOR = "#a8a39b"; // muted grey — de-emphasises days already travelled
@@ -171,6 +172,10 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
+  // Only re-fit the camera when the pins actually move — not on every refetch or
+  // a teammate's live-sync edit, which yield new array identities with the same
+  // coordinates (the camera-hijack fix).
+  const lastFitSigRef = useRef<string>("");
   // Latest values for the once-only load handler's closure (queries resolve
   // asynchronously and may land before or after "load").
   const nodesRef = useRef(nodes);
@@ -201,6 +206,13 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
     });
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(
+      new maplibregl.GeolocateControl({
+        trackUserLocation: true,
+        positionOptions: { enableHighAccuracy: true },
+      }),
+      "top-right",
+    );
 
     map.on("load", () => {
       map.addSource("route-pois", {
@@ -229,6 +241,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
         },
       });
       fitToNodes(map, nodesRef.current);
+      lastFitSigRef.current = routeSignature(nodesRef.current);
     });
 
     map.on("click", "route-poi-clusters", (e) => {
@@ -265,7 +278,8 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Redraw the route when the node chain or leg geometry changes.
+  // Redraw the route when the node chain or leg geometry changes. The line/points
+  // always redraw; the camera only re-fits when node ids/coords change.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -275,7 +289,11 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
     const { line, points } = routeLine(nodes, legs, passedNodeIds);
     lineSrc.setData(line);
     pointSrc.setData(points);
-    fitToNodes(map, nodes);
+    const sig = routeSignature(nodes);
+    if (sig !== lastFitSigRef.current) {
+      fitToNodes(map, nodes);
+      lastFitSigRef.current = sig;
+    }
   }, [nodes, legs, passedNodeIds]);
 
   // Update the nearby-POI dots when the filtered set changes.

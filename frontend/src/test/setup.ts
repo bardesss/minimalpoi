@@ -11,6 +11,13 @@ if (typeof URL.revokeObjectURL === "undefined") {
   URL.revokeObjectURL = () => {};
 }
 
+// jsdom does not implement Element.prototype.scrollIntoView; stub it so
+// components that scroll a selected item into view (e.g. the sidebar POI list
+// on marker select) don't throw. Individual tests can still spy by reassigning.
+if (typeof window !== "undefined" && typeof Element.prototype.scrollIntoView === "undefined") {
+  Element.prototype.scrollIntoView = () => {};
+}
+
 // jsdom does not implement matchMedia; stub it so useMediaQuery resolves to the
 // desktop layout (matches: false) in tests. Guard on `window` first: node-env
 // test files (e.g. api/portability.test.ts) have no `window` at all.

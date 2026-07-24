@@ -244,6 +244,7 @@ export default function AppShell() {
           visitedPoiIds={myVisitedPoiIds}
           mapRef={mapRef}
           onMoveEnd={handleMoveEnd}
+          onUserLocate={(c) => setMapCenter(c)}
         />
       )}
       {!isMobile && <Legend categories={categories} counts={counts} uncategorizedCount={hasUncategorized ? counts[UNCATEGORIZED_ID] ?? 0 : 0} />}

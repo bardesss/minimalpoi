@@ -1,4 +1,5 @@
 // frontend/src/components/Sidebar/PoiList.tsx
+import { useEffect, useRef } from "react";
 import type { Category, Poi } from "../../types/api";
 import { theme } from "../../theme";
 import PoiCard from "./PoiCard";
@@ -22,6 +23,13 @@ export default function PoiList({
   onRetry: () => void;
   myVisitedPoiIds: Set<number>;
 }) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (selectedId == null) return;
+    const el = scrollRef.current?.querySelector<HTMLElement>(`[data-poi-id="${selectedId}"]`);
+    el?.scrollIntoView({ block: "nearest" });
+  }, [selectedId]);
+
   if (isLoading) {
     return (
       <div className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, gridAutoRows: "min-content", alignContent: "start" }}>
@@ -48,7 +56,7 @@ export default function PoiList({
     );
   }
   return (
-    <div className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, gridAutoRows: "min-content", alignContent: "start" }}>
+    <div ref={scrollRef} className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, gridAutoRows: "min-content", alignContent: "start" }}>
       {pois.map((p) => (
         <PoiCard key={p.id} poi={p} category={p.category_id != null ? categoriesById[p.category_id] : undefined} selected={p.id === selectedId} onSelect={onSelect} visited={myVisitedPoiIds.has(p.id)} />
       ))}
