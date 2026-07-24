@@ -110,6 +110,16 @@ real client IP for rate-limiting and the correct `https` scheme for the
 **`Secure`** login cookie and the public **share URL** (`/s/<token>`) — without
 it, everything looks like it's coming from the proxy over plain HTTP.
 
+> ⚠️ **`TRUST_PROXY` makes the app trust `X-Forwarded-*` headers.** Only
+> enable it when uvicorn is reachable **only** through your proxy. If the
+> container port is published beyond the proxy — e.g. this repo's default
+> `docker-compose.yml` maps `ports: "7676:7676"`, exposing it on the host/LAN —
+> a client that reaches uvicorn directly can spoof `X-Forwarded-For`/
+> `X-Forwarded-Proto` to defeat IP rate-limiting or fake an `https` scheme.
+> Either don't publish the port to untrusted networks (bind it to
+> `127.0.0.1` or drop the host mapping once the proxy is the only path in),
+> or set `FORWARDED_ALLOW_IPS` to your proxy's specific IP instead of `*`.
+
 **nginx**
 
 ```nginx
