@@ -32,7 +32,7 @@ export default function AppLayout(props: AppLayoutProps) {
 
   if (isMobile) {
     return (
-      <div style={{ position: "relative", height: "100vh", width: "100vw", background: theme.color.mapBg }}>
+      <div style={{ position: "relative", height: "100dvh", width: "100vw", background: theme.color.mapBg }}>
         {props.main}
         <BottomSheet label={props.sheetLabel} initial="half">
           {nav}
@@ -44,7 +44,7 @@ export default function AppLayout(props: AppLayoutProps) {
   }
 
   return (
-    <div style={{ display: "flex", height: "100vh", width: "100vw", background: theme.color.pageBg }}>
+    <div style={{ display: "flex", height: "100dvh", width: "100vw", background: theme.color.pageBg }}>
       <aside
         style={{
           width: props.collapsed ? 0 : 480,

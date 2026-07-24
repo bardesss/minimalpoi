@@ -37,7 +37,7 @@ export default function DetailPanel({
   const hero = (
     <div style={{ position: "relative", height: 208, flex: "none", background: heroImage ? `center/cover no-repeat url("${heroImage}"), ${tint}` : tint }}>
       <div style={{ position: "absolute", inset: 0, background: theme.gradient.detailHero }} />
-      <button type="button" aria-label="Close" onClick={onClose} style={{ position: "absolute", top: 14, right: 14, width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.92)", boxShadow: "0 2px 8px rgba(0,0,0,.18)", cursor: "pointer", fontSize: 16 }}>×</button>
+      <button type="button" aria-label="Close" onClick={onClose} style={{ position: "absolute", top: mobile ? "calc(14px + env(safe-area-inset-top))" : 14, right: 14, width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.92)", boxShadow: "0 2px 8px rgba(0,0,0,.18)", cursor: "pointer", fontSize: 16 }}>×</button>
       <span style={{ position: "absolute", left: 18, bottom: 14, padding: "4px 12px", borderRadius: theme.radius.pill, background: color, color: "#fff", fontWeight: 700, fontSize: 12 }}>{category?.name ?? "Uncategorized"}</span>
     </div>
   );
