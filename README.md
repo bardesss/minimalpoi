@@ -98,6 +98,95 @@ Then open **http://localhost:7676** and create your admin account on the first-r
 | `PGID` | `10001` | Group ID the app runs as. Pair with `PUID`. |
 | `SECRET_KEY` | auto-generated in `/data/secret.key` | Signing key for login cookies — set it yourself only if you'd rather manage it. |
 | `SESSION_LIFETIME_DAYS` | `30` | How long a login stays valid before you have to sign in again. |
+| `TRUST_PROXY` | unset | Honor `X-Forwarded-*` from a reverse proxy (real client IP + scheme). Set to `1` when running behind nginx/Caddy/Traefik/etc. |
+| `FORWARDED_ALLOW_IPS` | `*` | Trusted proxy IPs when `TRUST_PROXY` is set. Defaults to trusting any proxy; scope it to your proxy's IP for stricter setups. |
+
+### Behind a reverse proxy
+
+If you put MinimalPOI behind a TLS-terminating reverse proxy at a (sub)domain
+root (e.g. `poi.example.com` → the container's `:7676`), set `TRUST_PROXY=1`
+(and optionally `FORWARDED_ALLOW_IPS` to your proxy's IP) so the app sees the
+real client IP for rate-limiting and the correct `https` scheme for the
+**`Secure`** login cookie and the public **share URL** (`/s/<token>`) — without
+it, everything looks like it's coming from the proxy over plain HTTP.
+
+> ⚠️ **`TRUST_PROXY` makes the app trust `X-Forwarded-*` headers.** Only
+> enable it when uvicorn is reachable **only** through your proxy. If the
+> container port is published beyond the proxy — e.g. this repo's default
+> `docker-compose.yml` maps `ports: "7676:7676"`, exposing it on the host/LAN —
+> a client that reaches uvicorn directly can spoof `X-Forwarded-For`/
+> `X-Forwarded-Proto` to defeat IP rate-limiting or fake an `https` scheme.
+> Either don't publish the port to untrusted networks (bind it to
+> `127.0.0.1` or drop the host mapping once the proxy is the only path in),
+> or set `FORWARDED_ALLOW_IPS` to your proxy's specific IP instead of `*`.
+
+**nginx**
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name poi.example.com;
+
+    # ... ssl_certificate / ssl_certificate_key ...
+
+    location / {
+        proxy_pass http://127.0.0.1:7676;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    # Server-Sent Events (live route collaboration) need buffering off and a
+    # long read timeout — the app already sends X-Accel-Buffering: no, but
+    # nginx also needs this at the proxy level.
+    location ~ ^/api/routes/.*/events$ {
+        proxy_pass http://127.0.0.1:7676;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_buffering off;
+        proxy_read_timeout 3600s;
+    }
+}
+```
+
+**Caddy**
+
+```caddyfile
+poi.example.com {
+    reverse_proxy 127.0.0.1:7676
+}
+```
+
+Caddy terminates TLS and forwards `X-Forwarded-Proto`/`X-Forwarded-For`
+automatically, and it doesn't buffer SSE responses, so no extra config is
+needed for either concern.
+
+**Traefik** (labels on the container)
+
+```yaml
+labels:
+  - "traefik.enable=true"
+  - "traefik.http.routers.minimalpoi.rule=Host(`poi.example.com`)"
+  - "traefik.http.routers.minimalpoi.entrypoints=websecure"
+  - "traefik.http.routers.minimalpoi.tls.certresolver=<your-resolver>"
+  - "traefik.http.services.minimalpoi.loadbalancer.server.port=7676"
+```
+
+Traefik sets `X-Forwarded-*` headers by default; SSE responses stream through
+without extra buffering config.
+
+In every case:
+- **HTTPS**: terminate TLS at the proxy and make sure `X-Forwarded-Proto: https`
+  is forwarded — that's what makes the login cookie `Secure` and the
+  `/s/<token>` public share link render with the `https://` scheme and your
+  external host, instead of the container's internal `http://…:7676`.
+- **Single worker**: live route collaboration still requires the app to run
+  as a single process — see [Live route collaboration](#live-route-collaboration)
+  below; a reverse proxy in front doesn't change that.
 
 ### Live route collaboration
 

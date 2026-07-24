@@ -15,6 +15,14 @@ set -e
 PUID="${PUID:-10001}"
 PGID="${PGID:-10001}"
 
+# Reverse-proxy support: when TRUST_PROXY is set, tell uvicorn to honor
+# X-Forwarded-* from the given proxy IPs (real client IP + scheme). Behind a
+# single trusted proxy, FORWARDED_ALLOW_IPS="*" is the common setting; scope it
+# to the proxy's IP for stricter setups.
+if [ -n "${TRUST_PROXY:-}" ]; then
+    set -- "$@" --proxy-headers --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-*}"
+fi
+
 if [ "$(id -u)" = "0" ]; then
     mkdir -p /data
     # Only chown when it's actually needed — skips a slow recursive pass on large

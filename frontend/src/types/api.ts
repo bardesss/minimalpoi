@@ -306,6 +306,14 @@ export interface RouteDetail extends RouteSummary {
   attachments: RouteAttachment[];
   total_distance_m: number;
   total_duration_s: number;
+  share?: ShareInfo | null;
+}
+
+export interface ShareInfo {
+  token: string;
+  url: string;
+  expires_at: string | null;
+  password_set: boolean;
 }
 
 export interface RouteAttachment {

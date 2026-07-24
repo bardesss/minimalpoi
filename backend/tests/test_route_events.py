@@ -128,6 +128,18 @@ def test_broadcast_payload_omits_attachments(client):
     assert event["route"]["attachments"] == []  # team-private data is never broadcast
 
 
+def test_broadcast_payload_omits_share(client):
+    rid = _make_route(client)
+    client.put(f"/api/routes/{rid}/share", json={})  # editor creates a share
+    from app.main import app
+    q = app.state.route_hub.subscribe(rid)
+    client.post(f"/api/routes/{rid}/nodes", json={"kind": "stop", "name": "X", "lat": 1.0, "lng": 2.0})
+    event = q.get_nowait()
+    assert event["route"]["share"] is None  # the live token is never broadcast over SSE
+    # ... even though the editor's own GET still sees it.
+    assert client.get(f"/api/routes/{rid}").json()["share"] is not None
+
+
 def test_deleting_a_route_publishes_a_deleted_event(client):
     rid = _make_route(client)
     from app.main import app
