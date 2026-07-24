@@ -2,8 +2,8 @@ import { act, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useDialog } from "./useDialog";
 
-function Dialog({ onClose, closeOnBackdrop }: { onClose: () => void; closeOnBackdrop?: boolean }) {
-  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop });
+function Dialog({ onClose, closeOnBackdrop, trapFocus }: { onClose: () => void; closeOnBackdrop?: boolean; trapFocus?: boolean }) {
+  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop, trapFocus });
   return (
     <div data-testid="backdrop" onClick={onBackdropClick}>
       <div ref={dialogRef} role="dialog">
@@ -58,5 +58,33 @@ describe("useDialog", () => {
     render(<Dialog onClose={onClose} closeOnBackdrop={false} />);
     screen.getByTestId("backdrop").click();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("Tab cycles within the trap (default trapFocus)", () => {
+    render(<Dialog onClose={() => {}} />);
+    const firstButton = screen.getByRole("button", { name: "first" });
+    const lastButton = screen.getByRole("button", { name: "last" });
+
+    // Focus last button, then Tab should wrap to first
+    lastButton.focus();
+    act(() => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true })); });
+    expect(document.activeElement).toBe(firstButton);
+
+    // Focus first button, then Shift+Tab should wrap to last
+    firstButton.focus();
+    act(() => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true })); });
+    expect(document.activeElement).toBe(lastButton);
+  });
+
+  it("Tab is not intercepted when trapFocus is false", () => {
+    render(<Dialog onClose={() => {}} trapFocus={false} />);
+    const lastButton = screen.getByRole("button", { name: "last" });
+
+    // Focus last button and dispatch Tab
+    lastButton.focus();
+    act(() => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true })); });
+
+    // Focus should still be on last (not wrapped to first)
+    expect(document.activeElement).toBe(lastButton);
   });
 });
