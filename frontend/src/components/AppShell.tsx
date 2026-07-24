@@ -123,12 +123,14 @@ export default function AppShell() {
     setActiveCategoryIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   }
 
-  function selectPoi(id: number) {
+  // Stable identity so memoized PoiCards (in the virtualized list) don't
+  // re-render on every parent render (e.g. a distance re-sort).
+  const selectPoi = useCallback((id: number) => {
     setSelectedId(id);
     const poi = (poisQuery.data ?? []).find((p) => p.id === id);
     const map = mapRef.current;
     if (poi && map) map.flyTo({ center: [poi.lng, poi.lat], zoom: Math.max(map.getZoom(), 14), duration: 600 });
-  }
+  }, [poisQuery.data]);
 
   function fitToResults() {
     const b = boundsOf(filtered);
