@@ -5,6 +5,7 @@ import { ApiError } from "../api/client";
 import { safeImageCss } from "../lib/safeUrl";
 import { ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, textareaStyle, theme } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
+import { useDialog } from "../lib/useDialog";
 import PhoneInput from "./PhoneInput";
 
 export function splitTags(text: string): string[] {
@@ -126,6 +127,9 @@ export default function PoiFormModal({
   const isAdd = mode === "add";
   const isMobile = useIsMobile();
   const safeImage = safeImageCss(imageUrl);
+  // Add mode is a non-modal click-through overlay (so the map stays clickable
+  // behind it) — no backdrop-close, no focus trap. Edit mode is a true modal.
+  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop: !isAdd, trapFocus: !isAdd });
 
   function applyDraft(draft: PoiDraft, source: string | null) {
     if (draft.name != null) setName(draft.name);
@@ -261,13 +265,14 @@ export default function PoiFormModal({
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: isAdd ? "transparent" : "rgba(26,24,22,.42)", backdropFilter: isAdd ? "none" : "blur(2px)", pointerEvents: isAdd ? "none" : "auto", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", animation: "fadeIn .16s ease" }}>
-      <div role="dialog" aria-modal={isAdd ? false : true} className="poi-scroll" style={{ width: isMobile ? "100%" : 540, maxWidth: "100%", maxHeight: isMobile ? "92vh" : "90vh", overflowY: "auto", background: "#fff", borderRadius: isMobile ? "18px 18px 0 0" : theme.radius.modal, paddingBottom: isMobile ? "env(safe-area-inset-bottom)" : undefined, boxShadow: theme.shadow.modal, animation: isMobile ? "sheetUp .26s cubic-bezier(.32,.72,0,1)" : "popIn .2s ease", pointerEvents: "auto" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: isAdd ? "transparent" : "rgba(26,24,22,.42)", backdropFilter: isAdd ? "none" : "blur(2px)", pointerEvents: isAdd ? "none" : "auto", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", animation: "fadeIn .16s ease" }} onClick={onBackdropClick}>
+      <div ref={dialogRef} role="dialog" aria-modal={isAdd ? false : true} aria-labelledby="poi-form-title" className="poi-scroll" style={{ width: isMobile ? "100%" : 540, maxWidth: "100%", maxHeight: isMobile ? "92vh" : "90vh", overflowY: "auto", background: "#fff", borderRadius: isMobile ? "18px 18px 0 0" : theme.radius.modal, paddingBottom: isMobile ? "env(safe-area-inset-bottom)" : undefined, boxShadow: theme.shadow.modal, animation: isMobile ? "sheetUp .26s cubic-bezier(.32,.72,0,1)" : "popIn .2s ease", pointerEvents: "auto" }}>
         <div style={{ position: "sticky", top: 0, background: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 24px 16px", zIndex: 2 }}>
-          <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: "-.02em" }}>{mode === "add" ? "Add a new place" : "Edit place"}</h2>
+          <h2 id="poi-form-title" style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: "-.02em" }}>{mode === "add" ? "Add a new place" : "Edit place"}</h2>
           <button type="button" aria-label="Close" onClick={onClose} style={{ width: 30, height: 30, borderRadius: theme.radius.icon, border: "none", background: "#f5f4f2", color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
         </div>
 
+        <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <div style={{ padding: "0 24px 8px", display: "flex", flexDirection: "column", gap: 14 }}>
           {isAdd && onSearchPlaces && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -427,9 +432,10 @@ export default function PoiFormModal({
           )}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
             <button type="button" onClick={onClose} style={ghostButtonStyle}>Cancel</button>
-            <button type="button" onClick={submit} disabled={saving} style={primaryButtonStyle}>{saving ? "Saving…" : mode === "add" ? "Add place" : "Save changes"}</button>
+            <button type="submit" disabled={saving} style={primaryButtonStyle}>{saving ? "Saving…" : mode === "add" ? "Add place" : "Save changes"}</button>
           </div>
         </div>
+        </form>
       </div>
     </div>
   );

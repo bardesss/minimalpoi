@@ -94,6 +94,19 @@ describe("PoiFormModal", () => {
     expect(screen.getByRole("heading", { name: /edit place/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save changes/i })).toBeInTheDocument();
   });
+
+  // Escape closes the edit-mode modal (add mode is click-through; edit mode is a true modal).
+  it("closes the edit modal on Escape", async () => {
+    const onClose = vi.fn();
+    render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null, image_url: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={onClose} onCheckDuplicate={() => {}} duplicateId={null} />);
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("names the dialog for assistive tech", () => {
+    render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    expect(screen.getByRole("dialog", { name: /add a new place/i })).toBeInTheDocument();
+  });
 });
 
 const draft: PoiDraft = {
