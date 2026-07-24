@@ -1,4 +1,7 @@
+import pytest
 from starlette.testclient import TestClient
+
+from app.main import app
 
 
 def _setup(client):
@@ -48,3 +51,48 @@ def test_password_lock_then_unlock(client):
     assert ok.status_code == 200 and ok.json()["route"]["name"] == "NL"
     # grant cookie now lets GET through without re-prompting
     assert anon.get(f"/api/public/routes/{tok}").json()["locked"] is False
+
+
+def test_password_change_invalidates_existing_grant(client):
+    # A viewer who already unlocked must be re-locked out once the owner
+    # changes the share's password — the old grant cookie is bound to the
+    # password version it was issued under, not just the token.
+    _setup(client); rid = _route_with_node(client)
+    tok = client.put(f"/api/routes/{rid}/share", json={"password": "hunter22"}).json()["token"]
+    anon = _anon(client)
+    ok = anon.post(f"/api/public/routes/{tok}/unlock", json={"password": "hunter22"})
+    assert ok.status_code == 200
+    assert anon.get(f"/api/public/routes/{tok}").json()["locked"] is False
+
+    # Owner rotates the password (token stays the same).
+    r = client.put(f"/api/routes/{rid}/share", json={"password": "different8"})
+    assert r.status_code == 200 and r.json()["token"] == tok
+
+    # The stale grant cookie from before the change must not unlock anymore.
+    assert anon.get(f"/api/public/routes/{tok}").json() == {"locked": True, "route": None}
+
+
+@pytest.fixture
+def rl_client(client):
+    # The shared `client` fixture disables the limiter; re-enable it here so
+    # the rate-limit assertion below is deterministic, then restore afterward
+    # so other tests in the module aren't affected.
+    app.state.limiter.reset()
+    app.state.limiter.enabled = True
+    yield client
+    app.state.limiter.enabled = False
+    app.state.limiter.reset()
+
+
+def test_unlock_is_rate_limited_more_strictly_than_the_page_load(rl_client):
+    # unlock is brute-forceable (password guessing) so it shares LOGIN_LIMIT
+    # (5/minute) rather than the page-load GET's more permissive PUBLIC_LIMIT.
+    _setup(rl_client); rid = _route_with_node(rl_client)
+    tok = rl_client.put(f"/api/routes/{rid}/share", json={"password": "hunter22"}).json()["token"]
+    anon = _anon(rl_client)
+    app.state.limiter.reset()  # setup/route/share calls above shouldn't count
+    for _ in range(5):
+        r = anon.post(f"/api/public/routes/{tok}/unlock", json={"password": "wrong"})
+        assert r.status_code == 401
+    blocked = anon.post(f"/api/public/routes/{tok}/unlock", json={"password": "wrong"})
+    assert blocked.status_code == 429

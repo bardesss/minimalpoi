@@ -11,6 +11,7 @@ password). Keep it minimal and defensive:
   attachments, no owner/team identity, no other POIs — mirroring `_detail`
   in `routes.py` but stripped down to what a stranger with a link should see.
 """
+import hashlib
 from datetime import timedelta, timezone
 
 import jwt
@@ -21,7 +22,7 @@ from sqlmodel import select
 from ..config import get_secret_key
 from ..deps import SessionDep
 from ..models import Route, RouteShare, get_or_create_settings, utcnow
-from ..ratelimit import PUBLIC_LIMIT, limiter
+from ..ratelimit import LOGIN_LIMIT, PUBLIC_LIMIT, limiter
 from ..routing.service import derive, legs_for, ordered_nodes
 from ..schemas import PublicMapSettings, PublicRouteResponse, PublicRouteView, RouteLegRead, RouteNodeRead, UnlockBody
 from ..security import verify_password, verify_password_dummy
@@ -57,13 +58,21 @@ def _active_share_or_404(session, token: str) -> RouteShare:
     return share
 
 
-def _has_grant(request: Request, token: str) -> bool:
+def _pw_version(share: RouteShare) -> str:
+    # A short fingerprint of the current password hash, embedded in the grant
+    # so that changing (or clearing-then-resetting) the share's password
+    # invalidates any grants issued under the old one — without needing to
+    # track/revoke individual JWTs server-side.
+    return hashlib.sha256((share.password_hash or "").encode()).hexdigest()[:16]
+
+
+def _has_grant(request: Request, share: RouteShare) -> bool:
     raw = request.cookies.get(GRANT_COOKIE)
     if not raw:
         return False
     try:
         payload = jwt.decode(raw, get_secret_key(), algorithms=["HS256"])
-        return payload.get("share") == token
+        return payload.get("share") == share.token and payload.get("pv") == _pw_version(share)
     except jwt.PyJWTError:
         return False
 
@@ -103,7 +112,7 @@ def _view(session, route: Route) -> PublicRouteView:
 def public_route(token: str, request: Request, response: Response, session: SessionDep) -> PublicRouteResponse:
     _noindex(response)
     share = _active_share_or_404(session, token)
-    if share.password_hash is not None and not _has_grant(request, token):
+    if share.password_hash is not None and not _has_grant(request, share):
         return PublicRouteResponse(locked=True, route=None)
     route = session.get(Route, share.route_id)
     if not route:
@@ -112,7 +121,7 @@ def public_route(token: str, request: Request, response: Response, session: Sess
 
 
 @router.post("/routes/{token}/unlock")
-@limiter.limit(PUBLIC_LIMIT)
+@limiter.limit(LOGIN_LIMIT)  # brute-force / credential stuffing — same bucket as login
 def unlock(token: str, request: Request, session: SessionDep, body: UnlockBody) -> JSONResponse:
     share = _active_share_or_404(session, token)
     if share.password_hash is None:
@@ -123,7 +132,10 @@ def unlock(token: str, request: Request, session: SessionDep, body: UnlockBody) 
     route = session.get(Route, share.route_id)
     if not route:
         raise HTTPException(status_code=404, detail="Not found")
-    grant = jwt.encode({"share": token, "exp": utcnow() + timedelta(hours=12)}, get_secret_key(), algorithm="HS256")
+    grant = jwt.encode(
+        {"share": token, "pv": _pw_version(share), "exp": utcnow() + timedelta(hours=12)},
+        get_secret_key(), algorithm="HS256",
+    )
     resp = JSONResponse(PublicRouteResponse(locked=False, route=_view(session, route)).model_dump(mode="json"))
     resp.headers["X-Robots-Tag"] = "noindex"
     resp.set_cookie(
