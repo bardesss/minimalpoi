@@ -13,6 +13,12 @@ let dialogStack: number[] = [];
 // history.back() to consume its own entry. That back() fires a popstate the
 // browser delivers to the now-top (lower) dialog, which must NOT treat it as a
 // hardware Back. This flag marks that echo so the lower dialog ignores it.
+//
+// NOTE: a single boolean correctly swallows exactly one echo, so it is sound
+// only for up to 2-deep stacking (this app's max: RouteFormModal →
+// AddPlaceModal). If dialogs are ever nested 3+ deep, closing an inner dialog
+// could cascade multiple echoes and this boolean would swallow only the first;
+// that case would need a depth counter or per-back() generation token instead.
 let suppressPop = false;
 
 export interface UseDialogOptions {
