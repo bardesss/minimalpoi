@@ -83,7 +83,6 @@ export const inputStyle: CSSProperties = {
   fontFamily: theme.font.ui,
   fontSize: "13.5px",
   background: theme.color.pageBg,
-  outline: "none",
   color: theme.color.textPrimary,
   boxSizing: "border-box",
 };

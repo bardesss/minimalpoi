@@ -42,6 +42,13 @@ body {
   .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { display: none; }
 }
 
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  border-color: #4f46e5;
+  background: #fff;
+  outline: 2px solid transparent; /* keep a ring for forced-colors/high-contrast mode */
+  outline-offset: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
