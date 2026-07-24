@@ -20,6 +20,11 @@ export function useSearchHotkey(onActivate: () => void): void {
       const cmdK = (e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K");
       const slash = e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey && !isEditable(document.activeElement);
       if (cmdK || slash) {
+        // Inert while any dialog is open — otherwise the shortcut can yank
+        // focus to the background search box and break the modal's focus
+        // trap, even when focus sits on a non-editable control inside it
+        // (e.g. a modal's Close button).
+        if (document.querySelector('[role="dialog"]')) return;
         e.preventDefault();
         onActivateRef.current();
       }

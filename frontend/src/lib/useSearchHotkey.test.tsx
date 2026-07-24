@@ -57,4 +57,29 @@ describe("useSearchHotkey", () => {
     press("k", { metaKey: true });
     expect(onActivate).toHaveBeenCalledOnce();
   });
+
+  it("does NOT activate on '/' while a dialog is open", () => {
+    const onActivate = vi.fn();
+    const { getByText } = render(
+      <>
+        <Harness onActivate={onActivate} />
+        <div role="dialog"><button>Close</button></div>
+      </>,
+    );
+    (getByText("Close") as HTMLButtonElement).focus();
+    press("/");
+    expect(onActivate).not.toHaveBeenCalled();
+  });
+
+  it("does NOT activate on Ctrl-K while a dialog is open", () => {
+    const onActivate = vi.fn();
+    render(
+      <>
+        <Harness onActivate={onActivate} />
+        <div role="dialog"><button>Close</button></div>
+      </>,
+    );
+    press("k", { ctrlKey: true });
+    expect(onActivate).not.toHaveBeenCalled();
+  });
 });
