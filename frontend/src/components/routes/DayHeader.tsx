@@ -1,6 +1,7 @@
 import { Navigation } from "lucide-react";
 import { theme } from "../../theme";
 import { formatTravel } from "../../lib/formatTravel";
+import { useIsMobile } from "../../lib/useMediaQuery";
 
 // Day-card header: a click-to-fold bar (the whole bar is the toggle, for a big
 // hit area). Left: chevron + a prominent day label with a quiet "Day N" marker;
@@ -17,6 +18,7 @@ export default function DayHeader({ label, dayNumber, distance_m, duration_s, co
   onToggle: () => void;
   onNavigate: () => void;
 }) {
+  const isMobile = useIsMobile();
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
       <button
@@ -41,7 +43,7 @@ export default function DayHeader({ label, dayNumber, distance_m, duration_s, co
           onClick={onNavigate}
           aria-label={`Navigate ${label}`}
           title="Navigate"
-          style={{ color: theme.color.link, background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}
+          style={{ color: theme.color.link, background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: isMobile ? 44 : undefined, minHeight: isMobile ? 44 : undefined }}
         >
           <Navigation size={16} aria-hidden />
         </button>

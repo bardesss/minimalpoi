@@ -1,5 +1,5 @@
 // frontend/src/components/PoiFormModal.tsx
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import type { Category, PlaceSearchResult, PoiCreate, PoiDraft } from "../types/api";
 import { ApiError } from "../api/client";
 import { safeImageCss } from "../lib/safeUrl";
@@ -69,6 +69,7 @@ export default function PoiFormModal({
   onSearchPlaces,
   onPickPlace,
   onUploadImage,
+  getMapCenter,
 }: {
   mode: "add" | "edit";
   initial: PoiFormInitial | null;
@@ -82,6 +83,7 @@ export default function PoiFormModal({
   onSearchPlaces?: (query: string) => Promise<PlaceSearchResult[]>;
   onPickPlace?: (placeId: string) => Promise<PoiDraft>;
   onUploadImage?: (file: File) => Promise<{ url: string }>;
+  getMapCenter?: () => { lng: number; lat: number } | null;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [categoryId, setCategoryId] = useState<string>(initial?.category_id != null ? String(initial.category_id) : "");
@@ -115,6 +117,27 @@ export default function PoiFormModal({
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Mobile "pick on map" (add mode only): collapses the sheet to a peek so
+  // the already-pannable map behind it is visible, under a fixed crosshair.
+  const [picking, setPicking] = useState(false);
+  const useThisLocationRef = useRef<HTMLButtonElement>(null);
+  const pickOnMapRef = useRef<HTMLButtonElement>(null);
+  // Tracks the previous `picking` value so the focus effect below can tell an
+  // actual true→false transition apart from the initial mount (where picking
+  // starts false and there's no "Pick on map" button to steal focus from yet).
+  const wasPickingRef = useRef(picking);
+
+  // Moves focus into/out of pick mode so keyboard/AT users aren't dropped to
+  // <body> when the focused button unmounts (the sheet swaps its whole body).
+  useEffect(() => {
+    if (picking) {
+      useThisLocationRef.current?.focus();
+    } else if (wasPickingRef.current) {
+      pickOnMapRef.current?.focus();
+    }
+    wasPickingRef.current = picking;
+  }, [picking]);
 
   // Click-to-place / map-center updates flow in via `coords` (add mode only).
   useEffect(() => {
@@ -264,12 +287,35 @@ export default function PoiFormModal({
     }
   }
 
+  function confirmPick() {
+    const c = getMapCenter?.();
+    if (c) {
+      setLat(String(c.lat));
+      setLng(String(c.lng));
+    }
+    setPicking(false);
+  }
+
+  function cancelPick() {
+    setPicking(false);
+  }
+
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: isAdd ? "transparent" : "rgba(26,24,22,.42)", backdropFilter: isAdd ? "none" : "blur(2px)", pointerEvents: isAdd ? "none" : "auto", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", animation: "fadeIn .16s ease" }} onClick={onBackdropClick}>
-      <div ref={dialogRef} role="dialog" aria-modal={isAdd ? false : true} aria-labelledby="poi-form-title" className="poi-scroll" style={{ width: isMobile ? "100%" : 540, maxWidth: "100%", maxHeight: isMobile ? "92vh" : "90vh", overflowY: "auto", background: "#fff", borderRadius: isMobile ? "18px 18px 0 0" : theme.radius.modal, paddingBottom: isMobile ? "env(safe-area-inset-bottom)" : undefined, boxShadow: theme.shadow.modal, animation: isMobile ? "sheetUp .26s cubic-bezier(.32,.72,0,1)" : "popIn .2s ease", pointerEvents: "auto" }}>
+      <div ref={dialogRef} role="dialog" aria-modal={isAdd ? false : true} {...(picking ? { "aria-label": "Pick a location on the map" } : { "aria-labelledby": "poi-form-title" })} className="poi-scroll" style={{ width: isMobile ? "100%" : 540, maxWidth: "100%", maxHeight: picking ? "none" : isMobile ? "92vh" : "90vh", overflowY: picking ? "visible" : "auto", background: "#fff", borderRadius: isMobile ? "18px 18px 0 0" : theme.radius.modal, paddingBottom: isMobile ? "env(safe-area-inset-bottom)" : undefined, boxShadow: theme.shadow.modal, animation: isMobile ? "sheetUp .26s cubic-bezier(.32,.72,0,1)" : "popIn .2s ease", pointerEvents: "auto" }}>
+        {picking ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "18px 24px" }}>
+            <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: theme.color.textBody }}>Pan the map so the crosshair marks the spot.</p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button type="button" onClick={cancelPick} style={{ ...ghostButtonStyle, flex: 1, minHeight: 44 }}>Cancel</button>
+              <button ref={useThisLocationRef} type="button" onClick={confirmPick} style={{ ...primaryButtonStyle, flex: 1, minHeight: 44 }}>Use this location</button>
+            </div>
+          </div>
+        ) : (
+        <>
         <div style={{ position: "sticky", top: 0, background: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 24px 16px", zIndex: 2 }}>
           <h2 id="poi-form-title" style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: "-.02em" }}>{mode === "add" ? "Add a new place" : "Edit place"}</h2>
-          <button type="button" aria-label="Close" onClick={onClose} style={{ width: 30, height: 30, borderRadius: theme.radius.icon, border: "none", background: "#f5f4f2", color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
+          <button type="button" aria-label="Close" onClick={onClose} style={{ width: isMobile ? 44 : 30, height: isMobile ? 44 : 30, fontSize: isMobile ? 20 : 14, borderRadius: theme.radius.icon, border: "none", background: "#f5f4f2", color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
         </div>
 
         <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
@@ -408,7 +454,14 @@ export default function PoiFormModal({
               {caption("lng")}
             </div>
           </div>
-          <p style={{ margin: "-6px 0 0", fontSize: 11.5, color: theme.color.textPlaceholder }}>Click anywhere on the map to drop the coordinates here.</p>
+          {isAdd && isMobile && (
+            <button ref={pickOnMapRef} type="button" onClick={() => setPicking(true)} style={{ ...ghostButtonStyle, alignSelf: "flex-start", minHeight: 44 }}>Pick on map</button>
+          )}
+          <p style={{ margin: "-6px 0 0", fontSize: 11.5, color: theme.color.textPlaceholder }}>
+            {isAdd && isMobile
+              ? "Or tap Pick on map to set the location by panning the map."
+              : "Click anywhere on the map to drop the coordinates here."}
+          </p>
 
           <div>
             <label style={label} htmlFor="poi-phone">Phone</label>
@@ -443,7 +496,19 @@ export default function PoiFormModal({
           </div>
         </div>
         </form>
+        </>
+        )}
       </div>
+      {picking && (
+        <div
+          aria-hidden="true"
+          style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 28, height: 28, pointerEvents: "none", zIndex: 2001 }}
+        >
+          <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 2, marginTop: -1, background: theme.color.primary, boxShadow: "0 0 0 1px #fff" }} />
+          <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 2, marginLeft: -1, background: theme.color.primary, boxShadow: "0 0 0 1px #fff" }} />
+          <div style={{ position: "absolute", top: "50%", left: "50%", width: 8, height: 8, marginTop: -4, marginLeft: -4, borderRadius: "50%", background: theme.color.primary, boxShadow: "0 0 0 2px #fff" }} />
+        </div>
+      )}
     </div>
   );
 }

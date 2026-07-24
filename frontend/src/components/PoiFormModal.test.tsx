@@ -38,6 +38,25 @@ describe("parseCoordPair", () => {
 
 const cats: Category[] = [{ id: 1, name: "Restaurants", color: "#E1574C", icon: null, created_by: 1, trip_category_id: null, trip_sync_status: "s" }];
 
+// Overrides matchMedia -> mobile so mobile-only affordances (the ≥44px close
+// button, the "Pick on map" button) render. Returns a restore function.
+function mockMobileMatchMedia() {
+  const original = window.matchMedia;
+  window.matchMedia = ((q: string) => ({
+    matches: true,
+    media: q,
+    addEventListener() {},
+    removeEventListener() {},
+    addListener() {},
+    removeListener() {},
+    onchange: null,
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+  return () => {
+    window.matchMedia = original;
+  };
+}
+
 describe("splitTags", () => {
   it("splits on , ; | and trims, dropping empties", () => {
     expect(splitTags("a, b ;c|| d,")).toEqual(["a", "b", "c", "d"]);
@@ -106,6 +125,76 @@ describe("PoiFormModal", () => {
   it("names the dialog for assistive tech", () => {
     render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
     expect(screen.getByRole("dialog", { name: /add a new place/i })).toBeInTheDocument();
+  });
+
+  it("gives the close button a ≥44px touch target on mobile", () => {
+    const restore = mockMobileMatchMedia();
+    try {
+      render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+      const close = screen.getByRole("button", { name: /close/i });
+      expect(parseInt(close.style.width, 10)).toBeGreaterThanOrEqual(44);
+      expect(parseInt(close.style.height, 10)).toBeGreaterThanOrEqual(44);
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe("PoiFormModal pick on map (mobile)", () => {
+  it("enters pick mode and writes the map center into the coordinate fields", async () => {
+    const restore = mockMobileMatchMedia();
+    try {
+      const getMapCenter = vi.fn(() => ({ lng: 4.9, lat: 52.37 }));
+      render(
+        <PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} getMapCenter={getMapCenter} />,
+      );
+      await userEvent.click(screen.getByRole("button", { name: /pick on map/i }));
+      // The dialog keeps an accessible name while picking (its <h2> is hidden,
+      // so it must fall back to aria-label rather than a dangling aria-labelledby).
+      expect(screen.getByRole("dialog", { name: /pick a location/i })).toBeInTheDocument();
+      const use = screen.getByRole("button", { name: /use this location/i });
+      await userEvent.click(use);
+      expect(getMapCenter).toHaveBeenCalled();
+      expect(screen.getByLabelText(/latitude/i)).toHaveValue("52.37");
+      expect(screen.getByLabelText(/longitude/i)).toHaveValue("4.9");
+    } finally {
+      restore();
+    }
+  });
+
+  it("moves focus to Use this location on entering pick mode, and back to Pick on map on cancel", async () => {
+    const restore = mockMobileMatchMedia();
+    try {
+      render(
+        <PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} getMapCenter={() => ({ lng: 4.9, lat: 52.37 })} />,
+      );
+      const pickOnMap = screen.getByRole("button", { name: /pick on map/i });
+      await userEvent.click(pickOnMap);
+      const use = screen.getByRole("button", { name: /use this location/i });
+      expect(use).toHaveFocus();
+      await userEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
+      expect(screen.getByRole("button", { name: /pick on map/i })).toHaveFocus();
+    } finally {
+      restore();
+    }
+  });
+
+  it("cancel leaves pick mode without changing the coordinates", async () => {
+    const restore = mockMobileMatchMedia();
+    try {
+      const getMapCenter = vi.fn(() => ({ lng: 4.9, lat: 52.37 }));
+      render(
+        <PoiFormModal mode="add" initial={null} categories={cats} coords={{ lng: 1, lat: 2 }} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} getMapCenter={getMapCenter} />,
+      );
+      await userEvent.click(screen.getByRole("button", { name: /pick on map/i }));
+      await userEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
+      expect(getMapCenter).not.toHaveBeenCalled();
+      expect(screen.queryByRole("button", { name: /use this location/i })).not.toBeInTheDocument();
+      expect(screen.getByLabelText(/latitude/i)).toHaveValue("2");
+      expect(screen.getByLabelText(/longitude/i)).toHaveValue("1");
+    } finally {
+      restore();
+    }
   });
 });
 

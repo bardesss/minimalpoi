@@ -63,9 +63,12 @@ export default function ListToolbar({
   /** Mobile: count sits on its own line; the three controls stay on one row. */
   mobile?: boolean;
 }) {
-  // On mobile the three controls must share one row, so tighten gaps/padding and
-  // let the group scroll horizontally rather than wrap on very narrow screens.
-  const wrap = mobile ? { ...wrapStyle, padding: "2px 7px" } : wrapStyle;
+  // On mobile the three controls must share one row, so tighten horizontal
+  // padding and let the group scroll horizontally rather than wrap on very
+  // narrow screens. The pill still needs a ≥44px tap target height, so that's
+  // held via minHeight rather than vertical padding (which would blow out the
+  // pill row's visual size).
+  const wrap = mobile ? { ...wrapStyle, padding: "2px 7px", minHeight: 44 } : wrapStyle;
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", padding: mobile ? "8px 16px" : "8px 20px", borderBottom: `1px solid ${theme.color.borderSubtle}` }}>
       <span style={{ fontSize: 12, fontWeight: 700, color: theme.color.textPrimary, whiteSpace: "nowrap" }}>

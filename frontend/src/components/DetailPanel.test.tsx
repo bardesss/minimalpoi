@@ -65,6 +65,22 @@ describe("DetailPanel", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("insets the mobile close button below the safe area", () => {
+    renderWithProviders(
+      <DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} mobile />,
+    );
+    const close = screen.getByRole("button", { name: /close/i });
+    expect(close.style.top).toContain("safe-area-inset-top");
+  });
+
+  it("keeps the desktop close button at a plain offset (no safe-area)", () => {
+    renderWithProviders(
+      <DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />,
+    );
+    const close = screen.getByRole("button", { name: /close/i });
+    expect(close.style.top).not.toContain("safe-area-inset-top");
+  });
+
   it("keeps the desktop footer outside the scrolling body (sticky footer)", () => {
     const { container } = renderWithProviders(
       <DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />,

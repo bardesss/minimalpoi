@@ -34,4 +34,28 @@ describe("DayHeader", () => {
     expect(onNavigate).toHaveBeenCalledOnce();
     expect(onToggle).not.toHaveBeenCalled();
   });
+
+  it("gives the Navigate button a ≥44px touch target on mobile", () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      matches: true,
+      media: q,
+      addEventListener() {},
+      removeEventListener() {},
+      addListener() {},
+      removeListener() {},
+      onchange: null,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      render(<DayHeader {...base} collapsed={false} onToggle={() => {}} onNavigate={() => {}} />);
+      const nav = screen.getByRole("button", { name: /navigate/i });
+      const minW = parseInt(nav.style.minWidth || nav.style.width || "0", 10);
+      const minH = parseInt(nav.style.minHeight || nav.style.height || "0", 10);
+      expect(minW).toBeGreaterThanOrEqual(44);
+      expect(minH).toBeGreaterThanOrEqual(44);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
 });

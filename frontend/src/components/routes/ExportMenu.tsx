@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ghostButtonStyle, theme } from "../../theme";
 import type { RouteExportFormat } from "../../api/routes";
+import { useIsMobile } from "../../lib/useMediaQuery";
 
 const FORMATS: RouteExportFormat[] = ["geojson", "gpx", "kml"];
 const LABEL: Record<RouteExportFormat, string> = { geojson: "GeoJSON", gpx: "GPX", kml: "KML" };
@@ -10,6 +11,7 @@ const LABEL: Record<RouteExportFormat, string> = { geojson: "GeoJSON", gpx: "GPX
  * roving focus with wrap, Escape-to-close + return focus, select-to-export.
  */
 export default function ExportMenu({ onExport }: { onExport: (f: RouteExportFormat) => void }) {
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -69,7 +71,7 @@ export default function ExportMenu({ onExport }: { onExport: (f: RouteExportForm
         ref={triggerRef}
         type="button"
         className="hover-btn"
-        style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }}
+        style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap", minHeight: isMobile ? 44 : undefined }}
         onClick={() => (open ? close() : openAt(0))}
         onKeyDown={onTriggerKeyDown}
         aria-haspopup="menu"
@@ -95,7 +97,7 @@ export default function ExportMenu({ onExport }: { onExport: (f: RouteExportForm
                 tabIndex={i === activeIndex ? 0 : -1}
                 className="hover-row"
                 onClick={() => select(f)}
-                style={{ textAlign: "left", padding: "8px 12px", background: "transparent", border: "none", cursor: "pointer", fontFamily: theme.font.ui, fontSize: 13, fontWeight: 600, color: theme.color.textBody }}
+                style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", background: "transparent", border: "none", cursor: "pointer", fontFamily: theme.font.ui, fontSize: 13, fontWeight: 600, color: theme.color.textBody }}
               >
                 {LABEL[f]}
               </button>
