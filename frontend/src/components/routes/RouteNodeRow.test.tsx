@@ -76,10 +76,13 @@ describe("order number in the circle", () => {
 
 describe("drag affordance placement", () => {
   it("puts the drag role on the grip, not the whole row (desktop)", () => {
-    render(<RouteNodeRow node={stay} routeId={1} canEdit />);
+    const { container } = render(<RouteNodeRow node={stay} routeId={1} canEdit />);
     const grip = screen.getByRole("button", { name: /reorder amsterdam/i });
     expect(grip.tagName).toBe("SPAN");
-    const row = screen.getByText("Amsterdam").closest("div")!.parentElement!;
+    // The outer row is the single root element (it carries ref={setNodeRef}
+    // plus the hover handlers), as opposed to the inner flex:1 content div
+    // wrapping the name/badge/remove-button group.
+    const row = container.firstChild as HTMLElement;
     expect(row).not.toHaveAttribute("role", "button");
     expect(row).not.toHaveAttribute("tabindex");
   });
