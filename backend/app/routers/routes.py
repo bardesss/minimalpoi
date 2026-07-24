@@ -1,6 +1,7 @@
 import asyncio
 import json
 import queue as _queue
+import secrets
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
@@ -18,6 +19,7 @@ from ..models import (
     RouteLeg,
     RouteNode,
     RouteNodeKind,
+    RouteShare,
     Team,
     TeamMember,
     User,
@@ -38,7 +40,10 @@ from ..schemas import (
     RouteNodeUpdate,
     RouteSummary,
     RouteUpdate,
+    ShareInfo,
+    ShareSettingsUpdate,
 )
+from ..security import hash_password
 
 router = APIRouter(prefix="/api/routes", tags=["routes"])
 
@@ -68,7 +73,7 @@ def _summary(session, route: Route) -> RouteSummary:
     )
 
 
-def _detail(session, route: Route, user: User) -> RouteDetail:
+def _detail(session, route: Route, user: User, request: Request | None = None) -> RouteDetail:
     nodes = ordered_nodes(session, route.id)
     legs = legs_for(session, route.id)
     d = derive(nodes, legs, route.start_date)
@@ -86,6 +91,7 @@ def _detail(session, route: Route, user: User) -> RouteDetail:
     attachments = session.exec(
         select(RouteAttachment).where(RouteAttachment.route_id == route.id).order_by(RouteAttachment.uploaded_at)
     ).all() if can_edit else []
+    share = _share_of(session, route.id) if can_edit else None
     return RouteDetail(
         id=route.id, name=route.name, start_date=route.start_date,
         end_date=route.end_date, round_trip=route.round_trip, scheduled_end_date=d["end_date"],
@@ -100,6 +106,7 @@ def _detail(session, route: Route, user: User) -> RouteDetail:
               for l in legs],
         attachments=[_attach_read(a) for a in attachments],
         total_distance_m=d["totals"]["distance_m"], total_duration_s=d["totals"]["duration_s"],
+        share=_share_info(request, share) if share else None,
     )
 
 
@@ -107,7 +114,7 @@ def _detail_and_publish(request: Request, session, route: Route, user: User) -> 
     """Build the route detail (returned to the caller unchanged) and broadcast a
     copy to live subscribers. The broadcast copy drops attachments (team-private)
     and its can_edit is ignored by clients, which keep their own."""
-    detail = _detail(session, route, user)
+    detail = _detail(session, route, user, request)
     hub = route_hub(request)
     if hub is not None:
         payload = detail.model_dump(mode="json")
@@ -160,6 +167,29 @@ def _can_edit_route(session, route: Route, user: User) -> bool:
 
 
 def require_route_editor(session, route: Route, user: User) -> None:
+    if not _can_edit_route(session, route, user):
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+
+def _share_url(request: Request | None, token: str) -> str:
+    # request.base_url respects proxy scheme/host once --proxy-headers is on (Part B).
+    # When no request is available (e.g. building RouteDetail without one),
+    # fall back to a relative URL.
+    if request is None:
+        return f"/s/{token}"
+    return f"{str(request.base_url).rstrip('/')}/s/{token}"
+
+
+def _share_of(session, route_id: int) -> RouteShare | None:
+    return session.exec(select(RouteShare).where(RouteShare.route_id == route_id)).first()
+
+
+def _share_info(request: Request | None, share: RouteShare) -> ShareInfo:
+    return ShareInfo(token=share.token, url=_share_url(request, share.token),
+                     expires_at=share.expires_at, password_set=share.password_hash is not None)
+
+
+def _assert_can_edit(session, route: Route, user: User) -> None:
     if not _can_edit_route(session, route, user):
         raise HTTPException(status_code=403, detail="Not allowed")
 
@@ -288,6 +318,9 @@ def delete_route(route_id: int, request: Request, session: SessionDep, user: Cur
     for model in (RouteLeg, RouteNode):
         for row in session.exec(select(model).where(model.route_id == route_id)).all():
             session.delete(row)
+    share = _share_of(session, route_id)
+    if share is not None:
+        session.delete(share)
     session.delete(route)
     session.commit()
     hub = route_hub(request)
@@ -298,6 +331,53 @@ def delete_route(route_id: int, request: Request, session: SessionDep, user: Cur
             "route": None,
         })
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/{route_id}/share", response_model=ShareInfo, dependencies=[Gate])
+@limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
+def put_share(route_id: int, body: ShareSettingsUpdate, request: Request,
+              session: SessionDep, user: CurrentUser) -> ShareInfo:
+    """Create-or-update the route's single public share link (upsert)."""
+    route = _get_route_or_404(session, route_id)
+    _assert_can_edit(session, route, user)
+    share = _share_of(session, route_id)
+    if share is None:
+        share = RouteShare(token=secrets.token_urlsafe(32), route_id=route_id, created_by=user.id)
+        session.add(share)
+    share.expires_at = body.expires_at
+    if body.remove_password:
+        share.password_hash = None
+    elif body.password:
+        share.password_hash = hash_password(body.password)
+    session.commit()
+    session.refresh(share)
+    return _share_info(request, share)
+
+
+@router.post("/{route_id}/share/regenerate", response_model=ShareInfo, dependencies=[Gate])
+@limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
+def regenerate_share(route_id: int, request: Request, session: SessionDep, user: CurrentUser) -> ShareInfo:
+    """Rotate the share token, invalidating any previously distributed link."""
+    route = _get_route_or_404(session, route_id)
+    _assert_can_edit(session, route, user)
+    share = _share_of(session, route_id)
+    if share is None:
+        raise HTTPException(status_code=404, detail="Not shared")
+    share.token = secrets.token_urlsafe(32)
+    session.commit()
+    session.refresh(share)
+    return _share_info(request, share)
+
+
+@router.delete("/{route_id}/share", status_code=204, dependencies=[Gate])
+def delete_share(route_id: int, session: SessionDep, user: CurrentUser) -> None:
+    """Revoke the route's public share link."""
+    route = _get_route_or_404(session, route_id)
+    _assert_can_edit(session, route, user)
+    share = _share_of(session, route_id)
+    if share is not None:
+        session.delete(share)
+        session.commit()
 
 
 def _next_position(session, route_id: int) -> float:
