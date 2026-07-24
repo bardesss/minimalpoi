@@ -10,8 +10,9 @@ import type { Category, MapSettings, Poi } from "../types/api";
 // only reference variables created via vi.hoisted (also hoisted). Declaring the
 // mock objects as plain consts here would throw "Cannot access before
 // initialization" when the factory runs.
-const { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock } = vi.hoisted(() => {
+const { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock, geolocateHandlers } = vi.hoisted(() => {
   const handlers: Record<string, () => void> = {};
+  const geolocateHandlers: Record<string, (e: unknown) => void> = {};
   // Model MapLibre faithfully: the "pois" source does not exist until the
   // async "load" handler calls addSource, so getSource returns undefined
   // before load — this is what makes the load-time data race observable.
@@ -39,7 +40,14 @@ const { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock }
   // functions have no [[Construct]]. Returning the object hands it back as the
   // instance.
   const MapMock = vi.fn(function () { return mapInstance; });
-  const GeolocateControlMock = vi.fn();
+  // A regular function (not an arrow) so `new maplibregl.GeolocateControl()`
+  // can construct it — see the MapMock comment above for why. Returns an
+  // instance whose `on` captures handlers so tests can drive a "geolocate" fix.
+  const GeolocateControlMock = vi.fn(function () {
+    return {
+      on: vi.fn((evt: string, fn: (e: unknown) => void) => { geolocateHandlers[evt] = fn; }),
+    };
+  });
   // Chainable Popup mock: MapView's init effect constructs `new
   // maplibregl.Popup(...)` synchronously, so this must exist even though the
   // existing tests never drive a hover event that would call its methods.
@@ -54,7 +62,7 @@ const { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock }
     };
     return popup;
   });
-  return { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock };
+  return { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock, geolocateHandlers };
 });
 
 // jsdom has no ResizeObserver; MapView installs one to call map.resize().
@@ -87,6 +95,7 @@ beforeEach(() => {
   PopupMock.mockClear();
   state.sourceAdded = false;
   Object.values(mapInstance).forEach((m) => typeof m === "function" && (m as ReturnType<typeof vi.fn>).mockClear?.());
+  for (const k of Object.keys(geolocateHandlers)) delete geolocateHandlers[k];
 });
 
 describe("MapView", () => {
@@ -125,5 +134,13 @@ describe("MapView", () => {
     expect(GeolocateControlMock).toHaveBeenCalledWith(expect.objectContaining({ trackUserLocation: true }));
     // Navigation + Geolocate = two controls added.
     expect(mapInstance.addControl).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports the user's location up via onUserLocate when the control gets a fix", () => {
+    const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+    const onUserLocate = vi.fn();
+    render(<MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={() => {}} onMapClick={() => {}} addMode={false} visitedPoiIds={new Set()} mapRef={mapRef} onUserLocate={onUserLocate} />);
+    geolocateHandlers.geolocate({ coords: { longitude: 4.9, latitude: 52.37 } });
+    expect(onUserLocate).toHaveBeenCalledWith({ lng: 4.9, lat: 52.37 });
   });
 });

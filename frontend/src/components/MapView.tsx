@@ -18,6 +18,8 @@ interface Props {
   mapRef: MutableRefObject<MlMap | null>;
   /** Fires after the user finishes panning/zooming — used to re-sort the list by distance. */
   onMoveEnd?: (center: { lng: number; lat: number }) => void;
+  /** Fires when the GeolocateControl gets a location fix — seeds the distance sort from the user's real position. */
+  onUserLocate?: (center: { lng: number; lat: number }) => void;
 }
 
 const VISITED_RING_COLOR = "#4f46e5";
@@ -68,7 +70,7 @@ function addPoiLayers(map: MlMap, color: ReturnType<typeof categoryColorExpressi
   });
 }
 
-export default function MapView({ pois, categories, settings, selectedId, onSelect, onMapClick, addMode, visitedPoiIds, mapRef, onMoveEnd }: Props) {
+export default function MapView({ pois, categories, settings, selectedId, onSelect, onMapClick, addMode, visitedPoiIds, mapRef, onMoveEnd, onUserLocate }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Keep latest callbacks/flags in refs so the load handler closure stays current.
   const onSelectRef = useRef(onSelect);
@@ -76,6 +78,7 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
   const addModeRef = useRef(addMode);
   const visitedRef = useRef(visitedPoiIds);
   const onMoveEndRef = useRef(onMoveEnd);
+  const onUserLocateRef = useRef(onUserLocate);
   // pois/categories/selectedId arrive asynchronously (queries) and may land
   // before OR after the map's "load" event. The load handler must read their
   // latest values via refs — otherwise a source created after the data has
@@ -88,6 +91,7 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
   addModeRef.current = addMode;
   visitedRef.current = visitedPoiIds;
   onMoveEndRef.current = onMoveEnd;
+  onUserLocateRef.current = onUserLocate;
   poisRef.current = pois;
   categoriesRef.current = categories;
   selectedIdRef.current = selectedId;
@@ -105,13 +109,14 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
     });
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-    map.addControl(
-      new maplibregl.GeolocateControl({
-        trackUserLocation: true,
-        positionOptions: { enableHighAccuracy: true },
-      }),
-      "top-right",
-    );
+    const geolocate = new maplibregl.GeolocateControl({
+      trackUserLocation: true,
+      positionOptions: { enableHighAccuracy: true },
+    });
+    map.addControl(geolocate, "top-right");
+    geolocate.on("geolocate", (e: GeolocationPosition) => {
+      onUserLocateRef.current?.({ lng: e.coords.longitude, lat: e.coords.latitude });
+    });
 
     map.on("load", () => {
       map.addSource("pois", {
