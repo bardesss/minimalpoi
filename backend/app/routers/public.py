@@ -25,6 +25,7 @@ from ..ratelimit import PUBLIC_LIMIT, limiter
 from ..routing.service import derive, legs_for, ordered_nodes
 from ..schemas import PublicMapSettings, PublicRouteResponse, PublicRouteView, RouteLegRead, RouteNodeRead, UnlockBody
 from ..security import verify_password, verify_password_dummy
+from .auth import _cookie_secure
 
 router = APIRouter(prefix="/api/public", tags=["public"])
 GRANT_COOKIE = "share_grant"
@@ -125,5 +126,8 @@ def unlock(token: str, request: Request, session: SessionDep, body: UnlockBody) 
     grant = jwt.encode({"share": token, "exp": utcnow() + timedelta(hours=12)}, get_secret_key(), algorithm="HS256")
     resp = JSONResponse(PublicRouteResponse(locked=False, route=_view(session, route)).model_dump(mode="json"))
     resp.headers["X-Robots-Tag"] = "noindex"
-    resp.set_cookie(GRANT_COOKIE, grant, max_age=12 * 3600, httponly=True, samesite="lax", path="/api/public")
+    resp.set_cookie(
+        GRANT_COOKIE, grant, max_age=12 * 3600, httponly=True, samesite="lax", path="/api/public",
+        secure=_cookie_secure(request, session),
+    )
     return resp
