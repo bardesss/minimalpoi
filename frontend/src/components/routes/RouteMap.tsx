@@ -241,6 +241,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
         },
       });
       fitToNodes(map, nodesRef.current);
+      lastFitSigRef.current = routeSignature(nodesRef.current);
     });
 
     map.on("click", "route-poi-clusters", (e) => {

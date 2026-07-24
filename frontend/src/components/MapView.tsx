@@ -159,7 +159,7 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
       map.on("mouseenter", layer, () => { map.getCanvas().style.cursor = "pointer"; });
       map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; });
     }
-    map.on("mouseenter", "unclustered", (e) => {
+    map.on("mousemove", "unclustered", (e) => {
       const f = e.features?.[0];
       if (!f) return;
       const id = Number((f.properties as { id: number }).id);
