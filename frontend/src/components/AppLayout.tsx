@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useIsMobile } from "../lib/useMediaQuery";
+import { useIsMobile, useMediaQuery } from "../lib/useMediaQuery";
 import { theme } from "../theme";
 import SidebarHeader from "./Sidebar/SidebarHeader";
 import AccountFooter from "./Sidebar/AccountFooter";
@@ -27,6 +27,8 @@ const reopenBtn = {
 
 export default function AppLayout(props: AppLayoutProps) {
   const isMobile = useIsMobile();
+  // Give the POI grid's 3rd column (see PoiList) room on very wide screens.
+  const wide = useMediaQuery("(min-width: 1600px)");
   const nav = props.routesEnabled ? <NavToggle active={props.active} /> : null;
   const footer = <AccountFooter {...props.account} />;
 
@@ -47,7 +49,7 @@ export default function AppLayout(props: AppLayoutProps) {
     <div style={{ display: "flex", height: "100dvh", width: "100vw", background: theme.color.pageBg }}>
       <aside
         style={{
-          width: props.collapsed ? 0 : 480,
+          width: props.collapsed ? 0 : wide ? 640 : 480,
           flex: "none",
           borderRight: props.collapsed ? "none" : `1px solid ${theme.color.borderCard}`,
           background: "#fff",
