@@ -55,18 +55,32 @@ export default function AppShell() {
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [addCoords, setAddCoords] = useState<{ lng: number; lat: number } | null>(null);
   const [duplicateId, setDuplicateId] = useState<number | null>(null);
+  const pendingSearchFocusRef = useRef(false);
 
   // Global "/" or Ctrl/Cmd-K shortcut: reveal the sidebar (desktop) and focus
   // the search input. On mobile the sidebar/search box is always mounted
   // inside the bottom sheet, so no expand step is needed there.
   useSearchHotkey(() => {
-    setSidebarCollapsed(false);
-    requestAnimationFrame(() => {
+    if (sidebarCollapsed) {
+      // #poi-search isn't in the DOM until the sidebar re-mounts; defer the
+      // focus to the effect below, which fires once it does.
+      setSidebarCollapsed(false);
+      pendingSearchFocusRef.current = true;
+    } else {
       const el = document.getElementById("poi-search") as HTMLInputElement | null;
       el?.focus();
       el?.select();
-    });
+    }
   });
+
+  useEffect(() => {
+    if (!sidebarCollapsed && pendingSearchFocusRef.current) {
+      pendingSearchFocusRef.current = false;
+      const el = document.getElementById("poi-search") as HTMLInputElement | null;
+      el?.focus();
+      el?.select();
+    }
+  }, [sidebarCollapsed]);
 
   const categories = categoriesQuery.data ?? [];
   const categoriesById = useMemo(

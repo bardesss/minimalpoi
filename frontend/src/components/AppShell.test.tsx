@@ -4,7 +4,7 @@
 // extend this file and re-import `server`/`http`/`HttpResponse`/`samplePois`
 // when they add per-test `server.use(...)` overrides.)
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { renderWithProviders } from "../test/utils";
@@ -87,6 +87,22 @@ describe("AppShell", () => {
     renderWithProviders(<AppShell />);
     const link = await screen.findByRole("link", { name: /routes/i });
     expect(link).toHaveAttribute("href", "/routes");
+  });
+
+  it("focuses search after the '/' hotkey re-expands a collapsed sidebar", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    // Collapse the sidebar — this unmounts the search input entirely.
+    await user.click(screen.getByRole("button", { name: /collapse panel/i }));
+    expect(screen.queryByLabelText(/search places/i)).not.toBeInTheDocument();
+    // Fire the global hotkey; the sidebar (and #poi-search) re-mounts, and
+    // focus should land on the search input once it does.
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "/", bubbles: true, cancelable: true }));
+    });
+    const search = await screen.findByLabelText(/search places/i);
+    await waitFor(() => expect(search).toHaveFocus());
   });
 
   it("deletes a place and closes the detail panel", async () => {

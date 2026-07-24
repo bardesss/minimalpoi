@@ -42,7 +42,6 @@ export default function PoiList({
     getScrollElement: () => parentRef.current,
     estimateSize: () => ESTIMATED_ROW_HEIGHT,
     overscan: 6,
-    measureElement: (el) => el.getBoundingClientRect().height,
   });
 
   // Reveal the selected card's row, but only when the selection actually
