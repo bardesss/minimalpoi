@@ -53,6 +53,14 @@ export default function App() {
           </RequireAuth>
         }
       />
+      <Route
+        path="/routes/:id"
+        element={
+          <RequireAuth>
+            <RoutesPage />
+          </RequireAuth>
+        }
+      />
     </Routes>
   );
 }

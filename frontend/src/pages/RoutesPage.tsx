@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { dangerButtonStyle, ghostButtonStyle, primaryButtonStyle, theme } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 import { useAuth } from "../auth/AuthContext";
@@ -32,7 +32,10 @@ export default function RoutesPage() {
   const deleteRoute = useDeleteRoute();
   const teamsQuery = useTeams();
 
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const { id: routeIdParam } = useParams();
+  // Selection lives in the URL (/routes/:id) so refresh, deep-link, and browser
+  // back all work. A non-numeric/garbage id falls back to the list.
+  const selectedId = routeIdParam != null && /^\d+$/.test(routeIdParam) ? Number(routeIdParam) : null;
   const routeQuery = useRoute(selectedId);
   const poisQuery = usePois();
   const categoriesQuery = useCategories();
@@ -50,7 +53,7 @@ export default function RoutesPage() {
 
   useRouteEvents(selectedId, {
     suspended: newRouteOpen || editingRoute || timelineBusy,
-    onDeleted: () => { toast.notify("This route was deleted", "error"); setSelectedId(null); },
+    onDeleted: () => { toast.notify("This route was deleted", "error"); navigate("/routes"); },
   });
 
   async function onLogout() {
@@ -90,7 +93,7 @@ export default function RoutesPage() {
     if (!detail) return;
     await deleteRoute.mutateAsync(detail.id);
     setConfirmDel(false);
-    setSelectedId(null);
+    navigate("/routes");
   }
 
 
@@ -105,7 +108,7 @@ export default function RoutesPage() {
               <button
                 key={r.id}
                 type="button"
-                onClick={() => setSelectedId(r.id)}
+                onClick={() => navigate("/routes/" + r.id)}
                 className="hover-row"
                 style={{ textAlign: "left", padding: "10px 12px", borderRadius: theme.radius.card, border: `1px solid ${theme.color.borderCard}`, background: theme.color.surface0, cursor: "pointer" }}
               >
@@ -124,7 +127,7 @@ export default function RoutesPage() {
         </>
       ) : (
         <>
-          <button type="button" className="hover-btn" style={{ ...ghostButtonStyle, padding: "6px 12px", marginBottom: 12 }} onClick={() => setSelectedId(null)}>← All routes</button>
+          <button type="button" className="hover-btn" style={{ ...ghostButtonStyle, padding: "6px 12px", marginBottom: 12 }} onClick={() => navigate("/routes")}>← All routes</button>
           {routeQuery.isLoading && <p style={{ fontSize: 13, color: theme.color.textPlaceholder }}>Loading…</p>}
           {detail && (
             <>
@@ -229,7 +232,7 @@ export default function RoutesPage() {
           teams={myTeams.map((t) => ({ id: t.id, name: t.name }))}
           existing={null}
           onClose={() => setNewRouteOpen(false)}
-          onSaved={(route) => { setNewRouteOpen(false); setSelectedId(route.id); }}
+          onSaved={(route) => { setNewRouteOpen(false); navigate("/routes/" + route.id); }}
         />
       )}
       {editingRoute && detail && (
