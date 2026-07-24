@@ -12,7 +12,7 @@ from . import db
 from .enrich.images import images_dir
 from .ratelimit import limiter
 from .routing.events import RouteEventHub
-from .routers import auth, backup, categories, comments, enrich, images, me, places, pois, routes, settings, tags, teams, users, version, visits
+from .routers import auth, backup, categories, comments, enrich, images, me, places, pois, public, routes, settings, tags, teams, users, version, visits
 from .routers import sync as sync_router_module
 from .trip.service import start_worker, stop_worker
 
@@ -56,6 +56,7 @@ app.include_router(places.router)
 app.include_router(images.router)
 app.include_router(tags.router)
 app.include_router(routes.router)
+app.include_router(public.router)
 app.include_router(sync_router_module.router)
 app.include_router(version.router)
 app.mount("/images", StaticFiles(directory=str(images_dir())), name="images")

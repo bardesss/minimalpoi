@@ -464,6 +464,10 @@ class PublicRouteResponse(SQLModel):
     route: PublicRouteView | None = None
 
 
+class UnlockBody(SQLModel):
+    password: str
+
+
 class RouteDetail(RouteSummary):
     can_edit: bool = False
     nodes: list[RouteNodeRead] = []
