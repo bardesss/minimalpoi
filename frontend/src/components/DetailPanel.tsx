@@ -117,11 +117,12 @@ export default function DetailPanel({
   return (
     <div
       ref={dialogRef}
-      className="poi-scroll"
-      style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 368, zIndex: 800, background: "#fff", boxShadow: theme.shadow.detail, overflowY: "auto", animation: "slideIn .22s ease" }}
+      style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 368, zIndex: 800, background: "#fff", boxShadow: theme.shadow.detail, display: "flex", flexDirection: "column", animation: "slideIn .22s ease" }}
     >
-      {hero}
-      {body}
+      <div className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        {hero}
+        {body}
+      </div>
       {footer}
     </div>
   );
