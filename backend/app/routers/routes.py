@@ -113,12 +113,15 @@ def _detail(session, route: Route, user: User, request: Request | None = None) -
 def _detail_and_publish(request: Request, session, route: Route, user: User) -> RouteDetail:
     """Build the route detail (returned to the caller unchanged) and broadcast a
     copy to live subscribers. The broadcast copy drops attachments (team-private)
-    and its can_edit is ignored by clients, which keep their own."""
+    and share (the live public-access token, whose visibility follows the
+    subscriber's own can_edit — unknown to the hub) — its can_edit is ignored
+    by clients, which keep their own."""
     detail = _detail(session, route, user, request)
     hub = route_hub(request)
     if hub is not None:
         payload = detail.model_dump(mode="json")
         payload["attachments"] = []
+        payload["share"] = None
         hub.publish(route.id, {
             "type": "update",
             "client_id": request.headers.get("X-Route-Client"),
