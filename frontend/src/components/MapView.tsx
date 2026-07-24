@@ -105,6 +105,13 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
     });
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(
+      new maplibregl.GeolocateControl({
+        trackUserLocation: true,
+        positionOptions: { enableHighAccuracy: true },
+      }),
+      "top-right",
+    );
 
     map.on("load", () => {
       map.addSource("pois", {

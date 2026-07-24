@@ -206,6 +206,13 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
     });
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(
+      new maplibregl.GeolocateControl({
+        trackUserLocation: true,
+        positionOptions: { enableHighAccuracy: true },
+      }),
+      "top-right",
+    );
 
     map.on("load", () => {
       map.addSource("route-pois", {

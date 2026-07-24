@@ -10,7 +10,7 @@ import type { Category, MapSettings, Poi } from "../types/api";
 // only reference variables created via vi.hoisted (also hoisted). Declaring the
 // mock objects as plain consts here would throw "Cannot access before
 // initialization" when the factory runs.
-const { handlers, mapInstance, MapMock, state } = vi.hoisted(() => {
+const { handlers, mapInstance, MapMock, state, GeolocateControlMock } = vi.hoisted(() => {
   const handlers: Record<string, () => void> = {};
   // Model MapLibre faithfully: the "pois" source does not exist until the
   // async "load" handler calls addSource, so getSource returns undefined
@@ -39,7 +39,8 @@ const { handlers, mapInstance, MapMock, state } = vi.hoisted(() => {
   // functions have no [[Construct]]. Returning the object hands it back as the
   // instance.
   const MapMock = vi.fn(function () { return mapInstance; });
-  return { handlers, mapInstance, MapMock, state };
+  const GeolocateControlMock = vi.fn();
+  return { handlers, mapInstance, MapMock, state, GeolocateControlMock };
 });
 
 // jsdom has no ResizeObserver; MapView installs one to call map.resize().
@@ -53,9 +54,11 @@ vi.mock("maplibre-gl", () => ({
   default: {
     Map: MapMock,
     NavigationControl: vi.fn(),
+    GeolocateControl: GeolocateControlMock,
   },
   Map: MapMock,
   NavigationControl: vi.fn(),
+  GeolocateControl: GeolocateControlMock,
 }));
 
 const settings: MapSettings = { map_tile_url: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json", default_map_center_lat: 52.3676, default_map_center_lng: 4.9041, default_map_zoom: 11, routes_enabled: false };
@@ -64,6 +67,7 @@ const pois: Poi[] = [{ id: 1, name: "A", address: null, city: null, country_code
 
 beforeEach(() => {
   MapMock.mockClear();
+  GeolocateControlMock.mockClear();
   state.sourceAdded = false;
   Object.values(mapInstance).forEach((m) => typeof m === "function" && (m as ReturnType<typeof vi.fn>).mockClear?.());
 });
@@ -96,5 +100,13 @@ describe("MapView", () => {
     const sourceCall = (mapInstance.addSource.mock.calls as unknown[][]).find((c) => c[0] === "pois");
     const data = (sourceCall![1] as { data: { features: unknown[] } }).data;
     expect(data.features).toHaveLength(1);
+  });
+
+  it("adds a tracking GeolocateControl next to the navigation control", () => {
+    const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+    render(<MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={() => {}} onMapClick={() => {}} addMode={false} visitedPoiIds={new Set()} mapRef={mapRef} />);
+    expect(GeolocateControlMock).toHaveBeenCalledWith(expect.objectContaining({ trackUserLocation: true }));
+    // Navigation + Geolocate = two controls added.
+    expect(mapInstance.addControl).toHaveBeenCalledTimes(2);
   });
 });
