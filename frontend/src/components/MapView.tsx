@@ -146,6 +146,24 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
       onMoveEndRef.current?.({ lng: c.lng, lat: c.lat });
     });
 
+    // Hover affordance: pointer cursor on markers/clusters, plus a name tooltip on
+    // individual markers so you can tell dots apart without clicking. setText (not
+    // HTML) keeps user-supplied names safe from injection.
+    const hoverPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12 });
+    for (const layer of ["unclustered", "clusters"]) {
+      map.on("mouseenter", layer, () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; });
+    }
+    map.on("mouseenter", "unclustered", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const id = Number((f.properties as { id: number }).id);
+      const poi = poisRef.current.find((p) => p.id === id);
+      if (!poi) return;
+      hoverPopup.setLngLat([poi.lng, poi.lat]).setText(poi.name).addTo(map);
+    });
+    map.on("mouseleave", "unclustered", () => { hoverPopup.remove(); });
+
     // The map lives in a flex sibling of the 480px→0 collapsing sidebar; when
     // that animates, the container resizes and MapLibre must repaint to fill it.
     // The reference uses the same ResizeObserver approach.
