@@ -79,3 +79,30 @@ def test_delete_route_cleans_up_share(client):
     with Session(db.engine) as s:
         got = s.exec(select(RouteShare).where(RouteShare.token == tok)).first()
         assert got is None
+
+
+def test_put_share_without_expires_at_leaves_existing_expiry_unchanged(client):
+    _setup(client)
+    rid = _route(client)["id"]
+    r = client.put(f"/api/routes/{rid}/share", json={"expires_at": "2099-01-01T00:00:00"})
+    assert r.json()["expires_at"] is not None
+
+    # A password-only update (no expires_at in the body) must not wipe the expiry.
+    r = client.put(f"/api/routes/{rid}/share", json={"password": "hunter22"})
+    assert r.json()["password_set"] is True
+    assert r.json()["expires_at"] is not None
+
+    got = client.get(f"/api/routes/{rid}").json()["share"]
+    assert got["expires_at"] is not None
+
+
+def test_put_share_with_explicit_null_expires_at_clears_it(client):
+    _setup(client)
+    rid = _route(client)["id"]
+    client.put(f"/api/routes/{rid}/share", json={"expires_at": "2099-01-01T00:00:00"})
+
+    r = client.put(f"/api/routes/{rid}/share", json={"expires_at": None})
+    assert r.json()["expires_at"] is None
+
+    got = client.get(f"/api/routes/{rid}").json()["share"]
+    assert got["expires_at"] is None

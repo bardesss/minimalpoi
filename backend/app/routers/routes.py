@@ -347,7 +347,8 @@ def put_share(route_id: int, body: ShareSettingsUpdate, request: Request,
     if share is None:
         share = RouteShare(token=secrets.token_urlsafe(32), route_id=route_id, created_by=user.id)
         session.add(share)
-    share.expires_at = body.expires_at
+    if "expires_at" in body.model_fields_set:
+        share.expires_at = body.expires_at
     if body.remove_password:
         share.password_hash = None
     elif body.password:
