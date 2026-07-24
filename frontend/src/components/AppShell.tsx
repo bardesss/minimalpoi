@@ -10,6 +10,7 @@ import { readMapViewMode, writeMapViewMode, type MapViewMode } from "../lib/mapV
 import { readSortMode, writeSortMode, type SortMode } from "../lib/sortPref";
 import { sortPois } from "../lib/sortPois";
 import { useIsMobile } from "../lib/useMediaQuery";
+import { useSearchHotkey } from "../lib/useSearchHotkey";
 import SidebarContent from "./Sidebar/SidebarContent";
 import MapView from "./MapView";
 import Legend from "./Legend";
@@ -54,6 +55,18 @@ export default function AppShell() {
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [addCoords, setAddCoords] = useState<{ lng: number; lat: number } | null>(null);
   const [duplicateId, setDuplicateId] = useState<number | null>(null);
+
+  // Global "/" or Ctrl/Cmd-K shortcut: reveal the sidebar (desktop) and focus
+  // the search input. On mobile the sidebar/search box is always mounted
+  // inside the bottom sheet, so no expand step is needed there.
+  useSearchHotkey(() => {
+    setSidebarCollapsed(false);
+    requestAnimationFrame(() => {
+      const el = document.getElementById("poi-search") as HTMLInputElement | null;
+      el?.focus();
+      el?.select();
+    });
+  });
 
   const categories = categoriesQuery.data ?? [];
   const categoriesById = useMemo(

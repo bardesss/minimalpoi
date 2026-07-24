@@ -6,6 +6,7 @@ export default function SearchBox({ value, onChange }: { value: string; onChange
     <div style={{ position: "relative", padding: "14px 20px 4px" }}>
       <Search size={14} color={theme.color.textInputIcon} style={{ position: "absolute", left: 32, top: 24 }} aria-hidden />
       <input
+        id="poi-search"
         aria-label="Search places, cities, countries or tags"
         placeholder="Search places, cities, countries or tags"
         value={value}
