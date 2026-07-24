@@ -13,6 +13,7 @@ import RouteMap from "../components/routes/RouteMap";
 import ExportMenu from "../components/routes/ExportMenu";
 import SettingsModal from "../components/SettingsModal";
 import ShareImageModal from "../components/routes/ShareImageModal";
+import ShareLinkModal from "../components/routes/ShareLinkModal";
 import RouteFormModal from "../components/routes/RouteFormModal";
 import { formatTravel } from "../lib/formatTravel";
 import { passedNodeIds, todayIso } from "../lib/dayState";
@@ -45,6 +46,7 @@ export default function RoutesPage() {
   const [collapsed, setCollapsed] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [shareLinkOpen, setShareLinkOpen] = useState(false);
   const [editingRoute, setEditingRoute] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [hoverNodeId, setHoverNodeId] = useState<number | null>(null);
@@ -154,6 +156,16 @@ export default function RoutesPage() {
                   >
                     Share image
                   </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      className="hover-btn"
+                      style={{ ...ghostButtonStyle, padding: isMobile ? "11px 14px" : "6px 12px", whiteSpace: "nowrap" }}
+                      onClick={() => setShareLinkOpen(true)}
+                    >
+                      Public link
+                    </button>
+                  )}
                 </div>
               </div>
               <RouteTimeline route={detail} canEdit={canEdit} onHoverNode={setHoverNodeId} onInteractingChange={setTimelineBusy} />
@@ -212,6 +224,7 @@ export default function RoutesPage() {
       {shareOpen && detail && settingsQuery.data && (
         <ShareImageModal route={detail} settings={settingsQuery.data} onClose={() => setShareOpen(false)} />
       )}
+      {shareLinkOpen && detail && <ShareLinkModal route={detail} onClose={() => setShareLinkOpen(false)} />}
       {newRouteOpen && (
         <RouteFormModal
           teams={myTeams.map((t) => ({ id: t.id, name: t.name }))}
