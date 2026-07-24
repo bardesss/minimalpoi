@@ -15,6 +15,7 @@ import DayHeader from "./DayHeader";
 import { isDayPassed, todayIso } from "../../lib/dayState";
 import { dayWaypoints, googleMapsDirUrl } from "../../lib/routeNav";
 import NavigateDayModal from "./NavigateDayModal";
+import { useIsMobile } from "../../lib/useMediaQuery";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
@@ -63,6 +64,7 @@ export function computeDropPosition(nodes: RouteNode[], fromIndex: number, toInd
 }
 
 export default function RouteTimeline({ route, canEdit, onHoverNode, onInteractingChange }: { route: RouteDetail; canEdit: boolean; onHoverNode?: (id: number | null) => void; onInteractingChange?: (active: boolean) => void }) {
+  const isMobile = useIsMobile();
   const nodes = route.nodes;
   const legByPair = useMemo(() => {
     const m = new Map<string, RouteDetail["legs"][number]>();
@@ -274,7 +276,7 @@ export default function RouteTimeline({ route, canEdit, onHoverNode, onInteracti
                       <button
                         type="button"
                         aria-label={`Add stop to ${formatDayLabel(group.dayKey)}`}
-                        style={{ ...ghostButtonStyle, padding: "4px 10px", fontSize: 12 }}
+                        style={{ ...ghostButtonStyle, padding: isMobile ? "10px 14px" : "4px 10px", minHeight: isMobile ? 44 : undefined, fontSize: 12 }}
                         onClick={() => setAddTarget({ scope: "day", gi, kind: "stop" })}
                       >
                         + Add stop
@@ -283,7 +285,7 @@ export default function RouteTimeline({ route, canEdit, onHoverNode, onInteracti
                         <button
                           type="button"
                           aria-label={`Add stay to ${formatDayLabel(group.dayKey)}`}
-                          style={{ ...ghostButtonStyle, padding: "4px 10px", fontSize: 12 }}
+                          style={{ ...ghostButtonStyle, padding: isMobile ? "10px 14px" : "4px 10px", minHeight: isMobile ? 44 : undefined, fontSize: 12 }}
                           onClick={() => setAddTarget({ scope: "day", gi, kind: "stay" })}
                         >
                           + Add stay

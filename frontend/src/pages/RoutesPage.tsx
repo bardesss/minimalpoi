@@ -143,12 +143,12 @@ export default function RoutesPage() {
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: 8, flex: "none", flexWrap: "wrap", justifyContent: isMobile ? "flex-start" : "flex-end", marginBottom: isMobile ? 4 : 0 }}>
-                  {canEdit && <button type="button" className="hover-btn" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={() => setEditingRoute(true)}>Edit</button>}
+                  {canEdit && <button type="button" className="hover-btn" style={{ ...ghostButtonStyle, padding: isMobile ? "11px 14px" : "6px 12px" }} onClick={() => setEditingRoute(true)}>Edit</button>}
                   <ExportMenu onExport={onExport} />
                   <button
                     type="button"
                     className="hover-btn"
-                    style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }}
+                    style={{ ...ghostButtonStyle, padding: isMobile ? "11px 14px" : "6px 12px", whiteSpace: "nowrap" }}
                     onClick={() => setShareOpen(true)}
                     disabled={(detail.nodes.length ?? 0) === 0}
                   >

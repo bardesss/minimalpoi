@@ -107,6 +107,28 @@ describe("PoiFormModal", () => {
     render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
     expect(screen.getByRole("dialog", { name: /add a new place/i })).toBeInTheDocument();
   });
+
+  it("gives the close button a ≥44px touch target on mobile", () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      matches: true,
+      media: q,
+      addEventListener() {},
+      removeEventListener() {},
+      addListener() {},
+      removeListener() {},
+      onchange: null,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+      const close = screen.getByRole("button", { name: /close/i });
+      expect(parseInt(close.style.width, 10)).toBeGreaterThanOrEqual(44);
+      expect(parseInt(close.style.height, 10)).toBeGreaterThanOrEqual(44);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
 });
 
 const draft: PoiDraft = {

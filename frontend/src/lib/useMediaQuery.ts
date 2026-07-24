@@ -26,3 +26,9 @@ export function useMediaQuery(query: string): boolean {
 export function useIsMobile(): boolean {
   return useMediaQuery("(max-width: 768px)");
 }
+
+/** True for touch/coarse pointers (finger-driven, imprecise) — e.g. a wide-viewport
+ * touch tablet that wouldn't otherwise match `useIsMobile`'s width breakpoint. */
+export function useIsCoarsePointer(): boolean {
+  return useMediaQuery("(pointer: coarse)");
+}

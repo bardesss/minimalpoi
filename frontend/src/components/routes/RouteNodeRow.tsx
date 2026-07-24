@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { RouteNode } from "../../types/api";
 import { theme } from "../../theme";
-import { useIsMobile } from "../../lib/useMediaQuery";
+import { useIsMobile, useIsCoarsePointer } from "../../lib/useMediaQuery";
 import { useDeleteNode, useUpdateNode } from "../../queries/hooks";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -48,6 +48,8 @@ export default function RouteNodeRow({
   const updateNode = useUpdateNode(routeId);
   const deleteNode = useDeleteNode(routeId);
   const isMobile = useIsMobile();
+  const isCoarse = useIsCoarsePointer();
+  const bigGrip = isMobile || isCoarse;
   const iconBtn = iconBtnStyle(isMobile ? 40 : 24);
   const isStay = node.kind === "stay";
   const draggable = canEdit && !pinned;
@@ -97,8 +99,8 @@ export default function RouteNodeRow({
           {...handleDrag}
           style={{
             flex: "none",
-            width: isMobile ? 40 : 26,
-            height: isMobile ? 40 : 26,
+            width: bigGrip ? 40 : 26,
+            height: bigGrip ? 40 : 26,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -107,7 +109,7 @@ export default function RouteNodeRow({
             touchAction: "none",
           }}
         >
-          <GripVertical size={isMobile ? 20 : 16} />
+          <GripVertical size={bigGrip ? 20 : 16} />
         </span>
       )}
       <span

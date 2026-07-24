@@ -269,7 +269,7 @@ export default function PoiFormModal({
       <div ref={dialogRef} role="dialog" aria-modal={isAdd ? false : true} aria-labelledby="poi-form-title" className="poi-scroll" style={{ width: isMobile ? "100%" : 540, maxWidth: "100%", maxHeight: isMobile ? "92vh" : "90vh", overflowY: "auto", background: "#fff", borderRadius: isMobile ? "18px 18px 0 0" : theme.radius.modal, paddingBottom: isMobile ? "env(safe-area-inset-bottom)" : undefined, boxShadow: theme.shadow.modal, animation: isMobile ? "sheetUp .26s cubic-bezier(.32,.72,0,1)" : "popIn .2s ease", pointerEvents: "auto" }}>
         <div style={{ position: "sticky", top: 0, background: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 24px 16px", zIndex: 2 }}>
           <h2 id="poi-form-title" style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: "-.02em" }}>{mode === "add" ? "Add a new place" : "Edit place"}</h2>
-          <button type="button" aria-label="Close" onClick={onClose} style={{ width: 30, height: 30, borderRadius: theme.radius.icon, border: "none", background: "#f5f4f2", color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
+          <button type="button" aria-label="Close" onClick={onClose} style={{ width: isMobile ? 44 : 30, height: isMobile ? 44 : 30, fontSize: isMobile ? 20 : 14, borderRadius: theme.radius.icon, border: "none", background: "#f5f4f2", color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
         </div>
 
         <form onSubmit={(e) => { e.preventDefault(); submit(); }}>

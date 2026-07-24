@@ -6,6 +6,7 @@ import { routeLine } from "../../map/routeLine";
 import { toFeatureCollection } from "../../map/featureCollection";
 import { categoryColorExpression } from "../../map/colorExpression";
 import { routeSignature } from "../../lib/routeSignature";
+import { useIsMobile } from "../../lib/useMediaQuery";
 
 const LINE_COLOR = "#4f46e5";
 const PASSED_COLOR = "#a8a39b"; // muted grey — de-emphasises days already travelled
@@ -120,6 +121,7 @@ function openPoiPopup(
   poi: Poi,
   canAdd: boolean,
   onAddNode: (poiId: number, kind: RouteNodeKind) => void,
+  isMobile: boolean,
 ) {
   const el = document.createElement("div");
   el.style.fontFamily = "system-ui, sans-serif";
@@ -149,7 +151,7 @@ function openPoiPopup(
       const b = document.createElement("button");
       b.type = "button";
       b.textContent = label;
-      b.style.cssText = "flex:1;padding:4px 8px;border-radius:6px;border:1px solid #4f46e5;background:#4f46e5;color:#fff;font-size:12px;cursor:pointer;";
+      b.style.cssText = `flex:1;padding:${isMobile ? "12px 10px" : "4px 8px"};border-radius:6px;border:1px solid #4f46e5;background:#4f46e5;color:#fff;font-size:12px;cursor:pointer;min-height:${isMobile ? "44px" : "auto"};`;
       b.addEventListener("click", () => { onAddNode(poi.id, kind); popup.remove(); });
       return b;
     };
@@ -170,6 +172,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   passedNodeIds: Set<number>;
   highlightNodeId: number | null;
 }) {
+  const isMobile = useIsMobile();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   // Only re-fit the camera when the pins actually move — not on every refetch or
@@ -186,6 +189,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   const onAddNodeRef = useRef(onAddNode);
   const passedRef = useRef(passedNodeIds);
   const highlightRef = useRef(highlightNodeId);
+  const isMobileRef = useRef(isMobile);
   nodesRef.current = nodes;
   legsRef.current = legs;
   poisRef.current = pois;
@@ -194,6 +198,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   onAddNodeRef.current = onAddNode;
   passedRef.current = passedNodeIds;
   highlightRef.current = highlightNodeId;
+  isMobileRef.current = isMobile;
 
   // Init once.
   useEffect(() => {
@@ -260,7 +265,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
       if (!f) return;
       const id = Number((f.properties as { id: number }).id);
       const poi = poisRef.current.find((p) => p.id === id);
-      if (poi) openPoiPopup(map, poi, canAddRef.current, onAddNodeRef.current);
+      if (poi) openPoiPopup(map, poi, canAddRef.current, onAddNodeRef.current, isMobileRef.current);
     });
 
     for (const layer of ["route-poi-unclustered", "route-poi-clusters"]) {
