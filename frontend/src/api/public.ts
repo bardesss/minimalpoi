@@ -17,8 +17,8 @@ export interface PublicRouteView {
 export interface PublicRouteResponse { locked: boolean; route: PublicRouteView | null; }
 
 export function getPublicRoute(token: string): Promise<PublicRouteResponse> {
-  return apiFetch<PublicRouteResponse>(`/api/public/routes/${token}`);
+  return apiFetch<PublicRouteResponse>(`/api/public/routes/${encodeURIComponent(token)}`);
 }
 export function unlockPublicRoute(token: string, password: string): Promise<PublicRouteResponse> {
-  return apiFetch<PublicRouteResponse>(`/api/public/routes/${token}/unlock`, { method: "POST", body: JSON.stringify({ password }) });
+  return apiFetch<PublicRouteResponse>(`/api/public/routes/${encodeURIComponent(token)}/unlock`, { method: "POST", body: JSON.stringify({ password }) });
 }
