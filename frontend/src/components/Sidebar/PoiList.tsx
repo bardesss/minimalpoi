@@ -1,8 +1,16 @@
 // frontend/src/components/Sidebar/PoiList.tsx
 import { useEffect, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Category, Poi } from "../../types/api";
 import { theme } from "../../theme";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 import PoiCard from "./PoiCard";
+
+/** Estimated row height (card + gap) used to seed the virtualizer before rows
+ * are actually measured. Cards have a slightly variable height (rating badge,
+ * visited badge, city/flag line), so the real size is measured per-row via
+ * `measureElement` once rendered. */
+const ESTIMATED_ROW_HEIGHT = 150;
 
 export default function PoiList({
   pois,
@@ -23,12 +31,31 @@ export default function PoiList({
   onRetry: () => void;
   myVisitedPoiIds: Set<number>;
 }) {
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const parentRef = useRef<HTMLDivElement | null>(null);
+  // 3 columns only on very wide screens; 2 otherwise.
+  const wide = useMediaQuery("(min-width: 1600px)");
+  const cols = wide ? 3 : 2;
+  const rowCount = Math.ceil(pois.length / cols);
+
+  const rowVirtualizer = useVirtualizer({
+    count: rowCount,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ESTIMATED_ROW_HEIGHT,
+    overscan: 6,
+  });
+
+  // Reveal the selected card's row, but only when the selection actually
+  // changes — not on every re-sort/filter that gives `pois` a new identity
+  // (e.g. distance-sort re-sorting on every map pan), which would otherwise
+  // snap the selected card back into view.
+  const prevSelectedRef = useRef<number | null>(null);
   useEffect(() => {
-    if (selectedId == null) return;
-    const el = scrollRef.current?.querySelector<HTMLElement>(`[data-poi-id="${selectedId}"]`);
-    el?.scrollIntoView({ block: "nearest" });
-  }, [selectedId]);
+    if (selectedId != null && selectedId !== prevSelectedRef.current) {
+      const idx = pois.findIndex((p) => p.id === selectedId);
+      if (idx >= 0) rowVirtualizer.scrollToIndex(Math.floor(idx / cols), { align: "auto" });
+    }
+    prevSelectedRef.current = selectedId;
+  }, [selectedId, cols, pois, rowVirtualizer]);
 
   if (isLoading) {
     return (
@@ -56,10 +83,35 @@ export default function PoiList({
     );
   }
   return (
-    <div ref={scrollRef} className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, gridAutoRows: "min-content", alignContent: "start" }}>
-      {pois.map((p) => (
-        <PoiCard key={p.id} poi={p} category={p.category_id != null ? categoriesById[p.category_id] : undefined} selected={p.id === selectedId} onSelect={onSelect} visited={myVisitedPoiIds.has(p.id)} />
-      ))}
+    <div ref={parentRef} className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 12 }}>
+      <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
+        {rowVirtualizer.getVirtualItems().map((vr) => {
+          const start = vr.index * cols;
+          const rowPois = pois.slice(start, start + cols);
+          return (
+            <div
+              key={vr.key}
+              data-index={vr.index}
+              ref={rowVirtualizer.measureElement}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${vr.start}px)`,
+                display: "grid",
+                gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                gap: 10,
+                paddingBottom: 10,
+              }}
+            >
+              {rowPois.map((p) => (
+                <PoiCard key={p.id} poi={p} category={p.category_id != null ? categoriesById[p.category_id] : undefined} selected={p.id === selectedId} onSelect={onSelect} visited={myVisitedPoiIds.has(p.id)} />
+              ))}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

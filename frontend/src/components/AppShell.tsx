@@ -10,6 +10,7 @@ import { readMapViewMode, writeMapViewMode, type MapViewMode } from "../lib/mapV
 import { readSortMode, writeSortMode, type SortMode } from "../lib/sortPref";
 import { sortPois } from "../lib/sortPois";
 import { useIsMobile } from "../lib/useMediaQuery";
+import { useSearchHotkey } from "../lib/useSearchHotkey";
 import SidebarContent from "./Sidebar/SidebarContent";
 import MapView from "./MapView";
 import Legend from "./Legend";
@@ -54,6 +55,32 @@ export default function AppShell() {
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [addCoords, setAddCoords] = useState<{ lng: number; lat: number } | null>(null);
   const [duplicateId, setDuplicateId] = useState<number | null>(null);
+  const pendingSearchFocusRef = useRef(false);
+
+  // Global "/" or Ctrl/Cmd-K shortcut: reveal the sidebar (desktop) and focus
+  // the search input. On mobile the sidebar/search box is always mounted
+  // inside the bottom sheet, so no expand step is needed there.
+  useSearchHotkey(() => {
+    if (sidebarCollapsed) {
+      // #poi-search isn't in the DOM until the sidebar re-mounts; defer the
+      // focus to the effect below, which fires once it does.
+      setSidebarCollapsed(false);
+      pendingSearchFocusRef.current = true;
+    } else {
+      const el = document.getElementById("poi-search") as HTMLInputElement | null;
+      el?.focus();
+      el?.select();
+    }
+  });
+
+  useEffect(() => {
+    if (!sidebarCollapsed && pendingSearchFocusRef.current) {
+      pendingSearchFocusRef.current = false;
+      const el = document.getElementById("poi-search") as HTMLInputElement | null;
+      el?.focus();
+      el?.select();
+    }
+  }, [sidebarCollapsed]);
 
   const categories = categoriesQuery.data ?? [];
   const categoriesById = useMemo(
@@ -110,12 +137,14 @@ export default function AppShell() {
     setActiveCategoryIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   }
 
-  function selectPoi(id: number) {
+  // Stable identity so memoized PoiCards (in the virtualized list) don't
+  // re-render on every parent render (e.g. a distance re-sort).
+  const selectPoi = useCallback((id: number) => {
     setSelectedId(id);
     const poi = (poisQuery.data ?? []).find((p) => p.id === id);
     const map = mapRef.current;
     if (poi && map) map.flyTo({ center: [poi.lng, poi.lat], zoom: Math.max(map.getZoom(), 14), duration: 600 });
-  }
+  }, [poisQuery.data]);
 
   function fitToResults() {
     const b = boundsOf(filtered);

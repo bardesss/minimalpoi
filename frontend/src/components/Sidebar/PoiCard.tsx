@@ -1,4 +1,5 @@
 // frontend/src/components/Sidebar/PoiCard.tsx
+import { memo } from "react";
 import type { Category, Poi } from "../../types/api";
 import { theme, tintFromColor } from "../../theme";
 import { safeImageCss } from "../../lib/safeUrl";
@@ -7,7 +8,7 @@ import Flag from "../Flag";
 
 export { cityFromAddress } from "../../lib/country";
 
-export default function PoiCard({
+function PoiCard({
   poi,
   category,
   selected,
@@ -32,7 +33,6 @@ export default function PoiCard({
       type="button"
       onClick={() => onSelect(poi.id)}
       className="hover-card"
-      data-poi-id={poi.id}
       style={{
         textAlign: "left",
         padding: 0,
@@ -85,3 +85,5 @@ export default function PoiCard({
     </button>
   );
 }
+
+export default memo(PoiCard);
