@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import type { RouteDetail, ShareInfo } from "../../types/api";
@@ -32,15 +32,23 @@ export default function ShareLinkModal({ route, onClose }: { route: RouteDetail;
 
   const url = share ? `${window.location.origin}/s/${share.token}` : null;
 
-  async function run(action: () => Promise<ShareInfo | null>) {
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+  }, []);
+
+  /** Runs a share mutation; returns whether it succeeded, so callers can chain success-only side effects (e.g. clearing a form field) without also doing so on error. */
+  async function run(action: () => Promise<ShareInfo | null>): Promise<boolean> {
     setBusy(true);
     setError(null);
     try {
       const result = await action();
       setShare(result);
       qc.invalidateQueries({ queryKey: ["routes", route.id] });
+      return true;
     } catch {
       setError("Something went wrong. Try again.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -76,7 +84,9 @@ export default function ShareLinkModal({ route, onClose }: { route: RouteDetail;
 
   function onSetPassword() {
     if (!password) return;
-    void run(() => putShare(route.id, { password }));
+    void run(() => putShare(route.id, { password })).then((ok) => {
+      if (ok) setPassword("");
+    });
   }
 
   function onRemovePassword() {
@@ -88,7 +98,8 @@ export default function ShareLinkModal({ route, onClose }: { route: RouteDetail;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+      copiedTimeoutRef.current = setTimeout(() => setCopied(false), 1500);
     } catch {
       // clipboard unavailable (permissions/browser support) — URL is still shown for manual copy
     }

@@ -49,11 +49,23 @@ describe("ShareLinkModal", () => {
     expect(await screen.findByDisplayValue(expected)).toBeInTheDocument();
   });
 
-  it("sets a password", async () => {
+  it("sets a password and clears the field on success", async () => {
     renderWithProviders(<ShareLinkModal route={routeWithShare(activeShare)} onClose={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "secret123" } });
+    const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+    fireEvent.change(passwordInput, { target: { value: "secret123" } });
     fireEvent.click(screen.getByRole("button", { name: /^set$/i }));
     await waitFor(() => expect(putShareSpy).toHaveBeenCalledWith(1, { password: "secret123" }));
+    await waitFor(() => expect(passwordInput.value).toBe(""));
+  });
+
+  it("keeps the typed password when Set fails", async () => {
+    putShareSpy.mockRejectedValueOnce(new Error("boom"));
+    renderWithProviders(<ShareLinkModal route={routeWithShare(activeShare)} onClose={vi.fn()} />);
+    const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+    fireEvent.change(passwordInput, { target: { value: "secret123" } });
+    fireEvent.click(screen.getByRole("button", { name: /^set$/i }));
+    await screen.findByRole("status");
+    expect(passwordInput.value).toBe("secret123");
   });
 
   it("removes the password when Remove is clicked", async () => {
