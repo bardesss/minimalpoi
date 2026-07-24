@@ -312,7 +312,14 @@ export default function PoiFormModal({
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <label style={label} htmlFor="poi-enrich-url">Enrich from URL</label>
               <div style={{ display: "flex", gap: 8 }}>
-                <input id="poi-enrich-url" style={inputStyle} value={enrichUrlText} onChange={(e) => setEnrichUrlText(e.target.value)} placeholder="Paste a Google Maps or website link" />
+                <input
+                  id="poi-enrich-url"
+                  style={inputStyle}
+                  value={enrichUrlText}
+                  onChange={(e) => setEnrichUrlText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runEnrich(); } }}
+                  placeholder="Paste a Google Maps or website link"
+                />
                 <button type="button" onClick={runEnrich} disabled={enriching} style={{ ...ghostButtonStyle, whiteSpace: "nowrap" }}>{enriching ? "Enriching…" : "Enrich"}</button>
               </div>
               {enrichError && <div role="status" style={{ fontSize: 12, color: theme.color.dangerText }}>{enrichError}</div>}

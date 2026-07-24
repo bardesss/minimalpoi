@@ -130,6 +130,18 @@ describe("PoiFormModal enrich", () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: "Enriched Spot", image_url: "https://img.example/p.jpg" }));
   });
 
+  // Regression: the enrich input sits inside the <form> added for Enter-to-submit.
+  // Pressing Enter there must run enrichment, not submit the whole form.
+  it("pressing Enter in the enrich field runs enrich, not form submit", async () => {
+    const onEnrich = vi.fn().mockResolvedValue(draft);
+    const onSubmit = vi.fn();
+    render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={onSubmit} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} onEnrich={onEnrich} />);
+    await userEvent.type(screen.getByLabelText(/enrich from url/i), "https://e.example{Enter}");
+    await screen.findByDisplayValue("Enriched Spot");
+    expect(onEnrich).toHaveBeenCalledWith("https://e.example");
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("shows an inline message when enrich fails and keeps the form usable", async () => {
     const onEnrich = vi.fn().mockRejectedValue(new Error("boom"));
     render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} onEnrich={onEnrich} />);
