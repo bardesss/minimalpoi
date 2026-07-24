@@ -1,5 +1,58 @@
 # Changelog
 
+## [3.0.0](https://github.com/Bardesss/minimalpoi/compare/v2.21.0...v3.0.0) (2026-07-24)
+
+
+### Features
+
+* **map:** add tracking GeolocateControl to both maps ([f0dfece](https://github.com/Bardesss/minimalpoi/commit/f0dfece6a3e8b657b5d4de35c17b0a21f4203bd9))
+* **map:** map interaction + geolocation (Slice 1) ([123b336](https://github.com/Bardesss/minimalpoi/commit/123b33662a29aaaae144e907c5903b719e41605f))
+* **map:** pointer cursor + hover name tooltip on POI markers ([2690b12](https://github.com/Bardesss/minimalpoi/commit/2690b12af2a2ff76db214a3a398e26e237acb211))
+* **map:** routeSignature helper (node id+coord fingerprint) ([d437a67](https://github.com/Bardesss/minimalpoi/commit/d437a6753fc199e961fb2f8c5712fd3e3bbba5a1))
+* **map:** seed the nearest-POI sort from the user's location fix ([39a1207](https://github.com/Bardesss/minimalpoi/commit/39a120746bf3890e214fea961c08c08677b6552e))
+* **ui:** ≥44px touch targets on mobile controls ([ef58443](https://github.com/Bardesss/minimalpoi/commit/ef5844361ce20b53be8565ddd62ae8f3f553c78a))
+* **ui:** detail panel + navigation (Slice 2) ([41ef564](https://github.com/Bardesss/minimalpoi/commit/41ef56488a27e71eb62dda32ee8b975403c040fc))
+* **ui:** drive route selection from the URL (/routes/:id) ([0b11a58](https://github.com/Bardesss/minimalpoi/commit/0b11a588dc192c2918be07dbd281df2c1f233d72))
+* **ui:** escape/backdrop/back close on all dialogs + detail panel ([70cdc0d](https://github.com/Bardesss/minimalpoi/commit/70cdc0d73f826ab79958f8308153b179b9a7c3ff))
+* **ui:** focus search with / or Ctrl/Cmd-K ([b6c1d42](https://github.com/Bardesss/minimalpoi/commit/b6c1d42b94e71a83fbb4ebd5d4b239ba487c5c0c))
+* **ui:** keyboard-operable APG export menu ([c47bf9a](https://github.com/Bardesss/minimalpoi/commit/c47bf9ad4c832fcdd7b04edd541b26e290242d50))
+* **ui:** mobile ergonomics (Slice 3) ([1d6683f](https://github.com/Bardesss/minimalpoi/commit/1d6683f2e516eae14cef12ddef34adcba981dc78))
+* **ui:** mobile pick-on-map (crosshair + use-this-location) ([9be7e51](https://github.com/Bardesss/minimalpoi/commit/9be7e51b32436771555a79cde86ff1a0c5a37e04))
+* **ui:** PoiFormModal escape/backdrop close, dialog name, enter-to-submit ([f01ea01](https://github.com/Bardesss/minimalpoi/commit/f01ea012c0a6d2b4a4b36d619a8bbbf673f2e22c))
+* **ui:** restore reference hover affordances ([33ed344](https://github.com/Bardesss/minimalpoi/commit/33ed344febce93d2271574eb97638c0596e865f3))
+* **ui:** scroll the selected POI card into view on marker select ([2babba4](https://github.com/Bardesss/minimalpoi/commit/2babba4e22de5866b453a2c0f53823041b305b9a))
+* **ui:** search shortcut, virtualized list, wide-screen grid (Slice 4) ([494b8c5](https://github.com/Bardesss/minimalpoi/commit/494b8c593915d9fcc235561449032b9a063a7cb1))
+* **ui:** useDialog closes on mobile hardware back ([7ceb22d](https://github.com/Bardesss/minimalpoi/commit/7ceb22d3bab9be7825f034092c3241d8db6138bb))
+* **ui:** useDialog hook (escape, focus trap, backdrop close) ([32361cf](https://github.com/Bardesss/minimalpoi/commit/32361cf383e40dae7733129143b6cfc80bfd06bf))
+* **ui:** UX/a11y foundation — shared dialog behavior + focus/hover/contrast (Slice 0) ([7c8c8a5](https://github.com/Bardesss/minimalpoi/commit/7c8c8a52ee622c2c4d0b77c0a821e10098b8f36e))
+* **ui:** virtualize the POI list (windowed grid, responsive columns) ([512a457](https://github.com/Bardesss/minimalpoi/commit/512a457505e0c1001279fa95f31af09abdcd3101))
+* **ui:** widen the sidebar on very wide viewports (room for a 3rd column) ([514c2e3](https://github.com/Bardesss/minimalpoi/commit/514c2e301ed817af3767405aa93f51f9cc3654dd))
+
+
+### Bug Fixes
+
+* **a11y:** AA text contrast + move row drag role onto the grip ([ba7f791](https://github.com/Bardesss/minimalpoi/commit/ba7f7917363e2ce6818afd38cb492bfc48a3e37e))
+* **a11y:** keep the poi form dialog named while picking on map ([d783734](https://github.com/Bardesss/minimalpoi/commit/d7837348bc6fb265fb68983ccb5c71318fa7593e))
+* **a11y:** let useDialog opt out of history so create-nav isn't reverted ([55129e7](https://github.com/Bardesss/minimalpoi/commit/55129e705bdbbd7da5a31ad8fe5ebdcc799e5bf0))
+* **a11y:** only the top-most useDialog closes on escape/back (stacked dialogs) ([fdf3471](https://github.com/Bardesss/minimalpoi/commit/fdf3471ea313d9f59f152bf416aa4528f56bda00))
+* **a11y:** pick-mode focus, coarse-pointer row icons, scope 16px to text inputs ([995e5dd](https://github.com/Bardesss/minimalpoi/commit/995e5dd131cfabc18ba139171b45f88cab5f7f33))
+* **a11y:** pin desktop detail-panel footer above the scrolling body ([0f46c76](https://github.com/Bardesss/minimalpoi/commit/0f46c7605990ceb40ecc6539278bcd651d18feae))
+* **a11y:** suppress the search hotkey while a dialog is open ([d473bcf](https://github.com/Bardesss/minimalpoi/commit/d473bcf4f0d149fc088715fab95b904c60d8a112))
+* **a11y:** visible :focus-visible ring on inputs (WCAG 2.4.7) ([eb8df0b](https://github.com/Bardesss/minimalpoi/commit/eb8df0bab27bdf27929353dcac5051e958c94ad7))
+* **map:** only re-fit route camera when node ids/coords change ([471747b](https://github.com/Bardesss/minimalpoi/commit/471747b6a6de638b37f0c045e04a36fba83ff393))
+* **map:** seed refit signature on load + track hover tooltip on mousemove ([afd2254](https://github.com/Bardesss/minimalpoi/commit/afd2254cb5032aeba8de95608f7c175a668c1a06))
+* **ui:** 100dvh viewport + safe-area inset on the mobile detail close ([f1bc3b1](https://github.com/Bardesss/minimalpoi/commit/f1bc3b17cbf7b5714fa5d22947439fdb223495bf))
+* **ui:** 16px mobile inputs (no iOS zoom) + overscroll-behavior ([e89ecb4](https://github.com/Bardesss/minimalpoi/commit/e89ecb4f4f780756f44e80889e61c3088e0317a9))
+* **ui:** guard Enter in PoiFormModal enrich input from submitting the form ([eafcf12](https://github.com/Bardesss/minimalpoi/commit/eafcf1292328964b2b065d70a5a7c22a9ad22157))
+* **ui:** make hover affordances win over inline styles (!important) ([88edc10](https://github.com/Bardesss/minimalpoi/commit/88edc10219faacb622600e2a066f7131e32c263c))
+* **ui:** reveal selected card only on selection change; ignore hotkey key-repeat ([384c67e](https://github.com/Bardesss/minimalpoi/commit/384c67ee8e51141e0d5eee2ce2ac5bbcbd02f4c8))
+* **ui:** robust collapsed-search focus, drop dead data-poi-id, use default row measurement ([be9b20f](https://github.com/Bardesss/minimalpoi/commit/be9b20f50961f98b63464711531a5c83fadfda57))
+
+
+### Miscellaneous Chores
+
+* release MinimalPOI v3.0.0 ([0c5e794](https://github.com/Bardesss/minimalpoi/commit/0c5e7949b8723b35fda64f154cc67be99f69e2da))
+
 ## [2.21.0](https://github.com/Bardesss/minimalpoi/compare/v2.20.0...v2.21.0) (2026-07-23)
 
 
