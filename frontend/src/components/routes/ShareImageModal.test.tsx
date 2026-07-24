@@ -42,4 +42,11 @@ describe("ShareImageModal", () => {
     expect(await screen.findByText(/couldn't render the image/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /download/i })).toBeDisabled();
   });
+
+  it("closes on Escape", () => {
+    const onClose = vi.fn();
+    render(<ShareImageModal route={route} settings={settings} onClose={onClose} />);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalled();
+  });
 });

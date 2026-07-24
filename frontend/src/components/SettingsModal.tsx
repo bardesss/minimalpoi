@@ -2,6 +2,7 @@ import { useState, type ComponentType } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { theme } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
+import { useDialog } from "../lib/useDialog";
 import { useFullSettings } from "../queries/hooks";
 import AboutSection from "./settings/AboutSection";
 import CategoriesSection from "./settings/CategoriesSection";
@@ -39,6 +40,7 @@ const SECTIONS: SectionDef[] = [
 export default function SettingsModal({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose);
   const isAdmin = user?.role === "admin";
   // Full settings only exist for admins; gate the fetch so members don't 403.
   // Sync is meaningless until a TRIP instance is wired up (a base URL is set),
@@ -54,8 +56,8 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
   const Active = active.Component;
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(26,24,22,.42)", backdropFilter: "blur(2px)", display: "flex", alignItems: isMobile ? "stretch" : "center", justifyContent: "center", animation: "fadeIn .16s ease" }}>
-      <div role="dialog" aria-modal="true" aria-label="Settings" className="poi-scroll" style={{ width: isMobile ? "100%" : 720, maxWidth: "100%", height: isMobile ? "100%" : undefined, maxHeight: isMobile ? "100vh" : "90vh", overflow: "hidden", background: "#fff", borderRadius: isMobile ? 0 : theme.radius.modal, boxShadow: theme.shadow.modal, animation: isMobile ? "fadeIn .16s ease" : "popIn .2s ease", display: "flex", flexDirection: "column" }}>
+    <div onClick={onBackdropClick} style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(26,24,22,.42)", backdropFilter: "blur(2px)", display: "flex", alignItems: isMobile ? "stretch" : "center", justifyContent: "center", animation: "fadeIn .16s ease" }}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Settings" className="poi-scroll" style={{ width: isMobile ? "100%" : 720, maxWidth: "100%", height: isMobile ? "100%" : undefined, maxHeight: isMobile ? "100vh" : "90vh", overflow: "hidden", background: "#fff", borderRadius: isMobile ? 0 : theme.radius.modal, boxShadow: theme.shadow.modal, animation: isMobile ? "fadeIn .16s ease" : "popIn .2s ease", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "calc(14px + env(safe-area-inset-top)) 18px 14px" : "22px 24px 16px", borderBottom: `1px solid ${theme.color.borderSubtle}` }}>
           <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: "-.02em" }}>Settings</h2>
           <button type="button" aria-label="Close" onClick={onClose} style={{ width: isMobile ? 38 : 30, height: isMobile ? 38 : 30, borderRadius: theme.radius.icon, border: "none", background: "#f5f4f2", color: theme.color.textSecondary, cursor: "pointer", fontSize: isMobile ? 18 : 14 }}>×</button>

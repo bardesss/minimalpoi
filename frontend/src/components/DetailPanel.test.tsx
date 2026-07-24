@@ -50,4 +50,18 @@ describe("DetailPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: /close/i }));
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("closes on Escape", async () => {
+    const onClose = vi.fn();
+    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={onClose} onEdit={() => {}} onDelete={() => {}} />);
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("closes on Escape in the mobile full-screen branch", async () => {
+    const onClose = vi.fn();
+    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={onClose} onEdit={() => {}} onDelete={() => {}} mobile />);
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
+  });
 });

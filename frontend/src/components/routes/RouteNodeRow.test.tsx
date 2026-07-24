@@ -74,6 +74,20 @@ describe("order number in the circle", () => {
   });
 });
 
+describe("drag affordance placement", () => {
+  it("puts the drag role on the grip, not the whole row (desktop)", () => {
+    const { container } = render(<RouteNodeRow node={stay} routeId={1} canEdit />);
+    const grip = screen.getByRole("button", { name: /reorder amsterdam/i });
+    expect(grip.tagName).toBe("SPAN");
+    // The outer row is the single root element (it carries ref={setNodeRef}
+    // plus the hover handlers), as opposed to the inner flex:1 content div
+    // wrapping the name/badge/remove-button group.
+    const row = container.firstChild as HTMLElement;
+    expect(row).not.toHaveAttribute("role", "button");
+    expect(row).not.toHaveAttribute("tabindex");
+  });
+});
+
 describe("hover highlight", () => {
   it("fires onHover with the id on enter and null on leave", () => {
     const onHover = vi.fn();

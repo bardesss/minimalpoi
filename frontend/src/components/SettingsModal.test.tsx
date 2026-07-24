@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
@@ -14,6 +14,14 @@ describe("SettingsModal", () => {
     await userEvent.click(dataBtn);
     expect(screen.getByText(/Import places/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /close/i })).toBeInTheDocument();
+  });
+
+  it("closes on Escape", async () => {
+    const onClose = vi.fn();
+    renderWithProviders(<SettingsModal onClose={onClose} />);
+    await screen.findByRole("button", { name: "Data & backups" });
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
   });
 });
 

@@ -23,9 +23,11 @@ function iconBtnStyle(size: number): CSSProperties {
   };
 }
 
-// One stop or multi-night stay. The whole row is the drag handle (press and drag
-// anywhere) unless `pinned` (start/end places, which never reorder). Stays (★)
-// show arrive→depart dates and a nights stepper; stops (·) just show their name.
+// One stop or multi-night stay. Dragging happens via the grip handle only
+// (never the whole row, to avoid nesting an interactive role inside the row's
+// own action buttons) unless `pinned` (start/end places, which never
+// reorder). Stays (★) show arrive→depart dates and a nights stepper; stops
+// (·) just show their name.
 export default function RouteNodeRow({
   node,
   routeId,
@@ -66,17 +68,18 @@ export default function RouteNodeRow({
     ? { ...attributes, ...listeners, "aria-label": `Reorder ${node.name}`, role: "button" as const }
     : {};
 
-  // Desktop: the whole row is the drag target — roomy and mouse-friendly, and
-  // the MouseSensor's 5px threshold keeps nested button clicks working. Mobile:
-  // only the grip handle drags, so a finger can scroll the sheet by touching the
-  // row body instead of accidentally reordering it (the "fat finger" fix).
-  const rowDrag = draggable && !isMobile ? dragHandleProps : {};
-  const handleDrag = draggable && isMobile ? dragHandleProps : {};
+  // The grip is the sole drag target, on desktop as well as mobile — dragging
+  // by the whole row would nest an interactive role inside the row's own
+  // action buttons (an a11y anti-pattern). Mobile additionally relies on this
+  // being handle-only so a finger can scroll the sheet by touching the row
+  // body without accidentally reordering it (the "fat finger" fix). Keyboard
+  // reorder still works because dnd-kit's KeyboardSensor operates on whichever
+  // element is focused, i.e. the grip.
+  const handleDrag = draggable ? dragHandleProps : {};
 
   return (
     <div
       ref={setNodeRef}
-      {...rowDrag}
       onMouseEnter={() => onHover?.(node.id)}
       onMouseLeave={() => onHover?.(null)}
       onFocus={() => onHover?.(node.id)}
@@ -86,15 +89,12 @@ export default function RouteNodeRow({
         gap: 10,
         alignItems: "flex-start",
         padding: "8px 0",
-        cursor: draggable && !isMobile ? "grab" : "default",
-        touchAction: draggable && !isMobile ? "none" : undefined,
         ...sortableStyle,
       }}
     >
       {draggable && (
         <span
           {...handleDrag}
-          aria-hidden={isMobile ? undefined : true}
           style={{
             flex: "none",
             width: isMobile ? 40 : 26,
@@ -103,8 +103,8 @@ export default function RouteNodeRow({
             alignItems: "center",
             justifyContent: "center",
             color: theme.color.textMuted,
-            cursor: isMobile ? "grab" : undefined,
-            touchAction: isMobile ? "none" : undefined,
+            cursor: "grab",
+            touchAction: "none",
           }}
         >
           <GripVertical size={isMobile ? 20 : 16} />

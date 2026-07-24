@@ -94,6 +94,19 @@ describe("PoiFormModal", () => {
     expect(screen.getByRole("heading", { name: /edit place/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save changes/i })).toBeInTheDocument();
   });
+
+  // Escape closes the edit-mode modal (add mode is click-through; edit mode is a true modal).
+  it("closes the edit modal on Escape", async () => {
+    const onClose = vi.fn();
+    render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null, image_url: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={onClose} onCheckDuplicate={() => {}} duplicateId={null} />);
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("names the dialog for assistive tech", () => {
+    render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    expect(screen.getByRole("dialog", { name: /add a new place/i })).toBeInTheDocument();
+  });
 });
 
 const draft: PoiDraft = {
@@ -115,6 +128,18 @@ describe("PoiFormModal enrich", () => {
     expect(screen.getByText(/filled .* fields from/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /add place/i }));
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: "Enriched Spot", image_url: "https://img.example/p.jpg" }));
+  });
+
+  // Regression: the enrich input sits inside the <form> added for Enter-to-submit.
+  // Pressing Enter there must run enrichment, not submit the whole form.
+  it("pressing Enter in the enrich field runs enrich, not form submit", async () => {
+    const onEnrich = vi.fn().mockResolvedValue(draft);
+    const onSubmit = vi.fn();
+    render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={onSubmit} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} onEnrich={onEnrich} />);
+    await userEvent.type(screen.getByLabelText(/enrich from url/i), "https://e.example{Enter}");
+    await screen.findByDisplayValue("Enriched Spot");
+    expect(onEnrich).toHaveBeenCalledWith("https://e.example");
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("shows an inline message when enrich fails and keeps the form usable", async () => {

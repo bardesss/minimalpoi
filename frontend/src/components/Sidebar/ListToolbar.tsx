@@ -30,7 +30,6 @@ const selectStyle = {
   fontSize: 11.5,
   fontWeight: 700,
   cursor: "pointer",
-  outline: "none",
 } as const;
 
 const wrapStyle = {

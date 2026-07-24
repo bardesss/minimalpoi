@@ -3,6 +3,7 @@ import type { RouteDetail, RouteNodeCreate } from "../../types/api";
 import { ApiError } from "../../api/client";
 import { ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../theme";
 import { useIsMobile } from "../../lib/useMediaQuery";
+import { useDialog } from "../../lib/useDialog";
 import { useCreateRoutePlan, useUpdateRoutePlan, usePois } from "../../queries/hooks";
 import AddPlaceModal from "./AddPlaceModal";
 
@@ -27,6 +28,7 @@ export default function RouteFormModal({
   onSaved: (route: RouteDetail) => void;
 }) {
   const isMobile = useIsMobile();
+  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose);
   const createPlan = useCreateRoutePlan();
   const updatePlan = useUpdateRoutePlan();
   const pois = usePois().data ?? [];
@@ -101,9 +103,11 @@ export default function RouteFormModal({
       role="dialog"
       aria-modal="true"
       aria-label={title}
+      onClick={onBackdropClick}
       style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(26,24,22,.42)", backdropFilter: "blur(2px)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", animation: "fadeIn .16s ease" }}
     >
       <div
+        ref={dialogRef}
         className="poi-scroll"
         style={{ width: isMobile ? "100%" : 520, maxWidth: "100%", maxHeight: isMobile ? "92vh" : "90vh", overflowY: "auto", background: "#fff", borderRadius: isMobile ? "18px 18px 0 0" : theme.radius.modal, paddingBottom: isMobile ? "env(safe-area-inset-bottom)" : undefined, boxShadow: theme.shadow.modal, animation: isMobile ? "sheetUp .26s cubic-bezier(.32,.72,0,1)" : "popIn .2s ease" }}
       >
@@ -112,6 +116,7 @@ export default function RouteFormModal({
           <button type="button" aria-label="Close" onClick={onClose} style={{ width: 30, height: 30, borderRadius: theme.radius.icon, border: "none", background: "#f5f4f2", color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
         </div>
 
+        <form onSubmit={(e) => { e.preventDefault(); save(); }}>
         <div style={{ padding: "0 24px 8px", display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
             <label style={label} htmlFor="route-name">Name</label>
@@ -175,9 +180,10 @@ export default function RouteFormModal({
           {error && <div role="alert" style={{ fontSize: 12.5, color: theme.color.dangerText, textAlign: "right" }}>{error}</div>}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
             <button type="button" onClick={onClose} style={ghostButtonStyle}>Cancel</button>
-            <button type="button" onClick={save} disabled={!canSave || pending} style={primaryButtonStyle}>{saveLabel}</button>
+            <button type="submit" disabled={!canSave || pending} style={primaryButtonStyle}>{saveLabel}</button>
           </div>
         </div>
+        </form>
       </div>
 
       {picking !== null && (

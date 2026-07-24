@@ -106,6 +106,7 @@ export default function RoutesPage() {
                 key={r.id}
                 type="button"
                 onClick={() => setSelectedId(r.id)}
+                className="hover-row"
                 style={{ textAlign: "left", padding: "10px 12px", borderRadius: theme.radius.card, border: `1px solid ${theme.color.borderCard}`, background: theme.color.surface0, cursor: "pointer" }}
               >
                 <div style={{ fontFamily: theme.font.ui, fontWeight: 700, fontSize: 14, color: theme.color.textPrimary }}>{r.name}</div>
@@ -119,11 +120,11 @@ export default function RoutesPage() {
             )}
           </div>
 
-          <button type="button" style={primaryButtonStyle} onClick={() => setNewRouteOpen(true)}>+ New route</button>
+          <button type="button" className="hover-btn-primary" style={primaryButtonStyle} onClick={() => setNewRouteOpen(true)}>+ New route</button>
         </>
       ) : (
         <>
-          <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px", marginBottom: 12 }} onClick={() => setSelectedId(null)}>← All routes</button>
+          <button type="button" className="hover-btn" style={{ ...ghostButtonStyle, padding: "6px 12px", marginBottom: 12 }} onClick={() => setSelectedId(null)}>← All routes</button>
           {routeQuery.isLoading && <p style={{ fontSize: 13, color: theme.color.textPlaceholder }}>Loading…</p>}
           {detail && (
             <>
@@ -140,15 +141,15 @@ export default function RoutesPage() {
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: 8, flex: "none", flexWrap: "wrap", justifyContent: isMobile ? "flex-start" : "flex-end", marginBottom: isMobile ? 4 : 0 }}>
-                  {canEdit && <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={() => setEditingRoute(true)}>Edit</button>}
+                  {canEdit && <button type="button" className="hover-btn" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={() => setEditingRoute(true)}>Edit</button>}
                   <div style={{ position: "relative" }}>
-                    <button type="button" style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }} onClick={() => setExportOpen((o) => !o)} aria-haspopup="menu" aria-expanded={exportOpen}>Export ▾</button>
+                    <button type="button" className="hover-btn" style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }} onClick={() => setExportOpen((o) => !o)} aria-haspopup="menu" aria-expanded={exportOpen}>Export ▾</button>
                     {exportOpen && (
                       <>
                         <div onClick={() => setExportOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />
                         <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 11, background: "#fff", border: `1px solid ${theme.color.borderCard}`, borderRadius: theme.radius.input, boxShadow: theme.shadow.modal, display: "flex", flexDirection: "column", minWidth: 130, overflow: "hidden" }}>
                           {(["geojson", "gpx", "kml"] as const).map((f) => (
-                            <button key={f} type="button" role="menuitem" onClick={() => onExport(f)} style={{ textAlign: "left", padding: "8px 12px", background: "transparent", border: "none", cursor: "pointer", fontFamily: theme.font.ui, fontSize: 13, fontWeight: 600, color: theme.color.textBody }}>
+                            <button key={f} type="button" role="menuitem" className="hover-row" onClick={() => onExport(f)} style={{ textAlign: "left", padding: "8px 12px", background: "transparent", border: "none", cursor: "pointer", fontFamily: theme.font.ui, fontSize: 13, fontWeight: 600, color: theme.color.textBody }}>
                               {f === "geojson" ? "GeoJSON" : f.toUpperCase()}
                             </button>
                           ))}
@@ -158,6 +159,7 @@ export default function RoutesPage() {
                   </div>
                   <button
                     type="button"
+                    className="hover-btn"
                     style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }}
                     onClick={() => setShareOpen(true)}
                     disabled={(detail.nodes.length ?? 0) === 0}
@@ -172,10 +174,10 @@ export default function RoutesPage() {
                   {confirmDel ? (
                     <div style={{ display: "flex", gap: 8 }}>
                       <button type="button" style={dangerButtonStyle} onClick={onDeleteRoute} disabled={deleteRoute.isPending}>Confirm delete</button>
-                      <button type="button" style={ghostButtonStyle} onClick={() => setConfirmDel(false)}>Cancel</button>
+                      <button type="button" className="hover-btn" style={ghostButtonStyle} onClick={() => setConfirmDel(false)}>Cancel</button>
                     </div>
                   ) : (
-                    <button type="button" style={ghostButtonStyle} onClick={() => setConfirmDel(true)}>Delete route</button>
+                    <button type="button" className="hover-btn" style={ghostButtonStyle} onClick={() => setConfirmDel(true)}>Delete route</button>
                   )}
                 </div>
               )}

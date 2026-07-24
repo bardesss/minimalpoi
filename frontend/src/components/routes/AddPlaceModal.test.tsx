@@ -53,4 +53,11 @@ describe("AddPlaceModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /back/i }));
     expect(screen.getByRole("button", { name: /saved place/i })).toBeInTheDocument();
   });
+
+  it("closes on Escape", () => {
+    const onClose = vi.fn();
+    render(<AddPlaceModal kind="stop" onSubmit={vi.fn()} onClose={onClose} />);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalled();
+  });
 });
