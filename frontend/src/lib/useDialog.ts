@@ -24,13 +24,23 @@ let suppressPop = false;
 export interface UseDialogOptions {
   closeOnBackdrop?: boolean;
   trapFocus?: boolean;
+  /**
+   * When false, the dialog does NOT push/consume a browser-history entry.
+   * Use this for modals that navigate on close (e.g. to a newly created
+   * resource), so their history.back() doesn't fight that navigation —
+   * pushing an extra entry and then popping it on unmount would revert a
+   * `navigate()` issued in the same close, sending the user to the wrong
+   * place. Trade-off: no mobile hardware-Back close for that modal.
+   * Defaults to true.
+   */
+  manageHistory?: boolean;
 }
 
 export function useDialog<T extends HTMLElement = HTMLElement>(
   onClose: () => void,
   opts: UseDialogOptions = {},
 ): { dialogRef: RefObject<T | null>; onBackdropClick: (e: MouseEvent) => void } {
-  const { closeOnBackdrop = true, trapFocus = true } = opts;
+  const { closeOnBackdrop = true, trapFocus = true, manageHistory = true } = opts;
   const dialogRef = useRef<T | null>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -93,6 +103,7 @@ export function useDialog<T extends HTMLElement = HTMLElement>(
   // Back closes the dialog instead of navigating the SPA away. A programmatic
   // close (Escape/backdrop/×) unmounts the hook and pops our own entry.
   useEffect(() => {
+    if (!manageHistory) return;
     let closedByPop = false;
     // Opening a dialog clears any stale suppression left by a programmatic
     // close whose echo popstate had no listener to consume it.
@@ -120,7 +131,7 @@ export function useDialog<T extends HTMLElement = HTMLElement>(
         window.history.back();
       }
     };
-  }, []);
+  }, [manageHistory]);
 
   function onBackdropClick(e: MouseEvent) {
     if (closeOnBackdrop && e.target === e.currentTarget) onCloseRef.current();
