@@ -45,12 +45,17 @@ export default function PoiList({
     measureElement: (el) => el.getBoundingClientRect().height,
   });
 
-  // Reveal the selected card's row when selection changes.
+  // Reveal the selected card's row, but only when the selection actually
+  // changes — not on every re-sort/filter that gives `pois` a new identity
+  // (e.g. distance-sort re-sorting on every map pan), which would otherwise
+  // snap the selected card back into view.
+  const prevSelectedRef = useRef<number | null>(null);
   useEffect(() => {
-    if (selectedId == null) return;
-    const idx = pois.findIndex((p) => p.id === selectedId);
-    if (idx >= 0) rowVirtualizer.scrollToIndex(Math.floor(idx / cols), { align: "auto" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (selectedId != null && selectedId !== prevSelectedRef.current) {
+      const idx = pois.findIndex((p) => p.id === selectedId);
+      if (idx >= 0) rowVirtualizer.scrollToIndex(Math.floor(idx / cols), { align: "auto" });
+    }
+    prevSelectedRef.current = selectedId;
   }, [selectedId, cols, pois, rowVirtualizer]);
 
   if (isLoading) {

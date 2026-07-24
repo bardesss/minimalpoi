@@ -82,4 +82,12 @@ describe("useSearchHotkey", () => {
     press("k", { ctrlKey: true });
     expect(onActivate).not.toHaveBeenCalled();
   });
+
+  it("does NOT activate on an auto-repeated '/' keydown", () => {
+    const onActivate = vi.fn();
+    render(<Harness onActivate={onActivate} />);
+    (document.activeElement as HTMLElement)?.blur?.();
+    press("/", { repeat: true });
+    expect(onActivate).not.toHaveBeenCalled();
+  });
 });

@@ -58,6 +58,20 @@ describe("PoiList", () => {
     expect(scrollToIndex).toHaveBeenCalledWith(1, expect.objectContaining({ align: "auto" }));
   });
 
+  it("does NOT re-reveal when the pois array identity changes but selection stays the same", () => {
+    const pois = [base, { ...base, id: 2 }, { ...base, id: 3 }, { ...base, id: 4 }];
+    const { rerender } = render(
+      <PoiList pois={pois} categoriesById={{}} myVisitedPoiIds={new Set()} selectedId={3} onSelect={() => {}} isLoading={false} isError={false} onRetry={() => {}} />,
+    );
+    expect(scrollToIndex).toHaveBeenCalledTimes(1);
+
+    // Same items, new array identity (e.g. a re-sort/filter pass) — selection unchanged.
+    rerender(
+      <PoiList pois={[...pois]} categoriesById={{}} myVisitedPoiIds={new Set()} selectedId={3} onSelect={() => {}} isLoading={false} isError={false} onRetry={() => {}} />,
+    );
+    expect(scrollToIndex).toHaveBeenCalledTimes(1);
+  });
+
   it("renders an error state with retry", async () => {
     const onRetry = vi.fn();
     render(<PoiList pois={[]} categoriesById={{}} myVisitedPoiIds={new Set()} selectedId={null} onSelect={() => {}} isLoading={false} isError onRetry={onRetry} />);

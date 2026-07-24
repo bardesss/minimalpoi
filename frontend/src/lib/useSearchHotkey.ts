@@ -17,6 +17,7 @@ export function useSearchHotkey(onActivate: () => void): void {
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      if (e.repeat) return;
       const cmdK = (e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K");
       const slash = e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey && !isEditable(document.activeElement);
       if (cmdK || slash) {
