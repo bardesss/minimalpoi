@@ -102,3 +102,51 @@ describe("useDialog", () => {
     unmount();
   });
 });
+
+describe("useDialog stacking", () => {
+  it("Escape closes only the top-most (last-mounted) stacked dialog", () => {
+    const onCloseBottom = vi.fn();
+    const onCloseTop = vi.fn();
+    render(
+      <>
+        <Dialog onClose={onCloseBottom} />
+        <Dialog onClose={onCloseTop} />
+      </>,
+    );
+    act(() => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+    expect(onCloseTop).toHaveBeenCalledOnce();
+    expect(onCloseBottom).not.toHaveBeenCalled();
+  });
+
+  it("promotes the new top after the previous top unmounts", () => {
+    const onCloseBottom = vi.fn();
+    const onCloseTop = vi.fn();
+    function Stack({ showTop }: { showTop: boolean }) {
+      return (
+        <>
+          <Dialog onClose={onCloseBottom} />
+          {showTop && <Dialog onClose={onCloseTop} />}
+        </>
+      );
+    }
+    const { rerender } = render(<Stack showTop />);
+    rerender(<Stack showTop={false} />);
+    act(() => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+    expect(onCloseBottom).toHaveBeenCalledOnce();
+    expect(onCloseTop).not.toHaveBeenCalled();
+  });
+
+  it("popstate (hardware back) closes only the top-most stacked dialog", () => {
+    const onCloseBottom = vi.fn();
+    const onCloseTop = vi.fn();
+    render(
+      <>
+        <Dialog onClose={onCloseBottom} />
+        <Dialog onClose={onCloseTop} />
+      </>,
+    );
+    act(() => { window.dispatchEvent(new PopStateEvent("popstate")); });
+    expect(onCloseTop).toHaveBeenCalledOnce();
+    expect(onCloseBottom).not.toHaveBeenCalled();
+  });
+});

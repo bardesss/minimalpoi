@@ -62,6 +62,20 @@ describe("RouteFormModal", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  // Stacked-dialog regression: with the nested AddPlaceModal open, a single
+  // Escape must close ONLY the top-most dialog (AddPlaceModal), leaving the
+  // in-progress route form open — pressing it must not discard the form.
+  it("Escape closes only the nested AddPlaceModal, keeping the route form open", async () => {
+    const onClose = vi.fn();
+    wrap(<RouteFormModal teams={[]} existing={null} onClose={onClose} onSaved={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /set start place/i }));
+    expect(screen.getByRole("dialog", { name: "Set start place" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Set start place" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "New route" })).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   // Regression for the <form> wrap added for Enter-to-submit: pressing Enter
   // in the plain name field should submit the form (native implicit submit),
   // not be swallowed — there's no dedicated action button on this field.
