@@ -50,7 +50,9 @@ export default function RouteNodeRow({
   const isMobile = useIsMobile();
   const isCoarse = useIsCoarsePointer();
   const bigGrip = isMobile || isCoarse;
-  const iconBtn = iconBtnStyle(isMobile ? 40 : 24);
+  // Same signal as the grip: a touch-desktop/iPad (coarse pointer, not
+  // necessarily narrow viewport) gets big icon buttons too, for consistency.
+  const iconBtn = iconBtnStyle(bigGrip ? 40 : 24);
   const isStay = node.kind === "stay";
   const draggable = canEdit && !pinned;
 

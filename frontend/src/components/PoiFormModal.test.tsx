@@ -162,6 +162,23 @@ describe("PoiFormModal pick on map (mobile)", () => {
     }
   });
 
+  it("moves focus to Use this location on entering pick mode, and back to Pick on map on cancel", async () => {
+    const restore = mockMobileMatchMedia();
+    try {
+      render(
+        <PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} getMapCenter={() => ({ lng: 4.9, lat: 52.37 })} />,
+      );
+      const pickOnMap = screen.getByRole("button", { name: /pick on map/i });
+      await userEvent.click(pickOnMap);
+      const use = screen.getByRole("button", { name: /use this location/i });
+      expect(use).toHaveFocus();
+      await userEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
+      expect(screen.getByRole("button", { name: /pick on map/i })).toHaveFocus();
+    } finally {
+      restore();
+    }
+  });
+
   it("cancel leaves pick mode without changing the coordinates", async () => {
     const restore = mockMobileMatchMedia();
     try {

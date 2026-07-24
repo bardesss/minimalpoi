@@ -1,5 +1,5 @@
 // frontend/src/components/PoiFormModal.tsx
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import type { Category, PlaceSearchResult, PoiCreate, PoiDraft } from "../types/api";
 import { ApiError } from "../api/client";
 import { safeImageCss } from "../lib/safeUrl";
@@ -121,6 +121,23 @@ export default function PoiFormModal({
   // Mobile "pick on map" (add mode only): collapses the sheet to a peek so
   // the already-pannable map behind it is visible, under a fixed crosshair.
   const [picking, setPicking] = useState(false);
+  const useThisLocationRef = useRef<HTMLButtonElement>(null);
+  const pickOnMapRef = useRef<HTMLButtonElement>(null);
+  // Tracks the previous `picking` value so the focus effect below can tell an
+  // actual true→false transition apart from the initial mount (where picking
+  // starts false and there's no "Pick on map" button to steal focus from yet).
+  const wasPickingRef = useRef(picking);
+
+  // Moves focus into/out of pick mode so keyboard/AT users aren't dropped to
+  // <body> when the focused button unmounts (the sheet swaps its whole body).
+  useEffect(() => {
+    if (picking) {
+      useThisLocationRef.current?.focus();
+    } else if (wasPickingRef.current) {
+      pickOnMapRef.current?.focus();
+    }
+    wasPickingRef.current = picking;
+  }, [picking]);
 
   // Click-to-place / map-center updates flow in via `coords` (add mode only).
   useEffect(() => {
@@ -291,7 +308,7 @@ export default function PoiFormModal({
             <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: theme.color.textBody }}>Pan the map so the crosshair marks the spot.</p>
             <div style={{ display: "flex", gap: 10 }}>
               <button type="button" onClick={cancelPick} style={{ ...ghostButtonStyle, flex: 1, minHeight: 44 }}>Cancel</button>
-              <button type="button" onClick={confirmPick} style={{ ...primaryButtonStyle, flex: 1, minHeight: 44 }}>Use this location</button>
+              <button ref={useThisLocationRef} type="button" onClick={confirmPick} style={{ ...primaryButtonStyle, flex: 1, minHeight: 44 }}>Use this location</button>
             </div>
           </div>
         ) : (
@@ -438,7 +455,7 @@ export default function PoiFormModal({
             </div>
           </div>
           {isAdd && isMobile && (
-            <button type="button" onClick={() => setPicking(true)} style={{ ...ghostButtonStyle, alignSelf: "flex-start", minHeight: 44 }}>Pick on map</button>
+            <button ref={pickOnMapRef} type="button" onClick={() => setPicking(true)} style={{ ...ghostButtonStyle, alignSelf: "flex-start", minHeight: 44 }}>Pick on map</button>
           )}
           <p style={{ margin: "-6px 0 0", fontSize: 11.5, color: theme.color.textPlaceholder }}>
             {isAdd && isMobile

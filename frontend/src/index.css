@@ -46,8 +46,10 @@ body {
   .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { display: none; }
 
   /* iOS Safari zooms the layout when focusing an input below 16px. The shared
-     input styles are inline (13.5/12.5px) so this override needs !important. */
-  input, textarea, select { font-size: 16px !important; }
+     input styles are inline (13.5/12.5px) so this override needs !important.
+     Scoped to text inputs only — <select> doesn't trigger iOS focus-zoom, and
+     widening it here would enlarge the deliberately-compact ListToolbar pills. */
+  input, textarea { font-size: 16px !important; }
 }
 
 input:focus-visible, select:focus-visible, textarea:focus-visible {
