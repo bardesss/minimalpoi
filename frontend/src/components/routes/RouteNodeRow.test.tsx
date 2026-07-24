@@ -74,6 +74,17 @@ describe("order number in the circle", () => {
   });
 });
 
+describe("drag affordance placement", () => {
+  it("puts the drag role on the grip, not the whole row (desktop)", () => {
+    render(<RouteNodeRow node={stay} routeId={1} canEdit />);
+    const grip = screen.getByRole("button", { name: /reorder amsterdam/i });
+    expect(grip.tagName).toBe("SPAN");
+    const row = screen.getByText("Amsterdam").closest("div")!.parentElement!;
+    expect(row).not.toHaveAttribute("role", "button");
+    expect(row).not.toHaveAttribute("tabindex");
+  });
+});
+
 describe("hover highlight", () => {
   it("fires onHover with the id on enter and null on leave", () => {
     const onHover = vi.fn();

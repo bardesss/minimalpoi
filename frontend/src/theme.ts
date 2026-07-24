@@ -35,9 +35,11 @@ export const theme = {
     textBody: "#46413a",
     textSecondary: "#6b655d",
     textMuted: "#5c574f",
-    textPlaceholder: "#9a958f",
+    // A11y override (WCAG AA 4.5:1 on white) — intentionally darker than the
+    // reference palette, which shipped these below the contrast threshold.
+    textPlaceholder: "#6f6a63",
     textInputIcon: "#b3aea7",
-    textCoord: "#a8a39b",
+    textCoord: "#6f6a63",
     link: "#2563eb",
     starActive: "#f59e0b",
     starInactive: "#d8d5d0",
