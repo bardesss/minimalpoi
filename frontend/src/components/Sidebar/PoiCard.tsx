@@ -31,6 +31,7 @@ export default function PoiCard({
     <button
       type="button"
       onClick={() => onSelect(poi.id)}
+      className="hover-card"
       style={{
         textAlign: "left",
         padding: 0,

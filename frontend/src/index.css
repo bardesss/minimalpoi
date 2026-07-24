@@ -52,3 +52,18 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
+
+/* Hover affordance utility classes (Slice 0 Task 6): add alongside existing
+   inline styles via className, do not convert inline styles to CSS. */
+.hover-card { transition: border-color .14s ease, transform .14s ease, box-shadow .14s ease; }
+.hover-card:hover { border-color: #d7d5f7; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(79,70,229,.10); }
+
+.hover-btn { transition: background .14s ease, border-color .14s ease, color .14s ease; }
+.hover-btn:hover { background: #f3f2f0; }
+.hover-btn-primary:hover { background: #4338ca; }
+
+.hover-fab { transition: transform .14s ease, box-shadow .14s ease; }
+.hover-fab:hover { transform: translateY(-1px); }
+
+.hover-row { transition: background .12s ease; }
+.hover-row:hover { background: #f4f5ff; }

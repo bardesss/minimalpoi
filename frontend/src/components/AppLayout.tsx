@@ -70,7 +70,7 @@ export default function AppLayout(props: AppLayoutProps) {
       <main style={{ flex: 1, position: "relative", background: theme.color.mapBg }}>
         {props.main}
         {props.collapsed && (
-          <button type="button" onClick={props.onExpand} style={reopenBtn}>{props.reopenLabel}</button>
+          <button type="button" onClick={props.onExpand} className="hover-btn" style={reopenBtn}>{props.reopenLabel}</button>
         )}
       </main>
     </div>
