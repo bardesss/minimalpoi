@@ -131,6 +131,63 @@ describe("PoiFormModal", () => {
   });
 });
 
+// Mobile "pick on map": overrides matchMedia -> mobile (same pattern as the
+// ≥44px close-button test above) so the mobile-only "Pick on map" affordance renders.
+function mockMobileMatchMedia() {
+  const original = window.matchMedia;
+  window.matchMedia = ((q: string) => ({
+    matches: true,
+    media: q,
+    addEventListener() {},
+    removeEventListener() {},
+    addListener() {},
+    removeListener() {},
+    onchange: null,
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+  return () => {
+    window.matchMedia = original;
+  };
+}
+
+describe("PoiFormModal pick on map (mobile)", () => {
+  it("enters pick mode and writes the map center into the coordinate fields", async () => {
+    const restore = mockMobileMatchMedia();
+    try {
+      const getMapCenter = vi.fn(() => ({ lng: 4.9, lat: 52.37 }));
+      render(
+        <PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} getMapCenter={getMapCenter} />,
+      );
+      await userEvent.click(screen.getByRole("button", { name: /pick on map/i }));
+      const use = screen.getByRole("button", { name: /use this location/i });
+      await userEvent.click(use);
+      expect(getMapCenter).toHaveBeenCalled();
+      expect(screen.getByLabelText(/latitude/i)).toHaveValue("52.37");
+      expect(screen.getByLabelText(/longitude/i)).toHaveValue("4.9");
+    } finally {
+      restore();
+    }
+  });
+
+  it("cancel leaves pick mode without changing the coordinates", async () => {
+    const restore = mockMobileMatchMedia();
+    try {
+      const getMapCenter = vi.fn(() => ({ lng: 4.9, lat: 52.37 }));
+      render(
+        <PoiFormModal mode="add" initial={null} categories={cats} coords={{ lng: 1, lat: 2 }} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} getMapCenter={getMapCenter} />,
+      );
+      await userEvent.click(screen.getByRole("button", { name: /pick on map/i }));
+      await userEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
+      expect(getMapCenter).not.toHaveBeenCalled();
+      expect(screen.queryByRole("button", { name: /use this location/i })).not.toBeInTheDocument();
+      expect(screen.getByLabelText(/latitude/i)).toHaveValue("2");
+      expect(screen.getByLabelText(/longitude/i)).toHaveValue("1");
+    } finally {
+      restore();
+    }
+  });
+});
+
 const draft: PoiDraft = {
   name: "Enriched Spot", address: "1 Main St", city: null, country_code: null, lat: 52.1, lng: 4.2,
   image_url: "https://img.example/p.jpg", description: "Lovely.",

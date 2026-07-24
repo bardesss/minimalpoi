@@ -265,6 +265,10 @@ export default function AppShell() {
           initial={formState.initial}
           categories={categories}
           coords={addCoords}
+          getMapCenter={() => {
+            const c = mapRef.current?.getCenter();
+            return c ? { lng: c.lng, lat: c.lat } : null;
+          }}
           onSubmit={submitForm}
           onClose={closeForm}
           onCheckDuplicate={runDuplicateCheck}
