@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { dangerButtonStyle, ghostButtonStyle, primaryButtonStyle, theme } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 import { useAuth } from "../auth/AuthContext";
@@ -10,6 +10,7 @@ import { computeInsertPosition } from "../map/insertPosition";
 import AppLayout from "../components/AppLayout";
 import RouteTimeline from "../components/routes/RouteTimeline";
 import RouteMap from "../components/routes/RouteMap";
+import ExportMenu from "../components/routes/ExportMenu";
 import SettingsModal from "../components/SettingsModal";
 import ShareImageModal from "../components/routes/ShareImageModal";
 import RouteFormModal from "../components/routes/RouteFormModal";
@@ -32,7 +33,10 @@ export default function RoutesPage() {
   const deleteRoute = useDeleteRoute();
   const teamsQuery = useTeams();
 
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const { id: routeIdParam } = useParams();
+  // Selection lives in the URL (/routes/:id) so refresh, deep-link, and browser
+  // back all work. A non-numeric/garbage id falls back to the list.
+  const selectedId = routeIdParam != null && /^\d+$/.test(routeIdParam) ? Number(routeIdParam) : null;
   const routeQuery = useRoute(selectedId);
   const poisQuery = usePois();
   const categoriesQuery = useCategories();
@@ -41,7 +45,6 @@ export default function RoutesPage() {
   const [collapsed, setCollapsed] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
   const [editingRoute, setEditingRoute] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [hoverNodeId, setHoverNodeId] = useState<number | null>(null);
@@ -50,7 +53,7 @@ export default function RoutesPage() {
 
   useRouteEvents(selectedId, {
     suspended: newRouteOpen || editingRoute || timelineBusy,
-    onDeleted: () => { toast.notify("This route was deleted", "error"); setSelectedId(null); },
+    onDeleted: () => { toast.notify("This route was deleted", "error"); navigate("/routes"); },
   });
 
   async function onLogout() {
@@ -82,7 +85,6 @@ export default function RoutesPage() {
 
   async function onExport(format: RouteExportFormat) {
     if (!detail) return;
-    setExportOpen(false);
     triggerDownload(await exportRoute(detail.id, format), `${detail.name}.${format}`);
   }
 
@@ -90,7 +92,7 @@ export default function RoutesPage() {
     if (!detail) return;
     await deleteRoute.mutateAsync(detail.id);
     setConfirmDel(false);
-    setSelectedId(null);
+    navigate("/routes");
   }
 
 
@@ -105,7 +107,7 @@ export default function RoutesPage() {
               <button
                 key={r.id}
                 type="button"
-                onClick={() => setSelectedId(r.id)}
+                onClick={() => navigate("/routes/" + r.id)}
                 className="hover-row"
                 style={{ textAlign: "left", padding: "10px 12px", borderRadius: theme.radius.card, border: `1px solid ${theme.color.borderCard}`, background: theme.color.surface0, cursor: "pointer" }}
               >
@@ -124,7 +126,7 @@ export default function RoutesPage() {
         </>
       ) : (
         <>
-          <button type="button" className="hover-btn" style={{ ...ghostButtonStyle, padding: "6px 12px", marginBottom: 12 }} onClick={() => setSelectedId(null)}>← All routes</button>
+          <button type="button" className="hover-btn" style={{ ...ghostButtonStyle, padding: "6px 12px", marginBottom: 12 }} onClick={() => navigate("/routes")}>← All routes</button>
           {routeQuery.isLoading && <p style={{ fontSize: 13, color: theme.color.textPlaceholder }}>Loading…</p>}
           {detail && (
             <>
@@ -142,21 +144,7 @@ export default function RoutesPage() {
                 </div>
                 <div style={{ display: "flex", gap: 8, flex: "none", flexWrap: "wrap", justifyContent: isMobile ? "flex-start" : "flex-end", marginBottom: isMobile ? 4 : 0 }}>
                   {canEdit && <button type="button" className="hover-btn" style={{ ...ghostButtonStyle, padding: "6px 12px" }} onClick={() => setEditingRoute(true)}>Edit</button>}
-                  <div style={{ position: "relative" }}>
-                    <button type="button" className="hover-btn" style={{ ...ghostButtonStyle, padding: "6px 12px", whiteSpace: "nowrap" }} onClick={() => setExportOpen((o) => !o)} aria-haspopup="menu" aria-expanded={exportOpen}>Export ▾</button>
-                    {exportOpen && (
-                      <>
-                        <div onClick={() => setExportOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />
-                        <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 11, background: "#fff", border: `1px solid ${theme.color.borderCard}`, borderRadius: theme.radius.input, boxShadow: theme.shadow.modal, display: "flex", flexDirection: "column", minWidth: 130, overflow: "hidden" }}>
-                          {(["geojson", "gpx", "kml"] as const).map((f) => (
-                            <button key={f} type="button" role="menuitem" className="hover-row" onClick={() => onExport(f)} style={{ textAlign: "left", padding: "8px 12px", background: "transparent", border: "none", cursor: "pointer", fontFamily: theme.font.ui, fontSize: 13, fontWeight: 600, color: theme.color.textBody }}>
-                              {f === "geojson" ? "GeoJSON" : f.toUpperCase()}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <ExportMenu onExport={onExport} />
                   <button
                     type="button"
                     className="hover-btn"
@@ -229,7 +217,7 @@ export default function RoutesPage() {
           teams={myTeams.map((t) => ({ id: t.id, name: t.name }))}
           existing={null}
           onClose={() => setNewRouteOpen(false)}
-          onSaved={(route) => { setNewRouteOpen(false); setSelectedId(route.id); }}
+          onSaved={(route) => { setNewRouteOpen(false); navigate("/routes/" + route.id); }}
         />
       )}
       {editingRoute && detail && (

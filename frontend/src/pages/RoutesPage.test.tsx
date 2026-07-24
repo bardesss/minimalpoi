@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import RoutesPage from "./RoutesPage";
 import type { RouteDetail } from "../types/api";
 import { ToastProvider } from "../components/Toast";
@@ -54,11 +55,14 @@ beforeEach(() => {
   deleteAsync.mockClear();
 });
 
-function renderPage() {
+function renderPage(initialEntries: string[] = ["/routes"]) {
   return render(
     <ToastProvider>
-      <MemoryRouter>
-        <RoutesPage />
+      <MemoryRouter initialEntries={initialEntries}>
+        <Routes>
+          <Route path="/routes" element={<RoutesPage />} />
+          <Route path="/routes/:id" element={<RoutesPage />} />
+        </Routes>
       </MemoryRouter>
     </ToastProvider>,
   );
@@ -181,5 +185,16 @@ describe("RoutesPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: /^edit$/i }));
     const select = screen.getByLabelText(/team \(optional\)/i) as HTMLSelectElement;
     expect(within(select).getByRole("option", { name: "Crew" })).toBeInTheDocument();
+  });
+
+  it("shows the detail view when the URL carries a route id", () => {
+    renderPage(["/routes/5"]);
+    expect(screen.getByRole("button", { name: /all routes/i })).toBeInTheDocument();
+  });
+
+  it("navigates back to the list when the back button is clicked", async () => {
+    renderPage(["/routes/5"]);
+    await userEvent.click(screen.getByRole("button", { name: /all routes/i }));
+    expect(screen.queryByRole("button", { name: /all routes/i })).not.toBeInTheDocument();
   });
 });

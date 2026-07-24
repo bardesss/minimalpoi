@@ -28,7 +28,7 @@ export default function RouteFormModal({
   onSaved: (route: RouteDetail) => void;
 }) {
   const isMobile = useIsMobile();
-  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose);
+  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose, { manageHistory: false });
   const createPlan = useCreateRoutePlan();
   const updatePlan = useUpdateRoutePlan();
   const pois = usePois().data ?? [];

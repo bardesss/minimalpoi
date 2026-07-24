@@ -64,4 +64,17 @@ describe("DetailPanel", () => {
     await userEvent.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("keeps the desktop footer outside the scrolling body (sticky footer)", () => {
+    const { container } = renderWithProviders(
+      <DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />,
+    );
+    const scroller = container.querySelector(".poi-scroll") as HTMLElement;
+    expect(scroller).toBeInTheDocument();
+    // The scrolling body holds content...
+    expect(scroller.childElementCount).toBeGreaterThan(0);
+    // ...but the Edit/Delete footer is a pinned sibling OUTSIDE the scroller.
+    const editBtn = screen.getByRole("button", { name: /edit place/i });
+    expect(scroller.contains(editBtn)).toBe(false);
+  });
 });

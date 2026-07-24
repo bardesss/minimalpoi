@@ -2,8 +2,8 @@ import { act, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useDialog } from "./useDialog";
 
-function Dialog({ onClose, closeOnBackdrop, trapFocus }: { onClose: () => void; closeOnBackdrop?: boolean; trapFocus?: boolean }) {
-  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop, trapFocus });
+function Dialog({ onClose, closeOnBackdrop, trapFocus, manageHistory }: { onClose: () => void; closeOnBackdrop?: boolean; trapFocus?: boolean; manageHistory?: boolean }) {
+  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop, trapFocus, manageHistory });
   return (
     <div data-testid="backdrop" onClick={onBackdropClick}>
       <div ref={dialogRef} role="dialog">
@@ -100,6 +100,27 @@ describe("useDialog", () => {
     const { unmount } = render(<Dialog onClose={() => {}} />);
     expect(push).toHaveBeenCalled();
     unmount();
+  });
+
+  it("calls history.back() on unmount (default manageHistory)", () => {
+    const back = vi.spyOn(window.history, "back");
+    const { unmount } = render(<Dialog onClose={() => {}} />);
+    unmount();
+    expect(back).toHaveBeenCalled();
+  });
+
+  it("does not push a history entry on open when manageHistory is false", () => {
+    const push = vi.spyOn(window.history, "pushState");
+    const { unmount } = render(<Dialog onClose={() => {}} manageHistory={false} />);
+    expect(push).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it("does not call history.back() on unmount when manageHistory is false", () => {
+    const back = vi.spyOn(window.history, "back");
+    const { unmount } = render(<Dialog onClose={() => {}} manageHistory={false} />);
+    unmount();
+    expect(back).not.toHaveBeenCalled();
   });
 });
 
