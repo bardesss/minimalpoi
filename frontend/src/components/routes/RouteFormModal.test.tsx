@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import RouteFormModal from "./RouteFormModal";
 import type { RouteDetail } from "../../types/api";
@@ -52,5 +53,23 @@ describe("RouteFormModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /saved place/i }));
     fireEvent.click(screen.getByRole("button", { name: "Utrecht" }));
     expect(screen.getByText(/utrecht/i)).toBeInTheDocument();
+  });
+
+  it("closes on Escape", async () => {
+    const onClose = vi.fn();
+    wrap(<RouteFormModal teams={[]} existing={existing} onClose={onClose} onSaved={vi.fn()} />);
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  // Regression for the <form> wrap added for Enter-to-submit: pressing Enter
+  // in the plain name field should submit the form (native implicit submit),
+  // not be swallowed — there's no dedicated action button on this field.
+  it("pressing Enter in the name field submits the form and saves", async () => {
+    const onSaved = vi.fn();
+    wrap(<RouteFormModal teams={[]} existing={existing} onClose={vi.fn()} onSaved={onSaved} />);
+    await userEvent.click(screen.getByLabelText(/route name/i));
+    await userEvent.keyboard("{Enter}");
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalledWith({ id: 1 }));
   });
 });

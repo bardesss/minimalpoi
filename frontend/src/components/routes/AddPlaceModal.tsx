@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { RouteNodeCreate, RouteNodeKind, RouteNodeRole } from "../../types/api";
 import { ghostButtonStyle, inputStyle, theme } from "../../theme";
 import { useIsMobile } from "../../lib/useMediaQuery";
+import { useDialog } from "../../lib/useDialog";
 import SavedPlacePanel from "./placePanels/SavedPlacePanel";
 import SearchPlacePanel from "./placePanels/SearchPlacePanel";
 import ManualPointPanel from "./placePanels/ManualPointPanel";
@@ -44,6 +45,7 @@ export default function AddPlaceModal({
   const isMobile = useIsMobile();
   const [method, setMethod] = useState<Method | null>(null);
   const [nights, setNights] = useState(1);
+  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose);
 
   const title =
     role === "start" ? "Set start place"
@@ -60,9 +62,11 @@ export default function AddPlaceModal({
       role="dialog"
       aria-modal="true"
       aria-label={title}
+      onClick={onBackdropClick}
       style={{ position: "fixed", inset: 0, zIndex: 2100, background: "rgba(26,24,22,.42)", backdropFilter: "blur(2px)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", animation: "fadeIn .16s ease" }}
     >
       <div
+        ref={dialogRef}
         className="poi-scroll"
         style={{ width: isMobile ? "100%" : 480, maxWidth: "100%", maxHeight: isMobile ? "92vh" : "90vh", overflowY: "auto", background: "#fff", borderRadius: isMobile ? "18px 18px 0 0" : theme.radius.modal, paddingBottom: isMobile ? "env(safe-area-inset-bottom)" : undefined, boxShadow: theme.shadow.modal, animation: isMobile ? "sheetUp .26s cubic-bezier(.32,.72,0,1)" : "popIn .2s ease" }}
       >

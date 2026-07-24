@@ -6,6 +6,7 @@ import { SHARE_FORMATS, shareFormat, type ShareFormat, type ShareVariant } from 
 import { renderShareImage } from "../../lib/share/shareRender";
 import { shareFilename } from "../../lib/share/shareFilename";
 import { triggerDownload } from "../../lib/download";
+import { useDialog } from "../../lib/useDialog";
 
 const VARIANTS: { key: ShareVariant; label: string }[] = [
   { key: "map", label: "Map background" },
@@ -13,6 +14,7 @@ const VARIANTS: { key: ShareVariant; label: string }[] = [
 ];
 
 export default function ShareImageModal({ route, settings, onClose }: { route: RouteDetail; settings: MapSettings; onClose: () => void }) {
+  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose);
   const [format, setFormat] = useState<ShareFormat>("square");
   const [variant, setVariant] = useState<ShareVariant>("map");
   const [blob, setBlob] = useState<Blob | null>(null);
@@ -55,8 +57,8 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
   // transformed mobile bottom-sheet containing-block; z-index/radius match the
   // house modal style.
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Share route image" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100 }} onClick={onClose}>
-      <div style={{ background: theme.color.surface0, borderRadius: theme.radius.modal, padding: 16, width: 420, maxWidth: "92vw", maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+    <div role="dialog" aria-modal="true" aria-label="Share route image" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100 }} onClick={onBackdropClick}>
+      <div ref={dialogRef} style={{ background: theme.color.surface0, borderRadius: theme.radius.modal, padding: 16, width: 420, maxWidth: "92vw", maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <strong style={{ fontFamily: theme.font.ui }}>Share route image</strong>
           <button type="button" aria-label="Close" style={{ ...ghostButtonStyle, padding: "4px 10px" }} onClick={onClose}>×</button>

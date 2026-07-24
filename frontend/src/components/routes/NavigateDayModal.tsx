@@ -2,6 +2,7 @@ import { createPortal } from "react-dom";
 import { Navigation } from "lucide-react";
 import { ghostButtonStyle, theme } from "../../theme";
 import { appleMapsUrl, coordsText, googleMapsDirUrl, toGpx, type Waypoint } from "../../lib/routeNav";
+import { useDialog } from "../../lib/useDialog";
 
 // Fallback picker when the OS share sheet is unavailable (desktop). Reuses the
 // app's overlay + card styling. Each action fires then closes.
@@ -10,6 +11,8 @@ export default function NavigateDayModal({ dayLabel, waypoints, onClose }: {
   waypoints: Waypoint[];
   onClose: () => void;
 }) {
+  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose);
+
   function openUrl(url: string) {
     window.open(url, "_blank", "noopener");
     onClose();
@@ -43,10 +46,11 @@ export default function NavigateDayModal({ dayLabel, waypoints, onClose }: {
   return createPortal(
     <div
       data-testid="navmodal-backdrop"
-      onClick={onClose}
+      onClick={onBackdropClick}
       style={{ position: "fixed", inset: 0, zIndex: 2100, background: "rgba(26,24,22,.42)", backdropFilter: "blur(2px)", display: "flex", alignItems: "center", justifyContent: "center", animation: "fadeIn .16s ease" }}
     >
       <div
+        ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
         style={{ background: theme.color.surface0, borderRadius: theme.radius.modal, boxShadow: theme.shadow.modal, padding: 20, width: 320, maxWidth: "92vw" }}
       >

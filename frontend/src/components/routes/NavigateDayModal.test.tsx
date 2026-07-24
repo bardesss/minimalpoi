@@ -40,6 +40,13 @@ describe("NavigateDayModal", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it("closes on Escape", async () => {
+    const onClose = vi.fn();
+    render(<NavigateDayModal dayLabel="THU 16 JUL" waypoints={waypoints} onClose={onClose} />);
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   // On mobile the timeline lives inside a `transform`ed bottom sheet, which
   // would trap a `position: fixed` overlay inside the sheet. Portalling to
   // <body> escapes that containing block so the modal covers the viewport.

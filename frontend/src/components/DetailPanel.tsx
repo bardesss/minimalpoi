@@ -3,6 +3,7 @@ import type { Category, Poi } from "../types/api";
 import { dangerButtonStyle, primaryButtonStyle, theme, tintFromColor } from "../theme";
 import { safeImageCss, safeLinkHref } from "../lib/safeUrl";
 import { formatPhoneDisplay } from "../lib/phone";
+import { useDialog } from "../lib/useDialog";
 import PoiActions from "./PoiActions";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
@@ -23,6 +24,11 @@ export default function DetailPanel({
   mobile?: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
+  // Not a backdrop modal: Escape/back/return-focus always apply, but the
+  // focus trap only makes sense in the full-screen mobile branch — the
+  // desktop side panel is non-modal and trapping it would strand keyboard
+  // focus away from the list/map.
+  const { dialogRef } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop: false, trapFocus: mobile });
   const color = category?.color ?? theme.color.fallbackPin;
   const tint = tintFromColor(color);
   const heroImage = safeImageCss(poi.image_url);
@@ -88,6 +94,7 @@ export default function DetailPanel({
     // hero close button (×). No drag — predictable and roomy.
     return (
       <section
+        ref={dialogRef}
         aria-label={poi.name}
         style={{
           position: "fixed",
@@ -109,6 +116,7 @@ export default function DetailPanel({
 
   return (
     <div
+      ref={dialogRef}
       className="poi-scroll"
       style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 368, zIndex: 800, background: "#fff", boxShadow: theme.shadow.detail, overflowY: "auto", animation: "slideIn .22s ease" }}
     >
