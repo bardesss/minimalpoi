@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.3.0](https://github.com/Bardesss/minimalpoi/compare/v3.2.0...v3.3.0) (2026-07-25)
+
+
+### Features
+
+* **ui:** compact desktop header — icon switcher + inline filters ([732c85d](https://github.com/Bardesss/minimalpoi/commit/732c85d41d03e741993146417a53298ba52201d6))
+* **ui:** compact desktop header — icon switcher, inline filters, chips kept ([1a63840](https://github.com/Bardesss/minimalpoi/commit/1a63840710eba3fde5dfe9678beb97e361114ddc))
+
 ## [3.2.0](https://github.com/Bardesss/minimalpoi/compare/v3.1.0...v3.2.0) (2026-07-25)
 
 
