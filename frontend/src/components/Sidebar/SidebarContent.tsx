@@ -53,6 +53,7 @@ export default function SidebarContent(props: SidebarContentProps) {
         onSortChange={props.onSortChange}
         viewMode={props.viewMode}
         onViewModeChange={props.onViewModeChange}
+        count={props.pois.length}
         mobile={props.mobile}
       />
       <PoiList

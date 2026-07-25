@@ -50,7 +50,7 @@ export default function AppLayout(props: AppLayoutProps) {
           initial="half"
           headerRight={props.sheetCount != null ? <CountBadge n={props.sheetCount} /> : undefined}
         >
-          {nav}
+          {nav && <div style={{ padding: "8px 16px 2px" }}>{nav}</div>}
           {props.sidebar}
           {footer}
         </BottomSheet>
@@ -75,8 +75,7 @@ export default function AppLayout(props: AppLayoutProps) {
       >
         {!props.collapsed && (
           <>
-            <SidebarHeader onCollapse={props.onCollapse} count={props.sheetCount} />
-            {nav}
+            <SidebarHeader onCollapse={props.onCollapse} nav={nav} />
             {props.sidebar}
             {footer}
           </>

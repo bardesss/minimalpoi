@@ -8,13 +8,14 @@ describe("SidebarHeader", () => {
     expect(screen.getByText("Points of Interest Manager")).toBeInTheDocument();
   });
 
-  it("renders the place count when provided", () => {
-    render(<SidebarHeader onCollapse={vi.fn()} count={40} />);
-    expect(screen.getByText("40 places")).toBeInTheDocument();
+  it("renders the nav slot when provided", () => {
+    render(<SidebarHeader onCollapse={vi.fn()} nav={<button type="button">Switcher</button>} />);
+    expect(screen.getByRole("button", { name: "Switcher" })).toBeInTheDocument();
   });
 
-  it("renders no place count when omitted", () => {
-    render(<SidebarHeader onCollapse={vi.fn()} />);
-    expect(screen.queryByText(/places/)).not.toBeInTheDocument();
+  it("renders a collapse control", () => {
+    const onCollapse = vi.fn();
+    render(<SidebarHeader onCollapse={onCollapse} />);
+    expect(screen.getByRole("button", { name: /collapse panel/i })).toBeInTheDocument();
   });
 });
