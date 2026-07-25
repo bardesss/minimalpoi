@@ -2,6 +2,15 @@ name: release-please
 on:
   push:
     branches: [main]
+  # Manual re-publish: recover a release whose image build hit a transient
+  # failure (e.g. a Docker Hub timeout in buildx setup). Runs the same
+  # build + push against the release tag, without cutting a new release.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Existing release version to (re)publish to GHCR, e.g. 3.4.0"
+        required: true
+        type: string
 permissions:
   contents: write
   pull-requests: write
@@ -11,40 +20,66 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: release
+        if: github.event_name == 'push'
         uses: googleapis/release-please-action@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # Decide whether to publish and which version + ref to build, from either
+      # a freshly-cut release (push) or a manual re-publish (workflow_dispatch).
+      - id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            v="${{ inputs.version }}"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "ref=v$v" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.release.outputs.release_created }}" = "true" ]; then
+            v="${{ steps.release.outputs.version }}"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "ref=" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            v=""
+          fi
+          if [ -n "$v" ]; then
+            echo "version=$v" >> "$GITHUB_OUTPUT"
+            echo "major=${v%%.*}" >> "$GITHUB_OUTPUT"
+            echo "minor=$(printf '%s' "$v" | cut -d. -f2)" >> "$GITHUB_OUTPUT"
+          fi
+
       # Publish the image in this same job. A separate workflow triggered on
       # `release: published` would NOT fire, because the release is created by
       # the built-in GITHUB_TOKEN (GitHub does not trigger workflows from
-      # token-authored events). So we build + push here, only when the merged
-      # release PR actually cut a release.
+      # token-authored events). On push we build the freshly-released HEAD; on
+      # a manual re-publish we check out the release tag so the image matches
+      # exactly what was released.
       - uses: actions/checkout@v7
-        if: ${{ steps.release.outputs.release_created }}
+        if: steps.meta.outputs.publish == 'true'
+        with:
+          ref: ${{ steps.meta.outputs.ref }}
       - uses: docker/setup-qemu-action@v4
-        if: ${{ steps.release.outputs.release_created }}
+        if: steps.meta.outputs.publish == 'true'
       - uses: docker/setup-buildx-action@v4
-        if: ${{ steps.release.outputs.release_created }}
+        if: steps.meta.outputs.publish == 'true'
       - uses: docker/login-action@v4
-        if: ${{ steps.release.outputs.release_created }}
+        if: steps.meta.outputs.publish == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v7
-        if: ${{ steps.release.outputs.release_created }}
+        if: steps.meta.outputs.publish == 'true'
         with:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/bardesss/minimalpoi:${{ steps.release.outputs.version }}
-            ghcr.io/bardesss/minimalpoi:${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}
-            ghcr.io/bardesss/minimalpoi:${{ steps.release.outputs.major }}
+            ghcr.io/bardesss/minimalpoi:${{ steps.meta.outputs.version }}
+            ghcr.io/bardesss/minimalpoi:${{ steps.meta.outputs.major }}.${{ steps.meta.outputs.minor }}
+            ghcr.io/bardesss/minimalpoi:${{ steps.meta.outputs.major }}
             ghcr.io/bardesss/minimalpoi:latest
           build-args: |
-            VERSION=${{ steps.release.outputs.version }}
+            VERSION=${{ steps.meta.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
