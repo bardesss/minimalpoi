@@ -65,4 +65,19 @@ describe("buildPoiMiniCard", () => {
     expect(thumb.style.backgroundImage).not.toContain("red");
     el.remove();
   });
+
+  it("scales close and action buttons to ≥44px tap target on bigTap", () => {
+    const onClose = vi.fn();
+    const onAdd = vi.fn();
+    const onOpen = vi.fn();
+    const el = buildPoiMiniCard({ poi: base, color: "#E1574C", pinned: true, onClose, onAdd, onOpen, bigTap: true });
+    document.body.appendChild(el);
+    const q = within(el);
+    const closeBtn = q.getByRole("button", { name: /close/i });
+    const openBtn = q.getByRole("button", { name: /open/i });
+    expect(closeBtn.style.width).toBe("44px");
+    expect(closeBtn.style.height).toBe("44px");
+    expect(openBtn.style.minHeight).toBe("44px");
+    el.remove();
+  });
 });

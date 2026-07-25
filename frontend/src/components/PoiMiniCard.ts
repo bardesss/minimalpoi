@@ -43,7 +43,8 @@ export function buildPoiMiniCard(opts: PoiMiniCardOpts): HTMLElement {
     close.type = "button";
     close.setAttribute("aria-label", "Close");
     close.textContent = "×";
-    close.style.cssText = "position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(255,255,255,.92);box-shadow:0 1px 5px rgba(0,0,0,.2);cursor:pointer;font-size:15px;line-height:1;";
+    const closeSize = bigTap ? "44px" : "26px";
+    close.style.cssText = `position:absolute;top:6px;right:6px;width:${closeSize};height:${closeSize};border-radius:50%;border:none;background:rgba(255,255,255,.92);box-shadow:0 1px 5px rgba(0,0,0,.2);cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;`;
     close.addEventListener("click", onClose);
     root.style.position = "relative";
     root.appendChild(close);
