@@ -1,5 +1,28 @@
 # Changelog
 
+## [3.2.0](https://github.com/Bardesss/minimalpoi/compare/v3.1.0...v3.2.0) (2026-07-25)
+
+
+### Features
+
+* **ui:** /?place=&lt;id&gt; deep-link preselects a POI ([6773e88](https://github.com/Bardesss/minimalpoi/commit/6773e8874b0cee2ffcbe530810668b80250ed2eb))
+* **ui:** compact icon tabs for the Map/Routes switcher ([ed5c347](https://github.com/Bardesss/minimalpoi/commit/ed5c347da7b2ac441799d61f9880b24047641a20))
+* **ui:** FilterPopover — collapse visited/sort/view behind one trigger ([d1582e6](https://github.com/Bardesss/minimalpoi/commit/d1582e68a70eb8bae586ec9b616aeae46afa7f6d))
+* **ui:** main-map markers show the mini info card on hover ([26dbb5b](https://github.com/Bardesss/minimalpoi/commit/26dbb5be64f9f6d34c6b5dda183a0d01ab8c30fa))
+* **ui:** move the place count into the sheet handle / sidebar header ([0204a45](https://github.com/Bardesss/minimalpoi/commit/0204a4555e326be991a0a2f5a549d8a84f134cfd))
+* **ui:** POI mini info card + header declutter ([9ac835d](https://github.com/Bardesss/minimalpoi/commit/9ac835ddf568205c4ee272db955184bd2810e244))
+* **ui:** PoiMiniCard popup builder (photo/name/website/open + add) ([7721a40](https://github.com/Bardesss/minimalpoi/commit/7721a406cde948742d9c588de57f35990306512c))
+* **ui:** route map uses the mini info card (nearby, on-route, itinerary hover) ([51eda97](https://github.com/Bardesss/minimalpoi/commit/51eda970d59c576e86fe43295fc555e3170fd2fc))
+
+
+### Bug Fixes
+
+* **ui:** FilterPopover keyboard a11y + drag-handle userSelect + test tidy ([291de9b](https://github.com/Bardesss/minimalpoi/commit/291de9bc5e0b08dcf29cc1772bc930fda9a28a80))
+* **ui:** keep FilterPopover open on Tab between its controls ([1a96e85](https://github.com/Bardesss/minimalpoi/commit/1a96e851df107ae11bef1b7de4c372ac1a0d8381))
+* **ui:** PoiMiniCard close button tap target (bigTap scaling) ([a62c0b2](https://github.com/Bardesss/minimalpoi/commit/a62c0b2b1f0dc282c8e292c302a56cea0248ac06))
+* **ui:** PoiMiniCard design consistency (tint, radii, button styles) ([5119b52](https://github.com/Bardesss/minimalpoi/commit/5119b525748a00e3bbecede1c25acbb53a52fb95))
+* **ui:** suppress transient route-map hover cards while a pinned card is open ([95d6e70](https://github.com/Bardesss/minimalpoi/commit/95d6e70598a97ccaa936c72d23c3fee07bffe55b))
+
 ## [3.1.0](https://github.com/Bardesss/minimalpoi/compare/v3.0.0...v3.1.0) (2026-07-24)
 
 
