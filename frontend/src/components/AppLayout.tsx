@@ -5,6 +5,7 @@ import SidebarHeader from "./Sidebar/SidebarHeader";
 import AccountFooter from "./Sidebar/AccountFooter";
 import BottomSheet from "./BottomSheet";
 import NavToggle from "./NavToggle";
+import BrandLogo from "./BrandLogo";
 
 export interface AppLayoutProps {
   active: "map" | "routes";
@@ -38,7 +39,8 @@ export default function AppLayout(props: AppLayoutProps) {
   const isMobile = useIsMobile();
   // Give the POI grid's 3rd column (see PoiList) room on very wide screens.
   const wide = useMediaQuery("(min-width: 1600px)");
-  const nav = props.routesEnabled ? <NavToggle active={props.active} /> : null;
+  const navDesktop = props.routesEnabled ? <NavToggle active={props.active} variant="icon" /> : null;
+  const navMobile = props.routesEnabled ? <NavToggle active={props.active} variant="labeled" /> : null;
   const footer = <AccountFooter {...props.account} />;
 
   if (isMobile) {
@@ -50,7 +52,11 @@ export default function AppLayout(props: AppLayoutProps) {
           initial="half"
           headerRight={props.sheetCount != null ? <CountBadge n={props.sheetCount} /> : undefined}
         >
-          {nav && <div style={{ padding: "8px 16px 2px" }}>{nav}</div>}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 16px 2px" }}>
+            <BrandLogo size={24} />
+            <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-.02em", color: theme.color.textPrimary }}>MinimalPOI</span>
+            {navMobile && <div style={{ marginLeft: "auto" }}>{navMobile}</div>}
+          </div>
           {props.sidebar}
           {footer}
         </BottomSheet>
@@ -75,7 +81,7 @@ export default function AppLayout(props: AppLayoutProps) {
       >
         {!props.collapsed && (
           <>
-            <SidebarHeader onCollapse={props.onCollapse} nav={nav} />
+            <SidebarHeader onCollapse={props.onCollapse} nav={navDesktop} />
             {props.sidebar}
             {footer}
           </>
