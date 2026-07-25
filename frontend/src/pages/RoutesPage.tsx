@@ -67,6 +67,15 @@ export default function RoutesPage() {
   const detail = routeQuery.data;
   const canEdit = detail?.can_edit ?? false;
   const nearbyPois = poisNotInRoute(poisQuery.data ?? [], detail?.nodes ?? []);
+  // Full POI lookup (not the nearby-only `nearbyPois`) so on-route pins can
+  // resolve their linked POI for the mini card.
+  const poiById = useMemo(
+    () => Object.fromEntries((poisQuery.data ?? []).map((p) => [p.id, p])),
+    [poisQuery.data],
+  );
+  // Cross-route navigation (routes page → map page): remounts AppShell so the
+  // ?place= deep-link (Task 3) fires on mount.
+  const openPoi = (id: number) => navigate("/?place=" + id);
   const passed = useMemo(
     () => (detail ? passedNodeIds(detail, todayIso()) : new Set<number>()),
     [detail],
@@ -210,6 +219,8 @@ export default function RoutesPage() {
             onAddNode={addFromMap}
             passedNodeIds={passed}
             highlightNodeId={hoverNodeId}
+            poiById={poiById}
+            onOpenPoi={openPoi}
           />
         ) : null}
         account={{
