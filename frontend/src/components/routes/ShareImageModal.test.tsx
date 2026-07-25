@@ -27,15 +27,19 @@ describe("ShareImageModal", () => {
 
   it("downloads the current blob", async () => {
     render(<ShareImageModal route={route} settings={settings} onClose={vi.fn()} />);
-    await waitFor(() => expect(renderSpy).toHaveBeenCalled());
+    // Wait for the render to COMPLETE (Download re-enables), not just for the
+    // render fn to be called — the blob is set after the async render resolves.
+    await waitFor(() => expect(screen.getByRole("button", { name: /download/i })).not.toBeDisabled());
     fireEvent.click(screen.getByRole("button", { name: /download/i }));
     expect(downloadSpy).toHaveBeenCalledWith(fakeBlob, "Trip - square - map.png");
   });
 
   it("disables download and shows an error when rendering fails", async () => {
     render(<ShareImageModal route={route} settings={settings} onClose={vi.fn()} />);
-    await waitFor(() => expect(renderSpy).toHaveBeenCalled());
-    expect(screen.getByRole("button", { name: /download/i })).not.toBeDisabled();
+    // Wait for the render to COMPLETE so Download is enabled — waiting only for
+    // renderSpy to be *called* samples the button while the async render is
+    // still pending, which flakes under CI's serial (--no-file-parallelism) run.
+    await waitFor(() => expect(screen.getByRole("button", { name: /download/i })).not.toBeDisabled());
 
     renderSpy.mockRejectedValueOnce(new Error("boom"));
     fireEvent.click(screen.getByRole("button", { name: /landscape/i }));
