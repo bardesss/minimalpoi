@@ -4,43 +4,37 @@ import { MapPin, Route } from "lucide-react";
 import { theme } from "../theme";
 
 const seg = (active: boolean): CSSProperties => ({
-  flex: 1,
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  gap: 6,
-  textAlign: "center",
-  padding: "5px 10px",
+  width: 34,
+  height: 30,
   borderRadius: theme.radius.icon,
-  fontFamily: theme.font.ui,
-  fontWeight: 700,
-  fontSize: 12.5,
-  textDecoration: "none",
   color: active ? "#fff" : theme.color.textSecondary,
   background: active ? theme.color.primary : "transparent",
 });
 
+/** Compact icon toggle between the Map and Routes sections. Icon-only to stay
+ *  small enough to sit in the sidebar header row; the accessible name comes
+ *  from aria-label (also surfaced as a hover tooltip via title). */
 export default function NavToggle({ active }: { active: "map" | "routes" }) {
   return (
     <nav
       aria-label="Sections"
       style={{
-        display: "flex",
-        gap: 4,
-        margin: "8px 16px 2px",
+        display: "inline-flex",
+        gap: 3,
         padding: 3,
         background: theme.color.surface0,
         border: `1px solid ${theme.color.borderCard}`,
-        borderRadius: theme.radius.card,
+        borderRadius: theme.radius.icon,
       }}
     >
-      <NavLink to="/" end style={seg(active === "map")}>
-        <MapPin size={14} aria-hidden />
-        Map
+      <NavLink to="/" end aria-label="Map" title="Map" style={seg(active === "map")}>
+        <MapPin size={16} aria-hidden />
       </NavLink>
-      <NavLink to="/routes" style={seg(active === "routes")}>
-        <Route size={14} aria-hidden />
-        Routes
+      <NavLink to="/routes" aria-label="Routes" title="Routes" style={seg(active === "routes")}>
+        <Route size={16} aria-hidden />
       </NavLink>
     </nav>
   );

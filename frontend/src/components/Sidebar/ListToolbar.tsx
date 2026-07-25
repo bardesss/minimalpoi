@@ -2,9 +2,15 @@ import { theme } from "../../theme";
 import type { MapViewMode } from "../../lib/mapViewPref";
 import type { SortMode } from "../../lib/sortPref";
 import type { VisitedFilter } from "../../types/api";
+import FilterControls from "./FilterControls";
 import FilterPopover from "./FilterPopover";
 
-/** Compact toolbar row: just the filters trigger, right-aligned. */
+/**
+ * The control bar under the category chips. Desktop shows the filters inline
+ * (there's room) with the place-count right-aligned; the cramped mobile sheet
+ * collapses them behind the FilterPopover trigger instead (count lives in the
+ * sheet handle there).
+ */
 export default function ListToolbar({
   visited,
   onVisitedChange,
@@ -12,6 +18,7 @@ export default function ListToolbar({
   onSortChange,
   viewMode,
   onViewModeChange,
+  count,
   mobile = false,
 }: {
   visited: VisitedFilter;
@@ -20,19 +27,50 @@ export default function ListToolbar({
   onSortChange: (mode: SortMode) => void;
   viewMode: MapViewMode;
   onViewModeChange: (mode: MapViewMode) => void;
+  /** Desktop: shown right-aligned in the bar. Mobile: omit (count is in the sheet handle). */
+  count?: number;
   mobile?: boolean;
 }) {
+  const rowBase = {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    borderBottom: `1px solid ${theme.color.borderSubtle}`,
+  } as const;
+
+  if (mobile) {
+    return (
+      <div style={{ ...rowBase, justifyContent: "flex-end", padding: "8px 16px" }}>
+        <FilterPopover
+          visited={visited}
+          onVisitedChange={onVisitedChange}
+          sortMode={sortMode}
+          onSortChange={onSortChange}
+          viewMode={viewMode}
+          onViewModeChange={onViewModeChange}
+          mobile
+        />
+      </div>
+    );
+  }
+
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: mobile ? "8px 16px" : "8px 20px", borderBottom: `1px solid ${theme.color.borderSubtle}` }}>
-      <FilterPopover
-        visited={visited}
-        onVisitedChange={onVisitedChange}
-        sortMode={sortMode}
-        onSortChange={onSortChange}
-        viewMode={viewMode}
-        onViewModeChange={onViewModeChange}
-        mobile={mobile}
-      />
+    <div style={{ ...rowBase, justifyContent: "space-between", flexWrap: "wrap", padding: "8px 20px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", minWidth: 0 }}>
+        <FilterControls
+          visited={visited}
+          onVisitedChange={onVisitedChange}
+          sortMode={sortMode}
+          onSortChange={onSortChange}
+          viewMode={viewMode}
+          onViewModeChange={onViewModeChange}
+        />
+      </div>
+      {count != null && (
+        <span style={{ fontSize: 12, fontWeight: 700, color: theme.color.textPrimary, whiteSpace: "nowrap" }}>
+          {count} {count === 1 ? "place" : "places"}
+        </span>
+      )}
     </div>
   );
 }
