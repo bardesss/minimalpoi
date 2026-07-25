@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.4.0](https://github.com/Bardesss/minimalpoi/compare/v3.3.0...v3.4.0) (2026-07-25)
+
+
+### Features
+
+* **ui:** compact, branded mobile sheet header ([f9e4de3](https://github.com/Bardesss/minimalpoi/commit/f9e4de3feb48fc8325fd71fe245fe13a176a141e))
+* **ui:** compact, branded mobile sheet header ([b7381fc](https://github.com/Bardesss/minimalpoi/commit/b7381fc2f4148c16757a29b577c7418fe78e05a4))
+
 ## [3.3.0](https://github.com/Bardesss/minimalpoi/compare/v3.2.0...v3.3.0) (2026-07-25)
 
 
