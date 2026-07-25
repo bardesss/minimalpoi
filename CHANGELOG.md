@@ -1,5 +1,28 @@
 # Changelog
 
+## [3.1.0](https://github.com/Bardesss/minimalpoi/compare/v3.0.0...v3.1.0) (2026-07-24)
+
+
+### Features
+
+* **deploy:** reverse-proxy support (proxy headers) + docs ([eabb67d](https://github.com/Bardesss/minimalpoi/commit/eabb67dcd7d95e08afa6c8ffd717ee0cf50c6085))
+* **share:** public read-only route endpoint + password unlock ([22dc94d](https://github.com/Bardesss/minimalpoi/commit/22dc94dd951c34ffea07122eadc47b7f3b36dcfa))
+* **share:** public read-only route links + reverse-proxy readiness ([3d36060](https://github.com/Bardesss/minimalpoi/commit/3d360609e478200f5fa6bbe7f5a0b765905c426c))
+* **share:** route share manage endpoints + share field on RouteDetail ([dd8cd6d](https://github.com/Bardesss/minimalpoi/commit/dd8cd6de76ab9584ef24643cbb2ed05b3c9cae1b))
+* **share:** RouteShare model + share/public schemas ([579cbab](https://github.com/Bardesss/minimalpoi/commit/579cbabb2f6823d6dabeae2b0910e4b63f1af316))
+* **ui:** /s/:token public read-only route page ([1163d67](https://github.com/Bardesss/minimalpoi/commit/1163d67fecb4bef65ea8cc59885b634db8fc749f))
+* **ui:** public-link share manager in the route editor ([489f0a5](https://github.com/Bardesss/minimalpoi/commit/489f0a536f0bd16b68c04fdf856c4756fe4f2354))
+
+
+### Bug Fixes
+
+* **share:** bind grant to password version + strict unlock rate limit ([63a59e2](https://github.com/Bardesss/minimalpoi/commit/63a59e2554600a387ee555986e7afb0078072fbf))
+* **share:** never broadcast the share token over SSE ([6ad5976](https://github.com/Bardesss/minimalpoi/commit/6ad5976a72793e6f8565696b7a25fc99dfad5569))
+* **share:** PUT share leaves expiry unchanged when not provided ([418ccc7](https://github.com/Bardesss/minimalpoi/commit/418ccc769ff2b97d107ef24ed728de33c7233aee))
+* **share:** set Secure on the share grant cookie (match auth cookie) ([d1452c6](https://github.com/Bardesss/minimalpoi/commit/d1452c68d1bf0f2cf8b68b161879f2eb8fe7657c))
+* **ui:** clear share password field after set + clean up copy timeout ([cd2d49f](https://github.com/Bardesss/minimalpoi/commit/cd2d49fc43041372dd8f3a085f6846cdf20e3c41))
+* **ui:** encodeURIComponent the public share token in API URLs ([f6f2110](https://github.com/Bardesss/minimalpoi/commit/f6f2110b29313b02b3db287b6aa31c2b39fa517b))
+
 ## [3.0.0](https://github.com/Bardesss/minimalpoi/compare/v2.21.0...v3.0.0) (2026-07-24)
 
 
