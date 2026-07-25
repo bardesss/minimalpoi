@@ -1,6 +1,6 @@
 import type { Poi } from "../types/api";
 import { safeImageCss, safeLinkHref } from "../lib/safeUrl";
-import { theme } from "../theme";
+import { theme, tintFromColor } from "../theme";
 
 /** Bare host of a safe website URL (e.g. "cafemodern.nl"), or null. */
 export function poiWebsiteHost(website: string | null | undefined): string | null {
@@ -15,7 +15,7 @@ export function poiWebsiteHost(website: string | null | undefined): string | nul
 
 export interface PoiMiniCardOpts {
   poi: Poi;
-  tintColor: string;
+  color: string;
   pinned: boolean;
   onOpen?: () => void;
   onClose?: () => void;
@@ -26,7 +26,8 @@ export interface PoiMiniCardOpts {
 /** Imperative DOM (matches the existing route popup pattern). All user strings
  *  set via textContent / safe helpers — never innerHTML. */
 export function buildPoiMiniCard(opts: PoiMiniCardOpts): HTMLElement {
-  const { poi, tintColor, pinned, onOpen, onClose, onAdd, bigTap } = opts;
+  const { poi, color, pinned, onOpen, onClose, onAdd, bigTap } = opts;
+  const tint = tintFromColor(color);
   const root = document.createElement("div");
   root.style.cssText = `font-family:${theme.font.ui};width:200px;`;
 
@@ -34,7 +35,7 @@ export function buildPoiMiniCard(opts: PoiMiniCardOpts): HTMLElement {
   const img = safeImageCss(poi.image_url);
   const thumb = document.createElement("div");
   thumb.dataset.testid = "mini-thumb";
-  thumb.style.cssText = `height:96px;border-radius:10px;margin-bottom:8px;background:${img ? `center/cover no-repeat url("${img}"), ${tintColor}` : tintColor};`;
+  thumb.style.cssText = `height:96px;border-radius:${theme.radius.card};margin-bottom:8px;background:${img ? `center/cover no-repeat url("${img}"), ${tint}` : tint};`;
   root.appendChild(thumb);
 
   if (pinned && onClose) {
@@ -72,7 +73,7 @@ export function buildPoiMiniCard(opts: PoiMiniCardOpts): HTMLElement {
     const open = document.createElement("button");
     open.type = "button";
     open.textContent = "Open";
-    open.style.cssText = `margin-top:10px;width:100%;padding:8px;height:${btnH};min-height:${minH};border-radius:8px;border:1px solid ${theme.color.borderStd};background:${theme.color.surface0};color:${theme.color.textBody};font-weight:700;font-size:12px;cursor:pointer;`;
+    open.style.cssText = `margin-top:10px;width:100%;padding:8px;height:${btnH};min-height:${minH};border-radius:${theme.radius.input};border:1px solid ${theme.color.borderStd};background:${theme.color.surface0};color:${theme.color.textBody};font-weight:700;font-size:12px;cursor:pointer;`;
     open.addEventListener("click", onOpen);
     root.appendChild(open);
   }
@@ -84,7 +85,7 @@ export function buildPoiMiniCard(opts: PoiMiniCardOpts): HTMLElement {
       const b = document.createElement("button");
       b.type = "button";
       b.textContent = label;
-      b.style.cssText = `flex:1;padding:8px;height:${btnH};min-height:${minH};border-radius:8px;border:1px solid ${theme.color.primary};background:${theme.color.primary};color:#fff;font-size:12px;font-weight:700;cursor:pointer;`;
+      b.style.cssText = `flex:1;padding:8px;height:${btnH};min-height:${minH};border-radius:${theme.radius.input};border:none;background:${theme.color.primary};color:#fff;font-size:12px;font-weight:700;cursor:pointer;`;
       b.addEventListener("click", () => onAdd(kind));
       return b;
     };

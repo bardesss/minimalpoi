@@ -19,7 +19,7 @@ describe("poiWebsiteHost", () => {
 describe("buildPoiMiniCard", () => {
   it("renders name, website host and fires onOpen", async () => {
     const onOpen = vi.fn();
-    const el = buildPoiMiniCard({ poi: base, tintColor: "#E1574C", pinned: true, onOpen });
+    const el = buildPoiMiniCard({ poi: base, color: "#E1574C", pinned: true, onOpen });
     document.body.appendChild(el);
     const q = within(el);
     expect(q.getByText("Café Modern")).toBeInTheDocument();
@@ -31,7 +31,7 @@ describe("buildPoiMiniCard", () => {
 
   it("shows +Stay/+Stop only when onAdd is provided and pinned", async () => {
     const onAdd = vi.fn();
-    const el = buildPoiMiniCard({ poi: base, tintColor: "#E1574C", pinned: true, onAdd });
+    const el = buildPoiMiniCard({ poi: base, color: "#E1574C", pinned: true, onAdd });
     document.body.appendChild(el);
     const q = within(el);
     await userEvent.click(q.getByRole("button", { name: /stay/i }));
@@ -42,7 +42,7 @@ describe("buildPoiMiniCard", () => {
   });
 
   it("hides action row and close on a transient card", () => {
-    const el = buildPoiMiniCard({ poi: base, tintColor: "#E1574C", pinned: false, onAdd: () => {}, onClose: () => {} });
+    const el = buildPoiMiniCard({ poi: base, color: "#E1574C", pinned: false, onAdd: () => {}, onClose: () => {} });
     document.body.appendChild(el);
     const q = within(el);
     expect(q.queryByRole("button", { name: /stay/i })).not.toBeInTheDocument();
@@ -51,7 +51,7 @@ describe("buildPoiMiniCard", () => {
   });
 
   it("degrades to name-only when photo and website are absent", () => {
-    const el = buildPoiMiniCard({ poi: { ...base, website: null, image_url: null }, tintColor: "#888", pinned: true });
+    const el = buildPoiMiniCard({ poi: { ...base, website: null, image_url: null }, color: "#888", pinned: true });
     document.body.appendChild(el);
     const q = within(el);
     expect(q.getByText("Café Modern")).toBeInTheDocument();
@@ -60,7 +60,7 @@ describe("buildPoiMiniCard", () => {
   });
 
   it("neutralizes an unsafe image url (no url() injection)", () => {
-    const el = buildPoiMiniCard({ poi: { ...base, image_url: "https://x/a.jpg\") ;background:red" }, tintColor: "#888", pinned: true });
+    const el = buildPoiMiniCard({ poi: { ...base, image_url: "https://x/a.jpg\") ;background:red" }, color: "#888", pinned: true });
     const thumb = el.querySelector("[data-testid='mini-thumb']") as HTMLElement;
     expect(thumb.style.backgroundImage).not.toContain("red");
     el.remove();
