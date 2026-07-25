@@ -44,4 +44,16 @@ describe("FilterPopover", () => {
     await userEvent.click(screen.getByTestId("filter-backdrop"));
     expect(screen.queryByLabelText(/sort places/i)).not.toBeInTheDocument();
   });
+
+  it("stays open while Tab moves focus between its controls", async () => {
+    render(<FilterPopover {...base} />);
+    await userEvent.click(screen.getByRole("button", { name: /filters/i }));
+    const visitedSelect = screen.getByLabelText(/filter by visited/i);
+    expect(visitedSelect).toHaveFocus();
+    await userEvent.tab();
+    // Popover must still be open — Tab traverses its three native controls
+    // (Visited select, Sort select, Map view buttons) rather than closing it.
+    expect(screen.getByLabelText(/sort places/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/sort places/i)).toHaveFocus();
+  });
 });

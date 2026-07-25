@@ -71,8 +71,11 @@ export default function FilterPopover({
   // minHeight rather than vertical padding (mirrors ListToolbar's approach).
   const wrap = mobile ? { ...wrapStyle, padding: "2px 7px", minHeight: 44 } : wrapStyle;
 
-  // Move focus into the panel whenever it opens (mirrors ExportMenu's roving
-  // focus), so Escape/Tab handling on the panel actually receives keys.
+  // Move focus into the panel whenever it opens (mirrors ExportMenu's focus
+  // handling), so Escape (handled on the panel) actually receives the key.
+  // Unlike ExportMenu's roving-tabindex menu, this panel holds three
+  // independently-tabbable native controls (Visited select, Sort select, Map
+  // view buttons) — Tab must traverse between them without closing the panel.
   useEffect(() => {
     if (open) {
       const first = panelRef.current?.querySelector<HTMLElement>("select,button,[tabindex]");
@@ -89,8 +92,6 @@ export default function FilterPopover({
     if (e.key === "Escape") {
       e.preventDefault();
       close(true);
-    } else if (e.key === "Tab") {
-      close(false); // let focus move on naturally
     }
   }
 
