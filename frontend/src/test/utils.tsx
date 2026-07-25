@@ -9,12 +9,12 @@ export function makeClient(): QueryClient {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } });
 }
 
-export function renderWithProviders(ui: ReactElement, opts?: { client?: QueryClient }) {
+export function renderWithProviders(ui: ReactElement, opts?: { client?: QueryClient; route?: string }) {
   const client = opts?.client ?? makeClient();
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={client}>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={[opts?.route ?? "/"]}>
           <AuthProvider>
             <ToastProvider>{children}</ToastProvider>
           </AuthProvider>

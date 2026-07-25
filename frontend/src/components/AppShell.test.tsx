@@ -130,4 +130,10 @@ describe("AppShell", () => {
     // Detail panel should close
     expect(screen.queryByRole("heading", { name: "Café Modern" })).not.toBeInTheDocument();
   });
+
+  it("preselects a POI from the ?place= deep-link", async () => {
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    // DetailPanel is unique in exposing an "Edit place" button; the sidebar card also shows the name, so assert on the panel-only control.
+    expect(await screen.findByRole("button", { name: /edit place/i })).toBeInTheDocument();
+  });
 });
