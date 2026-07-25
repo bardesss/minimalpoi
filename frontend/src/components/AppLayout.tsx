@@ -17,6 +17,7 @@ export interface AppLayoutProps {
   sidebar: ReactNode;
   main: ReactNode;
   account: { username: string; role: string; onLogout: () => void; onOpenSettings: () => void; updateAvailable: boolean };
+  sheetCount?: number;
 }
 
 const reopenBtn = {
@@ -24,6 +25,14 @@ const reopenBtn = {
   border: `1px solid ${theme.color.borderCard}`, borderRadius: 11, padding: "10px 14px",
   boxShadow: theme.shadow.expand, fontFamily: theme.font.ui, fontWeight: 700, fontSize: 13, cursor: "pointer",
 } as const;
+
+function CountBadge({ n }: { n: number }) {
+  return (
+    <span style={{ fontSize: 12, fontWeight: 700, color: theme.color.textSecondary, whiteSpace: "nowrap" }}>
+      {n} {n === 1 ? "place" : "places"}
+    </span>
+  );
+}
 
 export default function AppLayout(props: AppLayoutProps) {
   const isMobile = useIsMobile();
@@ -36,7 +45,11 @@ export default function AppLayout(props: AppLayoutProps) {
     return (
       <div style={{ position: "relative", height: "100dvh", width: "100vw", background: theme.color.mapBg }}>
         {props.main}
-        <BottomSheet label={props.sheetLabel} initial="half">
+        <BottomSheet
+          label={props.sheetLabel}
+          initial="half"
+          headerRight={props.sheetCount != null ? <CountBadge n={props.sheetCount} /> : undefined}
+        >
           {nav}
           {props.sidebar}
           {footer}
@@ -62,7 +75,7 @@ export default function AppLayout(props: AppLayoutProps) {
       >
         {!props.collapsed && (
           <>
-            <SidebarHeader onCollapse={props.onCollapse} />
+            <SidebarHeader onCollapse={props.onCollapse} count={props.sheetCount} />
             {nav}
             {props.sidebar}
             {footer}

@@ -335,6 +335,7 @@ export default function AppShell() {
       onCollapse={() => setSidebarCollapsed(true)}
       onExpand={() => setSidebarCollapsed(false)}
       reopenLabel={`» ${filtered.length} places`}
+      sheetCount={filtered.length}
       sidebar={sidebarContent}
       main={main}
       account={{

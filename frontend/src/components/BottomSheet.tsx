@@ -12,10 +12,12 @@ export default function BottomSheet({
   children,
   initial = "half",
   label,
+  headerRight,
 }: {
   children: ReactNode;
   initial?: Snap;
   label?: string;
+  headerRight?: ReactNode;
 }) {
   const { translate, dragging, handlers } = useSheetDrag(initial);
 
@@ -57,6 +59,7 @@ export default function BottomSheet({
         role="separator"
         aria-label="Drag to resize list"
         style={{
+          position: "relative",
           flex: "none",
           minHeight: 44,
           display: "flex",
@@ -67,6 +70,11 @@ export default function BottomSheet({
         }}
       >
         <div style={{ width: 40, height: 5, borderRadius: 999, background: theme.color.borderStd }} />
+        {headerRight && (
+          <span style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)" }}>
+            {headerRight}
+          </span>
+        )}
       </div>
       <div style={{ height: contentHeight, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>{children}</div>
     </section>
