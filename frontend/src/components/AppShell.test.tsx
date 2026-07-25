@@ -36,7 +36,7 @@ describe("AppShell", () => {
     await user.type(screen.getByLabelText(/search places/i), "vondel");
     expect(screen.queryByText("Café Modern")).not.toBeInTheDocument();
     expect(screen.getByText("Vondelpark")).toBeInTheDocument();
-    expect(screen.getByText(/1 place/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 place\b/i)).toBeInTheDocument();
     const calls = mapPropsSpy.mock.calls;
     const lastPois = calls[calls.length - 1][0] as { id: number }[];
     expect(lastPois.map((p) => p.id)).toEqual([2]);
@@ -129,5 +129,11 @@ describe("AppShell", () => {
     await user.click(screen.getByRole("button", { name: /confirm delete/i }));
     // Detail panel should close
     expect(screen.queryByRole("heading", { name: "Café Modern" })).not.toBeInTheDocument();
+  });
+
+  it("preselects a POI from the ?place= deep-link", async () => {
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    // DetailPanel is unique in exposing an "Edit place" button; the sidebar card also shows the name, so assert on the panel-only control.
+    expect(await screen.findByRole("button", { name: /edit place/i })).toBeInTheDocument();
   });
 });

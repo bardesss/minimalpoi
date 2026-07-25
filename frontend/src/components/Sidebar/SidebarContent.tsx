@@ -47,7 +47,6 @@ export default function SidebarContent(props: SidebarContentProps) {
         showUncategorized={props.hasUncategorized}
       />
       <ListToolbar
-        count={props.pois.length}
         visited={props.visited}
         onVisitedChange={props.onVisitedChange}
         sortMode={props.sortMode}

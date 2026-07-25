@@ -15,4 +15,10 @@ describe("NavToggle", () => {
     expect(screen.getByRole("link", { name: "Routes" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Map" })).not.toHaveAttribute("aria-current");
   });
+
+  it("renders compact Map/Routes tabs with an active segment", () => {
+    render(<MemoryRouter initialEntries={["/routes"]}><NavToggle active="routes" /></MemoryRouter>);
+    expect(screen.getByRole("link", { name: "Map" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Routes" })).toHaveStyle({ color: "rgb(255, 255, 255)" });
+  });
 });

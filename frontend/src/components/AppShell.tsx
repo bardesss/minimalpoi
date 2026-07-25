@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
 import { useCategories, useCreatePoi, useDeletePoi, useEnrich, useMyVisits, usePlaceDraft, usePois, useSearchPlaces, useSettings, useUpdatePoi, useUploadImage, useCheckDuplicate, useVersion } from "../queries/hooks";
@@ -144,6 +144,20 @@ export default function AppShell() {
     const poi = (poisQuery.data ?? []).find((p) => p.id === id);
     const map = mapRef.current;
     if (poi && map) map.flyTo({ center: [poi.lng, poi.lat], zoom: Math.max(map.getZoom(), 14), duration: 600 });
+  }, [poisQuery.data]);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Deep-link: /?place=<id> preselects a POI (target of the route map's "Open").
+  useEffect(() => {
+    const raw = searchParams.get("place");
+    if (!raw || !/^\d+$/.test(raw)) return;
+    const id = Number(raw);
+    if (!(poisQuery.data ?? []).some((p) => p.id === id)) return;
+    selectPoi(id);
+    const next = new URLSearchParams(searchParams);
+    next.delete("place");
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poisQuery.data]);
 
   function fitToResults() {
@@ -321,6 +335,7 @@ export default function AppShell() {
       onCollapse={() => setSidebarCollapsed(true)}
       onExpand={() => setSidebarCollapsed(false)}
       reopenLabel={`» ${filtered.length} places`}
+      sheetCount={filtered.length}
       sidebar={sidebarContent}
       main={main}
       account={{

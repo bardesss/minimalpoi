@@ -7,6 +7,8 @@ import { toFeatureCollection } from "../../map/featureCollection";
 import { categoryColorExpression } from "../../map/colorExpression";
 import { routeSignature } from "../../lib/routeSignature";
 import { useIsMobile } from "../../lib/useMediaQuery";
+import { buildPoiMiniCard } from "../PoiMiniCard";
+import { theme } from "../../theme";
 
 const LINE_COLOR = "#4f46e5";
 const PASSED_COLOR = "#a8a39b"; // muted grey — de-emphasises days already travelled
@@ -114,54 +116,7 @@ function addRouteLayers(map: MlMap) {
   });
 }
 
-// A popup on a nearby POI: name, address, and (when the route is editable)
-// buttons that add it as a stay or stop.
-function openPoiPopup(
-  map: MlMap,
-  poi: Poi,
-  canAdd: boolean,
-  onAddNode: (poiId: number, kind: RouteNodeKind) => void,
-  isMobile: boolean,
-) {
-  const el = document.createElement("div");
-  el.style.fontFamily = "system-ui, sans-serif";
-  el.style.minWidth = "150px";
-
-  const name = document.createElement("div");
-  name.textContent = poi.name;
-  name.style.cssText = "font-weight:700;font-size:13px;color:#111827;";
-  el.appendChild(name);
-
-  if (poi.address) {
-    const addr = document.createElement("div");
-    addr.textContent = poi.address;
-    addr.style.cssText = "font-size:11.5px;color:#6b7280;margin-top:2px;";
-    el.appendChild(addr);
-  }
-
-  const popup = new maplibregl.Popup({ closeButton: true, offset: 12 })
-    .setLngLat([poi.lng, poi.lat])
-    .setDOMContent(el)
-    .addTo(map);
-
-  if (canAdd) {
-    const row = document.createElement("div");
-    row.style.cssText = "display:flex;gap:6px;margin-top:8px;";
-    const mkBtn = (label: string, kind: RouteNodeKind) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.textContent = label;
-      b.style.cssText = `flex:1;padding:${isMobile ? "12px 10px" : "4px 8px"};border-radius:6px;border:1px solid #4f46e5;background:#4f46e5;color:#fff;font-size:12px;cursor:pointer;min-height:${isMobile ? "44px" : "auto"};`;
-      b.addEventListener("click", () => { onAddNode(poi.id, kind); popup.remove(); });
-      return b;
-    };
-    row.appendChild(mkBtn("+ Stay", "stay"));
-    row.appendChild(mkBtn("+ Stop", "stop"));
-    el.appendChild(row);
-  }
-}
-
-export default function RouteMap({ nodes, legs, pois, categories, settings, canAdd, onAddNode, passedNodeIds, highlightNodeId }: {
+export default function RouteMap({ nodes, legs, pois, categories, settings, canAdd, onAddNode, passedNodeIds, highlightNodeId, poiById, onOpenPoi }: {
   nodes: RouteNode[];
   legs: RouteLeg[];
   pois: Poi[];
@@ -171,6 +126,8 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   onAddNode: (poiId: number, kind: RouteNodeKind) => void;
   passedNodeIds: Set<number>;
   highlightNodeId: number | null;
+  poiById: Record<number, Poi>;
+  onOpenPoi: (poiId: number) => void;
 }) {
   const isMobile = useIsMobile();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -190,6 +147,19 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   const passedRef = useRef(passedNodeIds);
   const highlightRef = useRef(highlightNodeId);
   const isMobileRef = useRef(isMobile);
+  const poiByIdRef = useRef(poiById);
+  const onOpenPoiRef = useRef(onOpenPoi);
+  // The itinerary-hover mini card (Task 4): a single reused popup instance,
+  // shown/hidden as highlightNodeId changes.
+  const hoverCardRef = useRef<maplibregl.Popup | null>(null);
+  // The currently-open PINNED card (nearby dot or on-route pin click), if any.
+  // A ref (not a plain closure variable) because both the once-only init
+  // effect's click/hover handlers AND the separate highlightNodeId effect
+  // need to read/suppress against it — only one card (pinned or transient) is
+  // ever shown at a time. Nulled by each pinned popup's own "close" listener,
+  // so it self-clears whether dismissed via the card's × button, a map click
+  // (MapLibre's default closeOnClick), or closeOpenCards().
+  const openPopupRef = useRef<maplibregl.Popup | null>(null);
   nodesRef.current = nodes;
   legsRef.current = legs;
   poisRef.current = pois;
@@ -199,6 +169,12 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   passedRef.current = passedNodeIds;
   highlightRef.current = highlightNodeId;
   isMobileRef.current = isMobile;
+  poiByIdRef.current = poiById;
+  onOpenPoiRef.current = onOpenPoi;
+
+  // Plain category color for a POI (the mini card applies its own tint).
+  const categoryColorFor = (poi: Poi) =>
+    categoriesRef.current.find((c) => c.id === poi.category_id)?.color ?? theme.color.fallbackPin;
 
   // Init once.
   useEffect(() => {
@@ -260,15 +236,91 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
       });
     });
 
+    // At most one pinned mini card open at a time — clicking a new dot/pin
+    // closes whatever was open before (and any transient hover card).
+    const closeOpenCards = () => {
+      openPopupRef.current?.remove();
+      openPopupRef.current = null;
+      routePointHoverPopup.remove();
+      hoverCardRef.current?.remove();
+    };
+
     map.on("click", "route-poi-unclustered", (e) => {
       const f = e.features?.[0];
       if (!f) return;
       const id = Number((f.properties as { id: number }).id);
       const poi = poisRef.current.find((p) => p.id === id);
-      if (poi) openPoiPopup(map, poi, canAddRef.current, onAddNodeRef.current, isMobileRef.current);
+      if (!poi) return;
+      closeOpenCards();
+      const el = buildPoiMiniCard({
+        poi, color: categoryColorFor(poi), pinned: true,
+        onOpen: () => { onOpenPoiRef.current(poi.id); popup.remove(); },
+        onClose: () => popup.remove(),
+        onAdd: canAddRef.current ? (kind) => { onAddNodeRef.current(poi.id, kind); popup.remove(); } : undefined,
+        bigTap: isMobileRef.current,
+      });
+      const popup = new maplibregl.Popup({ closeButton: false, offset: 12, maxWidth: "220px" })
+        .setLngLat([poi.lng, poi.lat])
+        .setDOMContent(el)
+        .addTo(map);
+      // Self-clears the ref on ANY dismissal path (× button, closeOpenCards(),
+      // or MapLibre's own closeOnClick) so hover suppression below can't stick.
+      popup.on("close", () => { if (openPopupRef.current === popup) openPopupRef.current = null; });
+      openPopupRef.current = popup;
     });
 
-    for (const layer of ["route-poi-unclustered", "route-poi-clusters"]) {
+    // On-route pins: click opens a pinned card (Open only — it's already on the
+    // route); hover shows a transient preview, mirroring MapView's pattern.
+    const routePointHoverPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12, maxWidth: "220px" });
+
+    map.on("click", "route-points", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const id = Number((f.properties as { id: number }).id);
+      const node = nodesRef.current.find((n) => n.id === id);
+      if (!node) return;
+      closeOpenCards();
+      const poi = node.poi_id != null ? poiByIdRef.current[node.poi_id] : undefined;
+      const el = poi
+        ? buildPoiMiniCard({
+            poi, color: categoryColorFor(poi), pinned: true,
+            onOpen: () => { onOpenPoiRef.current(poi.id); popup.remove(); },
+            onClose: () => popup.remove(),
+            bigTap: isMobileRef.current,
+          })
+        : buildPoiMiniCard({
+            poi: { name: node.name, image_url: null, website: null } as unknown as Poi,
+            color: theme.color.fallbackPin,
+            pinned: true,
+            onClose: () => popup.remove(),
+            bigTap: isMobileRef.current,
+          });
+      const popup = new maplibregl.Popup({ closeButton: false, offset: 12, maxWidth: "220px" })
+        .setLngLat([node.lng, node.lat])
+        .setDOMContent(el)
+        .addTo(map);
+      popup.on("close", () => { if (openPopupRef.current === popup) openPopupRef.current = null; });
+      openPopupRef.current = popup;
+    });
+
+    // Transient hover preview — suppressed while a pinned card is open so the
+    // two never show at once.
+    map.on("mousemove", "route-points", (e) => {
+      if (openPopupRef.current) return;
+      const f = e.features?.[0];
+      if (!f) return;
+      const id = Number((f.properties as { id: number }).id);
+      const node = nodesRef.current.find((n) => n.id === id);
+      if (!node) return;
+      const poi = node.poi_id != null ? poiByIdRef.current[node.poi_id] : undefined;
+      const card = poi
+        ? buildPoiMiniCard({ poi, color: categoryColorFor(poi), pinned: false })
+        : buildPoiMiniCard({ poi: { name: node.name, image_url: null, website: null } as unknown as Poi, color: theme.color.fallbackPin, pinned: false });
+      routePointHoverPopup.setLngLat([node.lng, node.lat]).setDOMContent(card).addTo(map);
+    });
+    map.on("mouseleave", "route-points", () => { routePointHoverPopup.remove(); });
+
+    for (const layer of ["route-poi-unclustered", "route-poi-clusters", "route-points"]) {
       map.on("mouseenter", layer, () => { map.getCanvas().style.cursor = "pointer"; });
       map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; });
     }
@@ -315,11 +367,36 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
     map.setPaintProperty("route-poi-unclustered", "circle-color", categoryColorExpression(categories) as never);
   }, [categories]);
 
-  // Highlight the hovered/focused itinerary row's point on the map.
+  // Highlight the hovered/focused itinerary row's point on the map, and show a
+  // transient mini card on it (desktop hover/focus preview).
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.getLayer("route-point-highlight")) return;
     map.setFilter("route-point-highlight", ["==", ["get", "id"], highlightNodeId ?? -1]);
+
+    if (highlightNodeId == null) {
+      hoverCardRef.current?.remove();
+      return;
+    }
+    if (openPopupRef.current) {
+      // A pinned card is already open — suppress the transient hover card so
+      // only one card is ever visible at a time.
+      hoverCardRef.current?.remove();
+      return;
+    }
+    const node = nodesRef.current.find((n) => n.id === highlightNodeId);
+    if (!node) {
+      hoverCardRef.current?.remove();
+      return;
+    }
+    const poi = node.poi_id != null ? poiByIdRef.current[node.poi_id] : undefined;
+    const card = poi
+      ? buildPoiMiniCard({ poi, color: categoryColorFor(poi), pinned: false })
+      : buildPoiMiniCard({ poi: { name: node.name, image_url: null, website: null } as unknown as Poi, color: theme.color.fallbackPin, pinned: false });
+    if (!hoverCardRef.current) {
+      hoverCardRef.current = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12, maxWidth: "220px" });
+    }
+    hoverCardRef.current.setLngLat([node.lng, node.lat]).setDOMContent(card).addTo(map);
   }, [highlightNodeId]);
 
   return <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />;

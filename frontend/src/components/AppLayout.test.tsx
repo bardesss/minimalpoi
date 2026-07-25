@@ -66,6 +66,11 @@ describe("AppLayout", () => {
     expect(screen.queryByText("SIDEBAR")).not.toBeInTheDocument();
   });
 
+  it("shows the place count in the sidebar header when sheetCount is set", () => {
+    renderLayout({ sheetCount: 40 });
+    expect(screen.getByText("40 places")).toBeInTheDocument();
+  });
+
   it("widens the sidebar on very wide viewports", () => {
     const restore = mockWideMatchMedia();
     try {

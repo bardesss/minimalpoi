@@ -15,7 +15,12 @@ const detail: RouteDetail = {
   nodes: [], legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
 };
 
-vi.mock("../components/routes/RouteMap", () => ({ default: () => null }));
+vi.mock("../components/routes/RouteMap", () => ({
+  default: (props: Record<string, unknown>) => {
+    (globalThis as Record<string, unknown>).__routeMapProps = props;
+    return null;
+  },
+}));
 
 vi.mock("../components/SettingsModal", () => ({ default: () => null }));
 
@@ -196,5 +201,13 @@ describe("RoutesPage", () => {
     renderPage(["/routes/5"]);
     await userEvent.click(screen.getByRole("button", { name: /all routes/i }));
     expect(screen.queryByRole("button", { name: /all routes/i })).not.toBeInTheDocument();
+  });
+
+  it("passes a POI lookup and an open-POI callback to RouteMap", async () => {
+    renderPage(["/routes/5"]);
+    await screen.findByRole("button", { name: /all routes/i });
+    const p = (globalThis as Record<string, unknown>).__routeMapProps as Record<string, unknown>;
+    expect(typeof p.onOpenPoi).toBe("function");
+    expect(p.poiById).toBeTypeOf("object");
   });
 });

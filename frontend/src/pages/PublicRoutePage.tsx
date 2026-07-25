@@ -147,6 +147,9 @@ export default function PublicRoutePage() {
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
+          {/* Public/anonymous view: no full POI list is fetched and there's no
+             app shell to navigate into, so on-route pins fall back to the
+             name-only mini card and "Open" is unavailable. */}
           <RouteMap
             nodes={route.nodes}
             legs={route.legs}
@@ -157,6 +160,8 @@ export default function PublicRoutePage() {
             onAddNode={() => {}}
             passedNodeIds={new Set()}
             highlightNodeId={null}
+            poiById={{}}
+            onOpenPoi={() => {}}
           />
         </div>
         <div style={{ width: 380, flex: "none", overflowY: "auto", padding: 16, borderLeft: `1px solid ${theme.color.borderSubtle}`, background: theme.color.surface0 }}>
