@@ -58,7 +58,6 @@ const { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock, 
       setLngLat: vi.fn(() => popup),
       setText: vi.fn(() => popup),
       setDOMContent: vi.fn(() => popup),
-      setMaxWidth: vi.fn(() => popup),
       addTo: vi.fn(() => popup),
       remove: vi.fn(() => popup),
     };
@@ -165,5 +164,8 @@ describe("MapView", () => {
     handlers.load();
     handlers["click:unclustered"]?.({ features: [{ properties: { id: 1 } }] } as never);
     expect(onSelect).toHaveBeenCalledWith(1);
+    // The first-constructed Popup is the hoverPopup; clicking a marker must
+    // dismiss any transient hover popup left open from a preceding hover.
+    expect(PopupMock.mock.results[0].value.remove).toHaveBeenCalled();
   });
 });

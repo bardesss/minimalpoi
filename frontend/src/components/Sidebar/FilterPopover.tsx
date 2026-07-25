@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Eye, ArrowUpDown, SlidersHorizontal } from "lucide-react";
 import { ghostButtonStyle, theme } from "../../theme";
 import { useIsMobile } from "../../lib/useMediaQuery";
@@ -65,27 +65,46 @@ export default function FilterPopover({
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const active = visited !== "any";
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   // On mobile the pill still needs a ≥44px tap target height, held via
   // minHeight rather than vertical padding (mirrors ListToolbar's approach).
   const wrap = mobile ? { ...wrapStyle, padding: "2px 7px", minHeight: 44 } : wrapStyle;
 
+  // Move focus into the panel whenever it opens (mirrors ExportMenu's roving
+  // focus), so Escape/Tab handling on the panel actually receives keys.
+  useEffect(() => {
+    if (open) {
+      const first = panelRef.current?.querySelector<HTMLElement>("select,button,[tabindex]");
+      first?.focus();
+    }
+  }, [open]);
+
+  function close(returnFocus = true) {
+    setOpen(false);
+    if (returnFocus) triggerRef.current?.focus();
+  }
+
   function onPanelKeyDown(e: KeyboardEvent) {
     if (e.key === "Escape") {
       e.preventDefault();
-      setOpen(false);
+      close(true);
+    } else if (e.key === "Tab") {
+      close(false); // let focus move on naturally
     }
   }
 
   return (
     <div style={{ position: "relative" }}>
       <button
+        ref={triggerRef}
         type="button"
         className="hover-btn"
         aria-label="Filters"
         aria-haspopup="true"
         aria-expanded={open}
         data-active={active}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (open ? close(false) : setOpen(true))}
         style={{ ...ghostButtonStyle, position: "relative", padding: "6px 10px", minHeight: isMobile ? 44 : undefined, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
       >
         <SlidersHorizontal size={isMobile ? 18 : 15} />
@@ -98,8 +117,9 @@ export default function FilterPopover({
       </button>
       {open && (
         <>
-          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />
+          <div data-testid="filter-backdrop" onClick={() => close(false)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />
           <div
+            ref={panelRef}
             onKeyDown={onPanelKeyDown}
             style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 11, background: "#fff", border: `1px solid ${theme.color.borderCard}`, borderRadius: theme.radius.input, boxShadow: theme.shadow.modal, padding: 10, display: "flex", flexDirection: "column", gap: 8, minWidth: 200 }}
           >

@@ -67,6 +67,8 @@ export default function BottomSheet({
           justifyContent: "center",
           cursor: "grab",
           touchAction: "none",
+          userSelect: "none",
+          WebkitUserSelect: "none",
         }}
       >
         <div style={{ width: 40, height: 5, borderRadius: 999, background: theme.color.borderStd }} />

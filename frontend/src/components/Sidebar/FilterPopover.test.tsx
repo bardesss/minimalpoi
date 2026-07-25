@@ -27,4 +27,21 @@ describe("FilterPopover", () => {
     await userEvent.selectOptions(screen.getByLabelText(/sort places/i), "name");
     expect(onSortChange).toHaveBeenCalledWith("name");
   });
+
+  it("closes on Escape and returns focus to the trigger", async () => {
+    render(<FilterPopover {...base} />);
+    await userEvent.click(screen.getByRole("button", { name: /filters/i }));
+    expect(screen.getByLabelText(/sort places/i)).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByLabelText(/sort places/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /filters/i })).toHaveFocus();
+  });
+
+  it("closes when clicking the backdrop", async () => {
+    render(<FilterPopover {...base} />);
+    await userEvent.click(screen.getByRole("button", { name: /filters/i }));
+    expect(screen.getByLabelText(/sort places/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByTestId("filter-backdrop"));
+    expect(screen.queryByLabelText(/sort places/i)).not.toBeInTheDocument();
+  });
 });
