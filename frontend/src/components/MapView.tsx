@@ -5,6 +5,8 @@ import type { Category, MapSettings, Poi } from "../types/api";
 import { categoryColorExpression } from "../map/colorExpression";
 import { toFeatureCollection } from "../map/featureCollection";
 import { resolveMapStyle } from "../map/style";
+import { buildPoiMiniCard } from "./PoiMiniCard";
+import { theme } from "../theme";
 
 interface Props {
   pois: Poi[];
@@ -132,6 +134,7 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
     map.on("click", "unclustered", (e) => {
       const f = e.features?.[0];
       if (f) onSelectRef.current(Number((f.properties as { id: number }).id));
+      hoverPopup.remove();
     });
     map.on("click", "clusters", (e) => {
       const f = e.features?.[0];
@@ -151,10 +154,12 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
       onMoveEndRef.current?.({ lng: c.lng, lat: c.lat });
     });
 
-    // Hover affordance: pointer cursor on markers/clusters, plus a name tooltip on
-    // individual markers so you can tell dots apart without clicking. setText (not
-    // HTML) keeps user-supplied names safe from injection.
-    const hoverPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12 });
+    // Hover affordance: pointer cursor on markers/clusters, plus a mini info card
+    // (thumbnail, name, website) on individual markers so you get a preview
+    // without clicking. buildPoiMiniCard sets user strings via textContent /
+    // safe helpers (never innerHTML), so this stays safe from injection.
+    const catColor = (id: number | null) => categoriesRef.current.find((c) => c.id === id)?.color ?? theme.color.fallbackPin;
+    const hoverPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12, maxWidth: "220px" });
     for (const layer of ["unclustered", "clusters"]) {
       map.on("mouseenter", layer, () => { map.getCanvas().style.cursor = "pointer"; });
       map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; });
@@ -165,7 +170,8 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
       const id = Number((f.properties as { id: number }).id);
       const poi = poisRef.current.find((p) => p.id === id);
       if (!poi) return;
-      hoverPopup.setLngLat([poi.lng, poi.lat]).setText(poi.name).addTo(map);
+      const card = buildPoiMiniCard({ poi, color: catColor(poi.category_id), pinned: false });
+      hoverPopup.setLngLat([poi.lng, poi.lat]).setDOMContent(card).addTo(map);
     });
     map.on("mouseleave", "unclustered", () => { hoverPopup.remove(); });
 

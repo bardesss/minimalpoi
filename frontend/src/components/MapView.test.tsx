@@ -11,7 +11,7 @@ import type { Category, MapSettings, Poi } from "../types/api";
 // mock objects as plain consts here would throw "Cannot access before
 // initialization" when the factory runs.
 const { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock, geolocateHandlers } = vi.hoisted(() => {
-  const handlers: Record<string, () => void> = {};
+  const handlers: Record<string, (e?: unknown) => void> = {};
   const geolocateHandlers: Record<string, (e: unknown) => void> = {};
   // Model MapLibre faithfully: the "pois" source does not exist until the
   // async "load" handler calls addSource, so getSource returns undefined
@@ -57,6 +57,8 @@ const { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock, 
     const popup = {
       setLngLat: vi.fn(() => popup),
       setText: vi.fn(() => popup),
+      setDOMContent: vi.fn(() => popup),
+      setMaxWidth: vi.fn(() => popup),
       addTo: vi.fn(() => popup),
       remove: vi.fn(() => popup),
     };
@@ -142,5 +144,26 @@ describe("MapView", () => {
     render(<MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={() => {}} onMapClick={() => {}} addMode={false} visitedPoiIds={new Set()} mapRef={mapRef} onUserLocate={onUserLocate} />);
     geolocateHandlers.geolocate({ coords: { longitude: 4.9, latitude: 52.37 } });
     expect(onUserLocate).toHaveBeenCalledWith({ lng: 4.9, lat: 52.37 });
+  });
+
+  it("opens a mini-card popup on marker hover", () => {
+    const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+    render(<MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={() => {}} onMapClick={() => {}} addMode={false} visitedPoiIds={new Set()} mapRef={mapRef} />);
+    handlers.load();
+    const move = handlers["mousemove:unclustered"];
+    expect(move).toBeTypeOf("function");
+    move?.({ features: [{ properties: { id: 1 } }] } as never);
+    const popup = PopupMock.mock.results[0].value;
+    expect(popup.setDOMContent).toHaveBeenCalled();
+    expect(popup.addTo).toHaveBeenCalled();
+  });
+
+  it("selects the poi when a marker is clicked", () => {
+    const onSelect = vi.fn();
+    const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+    render(<MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={onSelect} onMapClick={() => {}} addMode={false} visitedPoiIds={new Set()} mapRef={mapRef} />);
+    handlers.load();
+    handlers["click:unclustered"]?.({ features: [{ properties: { id: 1 } }] } as never);
+    expect(onSelect).toHaveBeenCalledWith(1);
   });
 });
