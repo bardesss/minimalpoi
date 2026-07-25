@@ -152,6 +152,14 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   // The itinerary-hover mini card (Task 4): a single reused popup instance,
   // shown/hidden as highlightNodeId changes.
   const hoverCardRef = useRef<maplibregl.Popup | null>(null);
+  // The currently-open PINNED card (nearby dot or on-route pin click), if any.
+  // A ref (not a plain closure variable) because both the once-only init
+  // effect's click/hover handlers AND the separate highlightNodeId effect
+  // need to read/suppress against it — only one card (pinned or transient) is
+  // ever shown at a time. Nulled by each pinned popup's own "close" listener,
+  // so it self-clears whether dismissed via the card's × button, a map click
+  // (MapLibre's default closeOnClick), or closeOpenCards().
+  const openPopupRef = useRef<maplibregl.Popup | null>(null);
   nodesRef.current = nodes;
   legsRef.current = legs;
   poisRef.current = pois;
@@ -230,10 +238,9 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
 
     // At most one pinned mini card open at a time — clicking a new dot/pin
     // closes whatever was open before (and any transient hover card).
-    let openPopup: maplibregl.Popup | null = null;
     const closeOpenCards = () => {
-      openPopup?.remove();
-      openPopup = null;
+      openPopupRef.current?.remove();
+      openPopupRef.current = null;
       routePointHoverPopup.remove();
       hoverCardRef.current?.remove();
     };
@@ -256,7 +263,10 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
         .setLngLat([poi.lng, poi.lat])
         .setDOMContent(el)
         .addTo(map);
-      openPopup = popup;
+      // Self-clears the ref on ANY dismissal path (× button, closeOpenCards(),
+      // or MapLibre's own closeOnClick) so hover suppression below can't stick.
+      popup.on("close", () => { if (openPopupRef.current === popup) openPopupRef.current = null; });
+      openPopupRef.current = popup;
     });
 
     // On-route pins: click opens a pinned card (Open only — it's already on the
@@ -289,10 +299,14 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
         .setLngLat([node.lng, node.lat])
         .setDOMContent(el)
         .addTo(map);
-      openPopup = popup;
+      popup.on("close", () => { if (openPopupRef.current === popup) openPopupRef.current = null; });
+      openPopupRef.current = popup;
     });
 
+    // Transient hover preview — suppressed while a pinned card is open so the
+    // two never show at once.
     map.on("mousemove", "route-points", (e) => {
+      if (openPopupRef.current) return;
       const f = e.features?.[0];
       if (!f) return;
       const id = Number((f.properties as { id: number }).id);
@@ -361,6 +375,12 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
     map.setFilter("route-point-highlight", ["==", ["get", "id"], highlightNodeId ?? -1]);
 
     if (highlightNodeId == null) {
+      hoverCardRef.current?.remove();
+      return;
+    }
+    if (openPopupRef.current) {
+      // A pinned card is already open — suppress the transient hover card so
+      // only one card is ever visible at a time.
       hoverCardRef.current?.remove();
       return;
     }
