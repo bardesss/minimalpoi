@@ -13,7 +13,7 @@ import { sortableCollision } from "../../lib/routeCollision";
 import { formatDayLabel } from "../../lib/formatDayLabel";
 import DayHeader from "./DayHeader";
 import { isDayPassed, todayIso } from "../../lib/dayState";
-import { dayWaypoints, googleMapsDirUrl } from "../../lib/routeNav";
+import { dayWaypoints } from "../../lib/routeNav";
 import NavigateDayModal from "./NavigateDayModal";
 import { useIsMobile } from "../../lib/useMediaQuery";
 
@@ -84,18 +84,10 @@ export default function RouteTimeline({ route, canEdit, onHoverNode, onInteracti
   const isExpanded = (dayKey: string) => overrides[dayKey] ?? !isDayPassed(dayKey, today);
   const toggleDay = (dayKey: string) => setOverrides((o) => ({ ...o, [dayKey]: !isExpanded(dayKey) }));
 
-  async function navigateDay(gi: number) {
-    const pts = dayWaypoints(dayGroups, gi);
-    if (pts.length === 0) return;
-    const label = formatDayLabel(dayGroups[gi].dayKey);
-    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-      try {
-        await navigator.share({ title: label, text: `${label}: ${pts.map((p) => p.name).join(" → ")}`, url: googleMapsDirUrl(pts) });
-      } catch {
-        /* user dismissed the share sheet */
-      }
-      return;
-    }
+  function navigateDay(gi: number) {
+    // Always open the per-day picker; the native OS share sheet is offered as a
+    // row inside the modal (so mobile keeps the full Maps/GPX/copy options).
+    if (dayWaypoints(dayGroups, gi).length === 0) return;
     setNavIndex(gi);
   }
 

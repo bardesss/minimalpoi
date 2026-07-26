@@ -223,15 +223,16 @@ describe("RouteTimeline navigate", () => {
     legs: [{ from_node_id: 1, to_node_id: 2, distance_m: 232000, duration_s: 16080, source: "estimate", geometry: null }],
   };
 
-  it("uses the OS share sheet with a Google Maps URL when available", async () => {
+  it("opens the per-day navigate picker even when the OS share sheet is available", async () => {
     const share = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { share });
     try {
       render(<RouteTimeline route={twoDay} canEdit={false} />);
       await userEvent.click(screen.getAllByRole("button", { name: /navigate/i })[0]);
-      expect(share).toHaveBeenCalledWith(
-        expect.objectContaining({ url: expect.stringContaining("google.com/maps/dir/") }),
-      );
+      // The picker modal opens rather than short-circuiting to the OS sheet;
+      // native share is now an option inside the modal, not fired on tap.
+      expect(screen.getByRole("button", { name: /open in google maps/i })).toBeInTheDocument();
+      expect(share).not.toHaveBeenCalled();
     } finally {
       delete (navigator as unknown as { share?: unknown }).share;
     }
