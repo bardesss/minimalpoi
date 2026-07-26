@@ -12,7 +12,7 @@ INIT = {"jsonrpc": "2.0", "id": 1, "method": "initialize",
                    "capabilities": {}, "clientInfo": {"name": "t", "version": "1"}}}
 
 
-def _token(client):
+def _token():
     with Session(db.engine) as s:
         u = User(username="alice", password_hash=hash_password("pw"))
         s.add(u); s.commit(); s.refresh(u)
@@ -28,7 +28,22 @@ def test_mcp_requires_token(client):
 
 
 def test_mcp_initialize_with_token(client):
-    token = _token(client)
+    token = _token()
     r = client.post("/api/mcp", json=INIT,
                     headers={**MCP_HEADERS, "Authorization": f"Bearer {token}"})
     assert r.status_code == 200
+
+
+def test_gate_validates_without_writing_last_used(client):
+    # A valid token passes the gate for `initialize`, but the gate is write-free:
+    # last_used_at stays None because no tool call (hence no get_current_user) ran.
+    token = _token()
+    r = client.post("/api/mcp", json=INIT,
+                    headers={**MCP_HEADERS, "Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    from app.apitokens import hash_api_token
+    from app.models import ApiToken
+    from sqlmodel import select
+    with Session(db.engine) as s:
+        row = s.exec(select(ApiToken).where(ApiToken.token_hash == hash_api_token(token))).first()
+        assert row is not None and row.last_used_at is None
