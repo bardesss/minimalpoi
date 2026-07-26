@@ -62,7 +62,7 @@ def _raise_for_tool(resp: httpx.Response) -> None:
 
 
 # Tools are registered in later tasks (import side effects).
-# TODO(Task 5): from . import mcp_tools_pois  # noqa: E402,F401
+from . import mcp_tools_pois  # noqa: E402,F401
 # TODO(Task 7): from . import mcp_tools_routes  # noqa: E402,F401
 
 
