@@ -3,6 +3,7 @@ import { createCategory, deleteCategory, getCategories, updateCategory } from ".
 import { checkDuplicate, createPoi, deletePoi, getPois, updatePoi } from "../api/pois";
 import { getFullSettings, getSettings, updateSettings } from "../api/settings";
 import { deleteTag, getTags, renameTag } from "../api/tags";
+import { createToken, getTokens, revokeToken } from "../api/tokens";
 import type { CategoryCreate, CategoryUpdate, CommentCreate, PoiCreate, PoiUpdate, SettingsUpdate, SyncResolve, UserCreate, UserUpdate, TeamCreate, VisitUpsert } from "../types/api";
 import { addComment, deleteComment, deleteVisit, getComments, getMyVisits, getVisits, updateComment, upsertVisit } from "../api/poiActions";
 import { getConflicts, getSyncStatus, resolveConflict, syncNow } from "../api/sync";
@@ -167,6 +168,26 @@ export function useDeleteTag() {
       qc.invalidateQueries({ queryKey: ["tags"] });
       qc.invalidateQueries({ queryKey: ["pois"] });
     },
+  });
+}
+
+export function useTokens() {
+  return useQuery({ queryKey: ["tokens"], queryFn: getTokens });
+}
+
+export function useCreateToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => createToken(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tokens"] }),
+  });
+}
+
+export function useRevokeToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => revokeToken(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tokens"] }),
   });
 }
 
