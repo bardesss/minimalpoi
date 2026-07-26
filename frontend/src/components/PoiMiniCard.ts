@@ -27,16 +27,21 @@ export interface PoiMiniCardOpts {
  *  set via textContent / safe helpers — never innerHTML. */
 export function buildPoiMiniCard(opts: PoiMiniCardOpts): HTMLElement {
   const { poi, color, pinned, onOpen, onClose, onAdd, bigTap } = opts;
-  const tint = tintFromColor(color);
   const root = document.createElement("div");
   root.style.cssText = `font-family:${theme.font.ui};width:200px;`;
 
-  // Thumbnail (safe image or category tint fallback).
+  // Thumbnail: only rendered when the place has a safe image. Imageless items —
+  // notably an unsaved route node, which has no photo and no category — render
+  // name-first with no empty image band. An unsafe image url is treated as no
+  // image (dropped, not injected).
   const img = safeImageCss(poi.image_url);
-  const thumb = document.createElement("div");
-  thumb.dataset.testid = "mini-thumb";
-  thumb.style.cssText = `height:96px;border-radius:${theme.radius.card};margin-bottom:8px;background:${img ? `center/cover no-repeat url("${img}"), ${tint}` : tint};`;
-  root.appendChild(thumb);
+  if (img) {
+    const tint = tintFromColor(color);
+    const thumb = document.createElement("div");
+    thumb.dataset.testid = "mini-thumb";
+    thumb.style.cssText = `height:96px;border-radius:${theme.radius.card};margin-bottom:8px;background:center/cover no-repeat url("${img}"), ${tint};`;
+    root.appendChild(thumb);
+  }
 
   if (pinned && onClose) {
     const close = document.createElement("button");

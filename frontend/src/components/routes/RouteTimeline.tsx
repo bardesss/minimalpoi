@@ -241,9 +241,9 @@ export default function RouteTimeline({ route, canEdit, onHoverNode, onInteracti
                   onNavigate={() => navigateDay(gi)}
                 />
                 {expanded && gi === 0 && startSlot && <div style={{ marginTop: 8 }}>{startSlot}</div>}
-                {group.nodes.length === 0 && (
+                {group.nodes.length === 0 && expanded && (
                   <EmptyDayDropZone id={`day:${gi}`} expanded={expanded}>
-                    {expanded && <p style={{ margin: 0, fontSize: 12.5, color: theme.color.textPlaceholder }}>No stops yet.</p>}
+                    <p style={{ margin: 0, fontSize: 12.5, color: theme.color.textPlaceholder }}>No stops yet.</p>
                   </EmptyDayDropZone>
                 )}
                 {expanded && group.nodes.map((n) => {

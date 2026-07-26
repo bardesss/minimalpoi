@@ -50,19 +50,21 @@ describe("buildPoiMiniCard", () => {
     el.remove();
   });
 
-  it("degrades to name-only when photo and website are absent", () => {
+  it("degrades to name-only (no image band) when photo and website are absent", () => {
     const el = buildPoiMiniCard({ poi: { ...base, website: null, image_url: null }, color: "#888", pinned: true });
     document.body.appendChild(el);
     const q = within(el);
     expect(q.getByText("Café Modern")).toBeInTheDocument();
     expect(q.queryByText("cafemodern.nl")).not.toBeInTheDocument();
+    expect(el.querySelector("[data-testid='mini-thumb']")).toBeNull();
     el.remove();
   });
 
-  it("neutralizes an unsafe image url (no url() injection)", () => {
+  it("drops the image band for an unsafe image url (no url() injection)", () => {
     const el = buildPoiMiniCard({ poi: { ...base, image_url: "https://x/a.jpg\") ;background:red" }, color: "#888", pinned: true });
-    const thumb = el.querySelector("[data-testid='mini-thumb']") as HTMLElement;
-    expect(thumb.style.backgroundImage).not.toContain("red");
+    // An unsafe url is treated as no image: the band is not rendered at all,
+    // so there is no url() token to break out of.
+    expect(el.querySelector("[data-testid='mini-thumb']")).toBeNull();
     el.remove();
   });
 

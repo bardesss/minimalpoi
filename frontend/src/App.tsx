@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { getSetupStatus } from "./api/auth";
 import { useAuth } from "./auth/AuthContext";
 import RequireAuth from "./auth/RequireAuth";
+import AppLoading from "./components/AppLoading";
 import AppShell from "./components/AppShell";
 import LoginPage from "./pages/LoginPage";
 import PublicRoutePage from "./pages/PublicRoutePage";
@@ -30,7 +31,7 @@ export default function App() {
     location.pathname !== "/setup" &&
     !location.pathname.startsWith("/s/")
   ) {
-    return <p>Loading…</p>;
+    return <AppLoading />;
   }
   // Only force first-run setup when no admin exists yet. An authenticated user
   // means setup is already done, so don't bounce them back to /setup even if the
