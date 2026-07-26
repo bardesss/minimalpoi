@@ -152,3 +152,52 @@ async def get_place_draft(place_id: str, ctx: Context) -> dict:
     """Fetch full Google Places details for a place_id (from search_places) as a draft.
     Requires a configured Google API key."""
     return await _get_place_draft(_bearer(ctx), place_id)
+
+
+async def _update_poi(auth: str, poi_id: int, fields: dict) -> dict:
+    async with _client(auth) as c:
+        r = await c.patch(f"/api/pois/{poi_id}", json=fields)
+        _raise_for_tool(r)
+        return r.json()
+
+
+async def _delete_poi(auth: str, poi_id: int) -> dict:
+    async with _client(auth) as c:
+        r = await c.delete(f"/api/pois/{poi_id}")
+        _raise_for_tool(r)
+        return {"deleted": poi_id}
+
+
+@mcp.tool()
+async def update_poi(
+    poi_id: int,
+    ctx: Context,
+    name: str | None = None,
+    address: str | None = None,
+    city: str | None = None,
+    country_code: str | None = None,
+    lat: float | None = None,
+    lng: float | None = None,
+    category_id: int | None = None,
+    tags: list[str] | None = None,
+    notes: str | None = None,
+    phone: str | None = None,
+    email: str | None = None,
+    website: str | None = None,
+    image_url: str | None = None,
+    source_url: str | None = None,
+) -> dict:
+    """Update fields of a place you created (admins: any place). Only the fields you pass change."""
+    fields = {k: v for k, v in {
+        "name": name, "address": address, "city": city, "country_code": country_code,
+        "lat": lat, "lng": lng, "category_id": category_id, "tags": tags, "notes": notes,
+        "phone": phone, "email": email, "website": website, "image_url": image_url,
+        "source_url": source_url,
+    }.items() if v is not None}
+    return await _update_poi(_bearer(ctx), poi_id, fields)
+
+
+@mcp.tool()
+async def delete_poi(poi_id: int, ctx: Context) -> dict:
+    """Delete a place you created (admins: any place). This is immediate and permanent."""
+    return await _delete_poi(_bearer(ctx), poi_id)
