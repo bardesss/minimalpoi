@@ -201,3 +201,70 @@ async def update_poi(
 async def delete_poi(poi_id: int, ctx: Context) -> dict:
     """Delete a place you created (admins: any place). This is immediate and permanent."""
     return await _delete_poi(_bearer(ctx), poi_id)
+
+
+async def _set_visit(auth: str, poi_id: int, fields: dict) -> dict:
+    async with _client(auth) as c:
+        r = await c.put(f"/api/pois/{poi_id}/visit", json=fields)
+        _raise_for_tool(r)
+        return r.json()
+
+
+async def _delete_visit(auth: str, poi_id: int) -> dict:
+    async with _client(auth) as c:
+        r = await c.delete(f"/api/pois/{poi_id}/visit")
+        _raise_for_tool(r)
+        return {"deleted_visit": poi_id}
+
+
+async def _add_comment(auth: str, poi_id: int, text: str) -> dict:
+    async with _client(auth) as c:
+        r = await c.post(f"/api/pois/{poi_id}/comments", json={"text": text})
+        _raise_for_tool(r)
+        return r.json()
+
+
+async def _update_comment(auth: str, poi_id: int, comment_id: int, text: str) -> dict:
+    async with _client(auth) as c:
+        r = await c.patch(f"/api/pois/{poi_id}/comments/{comment_id}", json={"text": text})
+        _raise_for_tool(r)
+        return r.json()
+
+
+async def _delete_comment(auth: str, poi_id: int, comment_id: int) -> dict:
+    async with _client(auth) as c:
+        r = await c.delete(f"/api/pois/{poi_id}/comments/{comment_id}")
+        _raise_for_tool(r)
+        return {"deleted_comment": comment_id}
+
+
+@mcp.tool()
+async def set_visit(poi_id: int, ctx: Context, rating: int | None = None,
+                    team_id: int | None = None) -> dict:
+    """Mark a place visited by you and optionally set a 1-5 star rating (upsert)."""
+    fields = {k: v for k, v in {"rating": rating, "team_id": team_id}.items() if v is not None}
+    return await _set_visit(_bearer(ctx), poi_id, fields)
+
+
+@mcp.tool()
+async def delete_visit(poi_id: int, ctx: Context) -> dict:
+    """Remove your visit (and rating) for a place."""
+    return await _delete_visit(_bearer(ctx), poi_id)
+
+
+@mcp.tool()
+async def add_comment(poi_id: int, text: str, ctx: Context) -> dict:
+    """Add a comment to a place, attributed to you."""
+    return await _add_comment(_bearer(ctx), poi_id, text)
+
+
+@mcp.tool()
+async def update_comment(poi_id: int, comment_id: int, text: str, ctx: Context) -> dict:
+    """Edit one of your comments (admins: any)."""
+    return await _update_comment(_bearer(ctx), poi_id, comment_id, text)
+
+
+@mcp.tool()
+async def delete_comment(poi_id: int, comment_id: int, ctx: Context) -> dict:
+    """Delete one of your comments (admins: any)."""
+    return await _delete_comment(_bearer(ctx), poi_id, comment_id)
