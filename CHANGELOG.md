@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.5.0](https://github.com/Bardesss/minimalpoi/compare/v3.4.0...v3.5.0) (2026-07-26)
+
+
+### Features
+
+* **ui:** branded startup splash instead of bare Loading text ([bc7adf6](https://github.com/Bardesss/minimalpoi/commit/bc7adf6dddfd1517f1d09b42730d510590c7d126))
+
+
+### Bug Fixes
+
+* **map:** hide the empty image band on imageless place popups ([b00278a](https://github.com/Bardesss/minimalpoi/commit/b00278a4c93fe54be4c8420cd7e0e457e66549c6))
+* **routes:** equalize collapsed day-card height ([7d034bf](https://github.com/Bardesss/minimalpoi/commit/7d034bfbab522eaf247947d1bcaa73de08bdc38d))
+* startup splash + imageless card / day-card polish ([16434a5](https://github.com/Bardesss/minimalpoi/commit/16434a5420b1dfc00886af9d1cb261de6cb6d5cb))
+
 ## [3.4.0](https://github.com/Bardesss/minimalpoi/compare/v3.3.0...v3.4.0) (2026-07-25)
 
 
