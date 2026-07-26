@@ -33,6 +33,31 @@ describe("NavigateDayModal", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it("shows a Share button and invokes the OS share sheet when available", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { share });
+    try {
+      const onClose = vi.fn();
+      render(<NavigateDayModal dayLabel="THU 16 JUL" waypoints={waypoints} onClose={onClose} />);
+      await userEvent.click(screen.getByRole("button", { name: /share/i }));
+      expect(share).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "THU 16 JUL",
+          url: expect.stringContaining("google.com/maps/dir/"),
+        }),
+      );
+      expect(onClose).toHaveBeenCalledOnce();
+    } finally {
+      delete (navigator as unknown as { share?: unknown }).share;
+    }
+  });
+
+  it("hides the Share button when the OS share sheet is unavailable", () => {
+    delete (navigator as unknown as { share?: unknown }).share;
+    render(<NavigateDayModal dayLabel="THU 16 JUL" waypoints={waypoints} onClose={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /share/i })).toBeNull();
+  });
+
   it("closes when the backdrop is clicked", async () => {
     const onClose = vi.fn();
     render(<NavigateDayModal dayLabel="THU 16 JUL" waypoints={waypoints} onClose={onClose} />);

@@ -38,6 +38,23 @@ export default function NavigateDayModal({ dayLabel, waypoints, onClose }: {
     onClose();
   }
 
+  // Offer the native OS share sheet when the browser supports it (mobile). It
+  // shares a Google Maps directions link for the day's stops.
+  const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+
+  async function shareOs() {
+    try {
+      await navigator.share({
+        title: dayLabel,
+        text: `${dayLabel}: ${waypoints.map((w) => w.name).join(" → ")}`,
+        url: googleMapsDirUrl(waypoints),
+      });
+    } catch {
+      /* user dismissed the share sheet */
+    }
+    onClose();
+  }
+
   const rowStyle = { ...ghostButtonStyle, width: "100%", textAlign: "left" as const, marginBottom: 8 };
 
   // Portalled to <body> so `position: fixed` resolves against the viewport.
@@ -61,6 +78,9 @@ export default function NavigateDayModal({ dayLabel, waypoints, onClose }: {
           </strong>
           <button type="button" aria-label="Close" onClick={onClose} style={{ width: 28, height: 28, borderRadius: theme.radius.icon, border: "none", background: theme.color.surface1, color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
         </div>
+        {canShare && (
+          <button type="button" style={rowStyle} onClick={shareOs}>Share…</button>
+        )}
         <button type="button" style={rowStyle} onClick={() => openUrl(googleMapsDirUrl(waypoints))}>Open in Google Maps</button>
         <button type="button" style={rowStyle} onClick={() => openUrl(appleMapsUrl(waypoints))}>Open in Apple Maps <span style={{ color: theme.color.textPlaceholder, fontWeight: 400 }}>· single stop</span></button>
         <button type="button" style={rowStyle} onClick={downloadGpx}>Download GPX</button>
