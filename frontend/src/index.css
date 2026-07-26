@@ -31,6 +31,18 @@ body {
 
 @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
+@keyframes spin { to { transform: rotate(360deg); } }
+/* Startup splash spinner (AppLoading). The global prefers-reduced-motion rule
+   above collapses the animation to a near-static ring. */
+.app-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid #e7e5e1;
+  border-top-color: #4f46e5;
+  animation: spin .7s linear infinite;
+}
+
 .maplibregl-map { background: #eef1f4; font-family: 'Manrope', sans-serif; }
 .maplibregl-ctrl-group { border-radius: 8px !important; border: none; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.14); }
 .maplibregl-ctrl-group button { width: 30px; height: 30px; }
