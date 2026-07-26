@@ -16,6 +16,7 @@ dependencies = [
     "pillow>=11",
     "phonenumbers>=8.13",
     "slowapi>=0.1.9",
+    "mcp>=1.12",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +24,13 @@ dev = [
     "pytest>=8.3",
     "anyio>=4",
 ]
+
+[tool.setuptools]
+# Scope package discovery to the actual source package. Without this,
+# setuptools' flat-layout auto-discovery trips over the gitignored runtime
+# `data/` directory (created on first run: sqlite db, secret key, images) and
+# refuses to build ("Multiple top-level packages discovered: ['app', 'data']").
+packages = ["app"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
@@ -42,4 +50,17 @@ filterwarnings = [
     # time. Harmless on the supported Python 3.12 (where it isn't deprecated);
     # this narrow ignore keeps the suite green on newer interpreters too.
     "ignore:'asyncio\\.iscoroutinefunction' is deprecated:DeprecationWarning",
+    # The `mcp` SDK's stateless streamable-HTTP transport spawns a per-request
+    # task holding an anyio memory-object stream pair (see
+    # StreamableHTTPSessionManager._handle_stateless_request). Our test suite
+    # opens a fresh app lifespan per test (see tests/conftest.py `client`), so
+    # that task gets cancelled the moment the test's TestClient exits rather
+    # than unwinding on its own schedule; the stream is then only closed by
+    # the garbage collector, which raises this ResourceWarning as an
+    # "unraisable exception" well after the owning test has already passed.
+    # Confirmed via isolated runs that this fires only on requests that
+    # actually reach the mounted MCP transport (tests/test_mcp_transport.py),
+    # never from application code — it's an artifact of cancelling the SDK's
+    # background task mid-flight, not a leak in MinimalPOI's own code.
+    "ignore:Exception ignored while calling deallocator <function MemoryObjectReceiveStream\\.__del__:pytest.PytestUnraisableExceptionWarning",
 ]
