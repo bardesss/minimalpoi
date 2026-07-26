@@ -197,6 +197,25 @@ uvicorn with `--workers > 1` (in-memory update fan-out is per-process). Scaling
 to multiple workers would require an external pub/sub (e.g. Redis), which is not
 included.
 
+### 🤖 MCP / AI access
+
+MinimalPOI runs an [MCP](https://modelcontextprotocol.io) server so AI clients
+(like Claude Desktop or Code) can read and create places and routes programmatically.
+
+**Setup:**
+- Create an API token in **Settings → API access → Create token** (any logged-in user). Copy it immediately — it's shown once and can't be retrieved later; revoke it anytime if needed.
+- Configure your MCP client with:
+  - **Transport:** Streamable HTTP
+  - **URL:** `https://<your-host>/api/mcp`
+  - **Header:** `Authorization: Bearer <token>`
+
+**v1 capabilities:**
+- **Places (POIs):** list, get, create, and duplicate-check; enrich a Google Maps or website URL into a draft place; search Google Places by name (requires a configured Google API key).
+- **Routes:** list, get, create, and add stops/stays (requires the admin-enabled Route module).
+- **Reference data:** read-only categories and tags.
+
+No destructive operations (update, delete) are available in v1.
+
 ---
 
 ## 🔄 Releases
