@@ -13,6 +13,7 @@ from .enrich.images import images_dir
 from .ratelimit import limiter
 from .routing.events import RouteEventHub
 from .routers import auth, backup, categories, comments, enrich, images, me, places, pois, public, routes, settings, tags, teams, users, version, visits
+from .routers import api_tokens as api_tokens_module
 from .routers import sync as sync_router_module
 from .trip.service import start_worker, stop_worker
 
@@ -48,6 +49,7 @@ app.include_router(categories.router)
 app.include_router(pois.router)
 app.include_router(visits.router)
 app.include_router(me.router)
+app.include_router(api_tokens_module.router)
 app.include_router(backup.router)
 app.include_router(comments.router)
 app.include_router(settings.router)

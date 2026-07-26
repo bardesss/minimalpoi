@@ -72,6 +72,23 @@ class UserUpdate(SQLModel):
     disabled: bool | None = None
 
 
+class ApiTokenCreate(SQLModel):
+    name: str
+
+
+class ApiTokenRead(SQLModel):
+    id: int
+    name: str
+    prefix: str
+    created_at: datetime
+    last_used_at: datetime | None = None
+
+
+class ApiTokenCreated(ApiTokenRead):
+    # The full plaintext token — returned exactly once, at creation.
+    token: str
+
+
 class TeamCreate(SQLModel):
     name: str
     member_ids: list[int] = []
