@@ -261,7 +261,7 @@ included.
 ### 🤖 MCP / AI access
 
 MinimalPOI runs an [MCP](https://modelcontextprotocol.io) server so AI clients
-(like Claude Desktop or Code) can read and create places and routes programmatically.
+(like Claude Desktop or Code) can read and manage places and routes programmatically.
 
 **Setup:**
 - Create an API token in **Settings → API access → Create token** (any logged-in user). Copy it immediately — it's shown once and can't be retrieved later; revoke it anytime if needed.
@@ -288,8 +288,6 @@ Versioning and image publishing are automated:
 1. Changes land on `main` using [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, …).
 2. [release-please](https://github.com/googleapis/release-please) maintains a **release PR** that bumps the version and updates [`CHANGELOG.md`](CHANGELOG.md).
 3. Merging that PR tags the release and publishes a multi-arch image to `ghcr.io/bardesss/minimalpoi` (tags `X.Y.Z`, `X.Y`, `X`, and `latest`).
-
-> 🔓 **One-time:** after the first release, set the GHCR package to **public** (GitHub → Packages → minimalpoi → Package settings) so the image pulls without authentication.
 
 ---
 
