@@ -1,5 +1,25 @@
 # Changelog
 
+## [3.8.0](https://github.com/Bardesss/minimalpoi/compare/v3.7.0...v3.8.0) (2026-07-26)
+
+
+### Features
+
+* **mcp:** add POI update and delete tools ([916fce8](https://github.com/Bardesss/minimalpoi/commit/916fce8154cbab2e553eb725c0000c0485981d31))
+* **mcp:** add route and node update/delete/reorder tools ([989e5c7](https://github.com/Bardesss/minimalpoi/commit/989e5c7d502624a0a070315db543e7389780441a))
+* **mcp:** add visit/rating and comment tools ([4791264](https://github.com/Bardesss/minimalpoi/commit/479126429b8b9ea60622b724ccfdcb2e98cd1cb8))
+* **mcp:** MCP v2 — write tools (update/delete, visits, comments) + auth-gate hardening ([fbb5f5b](https://github.com/Bardesss/minimalpoi/commit/fbb5f5b6c8fa66f08edaf24c4f27e3666e448139))
+
+
+### Bug Fixes
+
+* **mcp:** correct update_comment/README docs and add negative authz tests ([3c9c519](https://github.com/Bardesss/minimalpoi/commit/3c9c519eb25ca33dcb7759ec7e05874ecf6ad22e))
+
+
+### Performance Improvements
+
+* **mcp:** run the auth-gate token check on a worker thread ([25b8a26](https://github.com/Bardesss/minimalpoi/commit/25b8a26996d6cff26b3d2a4ac6e2e1dd49e945ed))
+
 ## [3.7.0](https://github.com/Bardesss/minimalpoi/compare/v3.6.0...v3.7.0) (2026-07-26)
 
 
