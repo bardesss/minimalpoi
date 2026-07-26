@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.7.0](https://github.com/Bardesss/minimalpoi/compare/v3.6.0...v3.7.0) (2026-07-26)
+
+
+### Features
+
+* **ui:** add TagInput chip component with existing-tag autocomplete ([ffaaf08](https://github.com/Bardesss/minimalpoi/commit/ffaaf08433cbab5c30c522120f5bb33bd12267dc))
+* **ui:** tag autocomplete (chip input) in the POI form ([dc5a303](https://github.com/Bardesss/minimalpoi/commit/dc5a303c0e083180828caf970f5c5cabf4908e78))
+* **ui:** use the tag autocomplete input in the POI form ([6bda104](https://github.com/Bardesss/minimalpoi/commit/6bda1043ab5ad3a1af626a71d56ab21ed5b93da6))
+
 ## [3.6.0](https://github.com/Bardesss/minimalpoi/compare/v3.5.1...v3.6.0) (2026-07-26)
 
 
