@@ -10,9 +10,12 @@ from slowapi.errors import RateLimitExceeded
 
 from . import db
 from .enrich.images import images_dir
+from .mcp_auth import BearerAuthMiddleware
+from .mcp_server import mcp_app, run_mcp_session
 from .ratelimit import limiter
 from .routing.events import RouteEventHub
 from .routers import auth, backup, categories, comments, enrich, images, me, places, pois, public, routes, settings, tags, teams, users, version, visits
+from .routers import api_tokens as api_tokens_module
 from .routers import sync as sync_router_module
 from .trip.service import start_worker, stop_worker
 
@@ -27,7 +30,8 @@ async def lifespan(app: FastAPI):
     app.state.route_hub = RouteEventHub()
     start_worker(app)
     try:
-        yield
+        async with run_mcp_session():
+            yield
     finally:
         stop_worker(app)
         task = getattr(app.state, "sync_worker", None)
@@ -48,6 +52,7 @@ app.include_router(categories.router)
 app.include_router(pois.router)
 app.include_router(visits.router)
 app.include_router(me.router)
+app.include_router(api_tokens_module.router)
 app.include_router(backup.router)
 app.include_router(comments.router)
 app.include_router(settings.router)
@@ -60,6 +65,19 @@ app.include_router(public.router)
 app.include_router(sync_router_module.router)
 app.include_router(version.router)
 app.mount("/images", StaticFiles(directory=str(images_dir())), name="images")
+# An exact Route (not `app.mount`) on purpose: Starlette's `Mount` only ever
+# matches a request whose path is the mount prefix *plus a trailing slash*
+# (its path_regex is `^/api/mcp/(?P<path>.*)$`), so a client POSTing to the
+# literal `/api/mcp` (no trailing slash - what every MCP client actually
+# does) would fail to match the mount. Normally Starlette's redirect_slashes
+# would paper over that with a 307, but the SPA catch-all route below already
+# matches every path (it only registers GET), so it wins the request first as
+# a same-path/wrong-method PARTIAL match, short-circuiting the redirect and
+# yielding a bare 405 instead. Registering an exact-path Route (methods=None
+# so every HTTP method is accepted) sidesteps trailing-slash matching
+# entirely: the streamable-HTTP transport has a single logical endpoint here
+# (no sub-paths), so a Mount's prefix semantics add nothing.
+app.add_route("/api/mcp", BearerAuthMiddleware(mcp_app), methods=None)
 
 
 @app.get("/api/health")

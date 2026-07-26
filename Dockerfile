@@ -48,7 +48,8 @@ RUN pip install --no-cache-dir \
     "httpx>=0.27" \
     "pillow>=11" \
     "phonenumbers>=8.13" \
-    "slowapi>=0.1.9"
+    "slowapi>=0.1.9" \
+    "mcp>=1.12,<2"
 
 # Copy backend source
 COPY backend/ /app/backend/

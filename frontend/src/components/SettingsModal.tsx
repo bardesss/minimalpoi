@@ -5,6 +5,7 @@ import { useIsMobile } from "../lib/useMediaQuery";
 import { useDialog } from "../lib/useDialog";
 import { useFullSettings } from "../queries/hooks";
 import AboutSection from "./settings/AboutSection";
+import ApiTokensSection from "./settings/ApiTokensSection";
 import CategoriesSection from "./settings/CategoriesSection";
 import ConnectionsSection from "./settings/ConnectionsSection";
 import DataSection from "./settings/DataSection";
@@ -34,6 +35,7 @@ const SECTIONS: SectionDef[] = [
   { key: "categories", label: "Categories", adminOnly: false, Component: CategoriesSection },
   { key: "tags", label: "Tags", adminOnly: false, Component: TagsSection },
   { key: "data", label: "Data & backups", adminOnly: false, Component: DataSection },
+  { key: "apitokens", label: "API access", adminOnly: false, Component: ApiTokensSection },
   { key: "about", label: "About", adminOnly: false, Component: AboutSection },
 ];
 
