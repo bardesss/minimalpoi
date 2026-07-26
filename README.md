@@ -6,6 +6,25 @@ Drop a pin or paste a link to auto-fill the details, rate the spots you've been,
 
 ![License](https://img.shields.io/badge/license-MIT-blue) ![Container](https://img.shields.io/badge/image-ghcr.io-2496ED?logo=docker&logoColor=white) ![Backend](https://img.shields.io/badge/FastAPI-Python%203.12-009688?logo=fastapi&logoColor=white) ![Frontend](https://img.shields.io/badge/React%20%2B%20Vite-MapLibre-61DAFB?logo=react&logoColor=black)
 
+**Collect** the places worth remembering, **rate** the ones you've been, and **route** them into a trip — one map, one team, one container you own end to end.
+
+---
+
+## Contents
+
+- [✨ Features](#-features)
+- [🚀 Deploy](#-deploy)
+  - [Option A — Docker](#option-a--docker-recommended) · [Option B — docker compose](#option-b--docker-compose) · [Option C — Podman](#option-c--podman)
+  - [Other platforms](#other-platforms) · [Unraid](#unraid)
+  - [⚙️ Configuration](#-configuration)
+  - [Behind a reverse proxy](#behind-a-reverse-proxy)
+  - [Live route collaboration](#live-route-collaboration)
+  - [🤖 MCP / AI access](#-mcp--ai-access)
+- [🔄 Releases](#-releases)
+- [🛠️ Development](#-development)
+- [🧰 Tech stack](#-tech-stack)
+- [📄 License](#-license)
+
 ---
 
 ## ✨ Features
@@ -80,13 +99,55 @@ docker run -d \
 docker compose up -d
 ```
 
+### Option C — Podman
+
+The image is a standard OCI container, so every `docker` command above works
+verbatim with `podman` — just swap the binary:
+
+```bash
+podman run -d \
+  --name minimalpoi \
+  -p 7676:7676 \
+  -v minimalpoi-data:/data \
+  --restart unless-stopped \
+  ghcr.io/bardesss/minimalpoi:latest
+```
+
+`podman-compose up -d` runs the bundled `docker-compose.yml` too. For a
+rootless Podman setup, set `PUID`/`PGID` to your own uid/gid (`id -u` / `id -g`)
+so the `/data` volume stays writable.
+
 Then open **http://localhost:7676** and create your admin account on the first-run setup screen. 🎉
 
-> 💡 **Pin a version** instead of `latest` for reproducible deploys, e.g. `ghcr.io/bardesss/minimalpoi:1.0`.
+> 💡 **Pin a version** instead of `latest` for reproducible deploys, e.g. `ghcr.io/bardesss/minimalpoi:3.8`.
 
-> ⚠️ **No published image yet?** Until the first release is cut and its GHCR package is made public, build from source instead: in `docker-compose.yml` comment the `image:` line and uncomment `build: .`, then run `docker compose up -d --build`.
+> 🔐 **Permissions & upgrades.** The container fixes `/data` ownership on startup, so upgrades and bind-mounts work with no manual steps. Set `PUID`/`PGID` (e.g. `1000`) to match your host user for bind-mounts.
 
-> 🔐 **Permissions & upgrades.** The container fixes `/data` ownership on startup, so upgrades and bind-mounts work with no manual steps. Set `PUID`/`PGID` (e.g. `1000`) to match your host user for bind-mounts. *(This auto-fix needs **1.0.1+**. On exactly **1.0.0**, `PUID`/`PGID` are ignored and that image runs as uid `10001`; if you're stuck there, run once: `docker run --rm -v minimalpoi-data:/data alpine chown -R 10001:10001 /data`, then restart — or just upgrade to 1.0.1+.)*
+### Other platforms
+
+MinimalPOI is a single container with one `/data` volume, so it drops into any
+container manager without special handling.
+
+- **Portainer** — create a **Stack**, paste this repo's [`docker-compose.yml`](docker-compose.yml)
+  into the web editor, and deploy. Or add a standalone container using image
+  `ghcr.io/bardesss/minimalpoi:latest`, publish port `7676`, and mount a volume
+  at `/data`.
+- **Coolify / Dokploy / CapRover** — add a new service from the Docker image
+  `ghcr.io/bardesss/minimalpoi:latest`, expose port `7676`, and attach a
+  persistent volume at `/data`. Set `TRUST_PROXY=1` since these platforms put a
+  reverse proxy in front (see [Behind a reverse proxy](#behind-a-reverse-proxy)).
+- **Synology / QNAP / TrueNAS SCALE** — in Container Manager / Container Station,
+  pull `ghcr.io/bardesss/minimalpoi:latest`, map host port `7676` → container
+  `7676`, and bind a folder to `/data`.
+
+### Unraid
+
+Add MinimalPOI as a custom container template. In **Docker → Add Container**,
+set **Template repositories** (or just fill the fields manually) using
+[`deploy/unraid-template.xml`](deploy/unraid-template.xml) from this repo — it
+pre-configures the `7676` web UI port, a `/data` appdata path, and Unraid's
+default `PUID=99` / `PGID=100`. After it starts, click the container's WebUI to
+reach the first-run setup screen.
 
 ### ⚙️ Configuration
 
@@ -200,7 +261,7 @@ included.
 ### 🤖 MCP / AI access
 
 MinimalPOI runs an [MCP](https://modelcontextprotocol.io) server so AI clients
-(like Claude Desktop or Code) can read and create places and routes programmatically.
+(like Claude Desktop or Code) can read and manage places and routes programmatically.
 
 **Setup:**
 - Create an API token in **Settings → API access → Create token** (any logged-in user). Copy it immediately — it's shown once and can't be retrieved later; revoke it anytime if needed.
@@ -227,8 +288,6 @@ Versioning and image publishing are automated:
 1. Changes land on `main` using [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, …).
 2. [release-please](https://github.com/googleapis/release-please) maintains a **release PR** that bumps the version and updates [`CHANGELOG.md`](CHANGELOG.md).
 3. Merging that PR tags the release and publishes a multi-arch image to `ghcr.io/bardesss/minimalpoi` (tags `X.Y.Z`, `X.Y`, `X`, and `latest`).
-
-> 🔓 **One-time:** after the first release, set the GHCR package to **public** (GitHub → Packages → minimalpoi → Package settings) so the image pulls without authentication.
 
 ---
 
