@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.6.0](https://github.com/Bardesss/minimalpoi/compare/v3.5.1...v3.6.0) (2026-07-26)
+
+
+### Features
+
+* **mcp:** add POI create, enrich, and Google Places tools ([52ad4b3](https://github.com/Bardesss/minimalpoi/commit/52ad4b31847383dbdfee608adb7d5052e9889f2f))
+* **mcp:** add POI read and reference tools ([90b4cb4](https://github.com/Bardesss/minimalpoi/commit/90b4cb43124ad2e6ad023fa2aa698e769ae1946f))
+* **mcp:** add route read and create tools ([740fadb](https://github.com/Bardesss/minimalpoi/commit/740fadb9a94f1f4ca5b76c16d33c6173ddacca24))
+* **mcp:** MCP server with per-user API tokens for reading & creating POIs and routes ([3cd8283](https://github.com/Bardesss/minimalpoi/commit/3cd8283d89f44aa3f8a54672874f66ea29f1aa65))
+* **ui:** add API access settings section ([c616306](https://github.com/Bardesss/minimalpoi/commit/c61630678239c07d5ae9c145d3a7a855c09a9356))
+
+
+### Bug Fixes
+
+* **mcp:** cap mcp version, make bearer gate write-free, add e2e tool-call test ([03cfe5e](https://github.com/Bardesss/minimalpoi/commit/03cfe5ed42d9b3565d6ebbfc13a1fd47ba4502d2))
+
 ## [3.5.1](https://github.com/Bardesss/minimalpoi/compare/v3.5.0...v3.5.1) (2026-07-26)
 
 
