@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
-import { useCategories, useCreatePoi, useDeletePoi, useEnrich, useMyVisits, usePlaceDraft, usePois, useSearchPlaces, useSettings, useUpdatePoi, useUploadImage, useCheckDuplicate, useVersion } from "../queries/hooks";
+import { useCategories, useCreatePoi, useDeletePoi, useEnrich, useMyVisits, usePlaceDraft, usePois, useSearchPlaces, useSettings, useTags, useUpdatePoi, useUploadImage, useCheckDuplicate, useVersion } from "../queries/hooks";
 import { filterPois, UNCATEGORIZED_ID } from "../lib/filterPois";
 import type { Category, Poi, PoiCreate, VisitedFilter } from "../types/api";
 import { boundsOf } from "../map/bounds";
@@ -26,6 +26,7 @@ export default function AppShell() {
   const isMobile = useIsMobile();
   const poisQuery = usePois();
   const categoriesQuery = useCategories();
+  const tagsQuery = useTags();
   const settingsQuery = useSettings();
   const myVisitsQuery = useMyVisits();
 
@@ -307,6 +308,7 @@ export default function AppShell() {
           mode={formState.mode}
           initial={formState.initial}
           categories={categories}
+          tagSuggestions={tagsQuery.data ?? []}
           coords={addCoords}
           getMapCenter={() => {
             const c = mapRef.current?.getCenter();
