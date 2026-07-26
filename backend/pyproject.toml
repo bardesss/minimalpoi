@@ -59,8 +59,17 @@ filterwarnings = [
     # the garbage collector, which raises this ResourceWarning as an
     # "unraisable exception" well after the owning test has already passed.
     # Confirmed via isolated runs that this fires only on requests that
-    # actually reach the mounted MCP transport (tests/test_mcp_transport.py),
-    # never from application code — it's an artifact of cancelling the SDK's
-    # background task mid-flight, not a leak in MinimalPOI's own code.
-    "ignore:Exception ignored while calling deallocator <function MemoryObjectReceiveStream\\.__del__:pytest.PytestUnraisableExceptionWarning",
+    # actually reach the mounted MCP transport (tests/test_mcp_transport.py,
+    # tests/test_mcp_tool_call.py), never from application code — it's an
+    # artifact of cancelling the SDK's background task mid-flight, not a leak
+    # in MinimalPOI's own code.
+    #
+    # The message prefix is phrasing-independent on purpose: pytest formats the
+    # unraisable as "Exception ignored while calling deallocator <...>" on some
+    # versions and "Exception ignored in: <...>" on others, so we anchor on the
+    # foreign `MemoryObjectReceiveStream.__del__` deallocator itself rather than
+    # the prefix (the `:` in "in:" also can't appear in a filterwarnings message
+    # field). Still scoped to this one SDK stream — not a blanket unraisable
+    # ignore — so real resource leaks elsewhere still fail the suite.
+    "ignore:Exception ignored.*MemoryObjectReceiveStream\\.__del__:pytest.PytestUnraisableExceptionWarning",
 ]
