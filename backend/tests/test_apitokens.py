@@ -44,6 +44,24 @@ def test_resolve_valid_token_returns_user_and_touches_last_used(data_dir):
         assert isinstance(row.last_used_at, datetime)
 
 
+def test_resolve_with_touch_false_does_not_update_last_used(data_dir):
+    db.reset_engine(); db.init_db()
+    with Session(db.engine) as session:
+        user = _user(session)
+        full, row = _store_token(session, user)
+        assert row.last_used_at is None
+
+        resolved = resolve_api_token(session, full, touch=False)
+        assert resolved is not None and resolved.id == user.id
+        session.refresh(row)
+        assert row.last_used_at is None  # not touched
+
+        resolved = resolve_api_token(session, full, touch=True)
+        assert resolved is not None and resolved.id == user.id
+        session.refresh(row)
+        assert isinstance(row.last_used_at, datetime)  # touched by default/explicit True
+
+
 def test_resolve_rejects_unknown_disabled_and_stale(data_dir):
     db.reset_engine(); db.init_db()
     with Session(db.engine) as session:

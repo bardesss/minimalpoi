@@ -16,7 +16,7 @@ dependencies = [
     "pillow>=11",
     "phonenumbers>=8.13",
     "slowapi>=0.1.9",
-    "mcp>=1.12",
+    "mcp>=1.12,<2",
 ]
 
 [project.optional-dependencies]

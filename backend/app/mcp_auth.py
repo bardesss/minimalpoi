@@ -22,8 +22,17 @@ class BearerAuthMiddleware:
         auth = headers.get("authorization", "")
         ok = False
         if auth.lower().startswith("bearer "):
+            # A synchronous DB read on the ASGI hot path is acceptable here:
+            # MinimalPOI's self-host deployment model is single-worker, so
+            # this doesn't contend with other requests the way it could in a
+            # multi-worker/multi-process server.
             with Session(db.engine) as session:
-                ok = resolve_api_token(session, auth[7:].strip()) is not None
+                # touch=False: this gate is a pure validity check. The
+                # downstream in-process call to get_current_user (via
+                # apitokens.resolve_api_token with the default touch=True)
+                # owns the last_used_at write, so we don't write it twice
+                # per MCP request.
+                ok = resolve_api_token(session, auth[7:].strip(), touch=False) is not None
         if not ok:
             body = json.dumps({"detail": "Invalid or missing API token"}).encode()
             await send({"type": "http.response.start", "status": 401,

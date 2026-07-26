@@ -20,9 +20,11 @@ def generate_api_token() -> tuple[str, str, str]:
     return full, prefix, hash_api_token(full)
 
 
-def resolve_api_token(session: Session, full: str) -> User | None:
+def resolve_api_token(session: Session, full: str, touch: bool = True) -> User | None:
     """Validate a presented token; return the owning user or None. Touches
-    last_used_at on success."""
+    last_used_at on success unless `touch=False` (used by callers that only
+    need a boolean validity check and let a downstream call own the write,
+    e.g. the MCP bearer gate)."""
     if not full.startswith(f"{TOKEN_PREFIX}_"):
         return None
     row = session.exec(
@@ -35,7 +37,8 @@ def resolve_api_token(session: Session, full: str) -> User | None:
         return None
     if row.token_version != user.token_version:
         return None
-    row.last_used_at = utcnow()
-    session.add(row)
-    session.commit()
+    if touch:
+        row.last_used_at = utcnow()
+        session.add(row)
+        session.commit()
     return user

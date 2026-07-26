@@ -49,7 +49,7 @@ RUN pip install --no-cache-dir \
     "pillow>=11" \
     "phonenumbers>=8.13" \
     "slowapi>=0.1.9" \
-    "mcp>=1.12"
+    "mcp>=1.12,<2"
 
 # Copy backend source
 COPY backend/ /app/backend/

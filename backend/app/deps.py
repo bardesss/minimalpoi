@@ -22,6 +22,8 @@ def get_current_user(
 
     # Programmatic clients (e.g. the MCP server) present a per-user API token as
     # a Bearer header instead of the browser login cookie.
+    # The bearer path is intentionally exclusive: a present-but-invalid bearer
+    # 401s here rather than falling back to the cookie.
     if authorization and authorization.lower().startswith("bearer "):
         from .apitokens import resolve_api_token
         user = resolve_api_token(session, authorization[7:].strip())
@@ -37,6 +39,7 @@ def get_current_user(
     user = session.exec(select(User).where(User.username == payload["sub"])).first()
     if not user or user.disabled:
         raise credentials_error
+    # Reject tokens minted before the user's last password/role change.
     if payload.get("tv", 0) != user.token_version:
         raise credentials_error
     return user
