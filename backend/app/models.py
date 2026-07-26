@@ -28,6 +28,20 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow)
 
 
+class ApiToken(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    name: str
+    # sha256 hex of the full token; the plaintext is never stored.
+    token_hash: str = Field(unique=True, index=True)
+    prefix: str  # non-secret display id, e.g. "ab12cd34"
+    # Snapshot of User.token_version at creation; a mismatch (password/role
+    # change) invalidates the token, mirroring the login cookie.
+    token_version: int = Field(default=0)
+    created_at: datetime = Field(default_factory=utcnow)
+    last_used_at: datetime | None = Field(default=None)
+
+
 class Team(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
