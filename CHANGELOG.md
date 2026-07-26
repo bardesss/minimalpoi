@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.5.1](https://github.com/Bardesss/minimalpoi/compare/v3.5.0...v3.5.1) (2026-07-26)
+
+
+### Bug Fixes
+
+* **routes:** always open the per-day navigate picker, with OS share inside it ([af4cfc5](https://github.com/Bardesss/minimalpoi/commit/af4cfc55ac9a7bc0060ef9e731304be051c9c112))
+* **routes:** always open the per-day navigate picker, with OS share inside it ([888fa1f](https://github.com/Bardesss/minimalpoi/commit/888fa1f8a3a33d74f05d18e53d4d028382b7f79a))
+
 ## [3.5.0](https://github.com/Bardesss/minimalpoi/compare/v3.4.0...v3.5.0) (2026-07-26)
 
 
