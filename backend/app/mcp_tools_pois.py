@@ -260,7 +260,7 @@ async def add_comment(poi_id: int, text: str, ctx: Context) -> dict:
 
 @mcp.tool()
 async def update_comment(poi_id: int, comment_id: int, text: str, ctx: Context) -> dict:
-    """Edit one of your comments (admins: any)."""
+    """Edit one of your own comments."""
     return await _update_comment(_bearer(ctx), poi_id, comment_id, text)
 
 

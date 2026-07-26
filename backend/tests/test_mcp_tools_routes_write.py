@@ -2,7 +2,8 @@ import pytest
 
 from app import db
 from app.apitokens import generate_api_token
-from app.models import ApiToken, Settings, User
+from app.models import ApiToken, Role, Settings, User
+from app.security import hash_password
 from sqlmodel import Session, select
 
 
@@ -17,6 +18,16 @@ def _auth(client):
         user = s.exec(select(User).where(User.username == "admin")).first()
         full, prefix, token_hash = generate_api_token()
         s.add(ApiToken(user_id=user.id, name="t", token_hash=token_hash, prefix=prefix))
+        s.commit()
+    return f"Bearer {full}"
+
+
+def _member_token(client, username="mallory"):
+    with Session(db.engine) as s:
+        u = User(username=username, password_hash=hash_password("password123"), role=Role.MEMBER)
+        s.add(u); s.commit(); s.refresh(u)
+        full, prefix, token_hash = generate_api_token()
+        s.add(ApiToken(user_id=u.id, name="t", token_hash=token_hash, prefix=prefix))
         s.commit()
     return f"Bearer {full}"
 
@@ -54,3 +65,21 @@ async def test_route_and_node_update_delete(client):
     assert (await _delete_route(auth, rid)) == {"deleted": rid}
     gone = client.get(f"/api/routes/{rid}", headers={"Authorization": auth})
     assert gone.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_non_editor_cannot_update_or_delete_route(client):
+    owner = _auth(client)
+    _enable_routes()
+    from app.mcp_tools_routes import _create_route, _update_route, _delete_route
+    route = await _create_route(owner, {"name": "Trip", "start_date": "2026-08-01"})
+    rid = route["id"]
+
+    other = _member_token(client)
+    with pytest.raises(ValueError) as e:
+        await _update_route(other, rid, {"name": "Hijacked"})
+    assert "403" in str(e.value)
+
+    with pytest.raises(ValueError) as e:
+        await _delete_route(other, rid)
+    assert "403" in str(e.value)
