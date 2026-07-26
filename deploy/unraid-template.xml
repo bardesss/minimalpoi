@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>MinimalPOI</Name>
+  <Repository>ghcr.io/bardesss/minimalpoi:latest</Repository>
+  <Registry>https://github.com/Bardesss/minimalpoi/pkgs/container/minimalpoi</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Bardesss/minimalpoi/issues</Support>
+  <Project>https://github.com/Bardesss/minimalpoi</Project>
+  <Overview>Self-hosted, multi-user map for collecting places you love and planning trips that string them together. Drop a pin or paste a link to auto-fill details, rate spots, and turn places into a day-by-day route — all on a server you fully own, with no external services required. All state lives in a single /data volume (SQLite DB, images, signing key).</Overview>
+  <Category>Other: Productivity: Status:Stable</Category>
+  <WebUI>http://[IP]:[PORT:7676]/</WebUI>
+  <TemplateURL/>
+  <Icon>https://raw.githubusercontent.com/Bardesss/minimalpoi/main/frontend/public/favicon.svg</Icon>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Description>Self-hosted, multi-user map for collecting places and planning routes. Single container, single /data volume, no external services.</Description>
+  <Networking>
+    <Mode>bridge</Mode>
+    <Publish>
+      <Port>
+        <HostPort>7676</HostPort>
+        <ContainerPort>7676</ContainerPort>
+        <Protocol>tcp</Protocol>
+      </Port>
+    </Publish>
+  </Networking>
+  <Data>
+    <Volume>
+      <HostDir>/mnt/user/appdata/minimalpoi</HostDir>
+      <ContainerDir>/data</ContainerDir>
+      <Mode>rw</Mode>
+    </Volume>
+  </Data>
+  <Config Name="WebUI Port" Target="7676" Default="7676" Mode="tcp" Description="Web UI / API port" Type="Port" Display="always" Required="true" Mask="false">7676</Config>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/minimalpoi" Mode="rw" Description="Persistent state: SQLite DB, uploaded images, and the auto-generated signing key." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/minimalpoi</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID the app runs as. Unraid default is 99 (nobody)." Type="Variable" Display="always" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group ID the app runs as. Unraid default is 100 (users)." Type="Variable" Display="always" Required="false" Mask="false">100</Config>
+  <Config Name="SECRET_KEY" Target="SECRET_KEY" Default="" Mode="" Description="Optional. Signing key for login cookies. Leave blank to auto-generate into /data/secret.key." Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <Config Name="SESSION_LIFETIME_DAYS" Target="SESSION_LIFETIME_DAYS" Default="30" Mode="" Description="Optional. How long a login stays valid before re-authentication." Type="Variable" Display="advanced" Required="false" Mask="false">30</Config>
+  <Config Name="TRUST_PROXY" Target="TRUST_PROXY" Default="" Mode="" Description="Optional. Set to 1 when running behind a TLS-terminating reverse proxy so the app sees the real client IP and https scheme." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="FORWARDED_ALLOW_IPS" Target="FORWARDED_ALLOW_IPS" Default="*" Mode="" Description="Optional. Trusted proxy IPs when TRUST_PROXY is set. Scope to your proxy's IP for stricter setups." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>
