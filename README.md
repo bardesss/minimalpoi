@@ -209,12 +209,14 @@ MinimalPOI runs an [MCP](https://modelcontextprotocol.io) server so AI clients
   - **URL:** `https://<your-host>/api/mcp`
   - **Header:** `Authorization: Bearer <token>`
 
-**v1 capabilities:**
-- **Places (POIs):** list, get, create, and duplicate-check; enrich a Google Maps or website URL into a draft place; search Google Places by name (requires a configured Google API key).
-- **Routes:** list, get, create, and add stops/stays (requires the admin-enabled Route module).
+**Capabilities:**
+- **Places (POIs):** list, get, check for duplicates, create, update, delete; enrich a Google Maps or website URL into a draft place; search Google Places by name (requires a configured Google API key).
+- **Routes & stops/stays:** list, get, create, update, delete, reorder (requires the admin-enabled Route module).
+- **Visits & ratings:** mark visited, set 1–5 rating, remove visit.
+- **Comments:** add, edit, delete.
 - **Reference data:** read-only categories and tags.
 
-No destructive operations (update, delete) are available in v1.
+Edits and deletes follow the app's ownership rules: a place's creator or an admin can edit/delete it; only the route editor can modify routes; you can edit/delete only your own visits, and add/edit only your own comments — admins can additionally delete (but not edit) anyone's comment.
 
 ---
 

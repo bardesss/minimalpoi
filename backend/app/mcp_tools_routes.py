@@ -92,3 +92,70 @@ async def add_route_stay(route_id: int, nights: int, ctx: Context, name: str | N
     fields.update({k: v for k, v in {"name": name, "lat": lat, "lng": lng, "poi_id": poi_id,
                                      "notes": notes}.items() if v is not None})
     return await _add_route_stay(_bearer(ctx), route_id, fields)
+
+
+async def _update_route(auth: str, route_id: int, fields: dict) -> dict:
+    async with _client(auth) as c:
+        r = await c.patch(f"/api/routes/{route_id}", json=fields)
+        _raise_for_tool(r)
+        return r.json()
+
+
+async def _delete_route(auth: str, route_id: int) -> dict:
+    async with _client(auth) as c:
+        r = await c.delete(f"/api/routes/{route_id}")
+        _raise_for_tool(r)
+        return {"deleted": route_id}
+
+
+async def _update_route_node(auth: str, route_id: int, node_id: int, fields: dict) -> dict:
+    async with _client(auth) as c:
+        r = await c.patch(f"/api/routes/{route_id}/nodes/{node_id}", json=fields)
+        _raise_for_tool(r)
+        return r.json()
+
+
+async def _delete_route_node(auth: str, route_id: int, node_id: int) -> dict:
+    async with _client(auth) as c:
+        r = await c.delete(f"/api/routes/{route_id}/nodes/{node_id}")
+        _raise_for_tool(r)
+        return r.json()
+
+
+@mcp.tool()
+async def update_route(route_id: int, ctx: Context, name: str | None = None,
+                       start_date: str | None = None, end_date: str | None = None,
+                       round_trip: bool | None = None, team_id: int | None = None) -> dict:
+    """Update a route's name, dates (ISO YYYY-MM-DD), round-trip flag, or team. Editor-only."""
+    fields = {k: v for k, v in {
+        "name": name, "start_date": start_date, "end_date": end_date,
+        "round_trip": round_trip, "team_id": team_id,
+    }.items() if v is not None}
+    return await _update_route(_bearer(ctx), route_id, fields)
+
+
+@mcp.tool()
+async def delete_route(route_id: int, ctx: Context) -> dict:
+    """Delete a route (editor-only). Immediate and permanent."""
+    return await _delete_route(_bearer(ctx), route_id)
+
+
+@mcp.tool()
+async def update_route_node(route_id: int, node_id: int, ctx: Context,
+                            position: float | None = None, nights: int | None = None,
+                            day_offset: int | None = None, notes: str | None = None,
+                            poi_id: int | None = None, name: str | None = None,
+                            lat: float | None = None, lng: float | None = None) -> dict:
+    """Edit a route stop/stay: reorder via `position` (fractional key), or change nights,
+    day, notes, or the linked place/point. Editor-only. Returns the updated route."""
+    fields = {k: v for k, v in {
+        "position": position, "nights": nights, "day_offset": day_offset, "notes": notes,
+        "poi_id": poi_id, "name": name, "lat": lat, "lng": lng,
+    }.items() if v is not None}
+    return await _update_route_node(_bearer(ctx), route_id, node_id, fields)
+
+
+@mcp.tool()
+async def delete_route_node(route_id: int, node_id: int, ctx: Context) -> dict:
+    """Remove a stop/stay from a route (editor-only). Returns the updated route."""
+    return await _delete_route_node(_bearer(ctx), route_id, node_id)

@@ -1,6 +1,7 @@
 import json
 
 from sqlmodel import Session
+from starlette.concurrency import run_in_threadpool
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from . import db
@@ -22,17 +23,10 @@ class BearerAuthMiddleware:
         auth = headers.get("authorization", "")
         ok = False
         if auth.lower().startswith("bearer "):
-            # A synchronous DB read on the ASGI hot path is acceptable here:
-            # MinimalPOI's self-host deployment model is single-worker, so
-            # this doesn't contend with other requests the way it could in a
-            # multi-worker/multi-process server.
-            with Session(db.engine) as session:
-                # touch=False: this gate is a pure validity check. The
-                # downstream in-process call to get_current_user (via
-                # apitokens.resolve_api_token with the default touch=True)
-                # owns the last_used_at write, so we don't write it twice
-                # per MCP request.
-                ok = resolve_api_token(session, auth[7:].strip(), touch=False) is not None
+            # The token check is a blocking SQLite read; run it on a worker
+            # thread so it never stalls the event loop under concurrent MCP
+            # requests.
+            ok = await run_in_threadpool(self._validate, auth[7:].strip())
         if not ok:
             body = json.dumps({"detail": "Invalid or missing API token"}).encode()
             await send({"type": "http.response.start", "status": 401,
@@ -40,3 +34,11 @@ class BearerAuthMiddleware:
             await send({"type": "http.response.body", "body": body})
             return
         await self.app(scope, receive, send)
+
+    def _validate(self, token: str) -> bool:
+        # touch=False: this gate is a pure validity check. The downstream
+        # in-process call to get_current_user (resolve_api_token with the
+        # default touch=True) owns the last_used_at write, so we don't write
+        # it twice per MCP request.
+        with Session(db.engine) as session:
+            return resolve_api_token(session, token, touch=False) is not None
