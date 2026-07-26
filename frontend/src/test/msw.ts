@@ -44,6 +44,7 @@ export const handlers = [
   http.post("/api/auth/logout", () => HttpResponse.json({ status: "ok" })),
   http.get("/api/pois", () => HttpResponse.json(samplePois)),
   http.get("/api/categories", () => HttpResponse.json(sampleCategories)),
+  http.get("/api/tags", () => HttpResponse.json([])),
   http.get("/api/settings/map", () => HttpResponse.json(sampleSettings)),
   http.get("/api/settings", () => HttpResponse.json(sampleSettings)),
   http.post("/api/pois/check-duplicate", () => HttpResponse.json({ duplicate_id: null })),

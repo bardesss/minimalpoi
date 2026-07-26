@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { theme } from "../theme";
-import { splitTags } from "./PoiFormModal";
+import { splitTags } from "../lib/tags";
 
 export interface TagSuggestion {
   tag: string;

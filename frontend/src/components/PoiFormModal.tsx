@@ -1,16 +1,18 @@
 // frontend/src/components/PoiFormModal.tsx
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import type { Category, PlaceSearchResult, PoiCreate, PoiDraft } from "../types/api";
+import type { Category, PlaceSearchResult, PoiCreate, PoiDraft, TagInfo } from "../types/api";
 import { ApiError } from "../api/client";
 import { safeImageCss } from "../lib/safeUrl";
 import { ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, textareaStyle, theme } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 import { useDialog } from "../lib/useDialog";
 import PhoneInput from "./PhoneInput";
+import TagInput from "./TagInput";
 
-export function splitTags(text: string): string[] {
-  return text.split(/[,;|]/).map((t) => t.trim()).filter(Boolean);
-}
+// Re-exported for callers/tests that historically imported it from here; the
+// implementation now lives in lib/tags to avoid a TagInput <-> PoiFormModal
+// import cycle.
+export { splitTags } from "../lib/tags";
 
 // Parse a single coordinate field into a finite number, or null when it isn't
 // usable. Accepts a decimal comma ("52,3676") as long as it's a lone value —
@@ -70,10 +72,12 @@ export default function PoiFormModal({
   onPickPlace,
   onUploadImage,
   getMapCenter,
+  tagSuggestions = [],
 }: {
   mode: "add" | "edit";
   initial: PoiFormInitial | null;
   categories: Category[];
+  tagSuggestions?: TagInfo[];
   coords: { lng: number; lat: number } | null;
   onSubmit: (payload: PoiCreate) => void | Promise<void>;
   onClose: () => void;
@@ -87,7 +91,7 @@ export default function PoiFormModal({
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [categoryId, setCategoryId] = useState<string>(initial?.category_id != null ? String(initial.category_id) : "");
-  const [tagsText, setTagsText] = useState(initial?.tags.join(", ") ?? "");
+  const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
   const [address, setAddress] = useState(initial?.address ?? "");
   // City + country code are not edited directly; they ride along from
   // enrichment (or the existing place in edit mode) so the card can show them.
@@ -263,7 +267,7 @@ export default function PoiFormModal({
       lat: latNum,
       lng: lngNum,
       category_id: categoryId === "" ? null : Number(categoryId),
-      tags: splitTags(tagsText),
+      tags,
       notes: nn(notes),
       phone: nn(phone),
       email: nn(email),
@@ -416,7 +420,7 @@ export default function PoiFormModal({
             </div>
             <div style={{ flex: 1 }}>
               <label style={label} htmlFor="poi-tags">Tags</label>
-              <input id="poi-tags" style={inputStyle} value={tagsText} onChange={(e) => setTagsText(e.target.value)} placeholder="comma, separated" />
+              <TagInput inputId="poi-tags" value={tags} onChange={setTags} suggestions={tagSuggestions} />
             </div>
           </div>
 
