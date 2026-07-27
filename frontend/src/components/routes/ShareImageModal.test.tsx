@@ -9,11 +9,15 @@ const downloadSpy = vi.fn();
 vi.mock("../../lib/share/shareRender", () => ({ renderShareImage: (...a: unknown[]) => renderSpy(...a) }));
 vi.mock("../../lib/download", () => ({ triggerDownload: (...a: unknown[]) => downloadSpy(...a) }));
 
+const pdfBlob = new Blob(["%PDF-"], { type: "application/pdf" });
+const pdfSpy = vi.fn(async (..._a: unknown[]) => pdfBlob);
+vi.mock("../../lib/share/sharePdf", () => ({ renderSharePdf: (...a: unknown[]) => pdfSpy(...a) }));
+
 const route = { id: 1, name: "Trip", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-16",
   total_distance_m: 1000, total_duration_s: 0, nodes: [{ id: 1, role: null }], legs: [] } as unknown as RouteDetail;
 const settings = { default_map_center_lat: 0, default_map_center_lng: 0, default_map_zoom: 5 } as unknown as MapSettings;
 
-beforeEach(() => { renderSpy.mockClear(); downloadSpy.mockClear(); (URL as any).createObjectURL = vi.fn(() => "blob:x"); (URL as any).revokeObjectURL = vi.fn(); });
+beforeEach(() => { renderSpy.mockClear(); downloadSpy.mockClear(); pdfSpy.mockClear(); (URL as any).createObjectURL = vi.fn(() => "blob:x"); (URL as any).revokeObjectURL = vi.fn(); });
 
 describe("ShareImageModal", () => {
   it("renders a preview and offers all formats + both variants", async () => {
@@ -45,6 +49,18 @@ describe("ShareImageModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /landscape/i }));
     expect(await screen.findByText(/couldn't render the image/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /download/i })).toBeDisabled();
+  });
+
+  it("offers a PDF mode and downloads a generated PDF", async () => {
+    render(<ShareImageModal route={route} settings={settings} onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: /download/i })).not.toBeDisabled());
+
+    fireEvent.click(screen.getByRole("button", { name: /^pdf$/i }));
+    expect(screen.getByRole("button", { name: /download pdf/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /download pdf/i }));
+    await waitFor(() => expect(pdfSpy).toHaveBeenCalled());
+    await waitFor(() => expect(downloadSpy).toHaveBeenCalledWith(pdfBlob, "Trip - itinerary.pdf"));
   });
 
   it("closes on Escape", () => {

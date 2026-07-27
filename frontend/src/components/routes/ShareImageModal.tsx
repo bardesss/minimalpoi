@@ -4,7 +4,8 @@ import type { MapSettings, RouteDetail } from "../../types/api";
 import { ghostButtonStyle, primaryButtonStyle, theme } from "../../theme";
 import { SHARE_FORMATS, shareFormat, type ShareFormat, type ShareVariant } from "../../lib/share/shareFormats";
 import { renderShareImage } from "../../lib/share/shareRender";
-import { shareFilename } from "../../lib/share/shareFilename";
+import { shareFilename, sharePdfFilename } from "../../lib/share/shareFilename";
+import { renderSharePdf } from "../../lib/share/sharePdf";
 import { triggerDownload } from "../../lib/download";
 import { useDialog } from "../../lib/useDialog";
 
@@ -13,20 +14,28 @@ const VARIANTS: { key: ShareVariant; label: string }[] = [
   { key: "transparent", label: "Transparent" },
 ];
 
+type OutputMode = ShareFormat | "pdf";
+
 export default function ShareImageModal({ route, settings, onClose }: { route: RouteDetail; settings: MapSettings; onClose: () => void }) {
   const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose);
-  const [format, setFormat] = useState<ShareFormat>("square");
+  const [format, setFormat] = useState<OutputMode>("square");
   const [variant, setVariant] = useState<ShareVariant>("map");
   const [blob, setBlob] = useState<Blob | null>(null);
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Separate from `busy`: PDF generation calls renderSharePdf fresh (it never
+  // reuses the on-screen preview blob), so the Download/Share buttons in pdf
+  // mode shouldn't sit disabled while the decorative landscape preview is
+  // (re)loading in the background.
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setBusy(true);
     setError(null);
-    renderShareImage({ route, settings, format: shareFormat(format), variant })
+    const imgFormat = shareFormat(format === "pdf" ? "landscape" : format);
+    renderShareImage({ route, settings, format: imgFormat, variant })
       .then((b) => {
         if (cancelled) return;
         setBlob(b);
@@ -39,10 +48,31 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
 
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
 
-  function onDownload() {
+  async function onDownload() {
+    if (format === "pdf") {
+      setPdfBusy(true); setError(null);
+      try {
+        const pdf = await renderSharePdf({ route, settings, variant });
+        triggerDownload(pdf, sharePdfFilename(route.name));
+      } catch { setError("Couldn't render the PDF. Try again."); }
+      finally { setPdfBusy(false); }
+      return;
+    }
     if (blob) triggerDownload(blob, shareFilename(route.name, format, variant));
   }
   async function onShare() {
+    if (format === "pdf") {
+      setPdfBusy(true); setError(null);
+      try {
+        const pdf = await renderSharePdf({ route, settings, variant });
+        const file = new File([pdf], sharePdfFilename(route.name), { type: "application/pdf" });
+        if (navigator.canShare?.({ files: [file] })) {
+          try { await navigator.share({ files: [file], title: route.name }); } catch { /* dismissed */ }
+        }
+      } catch { setError("Couldn't render the PDF. Try again."); }
+      finally { setPdfBusy(false); }
+      return;
+    }
     if (!blob) return;
     const file = new File([blob], shareFilename(route.name, format, variant), { type: "image/png" });
     if (navigator.canShare?.({ files: [file] })) {
@@ -68,6 +98,7 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
           {SHARE_FORMATS.map((f) => (
             <button key={f.key} type="button" style={chip(format === f.key)} onClick={() => setFormat(f.key)}>{f.label}</button>
           ))}
+          <button type="button" style={chip(format === "pdf")} onClick={() => setFormat("pdf")}>PDF</button>
         </div>
         <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
           {VARIANTS.map((v) => (
@@ -81,10 +112,13 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
             : url ? <img src={url} alt="Route preview" style={{ maxWidth: "100%", maxHeight: 360 }} />
             : null}
         </div>
+        {format === "pdf" && (
+          <p style={{ fontSize: 12, color: theme.color.textSecondary, margin: "0 0 12px" }}>PDF: map above + full day-by-day itinerary.</p>
+        )}
 
         <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" style={primaryButtonStyle} onClick={onDownload} disabled={!blob || busy || !!error}>Download</button>
-          {canShare && <button type="button" style={ghostButtonStyle} onClick={onShare} disabled={!blob || busy || !!error}>Share</button>}
+          <button type="button" style={primaryButtonStyle} onClick={onDownload} disabled={format === "pdf" ? (pdfBusy || !!error) : (busy || !!error || !blob)}>{format === "pdf" ? "Download PDF" : "Download"}</button>
+          {canShare && <button type="button" style={ghostButtonStyle} onClick={onShare} disabled={format === "pdf" ? (pdfBusy || !!error) : (busy || !!error || !blob)}>Share</button>}
         </div>
       </div>
     </div>,
