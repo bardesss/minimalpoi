@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.9.0](https://github.com/Bardesss/minimalpoi/compare/v3.8.0...v3.9.0) (2026-07-27)
+
+
+### Features
+
+* **share:** add PDF output mode to the route share modal ([4921155](https://github.com/Bardesss/minimalpoi/commit/4921155e7ce78969f63a66dd6124c884c2b89c92))
+* **share:** export a route as a PDF (map + itinerary) ([13a136d](https://github.com/Bardesss/minimalpoi/commit/13a136d29ed4f77a099ba3def7a7d4837e04d114))
+* **share:** pure document model for route PDF export ([7a35152](https://github.com/Bardesss/minimalpoi/commit/7a35152b22b41a304f10a072df58c3369b7f753f))
+* **share:** render route PDF (map + itinerary) via jsPDF ([73e550e](https://github.com/Bardesss/minimalpoi/commit/73e550e0b5a0f984efaff6b11234006aea759cb8))
+
+
+### Bug Fixes
+
+* **share:** allow retry after PDF render failure and label modal by mode ([661257b](https://github.com/Bardesss/minimalpoi/commit/661257bf0e3a2777401281d2e67386fb30c4e54d))
+* **share:** map non-WinAnsi glyphs to safe equivalents in PDF text ([4d602ee](https://github.com/Bardesss/minimalpoi/commit/4d602ee65cb7729eebfd75e8486e808e03b016d1))
+
 ## [3.8.0](https://github.com/Bardesss/minimalpoi/compare/v3.7.0...v3.8.0) (2026-07-26)
 
 
