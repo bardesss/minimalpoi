@@ -10,6 +10,20 @@ const INK = "#1f2937";
 const SUB = "#6b7280";
 const ACCENT = "#4f46e5";
 
+// jsPDF's built-in Helvetica uses Windows-1252 (WinAnsi) encoding. A handful of
+// glyphs we'd otherwise emit fall outside that codepage and render as garbage
+// or blank space, so swap them for WinAnsi-safe equivalents before drawing.
+// (`·`, `—`, `–`, `•` are already in Windows-1252 and pass through untouched.)
+// Non-Latin user text is an accepted limitation — this is not a transliterator.
+const WINANSI_REPLACEMENTS: [RegExp, string][] = [
+  [/→/g, "–"], // right arrow -> en dash
+  [/↓/g, "•"], // down arrow -> bullet
+];
+
+export function toWinAnsi(s: string): string {
+  return WINANSI_REPLACEMENTS.reduce((acc, [pattern, replacement]) => acc.replace(pattern, replacement), s);
+}
+
 async function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const fr = new FileReader();
@@ -36,7 +50,7 @@ export async function renderSharePdf(opts: { route: RouteDetail; settings: MapSe
   };
   const text = (s: string, x: number, size: number, color: string, style: "normal" | "bold" = "normal") => {
     doc.setFont("helvetica", style); doc.setFontSize(size); doc.setTextColor(color);
-    for (const ln of doc.splitTextToSize(s, contentW - (x - MARGIN))) { ensure(LINE); doc.text(ln, x, y); y += LINE; }
+    for (const ln of doc.splitTextToSize(toWinAnsi(s), contentW - (x - MARGIN))) { ensure(LINE); doc.text(ln, x, y); y += LINE; }
   };
 
   // Header.

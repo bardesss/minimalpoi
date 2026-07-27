@@ -19,7 +19,7 @@ vi.mock("./shareRender", () => ({
   renderShareImage: vi.fn(async () => pngBlob()),
 }));
 
-import { renderSharePdf } from "./sharePdf";
+import { renderSharePdf, toWinAnsi } from "./sharePdf";
 
 const settings = { default_map_center_lat: 0, default_map_center_lng: 0, default_map_zoom: 5 } as unknown as MapSettings;
 const route = {
@@ -35,5 +35,17 @@ describe("renderSharePdf", () => {
     expect(blob).toBeInstanceOf(Blob);
     expect(blob.type).toBe("application/pdf");
     expect(blob.size).toBeGreaterThan(0);
+  });
+});
+
+describe("toWinAnsi", () => {
+  it("replaces non-WinAnsi arrow glyphs with WinAnsi-safe equivalents", () => {
+    expect(toWinAnsi("2026-07-14 → 2026-07-15")).toBe("2026-07-14 – 2026-07-15");
+    expect(toWinAnsi("↓  1.2 km")).toBe("•  1.2 km");
+  });
+
+  it("passes plain Latin text and already-WinAnsi punctuation through unchanged", () => {
+    expect(toWinAnsi("12.4 km   ·   3 days   ·   5 stops")).toBe("12.4 km   ·   3 days   ·   5 stops");
+    expect(toWinAnsi("Day 1    —    45 min")).toBe("Day 1    —    45 min");
   });
 });
