@@ -55,7 +55,6 @@ def test_scalar_default_sql_non_bool_unchanged():
     assert _scalar_default_sql(_Col("x"), "postgresql") == "'x'"
 
 
-@pytest.mark.xfail(reason="needs psycopg (Task 2)")
 def test_reset_engine_uses_database_url(monkeypatch, tmp_path):
     monkeypatch.setenv("MINIMALPOI_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("DATABASE_URL", "postgres://u:p@h:5432/db")
