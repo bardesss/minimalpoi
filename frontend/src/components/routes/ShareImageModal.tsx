@@ -80,6 +80,7 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
     }
   }
   const canShare = typeof navigator !== "undefined" && !!navigator.canShare;
+  const heading = format === "pdf" ? "Share route PDF" : "Share route image";
 
   const chip = (active: boolean) => ({ ...ghostButtonStyle, padding: "6px 12px", ...(active ? { borderColor: theme.color.deepIndigoText, color: theme.color.deepIndigoText } : {}) });
 
@@ -87,10 +88,10 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
   // transformed mobile bottom-sheet containing-block; z-index/radius match the
   // house modal style.
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Share route image" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100 }} onClick={onBackdropClick}>
+    <div role="dialog" aria-modal="true" aria-label={heading} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100 }} onClick={onBackdropClick}>
       <div ref={dialogRef} style={{ background: theme.color.surface0, borderRadius: theme.radius.modal, padding: 16, width: 420, maxWidth: "92vw", maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <strong style={{ fontFamily: theme.font.ui }}>Share route image</strong>
+          <strong style={{ fontFamily: theme.font.ui }}>{heading}</strong>
           <button type="button" aria-label="Close" style={{ ...ghostButtonStyle, padding: "4px 10px" }} onClick={onClose}>×</button>
         </div>
 
@@ -117,8 +118,8 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
         )}
 
         <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" style={primaryButtonStyle} onClick={onDownload} disabled={format === "pdf" ? (pdfBusy || !!error) : (busy || !!error || !blob)}>{format === "pdf" ? "Download PDF" : "Download"}</button>
-          {canShare && <button type="button" style={ghostButtonStyle} onClick={onShare} disabled={format === "pdf" ? (pdfBusy || !!error) : (busy || !!error || !blob)}>Share</button>}
+          <button type="button" style={primaryButtonStyle} onClick={onDownload} disabled={format === "pdf" ? pdfBusy : (busy || !!error || !blob)}>{format === "pdf" ? "Download PDF" : "Download"}</button>
+          {canShare && <button type="button" style={ghostButtonStyle} onClick={onShare} disabled={format === "pdf" ? pdfBusy : (busy || !!error || !blob)}>Share</button>}
         </div>
       </div>
     </div>,

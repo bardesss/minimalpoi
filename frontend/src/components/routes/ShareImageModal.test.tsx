@@ -63,6 +63,28 @@ describe("ShareImageModal", () => {
     await waitFor(() => expect(downloadSpy).toHaveBeenCalledWith(pdfBlob, "Trip - itinerary.pdf"));
   });
 
+  it("allows retrying after a failed PDF render", async () => {
+    render(<ShareImageModal route={route} settings={settings} onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: /download/i })).not.toBeDisabled());
+
+    fireEvent.click(screen.getByRole("button", { name: /^pdf$/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /download pdf/i })).not.toBeDisabled());
+
+    pdfSpy.mockRejectedValueOnce(new Error("boom"));
+    fireEvent.click(screen.getByRole("button", { name: /download pdf/i }));
+    expect(await screen.findByText(/couldn't render the pdf/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: /download pdf/i })).not.toBeDisabled());
+  });
+
+  it("labels the modal by mode", async () => {
+    render(<ShareImageModal route={route} settings={settings} onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: /download/i })).not.toBeDisabled());
+    expect(screen.getByRole("dialog", { name: /share route image/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^pdf$/i }));
+    expect(await screen.findByRole("dialog", { name: /share route pdf/i })).toBeInTheDocument();
+  });
+
   it("closes on Escape", () => {
     const onClose = vi.fn();
     render(<ShareImageModal route={route} settings={settings} onClose={onClose} />);
