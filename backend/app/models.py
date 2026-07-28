@@ -30,7 +30,7 @@ class User(SQLModel, table=True):
 
 class ApiToken(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True, ondelete="CASCADE")
     name: str
     # sha256 hex of the full token; the plaintext is never stored.
     token_hash: str = Field(unique=True, index=True)
@@ -50,8 +50,8 @@ class Team(SQLModel, table=True):
 
 
 class TeamMember(SQLModel, table=True):
-    team_id: int = Field(foreign_key="team.id", primary_key=True)
-    user_id: int = Field(foreign_key="user.id", primary_key=True)
+    team_id: int = Field(foreign_key="team.id", primary_key=True, ondelete="CASCADE")
+    user_id: int = Field(foreign_key="user.id", primary_key=True, ondelete="CASCADE")
 
 
 class SyncStatus(str, Enum):
@@ -86,7 +86,7 @@ class POI(SQLModel, table=True):
     country_code: str | None = Field(default=None)
     lat: float
     lng: float
-    category_id: int | None = Field(default=None, foreign_key="category.id")
+    category_id: int | None = Field(default=None, foreign_key="category.id", ondelete="SET NULL")
     tags: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     notes: str | None = Field(default=None)
     phone: str | None = Field(default=None)
@@ -126,7 +126,7 @@ class Route(SQLModel, table=True):
     start_date: date
     end_date: date | None = Field(default=None)
     round_trip: bool = Field(default=False)
-    team_id: int | None = Field(default=None, foreign_key="team.id")
+    team_id: int | None = Field(default=None, foreign_key="team.id", ondelete="SET NULL")
     created_by: int = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
@@ -134,7 +134,7 @@ class Route(SQLModel, table=True):
 
 class RouteNode(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    route_id: int = Field(foreign_key="route.id", index=True)
+    route_id: int = Field(foreign_key="route.id", index=True, ondelete="CASCADE")
     position: float  # fractional ordering key; insert between as (a+b)/2
     kind: RouteNodeKind
     role: NodeRole | None = Field(default=None)
@@ -143,7 +143,7 @@ class RouteNode(SQLModel, table=True):
     notes: str | None = Field(default=None)
     # Location: poi_id references a POI; name/lat/lng always hold a usable
     # snapshot so the node survives POI deletion.
-    poi_id: int | None = Field(default=None, foreign_key="poi.id")
+    poi_id: int | None = Field(default=None, foreign_key="poi.id", ondelete="SET NULL")
     name: str
     lat: float
     lng: float
@@ -151,9 +151,9 @@ class RouteNode(SQLModel, table=True):
 
 class RouteLeg(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    route_id: int = Field(foreign_key="route.id", index=True)
-    from_node_id: int = Field(foreign_key="routenode.id")
-    to_node_id: int = Field(foreign_key="routenode.id")
+    route_id: int = Field(foreign_key="route.id", index=True, ondelete="CASCADE")
+    from_node_id: int = Field(foreign_key="routenode.id", ondelete="CASCADE")
+    to_node_id: int = Field(foreign_key="routenode.id", ondelete="CASCADE")
     distance_m: int
     duration_s: int
     source: LegSource
@@ -164,8 +164,8 @@ class RouteLeg(SQLModel, table=True):
 
 class RouteAttachment(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    route_id: int = Field(foreign_key="route.id", index=True)
-    node_id: int | None = Field(default=None, foreign_key="routenode.id")
+    route_id: int = Field(foreign_key="route.id", index=True, ondelete="CASCADE")
+    node_id: int | None = Field(default=None, foreign_key="routenode.id", ondelete="SET NULL")
     filename: str          # original, for the download name
     stored_filename: str   # random on-disk name
     content_type: str
@@ -175,9 +175,19 @@ class RouteAttachment(SQLModel, table=True):
 
 
 class RouteShare(SQLModel, table=True):
+    # `delete_route` explicitly deletes the share row itself (so the API stays
+    # correct even without DB-level cascade), but route_id also carries a real
+    # ON DELETE CASCADE for Postgres. In the same flush, the ORM's own delete
+    # ordering between unrelated mapped classes (no relationship() is defined
+    # here) isn't guaranteed relative to Route's delete, so Postgres may cascade
+    # this row away before the ORM's explicit DELETE for it runs. That's a
+    # harmless race (the row is gone either way) — silence the mismatch warning
+    # rather than treat a 0-row DELETE as an error.
+    __mapper_args__ = {"confirm_deleted_rows": False}
+
     id: int | None = Field(default=None, primary_key=True)
     token: str = Field(unique=True, index=True)
-    route_id: int = Field(foreign_key="route.id", unique=True, index=True)
+    route_id: int = Field(foreign_key="route.id", unique=True, index=True, ondelete="CASCADE")
     created_by: int = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=utcnow)
     expires_at: datetime | None = Field(default=None)
@@ -195,17 +205,17 @@ class Tombstone(SQLModel, table=True):
 class Visit(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("poi_id", "user_id", name="uq_visit_poi_user"),)
     id: int | None = Field(default=None, primary_key=True)
-    poi_id: int = Field(foreign_key="poi.id")
-    user_id: int = Field(foreign_key="user.id")
-    team_id: int | None = Field(default=None, foreign_key="team.id")
+    poi_id: int = Field(foreign_key="poi.id", ondelete="CASCADE")
+    user_id: int = Field(foreign_key="user.id", ondelete="CASCADE")
+    team_id: int | None = Field(default=None, foreign_key="team.id", ondelete="SET NULL")
     rating: int | None = Field(default=None)
     created_at: datetime = Field(default_factory=utcnow)
 
 
 class Comment(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    poi_id: int = Field(foreign_key="poi.id")
-    user_id: int = Field(foreign_key="user.id")
+    poi_id: int = Field(foreign_key="poi.id", ondelete="CASCADE")
+    user_id: int = Field(foreign_key="user.id", ondelete="CASCADE")
     text: str
     created_at: datetime = Field(default_factory=utcnow)
 
@@ -244,6 +254,23 @@ def sync_system_user(session) -> "User":
     user = session.exec(select(User).where(User.username == SYNC_USERNAME)).first()
     if user is None:
         user = User(username=SYNC_USERNAME, password_hash="!", role=Role.MEMBER, disabled=True)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+    return user
+
+
+DELETED_USERNAME = "__deleted_user__"
+SYSTEM_USERNAMES = {SYNC_USERNAME, DELETED_USERNAME}
+
+
+def deleted_placeholder_user(session) -> "User":
+    """The stand-in owner for content whose creator was deleted (keeps
+    created_by NOT NULL and the content intact). Disabled, un-loginable —
+    mirrors sync_system_user."""
+    user = session.exec(select(User).where(User.username == DELETED_USERNAME)).first()
+    if user is None:
+        user = User(username=DELETED_USERNAME, password_hash="!", role=Role.MEMBER, disabled=True)
         session.add(user)
         session.commit()
         session.refresh(user)

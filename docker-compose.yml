@@ -19,9 +19,22 @@ services:
     #   - SECRET_KEY=change-me   # otherwise auto-generated into /data/secret.key
     #   - TRUST_PROXY=1
     #   - FORWARDED_ALLOW_IPS=*
+    #   - DATABASE_URL=postgresql+psycopg://minimalpoi:change-me@postgres:5432/minimalpoi   # with --profile postgres
     volumes:
       - minimalpoi-data:/data
     restart: unless-stopped
 
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    environment:
+      - POSTGRES_USER=minimalpoi
+      - POSTGRES_PASSWORD=change-me
+      - POSTGRES_DB=minimalpoi
+    volumes:
+      - minimalpoi-postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+
 volumes:
   minimalpoi-data:
+  minimalpoi-postgres:

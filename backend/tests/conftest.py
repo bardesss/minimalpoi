@@ -23,6 +23,11 @@ def data_dir(tmp_path, monkeypatch):
 def client(data_dir):
     from app import db
     db.reset_engine()
+    # On a shared Postgres (DATABASE_URL set) each test must start from a clean
+    # schema; SQLite already gets a fresh temp file per test via data_dir.
+    from sqlmodel import SQLModel
+    if db.engine.dialect.name != "sqlite":
+        SQLModel.metadata.drop_all(db.engine)
     db.init_db()
     from app.main import app
     # Rate limiting is global state across the process; keep it off for the

@@ -17,6 +17,7 @@ Drop a pin or paste a link to auto-fill the details, rate the spots you've been,
   - [Option A — Docker](#option-a--docker-recommended) · [Option B — docker compose](#option-b--docker-compose) · [Option C — Podman](#option-c--podman)
   - [Other platforms](#other-platforms) · [Unraid](#unraid)
   - [⚙️ Configuration](#-configuration)
+  - [Using Postgres](#using-postgres) · [Migrating to Postgres](#migrating-existing-sqlite-data-to-postgres)
   - [Behind a reverse proxy](#behind-a-reverse-proxy)
   - [Live route collaboration](#live-route-collaboration)
   - [🤖 MCP / AI access](#-mcp--ai-access)
@@ -161,6 +162,43 @@ reach the first-run setup screen.
 | `SESSION_LIFETIME_DAYS` | `30` | How long a login stays valid before you have to sign in again. |
 | `TRUST_PROXY` | unset | Honor `X-Forwarded-*` from a reverse proxy (real client IP + scheme). Set to `1` when running behind nginx/Caddy/Traefik/etc. |
 | `FORWARDED_ALLOW_IPS` | `*` | Trusted proxy IPs when `TRUST_PROXY` is set. Defaults to trusting any proxy; scope it to your proxy's IP for stricter setups. |
+
+### Using Postgres
+
+By default MinimalPOI stores everything in SQLite on the `/data` volume — no
+database setup required. If you'd rather run Postgres, set `DATABASE_URL` to
+a `postgresql+psycopg://user:pass@host:5432/minimalpoi`-style connection
+string; with no `DATABASE_URL` set, the app stays on SQLite.
+
+You can either bring your own Postgres instance, or use the bundled one via
+the `postgres` compose profile:
+
+```bash
+docker compose --profile postgres up -d
+```
+
+That starts a `postgres:16-alpine` service alongside the app, with its own
+named volume. Then uncomment the `DATABASE_URL` line under the `app`
+service's `environment:` block in [`docker-compose.yml`](docker-compose.yml)
+to point the app at it.
+
+For non-Docker installs, install the optional extra and set `DATABASE_URL`
+the same way:
+
+```bash
+pip install "minimalpoi-backend[postgres]"
+```
+
+Postgres **14 or newer** is required.
+
+### Migrating existing SQLite data to Postgres
+
+Back up your data volume first. Point `DATABASE_URL` at a **fresh, empty** Postgres, then run the one-shot copy:
+
+- Docker: `docker compose run --rm -e DATABASE_URL=postgresql+psycopg://minimalpoi:change-me@postgres:5432/minimalpoi app python -m app.migrate_sqlite_to_postgres`
+- Non-Docker: `DATABASE_URL=postgresql+psycopg://user:pass@host:5432/minimalpoi python -m app.migrate_sqlite_to_postgres`
+
+It refuses to run against a non-empty target. Image files and the encryption key live on the data volume (not the database), so keep the same volume mounted. After a successful migration, set `DATABASE_URL` permanently on the app service and restart.
 
 ### Behind a reverse proxy
 

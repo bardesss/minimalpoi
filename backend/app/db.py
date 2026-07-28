@@ -1,5 +1,7 @@
 import logging
+import os
 from collections.abc import Iterator
+from pathlib import Path
 
 from sqlalchemy import inspect, text
 from sqlalchemy.schema import CreateColumn
@@ -12,29 +14,49 @@ logger = logging.getLogger(__name__)
 engine = None
 
 
+def _normalize_db_url(url: str) -> str:
+    """Rewrite driverless Postgres URLs (as handed out by Supabase/Neon/RDS/
+    Heroku) to use psycopg3 explicitly, so SQLAlchemy doesn't reach for the
+    uninstalled psycopg2. Non-Postgres and already-suffixed URLs pass through."""
+    for prefix in ("postgresql://", "postgres://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
+def _engine_config(database_url: str | None, data_dir: Path) -> tuple[str, dict]:
+    """Resolve the SQLAlchemy URL and connect_args. Unset DATABASE_URL keeps the
+    historical SQLite behavior exactly; check_same_thread is SQLite-only."""
+    if not database_url:
+        return f"sqlite:///{data_dir / 'minimalpoi.db'}", {"check_same_thread": False}
+    url = _normalize_db_url(database_url)
+    if url.startswith("sqlite"):
+        return url, {"check_same_thread": False}
+    return url, {}
+
+
 def reset_engine() -> None:
-    """(Re)build the engine against the current data dir. Used by tests."""
+    """(Re)build the engine from DATABASE_URL (or the default SQLite path). Used by tests."""
     global engine
     if engine is not None:
         engine.dispose()
-    db_path = get_data_dir() / "minimalpoi.db"
-    engine = create_engine(
-        f"sqlite:///{db_path}",
-        connect_args={"check_same_thread": False},
-    )
+    url, connect_args = _engine_config(os.environ.get("DATABASE_URL"), get_data_dir())
+    engine = create_engine(url, connect_args=connect_args)
 
 
-def _scalar_default_sql(col) -> str | None:
+def _scalar_default_sql(col, dialect_name: str) -> str | None:
     """An SQL literal for a column's Python-side scalar default, or None.
 
-    SQLite can't add a NOT NULL column to a populated table without a DEFAULT, so
-    we synthesize one from the model field's default (e.g. token_version=0)."""
+    Booleans differ by dialect: SQLite stores 1/0, Postgres needs TRUE/FALSE on a
+    real BOOLEAN column."""
     default = col.default
     if default is None or not getattr(default, "is_scalar", False):
         return None
     value = default.arg
     if isinstance(value, bool):
-        return "1" if value else "0"
+        if dialect_name == "sqlite":
+            return "1" if value else "0"
+        return "TRUE" if value else "FALSE"
     if isinstance(value, (int, float)):
         return str(value)
     if isinstance(value, str):
@@ -68,7 +90,7 @@ def _add_missing_columns(engine) -> None:
                 ddl = CreateColumn(col).compile(dialect=engine.dialect)
                 clause = f"ADD COLUMN {ddl}"
             else:
-                default_sql = _scalar_default_sql(col)
+                default_sql = _scalar_default_sql(col, engine.dialect.name)
                 if default_sql is None:
                     logger.error(
                         "Cannot add NOT NULL column %s.%s without a default — a manual "

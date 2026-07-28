@@ -34,7 +34,8 @@ RUN apt-get update \
     && gosu nobody true
 
 # Install runtime dependencies explicitly.
-# Keep this list in sync with [project].dependencies in backend/pyproject.toml.
+# Keep this list in sync with [project].dependencies AND the `postgres` extra
+# in [project.optional-dependencies] in backend/pyproject.toml.
 # (We do NOT use `pip install ./backend` because pyproject.toml references
 #  ../LICENSE outside the build context, which breaks pip's build isolation.)
 RUN pip install --no-cache-dir \
@@ -49,7 +50,8 @@ RUN pip install --no-cache-dir \
     "pillow>=11" \
     "phonenumbers>=8.13" \
     "slowapi>=0.1.9" \
-    "mcp>=1.12,<2"
+    "mcp>=1.12,<2" \
+    "psycopg[binary]>=3.2"
 
 # Copy backend source
 COPY backend/ /app/backend/

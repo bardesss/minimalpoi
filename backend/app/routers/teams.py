@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
-from ..models import SYNC_USERNAME, Route, Team, TeamMember, User, Role
+from ..models import SYSTEM_USERNAMES, Route, Team, TeamMember, User, Role
 from ..schemas import TeamCandidate, TeamCreate, TeamRead
 
 router = APIRouter(prefix="/api/teams", tags=["teams"])
@@ -46,7 +46,7 @@ def list_teams(session: SessionDep, _: CurrentUser) -> list[TeamRead]:
 
 @router.get("/candidates", response_model=list[TeamCandidate])
 def team_candidates(session: SessionDep, _: CurrentUser) -> list[TeamCandidate]:
-    rows = session.exec(select(User).where(User.username != SYNC_USERNAME)).all()
+    rows = session.exec(select(User).where(User.username.not_in(SYSTEM_USERNAMES))).all()
     return [TeamCandidate(id=u.id, username=u.username) for u in rows]
 
 
