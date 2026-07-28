@@ -1,5 +1,25 @@
 # Changelog
 
+## [3.10.0](https://github.com/Bardesss/minimalpoi/compare/v3.9.0...v3.10.0) (2026-07-28)
+
+
+### Features
+
+* **db:** add ON DELETE actions and a deleted-user sentinel ([97d91ee](https://github.com/Bardesss/minimalpoi/commit/97d91eef1d0e286c594e79defeb4799283f442c2))
+* **db:** add optional psycopg extra and bundle it in the image ([347cdd8](https://github.com/Bardesss/minimalpoi/commit/347cdd8ac59a5657c8f4f7d3cfac71988951cefb))
+* **db:** one-shot SQLite-to-Postgres data migration ([6d046e1](https://github.com/Bardesss/minimalpoi/commit/6d046e1b761cd0e8c90a8b9bb5c78943795bec8a))
+* **db:** repair orphaned foreign keys during SQLite-&gt;Postgres migration ([c0ca7f9](https://github.com/Bardesss/minimalpoi/commit/c0ca7f90748e437d4d12d1f7ed313dbd2b6b2af3))
+* **db:** select engine from DATABASE_URL with psycopg normalization ([2f55922](https://github.com/Bardesss/minimalpoi/commit/2f559226422af64327cfbba0ef7bb7da63d9e95c))
+* optional Postgres for self-hosters (opt-in; SQLite stays default) ([065a8d6](https://github.com/Bardesss/minimalpoi/commit/065a8d6cd9dd3a0d607d61cea3d42289c9f7313b))
+* **users:** reassign a deleted user's content to a sentinel ([ce9affc](https://github.com/Bardesss/minimalpoi/commit/ce9affccb03f74fa58a51a8e148c1eede358e187))
+
+
+### Bug Fixes
+
+* **db:** only add the deleted-user sentinel when repairing owner-FK orphans ([b9fb165](https://github.com/Bardesss/minimalpoi/commit/b9fb16521c3b90bb19b5eafd78fce34968562a73))
+* **db:** quote reserved identifiers in Postgres sequence reset ([55b08e6](https://github.com/Bardesss/minimalpoi/commit/55b08e6a55b9f46eba28b7dbb119a90a974956ee))
+* **test:** skip the Postgres-engine test when psycopg isn't installed ([287fe14](https://github.com/Bardesss/minimalpoi/commit/287fe14e4902e6879f340779182930b9e091d004))
+
 ## [3.9.0](https://github.com/Bardesss/minimalpoi/compare/v3.8.0...v3.9.0) (2026-07-27)
 
 
