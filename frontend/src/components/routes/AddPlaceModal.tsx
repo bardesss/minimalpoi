@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { RouteNodeCreate, RouteNodeKind, RouteNodeRole } from "../../types/api";
 import { ghostButtonStyle, inputStyle, theme } from "../../theme";
 import { useIsMobile } from "../../lib/useMediaQuery";
@@ -57,7 +58,11 @@ export default function AddPlaceModal({
     onSubmit({ kind, ...(role ? { role } : {}), ...sel, nights: kind === "stay" ? nights : null });
   }
 
-  return (
+  // Portalled to <body> so `position: fixed` resolves against the viewport.
+  // On mobile the timeline renders inside the bottom sheet's `transform`, which
+  // would otherwise become the containing block and trap this overlay in it —
+  // leaving the sheet greyed out with the card docked off-screen below it.
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -108,6 +113,7 @@ export default function AddPlaceModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
