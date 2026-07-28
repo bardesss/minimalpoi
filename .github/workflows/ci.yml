@@ -20,6 +20,45 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Run tests
         run: python -m pytest -v
+  backend-tests-postgres:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: minimalpoi
+          POSTGRES_PASSWORD: minimalpoi
+          POSTGRES_DB: minimalpoi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U minimalpoi"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql+psycopg://minimalpoi:minimalpoi@localhost:5432/minimalpoi
+      TEST_POSTGRES_URL: postgresql+psycopg://minimalpoi:minimalpoi@localhost:5432/minimalpoi
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -e ".[dev,postgres]"
+      # Scoped to the dialect-sensitive suites: engine selection / URL
+      # normalization / boolean-default (test_db_engine) and the SQLite->Postgres
+      # migration incl. the sequence reset (test_migrate_sqlite_to_postgres, whose
+      # setup also runs create_all + _add_missing_columns and copies boolean
+      # columns on real Postgres). The full app suite is NOT run here: many
+      # pre-existing tests assume SQLite's non-enforcement of foreign keys (they
+      # insert rows with dangling created_by FKs) and an empty shared database, so
+      # they can't pass unmodified against a single Postgres instance. Widening
+      # this job to the whole suite is a separate follow-up (FK-satisfying
+      # fixtures + universal per-test isolation).
+      - name: Run dialect tests against Postgres
+        run: python -m pytest -v tests/test_db_engine.py tests/test_migrate_sqlite_to_postgres.py
   frontend-tests:
     runs-on: ubuntu-latest
     defaults:

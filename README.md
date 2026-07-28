@@ -17,7 +17,7 @@ Drop a pin or paste a link to auto-fill the details, rate the spots you've been,
   - [Option A — Docker](#option-a--docker-recommended) · [Option B — docker compose](#option-b--docker-compose) · [Option C — Podman](#option-c--podman)
   - [Other platforms](#other-platforms) · [Unraid](#unraid)
   - [⚙️ Configuration](#-configuration)
-  - [Using Postgres](#using-postgres)
+  - [Using Postgres](#using-postgres) · [Migrating to Postgres](#migrating-existing-sqlite-data-to-postgres)
   - [Behind a reverse proxy](#behind-a-reverse-proxy)
   - [Live route collaboration](#live-route-collaboration)
   - [🤖 MCP / AI access](#-mcp--ai-access)
