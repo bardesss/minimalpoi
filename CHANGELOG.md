@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.10.1](https://github.com/Bardesss/minimalpoi/compare/v3.10.0...v3.10.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* **routes:** portal AddPlaceModal to body so it isn't trapped in the sheet ([e62aeb9](https://github.com/Bardesss/minimalpoi/commit/e62aeb9649ece8c996db594273f862df44be5bf3))
+* **routes:** portal AddPlaceModal to body so it renders correctly on mobile ([4379351](https://github.com/Bardesss/minimalpoi/commit/43793519413c37fe216b6db73f50dc0b1bb2ef98))
+
 ## [3.10.0](https://github.com/Bardesss/minimalpoi/compare/v3.9.0...v3.10.0) (2026-07-28)
 
 
