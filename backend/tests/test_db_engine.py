@@ -1,8 +1,13 @@
+import importlib.util
 from pathlib import Path
 
 import pytest
 
 from app.db import _normalize_db_url, _engine_config, _scalar_default_sql
+
+# psycopg is an optional extra; building a Postgres engine imports it. The SQLite
+# CI job installs only `.[dev]`, so skip the Postgres-engine test when it's absent.
+_HAS_PSYCOPG = importlib.util.find_spec("psycopg") is not None
 
 
 class _Default:
@@ -55,6 +60,7 @@ def test_scalar_default_sql_non_bool_unchanged():
     assert _scalar_default_sql(_Col("x"), "postgresql") == "'x'"
 
 
+@pytest.mark.skipif(not _HAS_PSYCOPG, reason="psycopg not installed (optional postgres extra)")
 def test_reset_engine_uses_database_url(monkeypatch, tmp_path):
     monkeypatch.setenv("MINIMALPOI_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("DATABASE_URL", "postgres://u:p@h:5432/db")
