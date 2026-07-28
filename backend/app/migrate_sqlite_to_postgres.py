@@ -55,11 +55,17 @@ def _reset_sequences(target_engine) -> None:
             pk = pks[0]
             if not str(pk.type).upper().startswith(("INT", "BIGINT", "SMALLINT")):
                 continue
+            # Quote the identifiers in the inline subquery: a table name that is a
+            # Postgres reserved word (e.g. "user") would otherwise be read as the
+            # keyword rather than the table. pg_get_serial_sequence takes the names
+            # as plain text params, so those stay unquoted.
+            col_q = '"' + pk.name + '"'
+            tbl_q = '"' + table.name + '"'
             conn.execute(text(
                 "SELECT setval("
                 "  pg_get_serial_sequence(:tbl, :col),"
-                "  COALESCE((SELECT MAX(" + pk.name + ") FROM " + table.name + "), 1),"
-                "  (SELECT MAX(" + pk.name + ") FROM " + table.name + ") IS NOT NULL"
+                "  COALESCE((SELECT MAX(" + col_q + ") FROM " + tbl_q + "), 1),"
+                "  (SELECT MAX(" + col_q + ") FROM " + tbl_q + ") IS NOT NULL"
                 ")"
             ), {"tbl": table.name, "col": pk.name})
 

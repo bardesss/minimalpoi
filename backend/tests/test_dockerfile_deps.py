@@ -46,5 +46,16 @@ def test_entrypoint_chowns_data_and_steps_down():
 def test_compose_has_no_empty_environment_key():
     # A bare `environment:` with only comments under it parses as null and makes
     # `docker compose config` fail — the documented deploy path must stay valid.
-    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
-    assert not re.search(r"(?m)^\s*environment:\s*$", compose)
+    # A populated `environment:` (a service with real entries under it) is fine,
+    # so flag a header only when it has no more-indented child line.
+    lines = (ROOT / "docker-compose.yml").read_text(encoding="utf-8").splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r"^(\s*)environment:\s*$", line)
+        if not m:
+            continue
+        indent = len(m.group(1))
+        j = i + 1
+        while j < len(lines) and (not lines[j].strip() or lines[j].lstrip().startswith("#")):
+            j += 1  # skip blank/comment lines to the first real line
+        has_child = j < len(lines) and (len(lines[j]) - len(lines[j].lstrip())) > indent
+        assert has_child, f"empty environment: block at docker-compose.yml line {i + 1}"
