@@ -3,7 +3,22 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from ..deps import AdminUser, SessionDep
-from ..models import SYNC_USERNAME, Comment, Role, TeamMember, User, Visit
+from ..models import (
+    ApiToken,
+    Category,
+    Comment,
+    POI,
+    Role,
+    Route,
+    RouteAttachment,
+    RouteShare,
+    SYSTEM_USERNAMES,
+    Team,
+    TeamMember,
+    User,
+    Visit,
+    deleted_placeholder_user,
+)
 from ..schemas import UserCreate, UserRead, UserUpdate
 from ..security import hash_password
 
@@ -15,20 +30,21 @@ def _admin_count(session: Session) -> int:
 
 
 def _guard_system(user: User) -> None:
-    # The reserved TRIP-sync account owns inbound POIs; editing or deleting it
-    # would orphan their attribution. It can't be logged into anyway.
-    if user.username == SYNC_USERNAME:
+    # Reserved system accounts (TRIP-sync, the deleted-user sentinel) own
+    # inbound/reassigned content; editing or deleting them would orphan that
+    # attribution. Neither can be logged into anyway.
+    if user.username in SYSTEM_USERNAMES:
         raise HTTPException(status_code=403, detail="The sync system account cannot be modified")
 
 
 @router.get("", response_model=list[UserRead])
 def list_users(session: SessionDep, _: AdminUser) -> list[User]:
-    return session.exec(select(User).where(User.username != SYNC_USERNAME)).all()
+    return session.exec(select(User).where(User.username.not_in(SYSTEM_USERNAMES))).all()
 
 
 @router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def create_user(body: UserCreate, session: SessionDep, _: AdminUser) -> User:
-    if body.username.lower() == SYNC_USERNAME.lower():
+    if body.username.lower() in {u.lower() for u in SYSTEM_USERNAMES}:
         raise HTTPException(status_code=400, detail="That username is reserved")
     if session.exec(select(User).where(User.username == body.username)).first():
         raise HTTPException(status_code=409, detail="Username taken")
@@ -77,6 +93,20 @@ def delete_user(user_id: int, session: SessionDep, _: AdminUser) -> Response:
     _guard_system(user)
     if user.role == Role.ADMIN and _admin_count(session) <= 1:
         raise HTTPException(status_code=400, detail="Cannot delete the last admin")
+
+    # Reassign the departing user's created content to the sentinel instead
+    # of deleting it, so their POIs/routes/etc. survive account removal.
+    sentinel = deleted_placeholder_user(session)
+    for model in (POI, Category, Route, Team, RouteShare):
+        for row in session.exec(select(model).where(model.created_by == user_id)).all():
+            row.created_by = sentinel.id
+            session.add(row)
+    for att in session.exec(select(RouteAttachment).where(RouteAttachment.uploaded_by == user_id)).all():
+        att.uploaded_by = sentinel.id
+        session.add(att)
+
+    for row in session.exec(select(ApiToken).where(ApiToken.user_id == user_id)).all():
+        session.delete(row)
     for model in (Visit, Comment):
         for row in session.exec(select(model).where(model.user_id == user_id)).all():
             session.delete(row)

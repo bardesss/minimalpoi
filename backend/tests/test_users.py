@@ -73,6 +73,67 @@ def test_cannot_demote_or_disable_last_admin(client):
     assert client.patch(f"/api/users/{admin_id}", json={"disabled": True}).status_code == 400
 
 
+def test_deleting_creator_reassigns_content_to_sentinel(client):
+    _setup_admin(client)
+
+    bob_id = client.post("/api/users", json={"username": "bob", "password": "pw123456"}).json()["id"]
+
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
+    poi_id = client.post(
+        "/api/pois",
+        json={"name": "P", "lat": 1.0, "lng": 2.0},
+    ).json()["id"]
+
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"username": "admin", "password": "pw123456"})
+    assert client.delete(f"/api/users/{bob_id}").status_code == 204
+
+    from sqlmodel import Session, select
+    from app import db
+    from app.models import POI, User, DELETED_USERNAME
+
+    with Session(db.engine) as s:
+        sentinel = s.exec(select(User).where(User.username == DELETED_USERNAME)).first()
+        assert sentinel is not None
+        poi = s.get(POI, poi_id)
+        assert poi is not None and poi.created_by == sentinel.id
+
+
+def test_sentinel_hidden_from_user_list_and_unmanageable(client):
+    _setup_admin(client)
+
+    bob_id = client.post("/api/users", json={"username": "bob", "password": "pw123456"}).json()["id"]
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
+    client.post("/api/pois", json={"name": "P", "lat": 1.0, "lng": 2.0})
+
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"username": "admin", "password": "pw123456"})
+    assert client.delete(f"/api/users/{bob_id}").status_code == 204
+
+    r = client.get("/api/users")
+    assert all(u["username"] != "__deleted_user__" for u in r.json())
+
+    from sqlmodel import Session, select
+    from app import db
+    from app.models import User, DELETED_USERNAME
+
+    with Session(db.engine) as s:
+        sentinel = s.exec(select(User).where(User.username == DELETED_USERNAME)).first()
+        assert sentinel is not None
+        sid = sentinel.id
+
+    assert client.patch(f"/api/users/{sid}", json={"role": "admin"}).status_code == 403
+    assert client.delete(f"/api/users/{sid}").status_code == 403
+    assert client.post(
+        "/api/users", json={"username": DELETED_USERNAME, "password": "pw123456"}
+    ).status_code == 400
+    assert client.post(
+        "/api/auth/login", json={"username": DELETED_USERNAME, "password": "!"}
+    ).status_code == 401
+
+
 def test_delete_user_cascades_children(client):
     _setup_admin(client)
 

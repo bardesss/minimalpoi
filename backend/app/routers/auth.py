@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep
-from ..models import SYNC_USERNAME, Role, TeamMember, User, get_or_create_settings
+from ..models import SYSTEM_USERNAMES, Role, TeamMember, User, get_or_create_settings
 from ..ratelimit import LOGIN_LIMIT, SETUP_LIMIT, limiter
 from ..schemas import Credentials, PreferredTeamUpdate, SetupStatus, Signup, StatusResponse, UserRead
 from ..config import get_session_lifetime_days
@@ -56,7 +56,7 @@ def setup_status(request: Request, session: SessionDep) -> SetupStatus:
 def setup(request: Request, creds: Signup, session: SessionDep, response: Response) -> User:
     if _any_user_exists(session):
         raise HTTPException(status_code=409, detail="Setup already completed")
-    if creds.username.lower() == SYNC_USERNAME.lower():
+    if creds.username.lower() in {u.lower() for u in SYSTEM_USERNAMES}:
         raise HTTPException(status_code=400, detail="That username is reserved")
     user = User(
         username=creds.username,
