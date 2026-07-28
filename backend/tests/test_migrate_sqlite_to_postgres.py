@@ -122,3 +122,71 @@ def test_migration_repairs_orphans(tmp_path):
     SQLModel.metadata.drop_all(target)
     source.dispose()
     target.dispose()
+
+
+@pytest.mark.skipif(POSTGRES_URL is None, reason="needs a real Postgres (set TEST_POSTGRES_URL)")
+def test_migration_reassigns_orphaned_owner_fk_to_sentinel(tmp_path):
+    """A POI whose creator was deleted (created_by orphaned, NOT NULL column)
+    must be reassigned to the __deleted_user__ sentinel, not dropped or nulled —
+    and the sentinel row itself must land in the target."""
+    from sqlmodel import select as sm_select
+
+    from app.db import _normalize_db_url, _add_missing_columns
+    import app.models as m
+
+    source = _sqlite(tmp_path / "src.db")
+    _seed_source(source)                         # a route + node + poi + user "u"
+    with Session(source) as s:
+        # Orphan the POI's created_by by deleting its creator directly
+        # (SQLite never enforced the FK, so this leaves a dangling reference).
+        poi = s.exec(sm_select(m.POI)).first()
+        user = s.get(m.User, poi.created_by)
+        s.delete(user); s.commit()
+
+    target = create_engine(_normalize_db_url(POSTGRES_URL))
+    SQLModel.metadata.drop_all(target); SQLModel.metadata.create_all(target); _add_missing_columns(target)
+    migrate(source, target)                       # must NOT raise
+
+    with Session(target) as s:
+        sentinel = s.exec(sm_select(m.User).where(m.User.username == m.DELETED_USERNAME)).first()
+        assert sentinel is not None
+        assert sentinel.disabled is True
+
+        poi = s.exec(sm_select(m.POI)).first()
+        assert poi.created_by == sentinel.id
+
+    SQLModel.metadata.drop_all(target)
+    source.dispose()
+    target.dispose()
+
+
+@pytest.mark.skipif(POSTGRES_URL is None, reason="needs a real Postgres (set TEST_POSTGRES_URL)")
+def test_clean_migration_does_not_add_sentinel_user(tmp_path):
+    """No orphaned owner FK anywhere in the source: the __deleted_user__
+    sentinel must never be injected — a clean migration's user count in the
+    target must equal the source's, not source + 1."""
+    from sqlmodel import select as sm_select
+
+    from app.db import _normalize_db_url, _add_missing_columns
+    import app.models as m
+
+    source = _sqlite(tmp_path / "src.db")
+    _seed_source(source)                          # no deletions — nothing orphaned
+
+    with Session(source) as s:
+        source_user_count = len(s.exec(sm_select(m.User)).all())
+
+    target = create_engine(_normalize_db_url(POSTGRES_URL))
+    SQLModel.metadata.drop_all(target); SQLModel.metadata.create_all(target); _add_missing_columns(target)
+    counts = migrate(source, target)               # must NOT raise
+
+    assert counts["user"] == source_user_count
+
+    with Session(target) as s:
+        target_users = s.exec(sm_select(m.User)).all()
+        assert len(target_users) == source_user_count
+        assert not any(u.username == m.DELETED_USERNAME for u in target_users)
+
+    SQLModel.metadata.drop_all(target)
+    source.dispose()
+    target.dispose()

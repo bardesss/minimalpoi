@@ -15,12 +15,17 @@ def test_ondelete_actions_are_set():
     assert _ondelete(m.RouteNode.__table__, "route_id") == "CASCADE"
     assert _ondelete(m.RouteLeg.__table__, "route_id") == "CASCADE"
     assert _ondelete(m.RouteLeg.__table__, "from_node_id") == "CASCADE"
+    assert _ondelete(m.RouteLeg.__table__, "to_node_id") == "CASCADE"
     assert _ondelete(m.RouteAttachment.__table__, "route_id") == "CASCADE"
     assert _ondelete(m.RouteAttachment.__table__, "node_id") == "SET NULL"
     assert _ondelete(m.RouteShare.__table__, "route_id") == "CASCADE"
     assert _ondelete(m.ApiToken.__table__, "user_id") == "CASCADE"
+    assert _ondelete(m.TeamMember.__table__, "team_id") == "CASCADE"
+    assert _ondelete(m.TeamMember.__table__, "user_id") == "CASCADE"
     assert _ondelete(m.Visit.__table__, "poi_id") == "CASCADE"
+    assert _ondelete(m.Visit.__table__, "user_id") == "CASCADE"
     assert _ondelete(m.Visit.__table__, "team_id") == "SET NULL"
+    assert _ondelete(m.Comment.__table__, "poi_id") == "CASCADE"
     assert _ondelete(m.Comment.__table__, "user_id") == "CASCADE"
     # created_by / uploaded_by intentionally have no ON DELETE (app reassigns)
     assert _ondelete(m.POI.__table__, "created_by") is None

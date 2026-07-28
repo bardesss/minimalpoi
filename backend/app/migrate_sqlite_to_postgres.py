@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from sqlalchemy import func, inspect, select, text
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import SQLModel, create_engine
 
 from . import models  # noqa: F401 — importing registers every table on SQLModel.metadata
 from .config import get_data_dir
@@ -83,7 +83,7 @@ def _present_ids(rows_by_table: dict[str, list[dict]]) -> dict[str, set]:
 _OWNER_FK_COLUMNS = {"created_by", "uploaded_by"}
 
 
-def _repair_orphans(rows_by_table: dict[str, list[dict]], source_engine) -> dict[str, int]:
+def _repair_orphans(rows_by_table: dict[str, list[dict]]) -> dict[str, int]:
     """Fix up dangling FKs left over from SQLite (which never enforced them)
     before the rows are inserted into Postgres, which does. Mutates
     `rows_by_table` in place and returns a per-table count of rows touched
@@ -96,23 +96,45 @@ def _repair_orphans(rows_by_table: dict[str, list[dict]], source_engine) -> dict
     with a missing parent (should be rare) — the row is dropped and logged.
     Tables are walked in `sorted_tables` (parent-before-child) order so a
     drop in a parent table is visible to its children in the same pass.
+
+    The sentinel is only materialized the first time an owner-FK orphan is
+    actually found (a clean migration must not gain a phantom
+    `__deleted_user__` row), and it is synthesized directly into
+    `rows_by_table["user"]` with a fresh id rather than written to the
+    source: `rows_by_table` was already loaded from the source engine before
+    this runs, so the source database itself is never mutated by a repair.
     """
-    with Session(source_engine) as s:
-        sentinel = models.deleted_placeholder_user(s)
-        sentinel_id = sentinel.id
-
-    user_rows = rows_by_table.setdefault("user", [])
-    if not any(r.get("id") == sentinel_id for r in user_rows):
-        user_table = SQLModel.metadata.tables["user"]
-        with source_engine.connect() as conn:
-            row = conn.execute(
-                select(user_table).where(user_table.c.id == sentinel_id)
-            ).mappings().first()
-        if row is not None:
-            user_rows.append(dict(row))
-
     present_ids = _present_ids(rows_by_table)
     repairs: dict[str, int] = {}
+    sentinel_id: int | None = None
+
+    def sentinel() -> int:
+        """Lazily resolve the `deleted_placeholder_user` id, creating it (in
+        `rows_by_table` only, never in the source) on first use."""
+        nonlocal sentinel_id
+        if sentinel_id is not None:
+            return sentinel_id
+
+        user_rows = rows_by_table.setdefault("user", [])
+        for row in user_rows:
+            if row.get("username") == models.DELETED_USERNAME:
+                sentinel_id = row["id"]
+                return sentinel_id
+
+        new_id = max((r["id"] for r in user_rows if "id" in r), default=0) + 1
+        user_rows.append({
+            "id": new_id,
+            "username": models.DELETED_USERNAME,
+            "password_hash": "!",
+            "role": models.Role.MEMBER,
+            "preferred_team_id": None,
+            "disabled": True,
+            "token_version": 0,
+            "created_at": models.utcnow(),
+        })
+        present_ids.setdefault("user", set()).add(new_id)
+        sentinel_id = new_id
+        return sentinel_id
 
     for table in SQLModel.metadata.sorted_tables:
         rows = rows_by_table.get(table.name)
@@ -136,7 +158,7 @@ def _repair_orphans(rows_by_table: dict[str, list[dict]], source_engine) -> dict
                 if value is None or value in present_ids.get(parent_table, ()):
                     continue
                 if col_name in _OWNER_FK_COLUMNS:
-                    row[col_name] = sentinel_id
+                    row[col_name] = sentinel()
                 elif nullable:
                     row[col_name] = None
                 else:
@@ -170,7 +192,7 @@ def migrate(source_engine, target_engine) -> dict[str, int]:
             for table in SQLModel.metadata.sorted_tables
         }
 
-    repairs = _repair_orphans(rows_by_table, source_engine)
+    repairs = _repair_orphans(rows_by_table)
     for table_name, n in repairs.items():
         logger.warning("migration: repaired %d orphaned FK reference(s) in '%s'", n, table_name)
 
