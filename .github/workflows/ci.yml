@@ -48,17 +48,19 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev,postgres]"
       # Scoped to the dialect-sensitive suites: engine selection / URL
-      # normalization / boolean-default (test_db_engine) and the SQLite->Postgres
+      # normalization / boolean-default (test_db_engine), the SQLite->Postgres
       # migration incl. the sequence reset (test_migrate_sqlite_to_postgres, whose
       # setup also runs create_all + _add_missing_columns and copies boolean
-      # columns on real Postgres). The full app suite is NOT run here: many
-      # pre-existing tests assume SQLite's non-enforcement of foreign keys (they
-      # insert rows with dangling created_by FKs) and an empty shared database, so
-      # they can't pass unmodified against a single Postgres instance. Widening
-      # this job to the whole suite is a separate follow-up (FK-satisfying
-      # fixtures + universal per-test isolation).
-      - name: Run dialect tests against Postgres
-        run: python -m pytest -v tests/test_db_engine.py tests/test_migrate_sqlite_to_postgres.py
+      # columns on real Postgres), the ON DELETE FK map (test_fk_ondelete), and
+      # the delete-flow behaviour that map produces end-to-end against real
+      # enforced foreign keys (test_postgres_delete_flows). The full app suite is
+      # NOT run here: many pre-existing tests assume SQLite's non-enforcement of
+      # foreign keys (they insert rows with dangling created_by FKs) and an empty
+      # shared database, so they can't pass unmodified against a single Postgres
+      # instance. Widening this job to the whole suite is a separate follow-up
+      # (FK-satisfying fixtures + universal per-test isolation).
+      - name: Run dialect + delete-flow tests against Postgres
+        run: python -m pytest -v tests/test_db_engine.py tests/test_migrate_sqlite_to_postgres.py tests/test_fk_ondelete.py tests/test_postgres_delete_flows.py
   frontend-tests:
     runs-on: ubuntu-latest
     defaults:

@@ -175,6 +175,16 @@ class RouteAttachment(SQLModel, table=True):
 
 
 class RouteShare(SQLModel, table=True):
+    # `delete_route` explicitly deletes the share row itself (so the API stays
+    # correct even without DB-level cascade), but route_id also carries a real
+    # ON DELETE CASCADE for Postgres. In the same flush, the ORM's own delete
+    # ordering between unrelated mapped classes (no relationship() is defined
+    # here) isn't guaranteed relative to Route's delete, so Postgres may cascade
+    # this row away before the ORM's explicit DELETE for it runs. That's a
+    # harmless race (the row is gone either way) — silence the mismatch warning
+    # rather than treat a 0-row DELETE as an error.
+    __mapper_args__ = {"confirm_deleted_rows": False}
+
     id: int | None = Field(default=None, primary_key=True)
     token: str = Field(unique=True, index=True)
     route_id: int = Field(foreign_key="route.id", unique=True, index=True, ondelete="CASCADE")
