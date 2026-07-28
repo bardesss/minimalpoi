@@ -96,3 +96,27 @@ def test_full_copy_preserves_rows_and_resets_sequences(tmp_path):
     SQLModel.metadata.drop_all(target)
     source.dispose()
     target.dispose()
+
+
+@pytest.mark.skipif(POSTGRES_URL is None, reason="needs a real Postgres (set TEST_POSTGRES_URL)")
+def test_migration_repairs_orphans(tmp_path):
+    from app.db import _normalize_db_url, _add_missing_columns
+    import app.models as m
+
+    source = _sqlite(tmp_path / "src.db")
+    _seed_source(source)                         # a route + node + poi + user
+    with Session(source) as s:
+        # orphan a RouteNode.poi_id (delete the POI row directly — SQLite allows it)
+        poi = s.exec(sa_select(m.POI)).first()
+        node = s.exec(sa_select(m.RouteNode)).first()
+        node.poi_id = poi.id; s.add(node); s.delete(poi); s.commit()
+
+    target = create_engine(_normalize_db_url(POSTGRES_URL))
+    SQLModel.metadata.drop_all(target); SQLModel.metadata.create_all(target); _add_missing_columns(target)
+    counts = migrate(source, target)             # must NOT raise
+    with Session(target) as s:
+        node = s.exec(sa_select(m.RouteNode)).first()
+        assert node.poi_id is None               # orphan nulled, not a FK violation
+    SQLModel.metadata.drop_all(target)
+    source.dispose()
+    target.dispose()
