@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "../test/msw";
 import { makeClient } from "../test/utils";
-import { useComments, useCreatePoi, useDeletePoi, useEnrich, useImportPois, useMyVisits, usePois, useSyncConflicts, useSyncStatus, useTags, useUpdatePoi, useUploadImage, useUpsertVisit, useUsers, useTeams, useVisits } from "./hooks";
+import { useComments, useCreatePoi, useDeletePoi, useEnrich, useImportPois, useMyVisits, usePois, useRestoreBackup, useSyncConflicts, useSyncStatus, useTags, useUpdatePoi, useUploadImage, useUpsertVisit, useUsers, useTeams, useVisits } from "./hooks";
 
 function wrapper(client = makeClient()) {
   return ({ children }: { children: ReactNode }) => (
@@ -125,6 +125,17 @@ describe("data hooks", () => {
     const mut = renderHook(() => useUpsertVisit(1), { wrapper: wrapper(client) });
     await mut.result.current.mutateAsync({ rating: 4 });
     await waitFor(() => expect(poisGet).toBeGreaterThanOrEqual(2));
+  });
+
+  it("useRestoreBackup invalidates each cache once, without the redundant ['settings','full']", async () => {
+    const client = makeClient();
+    const spy = vi.spyOn(client, "invalidateQueries");
+    server.use(http.post("/api/restore", () => HttpResponse.json({ restored: { pois: 1 } })));
+    const mut = renderHook(() => useRestoreBackup(), { wrapper: wrapper(client) });
+    await mut.result.current.mutateAsync(new File(["x"], "b.zip", { type: "application/zip" }));
+    const keys = spy.mock.calls.map((c) => JSON.stringify(c[0]?.queryKey));
+    expect(keys).toContain(JSON.stringify(["settings"]));
+    expect(keys).not.toContain(JSON.stringify(["settings", "full"]));
   });
 
   it("useTags loads tags", async () => {
