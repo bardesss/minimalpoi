@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from sqlmodel import select
 
 from .. import attachments as att
-from ..deps import CurrentUser, SessionDep
+from ..deps import CurrentUser, SessionDep, is_team_member
 from ..models import (
     POI,
     NodeRole,
@@ -21,7 +21,6 @@ from ..models import (
     RouteNodeKind,
     RouteShare,
     Team,
-    TeamMember,
     User,
     get_or_create_settings,
     utcnow,
@@ -149,24 +148,18 @@ def _team_name(session, team_id: int | None) -> str | None:
     return team.name if team else None
 
 
-def _is_team_member(session, team_id: int, user_id: int) -> bool:
-    return session.exec(
-        select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.user_id == user_id)
-    ).first() is not None
-
-
 def _assert_can_assign_team(session, team_id: int, user: User) -> None:
     """Assigning a route to a team requires the setter to belong to it; admins may assign to any."""
     if session.get(Team, team_id) is None:
         raise HTTPException(status_code=400, detail="Unknown team_id")
-    if user.role != Role.ADMIN and not _is_team_member(session, team_id, user.id):
+    if user.role != Role.ADMIN and not is_team_member(session, team_id, user.id):
         raise HTTPException(status_code=403, detail="Not a member of that team")
 
 
 def _can_edit_route(session, route: Route, user: User) -> bool:
     if user.role == Role.ADMIN or route.created_by == user.id:
         return True
-    return route.team_id is not None and _is_team_member(session, route.team_id, user.id)
+    return route.team_id is not None and is_team_member(session, route.team_id, user.id)
 
 
 def require_route_editor(session, route: Route, user: User) -> None:

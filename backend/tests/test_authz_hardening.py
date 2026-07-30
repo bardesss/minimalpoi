@@ -91,3 +91,40 @@ def test_cookie_secure_auto_enabled_behind_https_proxy(client):
     )
     assert resp.status_code == 200
     assert "secure" in resp.headers.get("set-cookie", "").lower()
+
+
+# ── shared permission helpers ────────────────────────────────────────────────
+
+def test_deps_exposes_shared_team_helpers():
+    from app.deps import is_team_member, require_team_member
+    assert callable(is_team_member) and callable(require_team_member)
+
+
+def test_require_team_member_noop_and_raises(client):
+    import pytest
+    from fastapi import HTTPException
+    from sqlmodel import Session, select
+
+    from app import db
+    from app.deps import is_team_member, require_team_member
+    from app.models import Team, TeamMember, User
+
+    _admin(client)
+    with Session(db.engine) as s:
+        admin = s.exec(select(User).where(User.username == "admin")).first()
+        team = Team(name="crew", created_by=admin.id)
+        s.add(team)
+        s.commit()
+        s.refresh(team)
+
+        require_team_member(s, None, admin.id)  # team_id None -> no-op, no raise
+        assert is_team_member(s, team.id, admin.id) is False
+        with pytest.raises(HTTPException) as exc:
+            require_team_member(s, team.id, admin.id)  # not a member -> 403
+        assert exc.value.status_code == 403
+        assert exc.value.detail == "Not a member of that team"
+
+        s.add(TeamMember(team_id=team.id, user_id=admin.id))
+        s.commit()
+        assert is_team_member(s, team.id, admin.id) is True
+        require_team_member(s, team.id, admin.id)  # member -> no raise

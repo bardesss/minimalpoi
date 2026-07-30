@@ -4,7 +4,7 @@ from fastapi import Cookie, Depends, Header, HTTPException, status
 from sqlmodel import Session, select
 
 from .db import get_session
-from .models import Role, User
+from .models import Role, TeamMember, User
 
 SessionDep = Annotated[Session, Depends(get_session)]
 
@@ -62,3 +62,17 @@ def require_owner_or_admin(created_by: int, user: User) -> None:
     shared entities (POIs, categories) so one member can't mutate another's."""
     if created_by != user.id and user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")
+
+
+def is_team_member(session: Session, team_id: int, user_id: int) -> bool:
+    return session.exec(
+        select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.user_id == user_id)
+    ).first() is not None
+
+
+def require_team_member(session: Session, team_id: int | None, user_id: int) -> None:
+    """No-op when team_id is None; else 403 unless the user belongs to the team."""
+    if team_id is None:
+        return
+    if not is_team_member(session, team_id, user_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of that team")
