@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.10.2](https://github.com/bardesss/minimalpoi/compare/v3.10.1...v3.10.2) (2026-07-30)
+
+
+### Performance Improvements
+
+* **async:** compute route legs concurrently with asyncio.gather ([c88f9e1](https://github.com/bardesss/minimalpoi/commit/c88f9e153a309da916997f2d98f00fcce3aa8024))
+* **async:** keep the event loop responsive (Phase 1 — backend async safety) ([4944316](https://github.com/bardesss/minimalpoi/commit/4944316640fe733f58ffb03b3112d831cf0246f0))
+* **async:** offload image decode/encode and file writes to a worker thread ([918ca49](https://github.com/bardesss/minimalpoi/commit/918ca49bb216f5d3ccf38bea1c4b28952e738d0b))
+
 ## [3.10.1](https://github.com/Bardesss/minimalpoi/compare/v3.10.0...v3.10.1) (2026-07-28)
 
 
