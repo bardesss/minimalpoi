@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import type { RouteAttachment } from "../../types/api";
 import { theme } from "../../theme";
 import { attachmentUrl } from "../../api/routes";
@@ -27,7 +26,6 @@ export default function RouteAttachments({
 }) {
   const upload = useUploadRouteAttachment(routeId);
   const del = useDeleteRouteAttachment(routeId);
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -70,7 +68,6 @@ export default function RouteAttachments({
         >
           + Add file
           <input
-            ref={inputRef}
             type="file"
             accept={ACCEPT}
             aria-label="Add file"

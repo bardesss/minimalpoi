@@ -5,7 +5,6 @@ import { safeImageCss } from "../../lib/safeUrl";
 import { cityFromAddress, countryCodeFromAddress } from "../../lib/country";
 import Flag from "../Flag";
 
-export { cityFromAddress } from "../../lib/country";
 
 function PoiCard({
   poi,

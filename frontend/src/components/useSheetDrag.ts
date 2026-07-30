@@ -14,7 +14,6 @@ function vh(fraction: number): number {
 export interface SheetDrag {
   translate: number;
   dragging: boolean;
-  snap: Snap;
   handlers: {
     onPointerDown: (e: React.PointerEvent) => void;
     onPointerMove: (e: React.PointerEvent) => void;
@@ -27,23 +26,22 @@ export interface SheetDrag {
  * Drag-to-snap behaviour shared by the map-first sheets (the list sheet and the
  * mobile detail card): follow the finger vertically, then settle on the nearest
  * of peek / half / full on release; a tap with no real movement cycles toward
- * more open. `hide` is the fraction of the viewport each snap is translated DOWN
- * by — pass a stable (module-level) object so the resting position stays synced.
+ * more open.
  */
-export function useSheetDrag(initial: Snap, hide: Record<Snap, number> = DEFAULT_HIDE): SheetDrag {
+export function useSheetDrag(initial: Snap): SheetDrag {
   const [snap, setSnap] = useState<Snap>(initial);
-  const [translate, setTranslate] = useState(() => vh(hide[initial]));
+  const [translate, setTranslate] = useState(() => vh(DEFAULT_HIDE[initial]));
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ startY: number; startT: number; moved: number } | null>(null);
 
   // Keep the resting position in sync with the viewport while not dragging.
   useEffect(() => {
     if (dragging) return;
-    const apply = () => setTranslate(vh(hide[snap]));
+    const apply = () => setTranslate(vh(DEFAULT_HIDE[snap]));
     apply();
     window.addEventListener("resize", apply);
     return () => window.removeEventListener("resize", apply);
-  }, [snap, dragging, hide]);
+  }, [snap, dragging]);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -60,10 +58,10 @@ export function useSheetDrag(initial: Snap, hide: Record<Snap, number> = DEFAULT
       if (!d) return;
       const dy = e.clientY - d.startY;
       d.moved = Math.max(d.moved, Math.abs(dy));
-      const next = Math.min(Math.max(d.startT + dy, vh(hide.full)), vh(hide.peek));
+      const next = Math.min(Math.max(d.startT + dy, vh(DEFAULT_HIDE.full)), vh(DEFAULT_HIDE.peek));
       setTranslate(next);
     },
-    [hide],
+    [],
   );
 
   const onPointerUp = useCallback(() => {
@@ -80,19 +78,18 @@ export function useSheetDrag(initial: Snap, hide: Record<Snap, number> = DEFAULT
     let best: Snap = "peek";
     let bestDist = Infinity;
     for (const s of ORDER) {
-      const dist = Math.abs(translate - vh(hide[s]));
+      const dist = Math.abs(translate - vh(DEFAULT_HIDE[s]));
       if (dist < bestDist) {
         bestDist = dist;
         best = s;
       }
     }
     setSnap(best);
-  }, [translate, hide]);
+  }, [translate]);
 
   return {
     translate,
     dragging,
-    snap,
     handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
   };
 }

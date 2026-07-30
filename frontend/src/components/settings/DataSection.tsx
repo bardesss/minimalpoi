@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 import { useImportPois, useRestoreBackup } from "../../queries/hooks";
 import { exportPois } from "../../api/portability";
 import { downloadBackup } from "../../api/backup";
@@ -16,7 +16,6 @@ export default function DataSection() {
   const isAdmin = user?.role === "admin";
   const importPois = useImportPois();
   const restore = useRestoreBackup();
-  const fileRef = useRef<HTMLInputElement | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -84,7 +83,7 @@ export default function DataSection() {
       <div>
         <div style={rowLabel}>Import places</div>
         <p style={rowHint}>Upload a GeoJSON or CSV file. Likely duplicates are skipped.</p>
-        <input ref={fileRef} id="data-import-file" type="file" accept=".json,.geojson,.csv" onChange={onFile} style={{ display: "none" }} />
+        <input id="data-import-file" type="file" accept=".json,.geojson,.csv" onChange={onFile} style={{ display: "none" }} />
         <label htmlFor="data-import-file" style={{ ...ghostButtonStyle, display: "inline-block", marginTop: 8 }}>
           {importPois.isPending ? "Importing…" : "Choose file"}
         </label>

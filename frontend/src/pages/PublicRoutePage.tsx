@@ -14,7 +14,7 @@ import BrandLogo from "../components/BrandLogo";
  * start_date, attachments — see `groupNodesByDay`); the unread `RouteSummary`
  * fields get neutral placeholders since `can_edit:false` means they're never
  * displayed or mutated. */
-export function routeDetailFromPublic(view: PublicRouteView): RouteDetail {
+function routeDetailFromPublic(view: PublicRouteView): RouteDetail {
   return {
     id: 0,
     name: view.name,

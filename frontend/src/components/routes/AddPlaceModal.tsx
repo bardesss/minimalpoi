@@ -9,7 +9,6 @@ import SearchPlacePanel from "./placePanels/SearchPlacePanel";
 import ManualPointPanel from "./placePanels/ManualPointPanel";
 import type { PlaceSelection } from "./placePanels/placeSelection";
 
-export type { PlaceSelection };
 
 type Method = "saved" | "search" | "manual";
 
