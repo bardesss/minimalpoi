@@ -60,15 +60,25 @@ def _username(session, user_id: int) -> str:
     return u.username if u else "(deleted)"
 
 
-def _summary(session, route: Route) -> RouteSummary:
+def _summary(session, route: Route, *, user_names=None, team_names=None) -> RouteSummary:
+    # user_names/team_names let a listing preload every name in one query each;
+    # None keeps the single-route path resolving them per call.
     nodes = ordered_nodes(session, route.id)
     d = derive(nodes, legs_for(session, route.id), route.start_date)
+    if user_names is not None:
+        owner = user_names.get(route.created_by, "(deleted)")
+    else:
+        owner = _username(session, route.created_by)
+    if team_names is not None:
+        team = team_names.get(route.team_id)
+    else:
+        team = _team_name(session, route.team_id)
     return RouteSummary(
         id=route.id, name=route.name, start_date=route.start_date,
         end_date=route.end_date, round_trip=route.round_trip, scheduled_end_date=d["end_date"],
         node_count=len(nodes), created_by=route.created_by,
-        owner_username=_username(session, route.created_by),
-        team_id=route.team_id, team_name=_team_name(session, route.team_id),
+        owner_username=owner,
+        team_id=route.team_id, team_name=team,
     )
 
 
@@ -193,7 +203,16 @@ def _assert_can_edit(session, route: Route, user: User) -> None:
 @router.get("", response_model=list[RouteSummary], dependencies=[Gate])
 def list_routes(session: SessionDep, _: CurrentUser) -> list[RouteSummary]:
     routes = session.exec(select(Route).order_by(Route.created_at.desc())).all()
-    return [_summary(session, r) for r in routes]
+    # Two batched IN lookups instead of a session.get() per route for owner + team.
+    user_ids = {r.created_by for r in routes}
+    team_ids = {r.team_id for r in routes if r.team_id is not None}
+    user_names = {
+        u.id: u.username for u in session.exec(select(User).where(User.id.in_(user_ids))).all()
+    } if user_ids else {}
+    team_names = {
+        t.id: t.name for t in session.exec(select(Team).where(Team.id.in_(team_ids))).all()
+    } if team_ids else {}
+    return [_summary(session, r, user_names=user_names, team_names=team_names) for r in routes]
 
 
 @router.post("", response_model=RouteDetail, status_code=status.HTTP_201_CREATED, dependencies=[Gate])

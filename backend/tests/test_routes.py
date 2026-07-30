@@ -124,3 +124,19 @@ def test_non_member_cannot_edit_team_route(client):
     client.post("/api/auth/login", json={"username": "carol", "password": "pw123456"})
     assert client.get(f"/api/routes/{rid}").json()["can_edit"] is False
     assert client.patch(f"/api/routes/{rid}", json={"name": "hax"}).status_code == 403
+
+
+def test_list_routes_resolves_owner_and_team_names_batched(client):
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
+    client.patch("/api/settings", json={"routes_enabled": True})
+    me_id = client.get("/api/auth/me").json()["id"]
+    team_id = client.post("/api/teams", json={"name": "Crew", "member_ids": [me_id]}).json()["id"]
+
+    client.post("/api/routes", json={"name": "No team", "start_date": "2026-07-14"})
+    client.post("/api/routes", json={"name": "Teamed", "start_date": "2026-07-15", "team_id": team_id})
+
+    by_name = {r["name"]: r for r in client.get("/api/routes").json()}
+    assert by_name["No team"]["owner_username"] == "admin"
+    assert by_name["No team"]["team_id"] is None and by_name["No team"]["team_name"] is None
+    assert by_name["Teamed"]["owner_username"] == "admin"
+    assert by_name["Teamed"]["team_name"] == "Crew"

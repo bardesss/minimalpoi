@@ -9,13 +9,19 @@ from ..schemas import CommentCreate, CommentRead, CommentUpdate
 router = APIRouter(prefix="/api/pois", tags=["comments"])
 
 
-def _to_read(session: SessionDep, comment: Comment) -> CommentRead:
-    user = session.get(User, comment.user_id)
+def _to_read(session: SessionDep, comment: Comment, names=None) -> CommentRead:
+    # names lets a listing preload every author in one query; None keeps the
+    # single-comment path looking the author up directly.
+    if names is not None:
+        username = names.get(comment.user_id, "(deleted)")
+    else:
+        user = session.get(User, comment.user_id)
+        username = user.username if user else "(deleted)"
     return CommentRead(
         id=comment.id,
         poi_id=comment.poi_id,
         user_id=comment.user_id,
-        username=user.username if user else "(deleted)",
+        username=username,
         text=comment.text,
         created_at=comment.created_at,
     )
@@ -28,7 +34,11 @@ def list_comments(poi_id: int, session: SessionDep, _: CurrentUser) -> list[Comm
     comments = session.exec(
         select(Comment).where(Comment.poi_id == poi_id).order_by(Comment.created_at)
     ).all()
-    return [_to_read(session, c) for c in comments]
+    user_ids = {c.user_id for c in comments}
+    names = {
+        u.id: u.username for u in session.exec(select(User).where(User.id.in_(user_ids))).all()
+    } if user_ids else {}
+    return [_to_read(session, c, names) for c in comments]
 
 
 @router.post("/{poi_id}/comments", response_model=CommentRead, status_code=status.HTTP_201_CREATED)

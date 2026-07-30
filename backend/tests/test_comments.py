@@ -49,3 +49,16 @@ def test_member_cannot_edit_others_comment(client):
 def test_edit_missing_comment_404(client):
     poi_id = _setup(client)
     assert client.patch(f"/api/pois/{poi_id}/comments/9999", json={"text": "x"}).status_code == 404
+
+
+def test_list_comments_resolves_authors_batched(client):
+    poi_id = _setup(client)  # admin is logged in
+    client.post(f"/api/pois/{poi_id}/comments", json={"text": "from admin"})
+    client.post("/api/users", json={"username": "bob", "password": "pw123456"})
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
+    client.post(f"/api/pois/{poi_id}/comments", json={"text": "from bob"})
+
+    listed = client.get(f"/api/pois/{poi_id}/comments").json()
+    authors = {c["text"]: c["username"] for c in listed}
+    assert authors == {"from admin": "admin", "from bob": "bob"}
