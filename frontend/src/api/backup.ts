@@ -1,13 +1,11 @@
-import { ApiError, apiFetch } from "./client";
+import { apiFetch, fetchBlob } from "./client";
 
 export interface RestoreResult {
   restored: Record<string, number>;
 }
 
-export async function downloadBackup(): Promise<Blob> {
-  const res = await fetch("/api/backup", { credentials: "include" });
-  if (!res.ok) throw new ApiError(res.status, res.statusText);
-  return res.blob();
+export function downloadBackup(): Promise<Blob> {
+  return fetchBlob("/api/backup");
 }
 
 export function restoreBackup(file: File): Promise<RestoreResult> {

@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { apiFetch } from "./client";
+import { apiFetch, fetchBlob } from "./client";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -38,4 +38,24 @@ test("throws ApiError with status on 401", async () => {
 test("returns undefined on 204", async () => {
   mockFetch(204, null);
   await expect(apiFetch("/api/auth/logout", { method: "POST" })).resolves.toBeUndefined();
+});
+
+test("fetchBlob returns a Blob on 200 and sends credentials", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response("PK", { status: 200 })),
+  );
+  const blob = await fetchBlob("/api/backup");
+  expect(blob).toBeInstanceOf(Blob);
+  const init = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1] as RequestInit;
+  expect(init).toMatchObject({ credentials: "include" });
+});
+
+test("fetchBlob throws ApiError and extracts JSON detail on error", async () => {
+  mockFetch(403, { detail: "Export disabled" });
+  await expect(fetchBlob("/api/routes/1/export")).rejects.toMatchObject({
+    name: "ApiError",
+    status: 403,
+    message: "Export disabled",
+  });
 });
