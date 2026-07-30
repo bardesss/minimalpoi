@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, UploadFile, status
+from starlette.concurrency import run_in_threadpool
 
 from ..deps import CurrentUser
 from ..enrich.images import MAX_IMAGE_BYTES, UnsupportedImageError, process_image, save_bytes
@@ -20,10 +21,10 @@ async def upload_image(request: Request, file: UploadFile, _: CurrentUser) -> di
             detail="Image too large (max 10 MB)",
         )
     try:
-        webp = process_image(data)
+        webp = await run_in_threadpool(process_image, data)
     except UnsupportedImageError:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail="Unsupported or invalid image (JPEG, PNG, or WebP only)",
         )
-    return {"url": save_bytes(webp, ".webp")}
+    return {"url": await run_in_threadpool(save_bytes, webp, ".webp")}

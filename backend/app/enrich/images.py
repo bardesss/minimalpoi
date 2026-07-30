@@ -4,6 +4,7 @@ from pathlib import Path
 
 import httpx
 from PIL import Image, ImageOps, UnidentifiedImageError
+from starlette.concurrency import run_in_threadpool
 
 from ..config import get_data_dir
 from .safety import UnsafeURLError, safe_get
@@ -80,7 +81,7 @@ async def localize(image_url: str | None, client: httpx.AsyncClient | None = Non
         if owns:
             await client.aclose()
     try:
-        webp = process_image(content)
+        webp = await run_in_threadpool(process_image, content)
     except UnsupportedImageError:
         return image_url  # unsupported/animated/non-image: keep the remote URL
-    return save_bytes(webp, ".webp")
+    return await run_in_threadpool(save_bytes, webp, ".webp")
