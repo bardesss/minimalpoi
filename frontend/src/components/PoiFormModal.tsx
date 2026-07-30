@@ -1,4 +1,3 @@
-// frontend/src/components/PoiFormModal.tsx
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import type { Category, PlaceSearchResult, PoiCreate, PoiDraft, TagInfo } from "../types/api";
 import { ApiError } from "../api/client";

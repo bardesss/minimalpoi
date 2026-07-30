@@ -1,4 +1,3 @@
-// frontend/src/components/AddFab.tsx
 import { theme } from "../theme";
 
 export default function AddFab({ onClick, mobile = false }: { onClick: () => void; mobile?: boolean }) {

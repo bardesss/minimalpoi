@@ -1,4 +1,3 @@
-// frontend/src/components/Sidebar/SidebarHeader.tsx
 import type { ReactNode } from "react";
 import { theme } from "../../theme";
 import BrandLogo from "../BrandLogo";

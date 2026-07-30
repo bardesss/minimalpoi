@@ -1,4 +1,3 @@
-// frontend/src/components/Sidebar/PoiCard.tsx
 import { memo } from "react";
 import type { Category, Poi } from "../../types/api";
 import { theme, tintFromColor } from "../../theme";

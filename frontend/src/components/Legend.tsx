@@ -1,4 +1,3 @@
-// frontend/src/components/Legend.tsx
 import type { Category } from "../types/api";
 import { theme } from "../theme";
 

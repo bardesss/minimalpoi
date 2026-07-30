@@ -11,9 +11,9 @@ import BrandLogo from "../components/BrandLogo";
 
 /** Adapts a `PublicRouteView` into the `RouteDetail` shape `RouteTimeline`
  * expects. Includes every field it actually reads (nodes, legs, round_trip,
- * start_date, attachments — see RouteTimeline.tsx:266, groupNodesByDay); the
- * unread `RouteSummary` fields get neutral placeholders since `can_edit:false`
- * means they're never displayed or mutated. */
+ * start_date, attachments — see `groupNodesByDay`); the unread `RouteSummary`
+ * fields get neutral placeholders since `can_edit:false` means they're never
+ * displayed or mutated. */
 export function routeDetailFromPublic(view: PublicRouteView): RouteDetail {
   return {
     id: 0,
