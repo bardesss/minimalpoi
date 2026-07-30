@@ -109,6 +109,24 @@ describe("data hooks", () => {
     await waitFor(() => expect(getCount).toBeGreaterThanOrEqual(2));
   });
 
+  it("useUpsertVisit invalidates ['pois'] so sidebar ratings refresh", async () => {
+    const client = makeClient();
+    let poisGet = 0;
+    server.use(
+      http.get("/api/pois", () => {
+        poisGet += 1;
+        return HttpResponse.json([{ id: 1, name: "A", avg_rating: null, rating_count: 0 }]);
+      }),
+      http.get("/api/me/visits", () => HttpResponse.json([])),
+      http.put("/api/pois/1/visit", () => HttpResponse.json({ poi_id: 1, user_id: 1, team_id: null, rating: 4 })),
+    );
+    const pois = renderHook(() => usePois(), { wrapper: wrapper(client) });
+    await waitFor(() => expect(pois.result.current.isSuccess).toBe(true));
+    const mut = renderHook(() => useUpsertVisit(1), { wrapper: wrapper(client) });
+    await mut.result.current.mutateAsync({ rating: 4 });
+    await waitFor(() => expect(poisGet).toBeGreaterThanOrEqual(2));
+  });
+
   it("useTags loads tags", async () => {
     server.use(http.get("/api/tags", () => HttpResponse.json([{ tag: "food", count: 2 }])));
     const { result } = renderHook(() => useTags(), { wrapper: wrapper() });

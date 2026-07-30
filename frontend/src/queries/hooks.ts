@@ -294,6 +294,10 @@ export function useUpsertVisit(poiId: number) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["visits", poiId] });
       qc.invalidateQueries({ queryKey: ["visits", "me"] });
+      // A visit changes the POI's avg_rating/rating_count, which the sidebar
+      // renders and sortPois sorts by — and upsertVisit returns only the Visit,
+      // so the recomputed aggregate has to come from a refetch.
+      qc.invalidateQueries({ queryKey: ["pois"] });
     },
   });
 }
@@ -304,6 +308,7 @@ export function useDeleteVisit(poiId: number) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["visits", poiId] });
       qc.invalidateQueries({ queryKey: ["visits", "me"] });
+      qc.invalidateQueries({ queryKey: ["pois"] });
     },
   });
 }
