@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Poi, PoiFilter } from "../types/api";
+import * as country from "./country";
 import { filterPois, UNCATEGORIZED_ID } from "./filterPois";
 
 const mk = (over: Partial<Poi>): Poi => ({ id: 0, name: "", address: null, city: null, country_code: null, lat: 0, lng: 0, category_id: null, tags: [], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "synced", avg_rating: null, rating_count: 0, ...over });
@@ -26,6 +27,19 @@ describe("filterPois", () => {
     expect(filterPois(pois, f({ categoryIds: [2] }), ctx).map((p) => p.id)).toEqual([2]);
     expect(filterPois(pois, f({ search: "café", categoryIds: [2] }), ctx)).toHaveLength(0);
   });
+  it("folds each poi's haystack once across repeated filter calls", () => {
+    const spy = vi.spyOn(country, "countryNameFromCode");
+    const local = [
+      mk({ id: 1, name: "Umai", city: "Urk", country_code: "NL" }),
+      mk({ id: 2, name: "Kafi", city: "Zürich", country_code: "CH" }),
+    ];
+    const c = { myVisitedPoiIds: new Set<number>() };
+    filterPois(local, f({ search: "ur" }), c);
+    filterPois(local, f({ search: "ka" }), c); // same poi objects, second keystroke
+    expect(spy).toHaveBeenCalledTimes(2); // once per poi total, not per call
+    spy.mockRestore();
+  });
+
   it("filters uncategorized places via the sentinel id", () => {
     const local = [
       mk({ id: 1, name: "Has category", category_id: 5 }),
