@@ -46,7 +46,11 @@ test("fetchBlob returns a Blob on 200 and sends credentials", async () => {
     vi.fn(async () => new Response("PK", { status: 200 })),
   );
   const blob = await fetchBlob("/api/backup");
-  expect(blob).toBeInstanceOf(Blob);
+  // Assert on the body rather than `instanceof Blob`: this test stubs fetch with
+  // a raw Response, so the blob comes from Node's own Blob constructor, which is
+  // a different realm than the test environment's global on some Node versions.
+  expect(await blob.text()).toBe("PK");
+  expect(blob.size).toBe(2);
   const init = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1] as RequestInit;
   expect(init).toMatchObject({ credentials: "include" });
 });
