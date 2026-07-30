@@ -4,10 +4,17 @@ from functools import lru_cache
 from pathlib import Path
 
 
-def get_data_dir() -> Path:
-    d = Path(os.environ.get("MINIMALPOI_DATA_DIR", "data"))
+@lru_cache(maxsize=None)
+def _ensure_data_dir(path_str: str) -> Path:
+    # mkdir once per distinct path; keyed on the path string so a test that
+    # repoints MINIMALPOI_DATA_DIR (via reset_config_cache) still gets a fresh dir.
+    d = Path(path_str)
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def get_data_dir() -> Path:
+    return _ensure_data_dir(os.environ.get("MINIMALPOI_DATA_DIR", "data"))
 
 
 DEFAULT_SESSION_LIFETIME_DAYS = 30
@@ -53,3 +60,4 @@ def get_secret_key() -> str:
 
 def reset_config_cache() -> None:
     get_secret_key.cache_clear()
+    _ensure_data_dir.cache_clear()

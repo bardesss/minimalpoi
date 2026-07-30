@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from app import config, crypto
 
 
@@ -31,6 +33,30 @@ def test_session_lifetime_ignores_invalid(monkeypatch):
     assert config.get_session_lifetime_days() == config.DEFAULT_SESSION_LIFETIME_DAYS
     monkeypatch.setenv("SESSION_LIFETIME_DAYS", "0")
     assert config.get_session_lifetime_days() == config.DEFAULT_SESSION_LIFETIME_DAYS
+
+
+def test_get_data_dir_only_mkdirs_once_per_path(tmp_path, monkeypatch):
+    calls: list[str] = []
+    real_mkdir = Path.mkdir
+
+    def counting_mkdir(self, *a, **k):
+        calls.append(str(self))
+        return real_mkdir(self, *a, **k)
+
+    monkeypatch.setattr(Path, "mkdir", counting_mkdir)
+    monkeypatch.setenv("MINIMALPOI_DATA_DIR", str(tmp_path / "d"))
+    config.reset_config_cache()  # start from a clean cache
+
+    d1 = config.get_data_dir()
+    d2 = config.get_data_dir()
+    assert d1 == d2 == (tmp_path / "d")
+    assert d1.is_dir()
+    assert len(calls) == 1  # cached: mkdir runs on the first call only
+
+    config.reset_config_cache()
+    config.get_data_dir()
+    assert len(calls) == 2  # cache cleared -> mkdir runs again
+    config.reset_config_cache()
 
 
 def test_crypto_round_trip(data_dir):
