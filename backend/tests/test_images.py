@@ -173,3 +173,53 @@ def test_upload_rejects_oversized(client, monkeypatch):
     monkeypatch.setattr(imgrouter, "MAX_IMAGE_BYTES", 10)
     resp = client.post("/api/images", files={"file": ("p.png", _img_bytes("PNG", 200, 150), "image/png")})
     assert resp.status_code == 413
+
+
+def test_localize_offloads_processing_to_threadpool(data_dir, monkeypatch):
+    import asyncio
+
+    from starlette.concurrency import run_in_threadpool as _real_tp
+
+    called: list[str] = []
+
+    async def spy(fn, *a, **kw):
+        called.append(getattr(fn, "__name__", str(fn)))
+        return await _real_tp(fn, *a, **kw)
+
+    monkeypatch.setattr(images, "run_in_threadpool", spy, raising=False)
+
+    jpeg = _img_bytes("JPEG", 200, 150)
+    http = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda r: httpx.Response(200, content=jpeg, headers={"content-type": "image/jpeg"})))
+    local = asyncio.run(images.localize("https://img.example/x.jpg", client=http))
+    asyncio.run(http.aclose())
+
+    # Behaviour preserved: a remote image is still downloaded, re-encoded, and stored locally.
+    assert local.startswith("/images/")
+    assert local.endswith(".webp")
+    # Both the CPU-bound decode/encode and the blocking file write went via the threadpool.
+    assert "process_image" in called
+    assert "save_bytes" in called
+
+
+def test_upload_offloads_processing_to_threadpool(client, monkeypatch):
+    from starlette.concurrency import run_in_threadpool as _real_tp
+
+    import app.routers.images as imgrouter
+
+    called: list[str] = []
+
+    async def spy(fn, *a, **kw):
+        called.append(getattr(fn, "__name__", str(fn)))
+        return await _real_tp(fn, *a, **kw)
+
+    monkeypatch.setattr(imgrouter, "run_in_threadpool", spy, raising=False)
+
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
+    png = _img_bytes("PNG", 200, 150)
+    resp = client.post("/api/images", files={"file": ("p.png", png, "image/png")})
+
+    assert resp.status_code == 201
+    assert resp.json()["url"].endswith(".webp")
+    assert "process_image" in called
+    assert "save_bytes" in called

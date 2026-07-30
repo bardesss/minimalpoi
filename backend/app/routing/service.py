@@ -1,3 +1,4 @@
+import asyncio
 from datetime import date, timedelta
 
 import httpx
@@ -58,22 +59,31 @@ async def recompute_legs(session: Session, route_id: int) -> None:
     settings = get_or_create_settings(session)
     google, haversine = resolve_calc(settings)
     client = httpx.AsyncClient(timeout=10.0) if google else None
+    pairs = list(zip(nodes, nodes[1:]))
+
+    async def _compute(a: RouteNode, b: RouteNode):
+        leg = None
+        if google:
+            leg = await google.leg(a.lat, a.lng, b.lat, b.lng)
+        if leg is None:
+            leg = haversine.leg(a.lat, a.lng, b.lat, b.lng)
+        return leg
+
     try:
-        for a, b in zip(nodes, nodes[1:]):
-            leg = None
-            if google:
-                google.client = client
-                leg = await google.leg(a.lat, a.lng, b.lat, b.lng)
-            if leg is None:
-                leg = haversine.leg(a.lat, a.lng, b.lat, b.lng)
-            session.add(RouteLeg(
-                route_id=route_id, from_node_id=a.id, to_node_id=b.id,
-                distance_m=leg.distance_m, duration_s=leg.duration_s,
-                source=LegSource(leg.source), geometry=leg.geometry,
-            ))
+        if google:
+            google.client = client
+        # Issue every leg concurrently; gather preserves input order so the
+        # zip below still pairs each Leg with the right nodes.
+        computed = await asyncio.gather(*(_compute(a, b) for a, b in pairs))
     finally:
         if client:
             await client.aclose()
+    for (a, b), leg in zip(pairs, computed):
+        session.add(RouteLeg(
+            route_id=route_id, from_node_id=a.id, to_node_id=b.id,
+            distance_m=leg.distance_m, duration_s=leg.duration_s,
+            source=LegSource(leg.source), geometry=leg.geometry,
+        ))
     session.commit()
 
 
