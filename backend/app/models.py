@@ -70,7 +70,7 @@ class Category(SQLModel, table=True):
     created_by: int = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=utcnow)
 
-    # TRIP sync state (managed by the sync engine in Plan 3; see Task 9 POI for the parallel).
+    # TRIP sync state, managed by the sync engine.
     trip_category_id: int | None = Field(default=None)
     trip_sync_status: SyncStatus = Field(default=SyncStatus.LOCAL_ONLY)
     trip_synced_snapshot: dict | None = Field(default=None, sa_column=Column(JSON))
