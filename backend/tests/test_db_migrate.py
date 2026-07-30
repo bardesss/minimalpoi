@@ -39,6 +39,23 @@ def test_add_missing_columns_is_idempotent_on_a_fresh_db(tmp_path):
     engine.dispose()
 
 
+def test_hot_filter_columns_are_indexed_in_metadata():
+    from app.models import POI, Comment
+    assert POI.__table__.columns["category_id"].index is True
+    assert Comment.__table__.columns["poi_id"].index is True
+
+
+def test_indexes_are_created_on_a_fresh_db(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'fresh.db'}")
+    SQLModel.metadata.create_all(engine)
+
+    poi_indexed = {c for ix in inspect(engine).get_indexes("poi") for c in ix["column_names"]}
+    comment_indexed = {c for ix in inspect(engine).get_indexes("comment") for c in ix["column_names"]}
+    assert "category_id" in poi_indexed
+    assert "poi_id" in comment_indexed
+    engine.dispose()
+
+
 def test_route_tables_created(data_dir):
     from sqlalchemy import inspect
     from app import db

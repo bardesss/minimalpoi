@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from sqlmodel import select
 
 from .. import attachments as att
-from ..deps import CurrentUser, SessionDep
+from ..deps import CurrentUser, SessionDep, is_team_member
 from ..models import (
     POI,
     NodeRole,
@@ -21,7 +21,6 @@ from ..models import (
     RouteNodeKind,
     RouteShare,
     Team,
-    TeamMember,
     User,
     get_or_create_settings,
     utcnow,
@@ -61,15 +60,25 @@ def _username(session, user_id: int) -> str:
     return u.username if u else "(deleted)"
 
 
-def _summary(session, route: Route) -> RouteSummary:
+def _summary(session, route: Route, *, user_names=None, team_names=None) -> RouteSummary:
+    # user_names/team_names let a listing preload every name in one query each;
+    # None keeps the single-route path resolving them per call.
     nodes = ordered_nodes(session, route.id)
     d = derive(nodes, legs_for(session, route.id), route.start_date)
+    if user_names is not None:
+        owner = user_names.get(route.created_by, "(deleted)")
+    else:
+        owner = _username(session, route.created_by)
+    if team_names is not None:
+        team = team_names.get(route.team_id)
+    else:
+        team = _team_name(session, route.team_id)
     return RouteSummary(
         id=route.id, name=route.name, start_date=route.start_date,
         end_date=route.end_date, round_trip=route.round_trip, scheduled_end_date=d["end_date"],
         node_count=len(nodes), created_by=route.created_by,
-        owner_username=_username(session, route.created_by),
-        team_id=route.team_id, team_name=_team_name(session, route.team_id),
+        owner_username=owner,
+        team_id=route.team_id, team_name=team,
     )
 
 
@@ -149,24 +158,18 @@ def _team_name(session, team_id: int | None) -> str | None:
     return team.name if team else None
 
 
-def _is_team_member(session, team_id: int, user_id: int) -> bool:
-    return session.exec(
-        select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.user_id == user_id)
-    ).first() is not None
-
-
 def _assert_can_assign_team(session, team_id: int, user: User) -> None:
     """Assigning a route to a team requires the setter to belong to it; admins may assign to any."""
     if session.get(Team, team_id) is None:
         raise HTTPException(status_code=400, detail="Unknown team_id")
-    if user.role != Role.ADMIN and not _is_team_member(session, team_id, user.id):
+    if user.role != Role.ADMIN and not is_team_member(session, team_id, user.id):
         raise HTTPException(status_code=403, detail="Not a member of that team")
 
 
 def _can_edit_route(session, route: Route, user: User) -> bool:
     if user.role == Role.ADMIN or route.created_by == user.id:
         return True
-    return route.team_id is not None and _is_team_member(session, route.team_id, user.id)
+    return route.team_id is not None and is_team_member(session, route.team_id, user.id)
 
 
 def require_route_editor(session, route: Route, user: User) -> None:
@@ -200,7 +203,16 @@ def _assert_can_edit(session, route: Route, user: User) -> None:
 @router.get("", response_model=list[RouteSummary], dependencies=[Gate])
 def list_routes(session: SessionDep, _: CurrentUser) -> list[RouteSummary]:
     routes = session.exec(select(Route).order_by(Route.created_at.desc())).all()
-    return [_summary(session, r) for r in routes]
+    # Two batched IN lookups instead of a session.get() per route for owner + team.
+    user_ids = {r.created_by for r in routes}
+    team_ids = {r.team_id for r in routes if r.team_id is not None}
+    user_names = {
+        u.id: u.username for u in session.exec(select(User).where(User.id.in_(user_ids))).all()
+    } if user_ids else {}
+    team_names = {
+        t.id: t.name for t in session.exec(select(Team).where(Team.id.in_(team_ids))).all()
+    } if team_ids else {}
+    return [_summary(session, r, user_names=user_names, team_names=team_names) for r in routes]
 
 
 @router.post("", response_model=RouteDetail, status_code=status.HTTP_201_CREATED, dependencies=[Gate])

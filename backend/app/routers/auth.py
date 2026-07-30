@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlmodel import select
 
-from ..deps import CurrentUser, SessionDep
-from ..models import SYSTEM_USERNAMES, Role, TeamMember, User, get_or_create_settings
+from ..deps import CurrentUser, SessionDep, require_team_member
+from ..models import SYSTEM_USERNAMES, Role, User, get_or_create_settings
 from ..ratelimit import LOGIN_LIMIT, SETUP_LIMIT, limiter
 from ..schemas import Credentials, PreferredTeamUpdate, SetupStatus, Signup, StatusResponse, UserRead
 from ..config import get_session_lifetime_days
@@ -98,15 +98,7 @@ def me(user: CurrentUser) -> User:
 def update_preferences(
     body: PreferredTeamUpdate, session: SessionDep, user: CurrentUser
 ) -> User:
-    if body.preferred_team_id is not None:
-        member = session.exec(
-            select(TeamMember).where(
-                TeamMember.team_id == body.preferred_team_id,
-                TeamMember.user_id == user.id,
-            )
-        ).first()
-        if not member:
-            raise HTTPException(status_code=403, detail="Not a member of that team")
+    require_team_member(session, body.preferred_team_id, user.id)
     user.preferred_team_id = body.preferred_team_id
     session.add(user)
     session.commit()

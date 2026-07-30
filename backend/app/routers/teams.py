@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Response, status
 from sqlmodel import select
 
-from ..deps import CurrentUser, SessionDep
-from ..models import SYSTEM_USERNAMES, Route, Team, TeamMember, User, Role
+from ..deps import CurrentUser, SessionDep, require_owner_or_admin
+from ..models import SYSTEM_USERNAMES, Route, Team, TeamMember, User
 from ..schemas import TeamCandidate, TeamCreate, TeamRead
 
 router = APIRouter(prefix="/api/teams", tags=["teams"])
@@ -67,8 +67,7 @@ def update_team(team_id: int, body: TeamCreate, session: SessionDep, user: Curre
     team = session.get(Team, team_id)
     if not team:
         raise HTTPException(status_code=404, detail="Not found")
-    if team.created_by != user.id and user.role != Role.ADMIN:
-        raise HTTPException(status_code=403, detail="Not allowed")
+    require_owner_or_admin(team.created_by, user)
     _validate_member_ids(session, body.member_ids)
     team.name = body.name
     session.add(team)
@@ -83,8 +82,7 @@ def delete_team(team_id: int, session: SessionDep, user: CurrentUser) -> Respons
     team = session.get(Team, team_id)
     if not team:
         raise HTTPException(status_code=404, detail="Not found")
-    if team.created_by != user.id and user.role != Role.ADMIN:
-        raise HTTPException(status_code=403, detail="Not allowed")
+    require_owner_or_admin(team.created_by, user)
     for row in session.exec(select(TeamMember).where(TeamMember.team_id == team_id)).all():
         session.delete(row)
     # Null out dangling references so no Route keeps pointing at a deleted

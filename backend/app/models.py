@@ -86,7 +86,7 @@ class POI(SQLModel, table=True):
     country_code: str | None = Field(default=None)
     lat: float
     lng: float
-    category_id: int | None = Field(default=None, foreign_key="category.id", ondelete="SET NULL")
+    category_id: int | None = Field(default=None, index=True, foreign_key="category.id", ondelete="SET NULL")
     tags: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     notes: str | None = Field(default=None)
     phone: str | None = Field(default=None)
@@ -214,7 +214,7 @@ class Visit(SQLModel, table=True):
 
 class Comment(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    poi_id: int = Field(foreign_key="poi.id", ondelete="CASCADE")
+    poi_id: int = Field(index=True, foreign_key="poi.id", ondelete="CASCADE")
     user_id: int = Field(foreign_key="user.id", ondelete="CASCADE")
     text: str
     created_at: datetime = Field(default_factory=utcnow)

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
+from sqlalchemy import func
 from sqlmodel import select
 
 from ..deps import AdminUser, CurrentUser, SessionDep
@@ -19,13 +20,20 @@ async def sync_now(request: Request, session: SessionDep, _: AdminUser) -> dict:
     return await run_sync(session)
 
 
+def _status_count(session, model, status: SyncStatus) -> int:
+    # One COUNT(*) per (model, status) instead of loading every row to len() it.
+    return session.exec(
+        select(func.count()).select_from(model).where(model.trip_sync_status == status)
+    ).one()
+
+
 @router.get("/status", response_model=SyncStatusRead)
 def sync_status(session: SessionDep, _: CurrentUser) -> SyncStatusRead:
     s = get_or_create_settings(session)
-    error_count = len(session.exec(select(POI).where(POI.trip_sync_status == SyncStatus.ERROR)).all()) \
-                + len(session.exec(select(Category).where(Category.trip_sync_status == SyncStatus.ERROR)).all())
-    conflict_count = len(session.exec(select(POI).where(POI.trip_sync_status == SyncStatus.CONFLICT)).all()) \
-                   + len(session.exec(select(Category).where(Category.trip_sync_status == SyncStatus.CONFLICT)).all())
+    error_count = _status_count(session, POI, SyncStatus.ERROR) \
+                + _status_count(session, Category, SyncStatus.ERROR)
+    conflict_count = _status_count(session, POI, SyncStatus.CONFLICT) \
+                   + _status_count(session, Category, SyncStatus.CONFLICT)
     return SyncStatusRead(enabled=bool(s.trip_sync_enabled), last_run=s.trip_last_sync_at,
                           error_count=error_count, conflict_count=conflict_count)
 
