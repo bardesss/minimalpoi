@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Poi } from "../types/api";
+import * as geo from "./geo";
 import { sortPois } from "./sortPois";
 
 function poi(over: Partial<Poi>): Poi {
@@ -34,6 +35,14 @@ describe("sortPois", () => {
   it("distance: nearest to the map center first", () => {
     const order = sortPois([a, b, c], "distance", { lng: 0, lat: 0 }).map((p) => p.id);
     expect(order).toEqual([1, 3, 2]); // (0,0) then (1,1) then (10,10)
+  });
+
+  it("distance sort computes haversine once per poi, not per comparison", () => {
+    const spy = vi.spyOn(geo, "distanceKm");
+    const order = sortPois([a, b, c], "distance", { lng: 0, lat: 0 }).map((p) => p.id);
+    expect(order).toEqual([1, 3, 2]); // unchanged ordering
+    expect(spy).toHaveBeenCalledTimes(3); // one per poi
+    spy.mockRestore();
   });
 
   it("distance with no center falls back to recent", () => {

@@ -2,7 +2,7 @@ import type {
   RouteAttachment, RouteCreate, RouteDetail, RouteNodeCreate, RouteNodeUpdate,
   RouteSummary, RouteUpdate,
 } from "../types/api";
-import { ApiError, apiFetch } from "./client";
+import { apiFetch, fetchBlob } from "./client";
 import { routeClientHeaders } from "../lib/clientId";
 
 export function getRoutes(): Promise<RouteSummary[]> {
@@ -39,11 +39,9 @@ export function deleteRouteAttachment(routeId: number, aid: number): Promise<voi
   return apiFetch<void>(`/api/routes/${routeId}/attachments/${aid}`, { method: "DELETE" });
 }
 export type RouteExportFormat = "geojson" | "gpx" | "kml";
-export const routeExportUrl = (id: number, format: RouteExportFormat = "geojson") =>
+const routeExportUrl = (id: number, format: RouteExportFormat = "geojson") =>
   `/api/routes/${id}/export?format=${format}`;
-export async function exportRoute(id: number, format: RouteExportFormat = "geojson"): Promise<Blob> {
-  const res = await fetch(routeExportUrl(id, format), { credentials: "include" });
-  if (!res.ok) throw new ApiError(res.status, res.statusText);
-  return res.blob();
+export function exportRoute(id: number, format: RouteExportFormat = "geojson"): Promise<Blob> {
+  return fetchBlob(routeExportUrl(id, format));
 }
 export const attachmentUrl = (routeId: number, aid: number) => `/api/routes/${routeId}/attachments/${aid}`;

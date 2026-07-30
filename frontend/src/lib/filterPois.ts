@@ -33,9 +33,17 @@ function editDistance(a: string, b: string, max: number): number {
   return prev[b.length];
 }
 
+// POIs are immutable objects from React Query (a refetch yields new identities),
+// so the folded haystack can be cached per object and reused across keystrokes.
+const haystackCache = new WeakMap<Poi, string>();
+
 function searchHaystack(p: Poi): string {
+  const cached = haystackCache.get(p);
+  if (cached !== undefined) return cached;
   const country = p.country_code ? `${p.country_code} ${countryNameFromCode(p.country_code) ?? ""}` : "";
-  return fold(`${p.name} ${p.address ?? ""} ${p.tags.join(" ")} ${p.city ?? ""} ${country}`);
+  const hay = fold(`${p.name} ${p.address ?? ""} ${p.tags.join(" ")} ${p.city ?? ""} ${country}`);
+  haystackCache.set(p, hay);
+  return hay;
 }
 
 /** Substring match, with a typo-tolerant fallback for longer queries. */

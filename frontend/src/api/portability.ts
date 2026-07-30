@@ -1,5 +1,5 @@
 import type { ImportResult } from "../types/api";
-import { ApiError, apiFetch } from "./client";
+import { apiFetch, fetchBlob } from "./client";
 
 export function importPois(file: File): Promise<ImportResult> {
   const form = new FormData();
@@ -7,11 +7,6 @@ export function importPois(file: File): Promise<ImportResult> {
   return apiFetch<ImportResult>("/api/pois/import", { method: "POST", body: form });
 }
 
-export async function exportPois(): Promise<Blob> {
-  const res = await fetch("/api/pois/export", {
-    credentials: "include",
-    headers: { Accept: "application/geo+json" },
-  });
-  if (!res.ok) throw new ApiError(res.status, res.statusText);
-  return res.blob();
+export function exportPois(): Promise<Blob> {
+  return fetchBlob("/api/pois/export", { headers: { Accept: "application/geo+json" } });
 }

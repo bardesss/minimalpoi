@@ -4,7 +4,7 @@ import { checkDuplicate, createPoi, deletePoi, getPois, updatePoi } from "../api
 import { getFullSettings, getSettings, updateSettings } from "../api/settings";
 import { deleteTag, getTags, renameTag } from "../api/tags";
 import { createToken, getTokens, revokeToken } from "../api/tokens";
-import type { CategoryCreate, CategoryUpdate, CommentCreate, PoiCreate, PoiUpdate, SettingsUpdate, SyncResolve, UserCreate, UserUpdate, TeamCreate, VisitUpsert } from "../types/api";
+import type { CategoryCreate, CategoryUpdate, CommentCreate, Poi, PoiCreate, PoiUpdate, SettingsUpdate, SyncResolve, UserCreate, UserUpdate, TeamCreate, VisitUpsert } from "../types/api";
 import { addComment, deleteComment, deleteVisit, getComments, getMyVisits, getVisits, updateComment, upsertVisit } from "../api/poiActions";
 import { getConflicts, getSyncStatus, resolveConflict, syncNow } from "../api/sync";
 import { enrichUrl } from "../api/enrich";
@@ -34,11 +34,23 @@ export function useSettings() {
   return useQuery({ queryKey: ["settings"], queryFn: getSettings });
 }
 
+// Splice the cached ["pois"] list from a single row instead of refetching the
+// whole set. Returns true when the list was cached and patched; false ⇒ caller
+// falls back to invalidate.
+function patchPois(qc: ReturnType<typeof useQueryClient>, fn: (old: Poi[]) => Poi[]): boolean {
+  const current = qc.getQueryData<Poi[]>(["pois"]);
+  if (!current) return false;
+  qc.setQueryData<Poi[]>(["pois"], fn(current));
+  return true;
+}
+
 export function useCreatePoi() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: PoiCreate) => createPoi(body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["pois"] }),
+    onSuccess: (created) => {
+      if (!patchPois(qc, (old) => [...old, created])) qc.invalidateQueries({ queryKey: ["pois"] });
+    },
   });
 }
 
@@ -46,7 +58,11 @@ export function useUpdatePoi() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, body }: { id: number; body: PoiUpdate }) => updatePoi(id, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["pois"] }),
+    onSuccess: (updated) => {
+      if (!patchPois(qc, (old) => old.map((p) => (p.id === updated.id ? updated : p)))) {
+        qc.invalidateQueries({ queryKey: ["pois"] });
+      }
+    },
   });
 }
 
@@ -54,7 +70,9 @@ export function useDeletePoi() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => deletePoi(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["pois"] }),
+    onSuccess: (_res, id) => {
+      if (!patchPois(qc, (old) => old.filter((p) => p.id !== id))) qc.invalidateQueries({ queryKey: ["pois"] });
+    },
   });
 }
 
@@ -91,9 +109,10 @@ export function useRestoreBackup() {
   return useMutation({
     mutationFn: (file: File) => restoreBackup(file),
     onSuccess: () => {
-      // A restore replaces everything — refetch the lot. Use prefix keys so
-      // every per-POI visits/comments query and both settings views refresh.
-      for (const key of [["pois"], ["categories"], ["settings"], ["settings", "full"], ["tags"], ["users"], ["teams"], ["visits"], ["comments"]]) {
+      // A restore replaces everything — refetch the lot. Keys are prefix-matched,
+      // so ["settings"] already covers ["settings","full"] and ["visits"] covers
+      // both the per-POI queries and ["visits","me"] — list only the roots.
+      for (const key of [["pois"], ["categories"], ["settings"], ["tags"], ["users"], ["teams"], ["visits"], ["comments"]]) {
         qc.invalidateQueries({ queryKey: key });
       }
     },
@@ -276,6 +295,10 @@ export function useUpsertVisit(poiId: number) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["visits", poiId] });
       qc.invalidateQueries({ queryKey: ["visits", "me"] });
+      // A visit changes the POI's avg_rating/rating_count, which the sidebar
+      // renders and sortPois sorts by — and upsertVisit returns only the Visit,
+      // so the recomputed aggregate has to come from a refetch.
+      qc.invalidateQueries({ queryKey: ["pois"] });
     },
   });
 }
@@ -286,6 +309,7 @@ export function useDeleteVisit(poiId: number) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["visits", poiId] });
       qc.invalidateQueries({ queryKey: ["visits", "me"] });
+      qc.invalidateQueries({ queryKey: ["pois"] });
     },
   });
 }

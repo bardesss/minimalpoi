@@ -122,7 +122,7 @@ export interface ImportResult {
   created_ids: number[];
 }
 
-export interface Settings {
+export interface Settings extends MapSettings {
   trip_base_url: string | null;
   trip_username: string | null;
   trip_password_set: boolean;
@@ -131,12 +131,7 @@ export interface Settings {
   trip_conflict_policy: string;
   google_api_key_set: boolean;
   nominatim_url: string | null;
-  map_tile_url: string;
-  default_map_center_lat: number;
-  default_map_center_lng: number;
-  default_map_zoom: number;
   cookie_secure: boolean;
-  routes_enabled: boolean;
   trip_last_sync_at: string | null;
 }
 

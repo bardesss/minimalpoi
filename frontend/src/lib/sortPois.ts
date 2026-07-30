@@ -23,14 +23,13 @@ export function sortPois(pois: Poi[], mode: SortMode, center: { lng: number; lat
           a.name.localeCompare(b.name),
       );
       break;
-    case "distance":
+    case "distance": {
       if (!center) return sortPois(out, "recent", null);
-      out.sort(
-        (a, b) =>
-          distanceKm(center.lat, center.lng, a.lat, a.lng) -
-          distanceKm(center.lat, center.lng, b.lat, b.lng),
-      );
-      break;
+      // Schwartzian transform: measure each place once, then sort on the key.
+      const keyed = out.map((p) => ({ p, d: distanceKm(center.lat, center.lng, p.lat, p.lng) }));
+      keyed.sort((a, b) => a.d - b.d);
+      return keyed.map((k) => k.p);
+    }
     case "recent":
     default:
       // Newest first. id is a monotonic autoincrement, so it tracks creation
