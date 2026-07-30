@@ -1,4 +1,3 @@
-// frontend/src/components/Sidebar/PoiCard.tsx
 import { memo } from "react";
 import type { Category, Poi } from "../../types/api";
 import { theme, tintFromColor } from "../../theme";
@@ -6,7 +5,6 @@ import { safeImageCss } from "../../lib/safeUrl";
 import { cityFromAddress, countryCodeFromAddress } from "../../lib/country";
 import Flag from "../Flag";
 
-export { cityFromAddress } from "../../lib/country";
 
 function PoiCard({
   poi,

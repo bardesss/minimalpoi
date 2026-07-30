@@ -18,7 +18,6 @@ export default function SetupPage() {
     setError(null);
     try {
       await setupRequest(username, password);
-      // call signIn to hydrate auth context after setup completes
       await signIn(username, password);
       navigate("/", { replace: true });
     } catch (err) {

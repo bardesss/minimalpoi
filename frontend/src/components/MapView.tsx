@@ -1,4 +1,3 @@
-// frontend/src/components/MapView.tsx
 import { useEffect, useRef, type MutableRefObject } from "react";
 import maplibregl, { type GeoJSONSource, type Map as MlMap } from "maplibre-gl";
 import type { Category, MapSettings, Poi } from "../types/api";

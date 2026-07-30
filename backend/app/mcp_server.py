@@ -61,7 +61,7 @@ def _raise_for_tool(resp: httpx.Response) -> None:
     raise ValueError(f"{resp.status_code}: {detail or resp.text[:200]}")
 
 
-# Tools are registered in later tasks (import side effects).
+# Imported for their @mcp.tool registration side effects.
 from . import mcp_tools_pois  # noqa: E402,F401
 from . import mcp_tools_routes  # noqa: E402,F401
 
@@ -70,15 +70,15 @@ class _MCPAppProxy:
     """Stable ASGI entry point that forwards to whichever concrete
     streamable-HTTP app is currently active.
 
-    Deviation from the SDD brief: the installed SDK's
-    `StreamableHTTPSessionManager.run()` may be entered at most once per
-    instance ("Create a new instance if you need to run again"). That's fine
-    for a real server (one process, one lifespan), but MinimalPOI's test
-    suite opens a fresh `TestClient(app)` - and therefore a fresh FastAPI
-    lifespan - for nearly every test function. Mounting a single, never-
-    replaced proxy object at `/api/mcp` and rebuilding the concrete app +
-    session manager on each lifespan start (`run_mcp_session` below) keeps
-    every test's lifespan independent without touching `app.mount(...)`.
+    The installed SDK's `StreamableHTTPSessionManager.run()` may be entered
+    at most once per instance ("Create a new instance if you need to run
+    again"). That's fine for a real server (one process, one lifespan), but
+    MinimalPOI's test suite opens a fresh `TestClient(app)` - and therefore a
+    fresh FastAPI lifespan - for nearly every test function. Mounting a
+    single, never-replaced proxy object at `/api/mcp` and rebuilding the
+    concrete app + session manager on each lifespan start (`run_mcp_session`
+    below) keeps every test's lifespan independent without touching
+    `app.mount(...)`.
     """
 
     def __init__(self) -> None:

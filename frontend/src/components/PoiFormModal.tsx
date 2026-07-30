@@ -1,4 +1,3 @@
-// frontend/src/components/PoiFormModal.tsx
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import type { Category, PlaceSearchResult, PoiCreate, PoiDraft, TagInfo } from "../types/api";
 import { ApiError } from "../api/client";
@@ -8,11 +7,6 @@ import { useIsMobile } from "../lib/useMediaQuery";
 import { useDialog } from "../lib/useDialog";
 import PhoneInput from "./PhoneInput";
 import TagInput from "./TagInput";
-
-// Re-exported for callers/tests that historically imported it from here; the
-// implementation now lives in lib/tags to avoid a TagInput <-> PoiFormModal
-// import cycle.
-export { splitTags } from "../lib/tags";
 
 // Parse a single coordinate field into a finite number, or null when it isn't
 // usable. Accepts a decimal comma ("52,3676") as long as it's a lone value —

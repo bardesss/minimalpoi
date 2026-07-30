@@ -46,9 +46,7 @@ export function useRouteEvents(
     if (buffered && buffered.forRouteId !== routeId) {
       bufferRef.current = null;                 // buffer belongs to a route we left — drop it
     } else if (!suspended && buffered && routeId != null) {
-      // `routeId != null` is a no-op at runtime here (buffered.forRouteId is always a
-      // number, and the branch above already ruled out forRouteId !== routeId, so
-      // routeId must equal it) — kept only so TS can narrow routeId for applyUpdate.
+      // `routeId != null` only narrows routeId to a number for applyUpdate; it's always true here.
       applyUpdate(qc, routeId, buffered.route);
       bufferRef.current = null;
     }

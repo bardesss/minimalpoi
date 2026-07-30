@@ -4,7 +4,8 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Category, PoiDraft } from "../types/api";
 import { ApiError } from "../api/client";
-import PoiFormModal, { splitTags, parseCoord, parseCoordPair } from "./PoiFormModal";
+import PoiFormModal, { parseCoord, parseCoordPair } from "./PoiFormModal";
+import { splitTags } from "../lib/tags";
 
 describe("parseCoord", () => {
   it("parses a plain number", () => {

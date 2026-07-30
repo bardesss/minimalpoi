@@ -21,6 +21,10 @@ def _base_names(specs: list[str]) -> set[str]:
 def test_dockerfile_installs_all_runtime_deps():
     pyproject = tomllib.loads((ROOT / "backend" / "pyproject.toml").read_text(encoding="utf-8"))
     deps = _base_names(pyproject["project"]["dependencies"])
+    # The Dockerfile also bakes in the `postgres` extra (psycopg) unconditionally,
+    # so drift there must fail the guard too — see the Dockerfile comment above the
+    # pip list.
+    deps |= _base_names(pyproject["project"]["optional-dependencies"]["postgres"])
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8").lower()
     missing = sorted(d for d in deps if f'"{d}' not in dockerfile)
     assert not missing, f"Dockerfile pip list is missing runtime deps: {missing}"

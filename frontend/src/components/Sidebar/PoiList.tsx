@@ -1,4 +1,3 @@
-// frontend/src/components/Sidebar/PoiList.tsx
 import { useEffect, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Category, Poi } from "../../types/api";

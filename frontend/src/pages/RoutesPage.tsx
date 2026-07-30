@@ -161,7 +161,7 @@ export default function RoutesPage() {
                     className="hover-btn"
                     style={{ ...ghostButtonStyle, padding: isMobile ? "11px 14px" : "6px 12px", whiteSpace: "nowrap" }}
                     onClick={() => setShareOpen(true)}
-                    disabled={(detail.nodes.length ?? 0) === 0}
+                    disabled={detail.nodes.length === 0}
                   >
                     Share image
                   </button>

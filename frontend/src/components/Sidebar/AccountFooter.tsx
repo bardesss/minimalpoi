@@ -1,4 +1,3 @@
-// frontend/src/components/Sidebar/AccountFooter.tsx
 import { theme } from "../../theme";
 
 const roleBadge: Record<string, { bg: string; fg: string }> = {

@@ -42,7 +42,7 @@ const wrapStyle = {
   padding: "3px 8px",
 } as const;
 
-export interface FilterControlsProps {
+interface FilterControlsProps {
   visited: VisitedFilter;
   onVisitedChange: (v: VisitedFilter) => void;
   sortMode: SortMode;
