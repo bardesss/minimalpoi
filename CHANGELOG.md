@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.10.4](https://github.com/bardesss/minimalpoi/compare/v3.10.3...v3.10.4) (2026-07-30)
+
+
+### Bug Fixes
+
+* **queries:** refresh the pois list when a visit rating changes ([662c7b9](https://github.com/bardesss/minimalpoi/commit/662c7b97af6b96cdb60b5c2d04f9322712bc4411))
+
+
+### Performance Improvements
+
+* **frontend:** patch caches instead of refetching, share fetchBlob (Phase 3 — frontend data layer) ([3aa5181](https://github.com/bardesss/minimalpoi/commit/3aa5181f12240c46f99156633fad7cfcec013230))
+* **lib:** memoize the folded search haystack per poi in filterPois ([eebe421](https://github.com/bardesss/minimalpoi/commit/eebe421c76091680b0d0c2755a4a6b8a064aeb28))
+* **lib:** precompute distances in sortPois via a Schwartzian transform ([86fa25d](https://github.com/bardesss/minimalpoi/commit/86fa25def9d699fd266a61cd5c0435c0711785b2))
+* **queries:** patch the pois cache on create/update/delete instead of refetching ([d3909ef](https://github.com/bardesss/minimalpoi/commit/d3909ef001fb8f8114d6bb0b7602848d76010dbf))
+* **queries:** set a 30s default staleTime on the app QueryClient ([3ec10dc](https://github.com/bardesss/minimalpoi/commit/3ec10dc22474af225d336f36a66a4995ce91cfd6))
+
 ## [3.10.3](https://github.com/bardesss/minimalpoi/compare/v3.10.2...v3.10.3) (2026-07-30)
 
 
