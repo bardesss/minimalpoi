@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.10.3](https://github.com/bardesss/minimalpoi/compare/v3.10.2...v3.10.3) (2026-07-30)
+
+
+### Performance Improvements
+
+* **backend:** targeted queries and shared permission helpers (Phase 2 — query efficiency & consistency) ([5088d12](https://github.com/bardesss/minimalpoi/commit/5088d12bdf5abdf3695489c03f4a34df7429fc02))
+* **config:** cache get_data_dir so mkdir runs once per path ([d7e3b17](https://github.com/bardesss/minimalpoi/commit/d7e3b17dffb0daae9ee16ecec09c6dd2022cfc9f))
+* **db:** index Comment.poi_id and POI.category_id ([61c891f](https://github.com/bardesss/minimalpoi/commit/61c891fc336a742f3ce6a7b52bb60acf91612cc1))
+* **dedup:** match source_url by query and bbox-prefilter proximity scan ([b4a2575](https://github.com/bardesss/minimalpoi/commit/b4a2575b817039ad5f234725146850d43a831a22))
+* **routes,comments:** batch owner/team/author lookups in list endpoints ([d0eb443](https://github.com/bardesss/minimalpoi/commit/d0eb443037d1b93f6a812bc21e26821fda81d300))
+* **sync:** count status rows with func.count() instead of loading them ([7a8c069](https://github.com/bardesss/minimalpoi/commit/7a8c069ee4dee077abf2842964d0380cc066294a))
+
 ## [3.10.2](https://github.com/bardesss/minimalpoi/compare/v3.10.1...v3.10.2) (2026-07-30)
 
 
