@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "../test/msw";
 import { makeClient } from "../test/utils";
-import { useComments, useCreatePoi, useEnrich, useImportPois, useMyVisits, usePois, useSyncConflicts, useSyncStatus, useTags, useUploadImage, useUpsertVisit, useUsers, useTeams, useVisits } from "./hooks";
+import { useComments, useCreatePoi, useDeletePoi, useEnrich, useImportPois, useMyVisits, usePois, useSyncConflicts, useSyncStatus, useTags, useUpdatePoi, useUploadImage, useUpsertVisit, useUsers, useTeams, useVisits } from "./hooks";
 
 function wrapper(client = makeClient()) {
   return ({ children }: { children: ReactNode }) => (
@@ -20,21 +20,58 @@ describe("data hooks", () => {
     expect(result.current.data).toHaveLength(2);
   });
 
-  it("useCreatePoi invalidates ['pois'] so the list refetches", async () => {
+  // The list hook and the mutation share one renderHook root: a cache write from
+  // a hook in a *separate* root never flushes into another root's render output,
+  // so a two-root form couldn't observe the patch at all.
+  it("useCreatePoi patches ['pois'] in place without an extra GET", async () => {
     const client = makeClient();
     let getCount = 0;
     server.use(
       http.get("/api/pois", () => {
         getCount += 1;
-        return HttpResponse.json([]);
+        return HttpResponse.json([{ id: 1, name: "A" }]);
       }),
       http.post("/api/pois", () => HttpResponse.json({ id: 3, name: "X" }, { status: 201 })),
     );
-    const pois = renderHook(() => usePois(), { wrapper: wrapper(client) });
-    await waitFor(() => expect(pois.result.current.isSuccess).toBe(true));
-    const mut = renderHook(() => useCreatePoi(), { wrapper: wrapper(client) });
-    await mut.result.current.mutateAsync({ name: "X", lat: 1, lng: 2 });
-    await waitFor(() => expect(getCount).toBeGreaterThanOrEqual(2));
+    const h = renderHook(() => ({ pois: usePois(), create: useCreatePoi() }), { wrapper: wrapper(client) });
+    await waitFor(() => expect(h.result.current.pois.isSuccess).toBe(true));
+    await h.result.current.create.mutateAsync({ name: "X", lat: 1, lng: 2 });
+    await waitFor(() => expect(h.result.current.pois.data?.map((p) => p.id)).toEqual([1, 3]));
+    expect(getCount).toBe(1); // patched, not refetched
+  });
+
+  it("useUpdatePoi replaces the row in ['pois'] without a refetch", async () => {
+    const client = makeClient();
+    let getCount = 0;
+    server.use(
+      http.get("/api/pois", () => {
+        getCount += 1;
+        return HttpResponse.json([{ id: 1, name: "A" }, { id: 2, name: "B" }]);
+      }),
+      http.patch("/api/pois/2", () => HttpResponse.json({ id: 2, name: "B2" })),
+    );
+    const h = renderHook(() => ({ pois: usePois(), update: useUpdatePoi() }), { wrapper: wrapper(client) });
+    await waitFor(() => expect(h.result.current.pois.isSuccess).toBe(true));
+    await h.result.current.update.mutateAsync({ id: 2, body: { name: "B2" } });
+    await waitFor(() => expect(h.result.current.pois.data?.find((p) => p.id === 2)?.name).toBe("B2"));
+    expect(getCount).toBe(1);
+  });
+
+  it("useDeletePoi removes the row from ['pois'] without a refetch", async () => {
+    const client = makeClient();
+    let getCount = 0;
+    server.use(
+      http.get("/api/pois", () => {
+        getCount += 1;
+        return HttpResponse.json([{ id: 1, name: "A" }, { id: 2, name: "B" }]);
+      }),
+      http.delete("/api/pois/2", () => new HttpResponse(null, { status: 204 })),
+    );
+    const h = renderHook(() => ({ pois: usePois(), del: useDeletePoi() }), { wrapper: wrapper(client) });
+    await waitFor(() => expect(h.result.current.pois.isSuccess).toBe(true));
+    await h.result.current.del.mutateAsync(2);
+    await waitFor(() => expect(h.result.current.pois.data?.map((p) => p.id)).toEqual([1]));
+    expect(getCount).toBe(1);
   });
 
   it("useEnrich returns a draft for a url", async () => {
