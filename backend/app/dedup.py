@@ -33,14 +33,31 @@ def find_duplicate(
     lng: float | None,
     source_url: str | None,
 ) -> POI | None:
-    candidates = session.exec(select(POI)).all()
+    # source_url is a strong key: match it directly in SQL instead of scanning.
+    # Ordering is left to the DB (PK order on SQLite/Postgres), matching the old
+    # first-inserted-wins behavior.
     if source_url:
-        for poi in candidates:
-            if poi.source_url and poi.source_url == source_url:
-                return poi
+        match = session.exec(select(POI).where(POI.source_url == source_url)).first()
+        if match:
+            return match
     if lat is not None and lng is not None:
         target = _norm(name)
         if target:  # an unnormalizable name (e.g. only punctuation) must not match
+            # Bounding-box prefilter: only rows within ~PROXIMITY_THRESHOLD_M of the
+            # point can pass the haversine test. 1 deg latitude ~= 111_320 m; the
+            # longitude span widens by 1/cos(lat). The box strictly contains the
+            # circle, so no true match is ever excluded.
+            dlat = PROXIMITY_THRESHOLD_M / 111_320.0
+            coslat = max(math.cos(math.radians(lat)), 1e-9)
+            dlng = PROXIMITY_THRESHOLD_M / (111_320.0 * coslat)
+            candidates = session.exec(
+                select(POI).where(
+                    POI.lat >= lat - dlat,
+                    POI.lat <= lat + dlat,
+                    POI.lng >= lng - dlng,
+                    POI.lng <= lng + dlng,
+                )
+            ).all()
             for poi in candidates:
                 if _norm(poi.name) == target and haversine_m(lat, lng, poi.lat, poi.lng) <= PROXIMITY_THRESHOLD_M:
                     return poi
