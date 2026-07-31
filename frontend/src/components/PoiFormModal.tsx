@@ -7,6 +7,7 @@ import { useDialog } from "../lib/useDialog";
 import PhoneInput from "./PhoneInput";
 import TagInput from "./TagInput";
 import { ImagePicker } from "./poiForm/ImagePicker";
+import { EnrichSection } from "./poiForm/EnrichSection";
 
 // Parse a single coordinate field into a finite number, or null when it isn't
 // usable. Accepts a decimal comma ("52,3676") as long as it's a lone value —
@@ -98,9 +99,6 @@ export default function PoiFormModal({
   const [website, setWebsite] = useState(initial?.website ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
 
-  const [enrichUrlText, setEnrichUrlText] = useState("");
-  const [enriching, setEnriching] = useState(false);
-  const [enrichError, setEnrichError] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(initial?.image_url ?? null);
   const [fieldSources, setFieldSources] = useState<Record<string, string>>({});
   const [enrichHost, setEnrichHost] = useState<string | null>(null);
@@ -163,26 +161,6 @@ export default function PoiFormModal({
     setFieldSources(draft.field_sources);
     setFilledCount(Object.keys(draft.field_sources).length);
     setEnrichHost(source);
-  }
-
-  async function runEnrich() {
-    if (!onEnrich || enrichUrlText.trim() === "") return;
-    setEnriching(true);
-    setEnrichError(null);
-    try {
-      const draft = await onEnrich(enrichUrlText.trim());
-      let host: string | null = null;
-      try {
-        host = new URL(enrichUrlText.trim()).host;
-      } catch {
-        host = null;
-      }
-      applyDraft(draft, host);
-    } catch {
-      setEnrichError("Couldn't read that link — fill the form manually.");
-    } finally {
-      setEnriching(false);
-    }
   }
 
   async function runSearch() {
@@ -334,26 +312,7 @@ export default function PoiFormModal({
           )}
 
           {isAdd && onEnrich && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={label} htmlFor="poi-enrich-url">Enrich from URL</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  id="poi-enrich-url"
-                  style={inputStyle}
-                  value={enrichUrlText}
-                  onChange={(e) => setEnrichUrlText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runEnrich(); } }}
-                  placeholder="Paste a Google Maps or website link"
-                />
-                <button type="button" onClick={runEnrich} disabled={enriching} style={{ ...ghostButtonStyle, whiteSpace: "nowrap" }}>{enriching ? "Enriching…" : "Enrich"}</button>
-              </div>
-              {enrichError && <div role="status" style={{ fontSize: 12, color: theme.color.dangerText }}>{enrichError}</div>}
-              {filledCount > 0 && enrichHost && (
-                <div role="status" style={{ fontSize: 12, color: theme.color.deepIndigoText, background: theme.color.tintBg, border: `1px solid ${theme.color.tintBorder}`, borderRadius: theme.radius.input, padding: "8px 10px" }}>
-                  Filled {filledCount} fields from {enrichHost} — review before saving.
-                </div>
-              )}
-            </div>
+            <EnrichSection onEnrich={onEnrich} onApplyDraft={applyDraft} filledCount={filledCount} enrichHost={enrichHost} />
           )}
 
           <ImagePicker imageUrl={imageUrl} onImageUrl={setImageUrl} onUploadImage={onUploadImage} />
