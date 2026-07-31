@@ -12,7 +12,26 @@ from slowapi.util import get_remote_address
 
 
 def user_or_ip(request: Request) -> str:
-    """Key authenticated requests by username, anonymous ones by client IP."""
+    """Key authenticated requests by identity, anonymous ones by client IP.
+
+    The bearer branch comes first, matching get_current_user's precedence
+    (deps.py). Programmatic clients never carry the login cookie, so without it
+    every MCP request fell through to get_remote_address — and MCP tools reach
+    the app through httpx.ASGITransport, which stamps each in-process call with
+    the same synthetic address, collapsing all MCP callers into one bucket.
+
+    The key is the token's sha256, not its owning user: resolving token -> user
+    is a blocking SQLite read and this function runs synchronously on the event
+    loop (mcp_auth.BearerAuthMiddleware offloads that same read to a threadpool
+    for exactly this reason). Buckets are therefore per token rather than per
+    user, and the raw secret never enters the limiter's store.
+    """
+    authorization = request.headers.get("authorization", "")
+    if authorization.lower().startswith("bearer "):
+        from .apitokens import hash_api_token
+
+        return f"token:{hash_api_token(authorization[7:].strip())}"
+
     token = request.cookies.get("access_token")
     if token:
         from .security import decode_access_token
