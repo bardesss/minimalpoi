@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { RouteDetail, RouteNodeCreate } from "../../types/api";
 import { ApiError } from "../../api/client";
 import { ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../theme";
@@ -98,7 +99,10 @@ export default function RouteFormModal({
     ? (updatePlan.isPending ? "Saving…" : "Save changes")
     : (createPlan.isPending ? "Creating…" : "Create route");
 
-  return (
+  // Portalled to <body> so `position: fixed` resolves against the viewport and
+  // escapes the transformed mobile bottom-sheet containing block (matches the
+  // other four routes modals; see PR #185).
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -198,6 +202,7 @@ export default function RouteFormModal({
           }}
         />
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
