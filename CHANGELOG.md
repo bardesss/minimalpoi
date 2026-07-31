@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.12.0](https://github.com/bardesss/minimalpoi/compare/v3.11.1...v3.12.0) (2026-07-31)
+
+
+### Features
+
+* **mcp:** add set_route_start and set_route_end ([24aeba4](https://github.com/bardesss/minimalpoi/commit/24aeba4d84a40a13ea3322b4af09c2bbfaa3f706))
+* **mcp:** automatic enrichment, route start/end, and per-token rate limits ([d068118](https://github.com/bardesss/minimalpoi/commit/d06811817b0ebabbe312c84ee1edd6724ef95ff8))
+* **mcp:** create_poi enriches automatically from source_url ([98e086e](https://github.com/bardesss/minimalpoi/commit/98e086e1fbff144f3ef5ee8b246f83aff87c74bc))
+
+
+### Bug Fixes
+
+* **ratelimit:** key bearer-token requests per token, not per client IP ([52c64c6](https://github.com/bardesss/minimalpoi/commit/52c64c660c0bebaf5ecf25f16f8c9c0ca48bc804))
+
 ## [3.11.1](https://github.com/bardesss/minimalpoi/compare/v3.11.0...v3.11.1) (2026-07-31)
 
 
