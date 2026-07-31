@@ -29,4 +29,20 @@ describe("UsersSection", () => {
     await userEvent.click(screen.getByRole("button", { name: /^create$/i }));
     await waitFor(() => expect(created).toMatchObject({ username: "carol", role: "member" }));
   });
+
+  it("surfaces a create failure once, via a toast (no duplicate alert banner)", async () => {
+    server.use(
+      http.get("/api/users", () => HttpResponse.json(USERS)),
+      http.post("/api/users", () => HttpResponse.json({ detail: "Username taken" }, { status: 400 })),
+    );
+    renderWithProviders(<UsersSection />);
+    await screen.findByText("bob");
+    await userEvent.click(screen.getByRole("button", { name: /add user/i }));
+    await userEvent.type(screen.getByLabelText(/^username$/i), "carol");
+    await userEvent.type(screen.getByLabelText(/^password$/i), "pw123");
+    await userEvent.click(screen.getByRole("button", { name: /^create$/i }));
+    expect(await screen.findByText(/username taken/i)).toBeInTheDocument();
+    // single channel: no role="alert" banner is rendered
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });

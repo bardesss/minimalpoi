@@ -21,66 +21,52 @@ export default function UsersSection() {
   const [newName, setNewName] = useState("");
   const [newPass, setNewPass] = useState("");
   const [newRole, setNewRole] = useState<Role>("member");
-  const [error, setError] = useState<string | null>(null);
   const [resetFor, setResetFor] = useState<number | null>(null);
   const [resetPass, setResetPass] = useState("");
 
   async function create() {
-    setError(null);
     if (newName.trim() === "" || newPass === "") return;
     try {
       await createUser.mutateAsync({ username: newName.trim(), password: newPass, role: newRole });
       setAdding(false); setNewName(""); setNewPass(""); setNewRole("member");
       notify("User created");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Could not create user";
-      setError(msg);
-      notify(msg, "error");
+      notify(e instanceof Error ? e.message : "Could not create user", "error");
     }
   }
 
   async function patch(u: UserRead, body: { role?: Role; disabled?: boolean }) {
-    setError(null);
     try {
       await updateUser.mutateAsync({ id: u.id, body });
       notify("User updated");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Update failed";
-      setError(msg);
-      notify(msg, "error");
+      notify(e instanceof Error ? e.message : "Update failed", "error");
     }
   }
 
   async function saveReset(u: UserRead) {
     if (resetPass === "") return;
-    setError(null);
     try {
       await updateUser.mutateAsync({ id: u.id, body: { password: resetPass } });
       setResetFor(null); setResetPass("");
       notify("Password reset");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Reset failed";
-      setError(msg);
-      notify(msg, "error");
+      notify(e instanceof Error ? e.message : "Reset failed", "error");
     }
   }
 
   async function remove(u: UserRead) {
-    setError(null);
     if (!confirm(`Delete user "${u.username}"? This removes their visits and comments.`)) return;
     try {
       await deleteUser.mutateAsync(u.id);
       notify("User deleted");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Delete failed";
-      setError(msg);
-      notify(msg, "error");
+      notify(e instanceof Error ? e.message : "Delete failed", "error");
     }
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {error && <div role="alert" style={{ fontSize: 12.5, color: theme.color.dangerText }}>{error}</div>}
       {users.map((u) => {
         const locked = isOnlyAdmin(u);
         return (
@@ -114,7 +100,7 @@ export default function UsersSection() {
             </select>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <button type="button" onClick={() => { setAdding(false); setError(null); }} style={ghostButtonStyle}>Cancel</button>
+            <button type="button" onClick={() => setAdding(false)} style={ghostButtonStyle}>Cancel</button>
             <button type="button" onClick={create} style={primaryButtonStyle}>Create</button>
           </div>
         </div>
