@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Category, PlaceSearchResult, PoiCreate, PoiDraft, TagInfo } from "../types/api";
 import { ApiError } from "../api/client";
-import { safeImageCss } from "../lib/safeUrl";
 import { ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, textareaStyle, theme } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 import { useDialog } from "../lib/useDialog";
 import PhoneInput from "./PhoneInput";
 import TagInput from "./TagInput";
+import { ImagePicker } from "./poiForm/ImagePicker";
+import { EnrichSection } from "./poiForm/EnrichSection";
+import { PlaceSearchSection } from "./poiForm/PlaceSearchSection";
 
 // Parse a single coordinate field into a finite number, or null when it isn't
 // usable. Accepts a decimal comma ("52,3676") as long as it's a lone value —
@@ -98,20 +100,10 @@ export default function PoiFormModal({
   const [website, setWebsite] = useState(initial?.website ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
 
-  const [enrichUrlText, setEnrichUrlText] = useState("");
-  const [enriching, setEnriching] = useState(false);
-  const [enrichError, setEnrichError] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(initial?.image_url ?? null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [fieldSources, setFieldSources] = useState<Record<string, string>>({});
   const [enrichHost, setEnrichHost] = useState<string | null>(null);
   const [filledCount, setFilledCount] = useState(0);
-
-  const [searchText, setSearchText] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [results, setResults] = useState<PlaceSearchResult[]>([]);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -147,7 +139,6 @@ export default function PoiFormModal({
 
   const isAdd = mode === "add";
   const isMobile = useIsMobile();
-  const safeImage = safeImageCss(imageUrl);
   // Add mode is a non-modal click-through overlay (so the map stays clickable
   // behind it) — no backdrop-close, no focus trap. Edit mode is a true modal.
   const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop: !isAdd, trapFocus: !isAdd });
@@ -166,71 +157,6 @@ export default function PoiFormModal({
     setFieldSources(draft.field_sources);
     setFilledCount(Object.keys(draft.field_sources).length);
     setEnrichHost(source);
-  }
-
-  async function runEnrich() {
-    if (!onEnrich || enrichUrlText.trim() === "") return;
-    setEnriching(true);
-    setEnrichError(null);
-    try {
-      const draft = await onEnrich(enrichUrlText.trim());
-      let host: string | null = null;
-      try {
-        host = new URL(enrichUrlText.trim()).host;
-      } catch {
-        host = null;
-      }
-      applyDraft(draft, host);
-    } catch {
-      setEnrichError("Couldn't read that link — fill the form manually.");
-    } finally {
-      setEnriching(false);
-    }
-  }
-
-  async function onPickFile(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-picking the same file later
-    if (!file || !onUploadImage) return;
-    setUploading(true);
-    setUploadError(null);
-    try {
-      const { url } = await onUploadImage(file);
-      setImageUrl(url);
-    } catch (err) {
-      setUploadError(err instanceof ApiError ? err.message : "Upload failed — try a different image.");
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function runSearch() {
-    if (!onSearchPlaces || searchText.trim() === "") return;
-    setSearching(true);
-    setSearchError(null);
-    setResults([]);
-    try {
-      const found = await onSearchPlaces(searchText.trim());
-      setResults(found);
-      if (found.length === 0) setSearchError("No matching places found.");
-    } catch {
-      setSearchError("Search failed — add a Google API key in Settings, or fill the form manually.");
-    } finally {
-      setSearching(false);
-    }
-  }
-
-  async function pickPlace(result: PlaceSearchResult) {
-    if (!onPickPlace) return;
-    setSearchError(null);
-    setResults([]);
-    setSearchText("");
-    try {
-      const draft = await onPickPlace(result.place_id);
-      applyDraft(draft, "Google Places");
-    } catch {
-      setSearchError("Couldn't load that place — try another or fill the form manually.");
-    }
   }
 
   const caption = (field: string) =>
@@ -319,78 +245,14 @@ export default function PoiFormModal({
         <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <div style={{ padding: "0 24px 8px", display: "flex", flexDirection: "column", gap: 14 }}>
           {isAdd && onSearchPlaces && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={label} htmlFor="poi-place-search">Search places</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  id="poi-place-search"
-                  style={inputStyle}
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runSearch(); } }}
-                  placeholder="Search Google Places by name"
-                />
-                <button type="button" onClick={runSearch} disabled={searching} style={{ ...ghostButtonStyle, whiteSpace: "nowrap" }}>{searching ? "Searching…" : "Search"}</button>
-              </div>
-              {searchError && <div role="status" style={{ fontSize: 12, color: theme.color.dangerText }}>{searchError}</div>}
-              {results.length > 0 && (
-                <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 4, maxHeight: 200, overflowY: "auto", border: `1px solid ${theme.color.borderCard}`, borderRadius: theme.radius.input }}>
-                  {results.map((r) => (
-                    <li key={r.place_id}>
-                      <button
-                        type="button"
-                        onClick={() => pickPlace(r)}
-                        style={{ width: "100%", textAlign: "left", padding: "8px 10px", background: "transparent", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", gap: 2 }}
-                      >
-                        <span style={{ fontSize: 13, fontWeight: 700, color: theme.color.textPrimary }}>{r.name}</span>
-                        {r.address && <span style={{ fontSize: 11.5, color: theme.color.textPlaceholder }}>{r.address}</span>}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            <PlaceSearchSection onSearchPlaces={onSearchPlaces} onPickPlace={onPickPlace} onApplyDraft={applyDraft} />
           )}
 
           {isAdd && onEnrich && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={label} htmlFor="poi-enrich-url">Enrich from URL</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  id="poi-enrich-url"
-                  style={inputStyle}
-                  value={enrichUrlText}
-                  onChange={(e) => setEnrichUrlText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runEnrich(); } }}
-                  placeholder="Paste a Google Maps or website link"
-                />
-                <button type="button" onClick={runEnrich} disabled={enriching} style={{ ...ghostButtonStyle, whiteSpace: "nowrap" }}>{enriching ? "Enriching…" : "Enrich"}</button>
-              </div>
-              {enrichError && <div role="status" style={{ fontSize: 12, color: theme.color.dangerText }}>{enrichError}</div>}
-              {filledCount > 0 && enrichHost && (
-                <div role="status" style={{ fontSize: 12, color: theme.color.deepIndigoText, background: theme.color.tintBg, border: `1px solid ${theme.color.tintBorder}`, borderRadius: theme.radius.input, padding: "8px 10px" }}>
-                  Filled {filledCount} fields from {enrichHost} — review before saving.
-                </div>
-              )}
-            </div>
+            <EnrichSection onEnrich={onEnrich} onApplyDraft={applyDraft} filledCount={filledCount} enrichHost={enrichHost} />
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <label style={label} htmlFor="poi-image">Photo</label>
-            {safeImage && (
-              <div aria-label="Image preview" style={{ width: 96, height: 64, borderRadius: theme.radius.input, backgroundImage: `url(${safeImage})`, backgroundSize: "cover", backgroundPosition: "center", border: `1px solid ${theme.color.borderCard}` }} />
-            )}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              {onUploadImage && (
-                <input id="poi-image" type="file" accept="image/*" aria-label="Choose image" onChange={onPickFile} style={{ fontSize: 12 }} />
-              )}
-              {imageUrl && (
-                <button type="button" onClick={() => setImageUrl(null)} style={{ ...ghostButtonStyle, padding: "6px 12px" }}>Remove image</button>
-              )}
-            </div>
-            {uploading && <span role="status" style={{ fontSize: 12, color: theme.color.textPlaceholder }}>Uploading…</span>}
-            {uploadError && <div role="status" style={{ fontSize: 12, color: theme.color.dangerText }}>{uploadError}</div>}
-          </div>
+          <ImagePicker imageUrl={imageUrl} onImageUrl={setImageUrl} onUploadImage={onUploadImage} />
 
           {duplicateId != null && (
             <div role="status" style={{ padding: "10px 12px", borderRadius: theme.radius.input, background: theme.color.tintBg, border: `1px solid ${theme.color.tintBorder}`, color: theme.color.deepIndigoText, fontSize: 12.5 }}>
