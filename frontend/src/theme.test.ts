@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { theme, tintFromColor, inputStyle, monoInputStyle, textareaStyle } from "./theme";
+import { theme, tintFromColor, inputStyle, monoInputStyle, textareaStyle, ghostButtonStyle, fieldLabelStyle, toggleChipStyle, resultButtonStyle } from "./theme";
 
 describe("theme", () => {
   it("exposes the brand indigo", () => {
@@ -21,6 +21,19 @@ describe("shared input styles", () => {
     for (const s of [inputStyle, monoInputStyle, textareaStyle]) {
       expect(s.outline).not.toBe("none");
     }
+  });
+});
+
+describe("shared style tokens", () => {
+  it("fieldLabelStyle matches the settings label object", () => {
+    expect(fieldLabelStyle).toMatchObject({ fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" });
+  });
+  it("toggleChipStyle only tints when active", () => {
+    expect(toggleChipStyle(false)).toMatchObject({ ...ghostButtonStyle, padding: "6px 12px" });
+    expect(toggleChipStyle(true)).toMatchObject({ borderColor: theme.color.deepIndigoText, color: theme.color.deepIndigoText });
+  });
+  it("resultButtonStyle is a left-aligned pick button", () => {
+    expect(resultButtonStyle).toMatchObject({ textAlign: "left", padding: "8px 10px", border: `1px solid ${theme.color.borderSubtle}` });
   });
 });
 

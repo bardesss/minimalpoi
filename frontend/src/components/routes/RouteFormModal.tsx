@@ -1,13 +1,12 @@
 import { useState } from "react";
 import type { RouteDetail, RouteNodeCreate } from "../../types/api";
 import { ApiError } from "../../api/client";
-import { ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../theme";
+import { ghostButtonStyle, inputStyle, primaryButtonStyle, theme, fieldLabelStyle } from "../../theme";
 import { useIsMobile } from "../../lib/useMediaQuery";
 import { useCreateRoutePlan, useUpdateRoutePlan, usePois } from "../../queries/hooks";
 import AddPlaceModal from "./AddPlaceModal";
 import ModalShell from "./ModalShell";
 
-const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" } as const;
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
 /** Human label for a chosen start/end place — a saved place name, or the ad-hoc point's name. */
@@ -127,24 +126,24 @@ export default function RouteFormModal({
         <form onSubmit={(e) => { e.preventDefault(); save(); }}>
         <div style={{ padding: "0 24px 8px", display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
-            <label style={label} htmlFor="route-name">Name</label>
+            <label style={fieldLabelStyle} htmlFor="route-name">Name</label>
             <input id="route-name" aria-label="Route name" style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Alps loop" />
           </div>
 
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <label style={label} htmlFor="route-start">Start date</label>
+              <label style={fieldLabelStyle} htmlFor="route-start">Start date</label>
               <input id="route-start" aria-label="Start date" type="date" style={inputStyle} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={label} htmlFor="route-end">End date (optional)</label>
+              <label style={fieldLabelStyle} htmlFor="route-end">End date (optional)</label>
               <input id="route-end" aria-label="End date (optional)" type="date" style={inputStyle} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
           </div>
 
           {teamOptions.length > 0 && (
             <div>
-              <label style={label} htmlFor="route-team">Team (optional)</label>
+              <label style={fieldLabelStyle} htmlFor="route-team">Team (optional)</label>
               <select id="route-team" aria-label="Team (optional)" style={inputStyle} value={teamId} onChange={(e) => setTeamId(e.target.value)}>
                 <option value="">No team</option>
                 {teamOptions.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}

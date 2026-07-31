@@ -1,8 +1,7 @@
 import { useState } from "react";
 import type { PoiDraft } from "../../types/api";
-import { ghostButtonStyle, inputStyle, theme } from "../../theme";
+import { ghostButtonStyle, inputStyle, theme, fieldLabelStyle } from "../../theme";
 
-const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" } as const;
 
 // The "enrich from URL" sub-flow. Owns the URL text, in-flight flag and its own
 // error, so typing or retrying here doesn't re-render the main form. The
@@ -45,7 +44,7 @@ export function EnrichSection({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <label style={label} htmlFor="poi-enrich-url">Enrich from URL</label>
+      <label style={fieldLabelStyle} htmlFor="poi-enrich-url">Enrich from URL</label>
       <div style={{ display: "flex", gap: 8 }}>
         {/* Rendered inside the parent <form>, so Enter must be swallowed here
             or it would submit the form instead of running enrichment. */}

@@ -1,9 +1,8 @@
 import { useState, type ChangeEvent } from "react";
 import { ApiError } from "../../api/client";
 import { safeImageCss } from "../../lib/safeUrl";
-import { ghostButtonStyle, theme } from "../../theme";
+import { ghostButtonStyle, theme, fieldLabelStyle } from "../../theme";
 
-const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" } as const;
 
 // The photo sub-flow of the POI form. Owns its own upload progress/error state
 // so a failed or in-flight upload doesn't re-render the rest of the form; the
@@ -40,7 +39,7 @@ export function ImagePicker({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <label style={label} htmlFor="poi-image">Photo</label>
+      <label style={fieldLabelStyle} htmlFor="poi-image">Photo</label>
       {safeImage && (
         <div aria-label="Image preview" style={{ width: 96, height: 64, borderRadius: theme.radius.input, backgroundImage: `url(${safeImage})`, backgroundSize: "cover", backgroundPosition: "center", border: `1px solid ${theme.color.borderCard}` }} />
       )}

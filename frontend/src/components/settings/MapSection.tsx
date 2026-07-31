@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { useFullSettings, useUpdateSettings } from "../../queries/hooks";
 import { useToast } from "../Toast";
 import type { SettingsUpdate } from "../../types/api";
-import { inputStyle, primaryButtonStyle, theme } from "../../theme";
+import { inputStyle, primaryButtonStyle, theme, fieldLabelStyle } from "../../theme";
 
-const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" } as const;
 
 export default function MapSection() {
   const settings = useFullSettings();
@@ -50,11 +49,11 @@ export default function MapSection() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div><label style={label} htmlFor="m-tile">Map tile style URL</label><input id="m-tile" style={inputStyle} value={tileUrl} onChange={(e) => setTileUrl(e.target.value)} /></div>
+      <div><label style={fieldLabelStyle} htmlFor="m-tile">Map tile style URL</label><input id="m-tile" style={inputStyle} value={tileUrl} onChange={(e) => setTileUrl(e.target.value)} /></div>
       <div style={{ display: "flex", gap: 12 }}>
-        <div style={{ flex: 1 }}><label style={label} htmlFor="m-lat">Default center lat</label><input id="m-lat" style={inputStyle} value={lat} onChange={(e) => setLat(e.target.value)} /></div>
-        <div style={{ flex: 1 }}><label style={label} htmlFor="m-lng">Default center lng</label><input id="m-lng" style={inputStyle} value={lng} onChange={(e) => setLng(e.target.value)} /></div>
-        <div style={{ flex: 1 }}><label style={label} htmlFor="m-zoom">Default zoom</label><input id="m-zoom" style={inputStyle} value={zoom} onChange={(e) => setZoom(e.target.value)} /></div>
+        <div style={{ flex: 1 }}><label style={fieldLabelStyle} htmlFor="m-lat">Default center lat</label><input id="m-lat" style={inputStyle} value={lat} onChange={(e) => setLat(e.target.value)} /></div>
+        <div style={{ flex: 1 }}><label style={fieldLabelStyle} htmlFor="m-lng">Default center lng</label><input id="m-lng" style={inputStyle} value={lng} onChange={(e) => setLng(e.target.value)} /></div>
+        <div style={{ flex: 1 }}><label style={fieldLabelStyle} htmlFor="m-zoom">Default zoom</label><input id="m-zoom" style={inputStyle} value={zoom} onChange={(e) => setZoom(e.target.value)} /></div>
       </div>
       <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700 }}>
         <input type="checkbox" checked={cookieSecure} onChange={(e) => setCookieSecure(e.target.checked)} /> Secure cookie (enable behind HTTPS)

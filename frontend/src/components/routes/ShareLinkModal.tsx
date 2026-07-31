@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { RouteDetail, ShareInfo } from "../../types/api";
-import { ghostButtonStyle, primaryButtonStyle, dangerButtonStyle, inputStyle, theme } from "../../theme";
+import { ghostButtonStyle, primaryButtonStyle, dangerButtonStyle, inputStyle, theme, toggleChipStyle } from "../../theme";
 import ModalShell from "./ModalShell";
 import { deleteShare, putShare, regenerateShare } from "../../api/share";
 
@@ -103,12 +103,6 @@ export default function ShareLinkModal({ route, onClose }: { route: RouteDetail;
     }
   }
 
-  const chip = (active: boolean) => ({
-    ...ghostButtonStyle,
-    padding: "6px 12px",
-    ...(active ? { borderColor: theme.color.deepIndigoText, color: theme.color.deepIndigoText } : {}),
-  });
-
   return (
     <ModalShell
       label="Public link"
@@ -140,10 +134,10 @@ export default function ShareLinkModal({ route, onClose }: { route: RouteDetail;
             <div style={{ marginBottom: 14 }}>
               <p style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" }}>Expires</p>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: expiryPreset === "custom" ? 8 : 0 }}>
-                <button type="button" style={chip(expiryPreset === "never")} aria-pressed={expiryPreset === "never"} onClick={() => onExpiryChange("never")} disabled={busy}>Never</button>
-                <button type="button" style={chip(expiryPreset === "7d")} aria-pressed={expiryPreset === "7d"} onClick={() => onExpiryChange("7d")} disabled={busy}>7 days</button>
-                <button type="button" style={chip(expiryPreset === "30d")} aria-pressed={expiryPreset === "30d"} onClick={() => onExpiryChange("30d")} disabled={busy}>30 days</button>
-                <button type="button" style={chip(expiryPreset === "custom")} aria-pressed={expiryPreset === "custom"} onClick={() => setExpiryPreset("custom")} disabled={busy}>Custom</button>
+                <button type="button" style={toggleChipStyle(expiryPreset === "never")} aria-pressed={expiryPreset === "never"} onClick={() => onExpiryChange("never")} disabled={busy}>Never</button>
+                <button type="button" style={toggleChipStyle(expiryPreset === "7d")} aria-pressed={expiryPreset === "7d"} onClick={() => onExpiryChange("7d")} disabled={busy}>7 days</button>
+                <button type="button" style={toggleChipStyle(expiryPreset === "30d")} aria-pressed={expiryPreset === "30d"} onClick={() => onExpiryChange("30d")} disabled={busy}>30 days</button>
+                <button type="button" style={toggleChipStyle(expiryPreset === "custom")} aria-pressed={expiryPreset === "custom"} onClick={() => setExpiryPreset("custom")} disabled={busy}>Custom</button>
               </div>
               {expiryPreset === "custom" && (
                 <input

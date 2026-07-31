@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Category, PlaceSearchResult, PoiCreate, PoiDraft, TagInfo } from "../types/api";
 import { ApiError } from "../api/client";
-import { ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, textareaStyle, theme } from "../theme";
+import { ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, textareaStyle, theme, fieldLabelStyle } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 import { useDialog } from "../lib/useDialog";
 import PhoneInput from "./PhoneInput";
@@ -51,7 +51,6 @@ export interface PoiFormInitial {
   image_url: string | null;
 }
 
-const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" } as const;
 const nn = (s: string) => (s.trim() === "" ? null : s.trim());
 
 export default function PoiFormModal({
@@ -261,34 +260,34 @@ export default function PoiFormModal({
           )}
 
           <div>
-            <label style={label} htmlFor="poi-name">Name</label>
+            <label style={fieldLabelStyle} htmlFor="poi-name">Name</label>
             <input id="poi-name" style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} onBlur={maybeCheckDuplicate} placeholder="e.g. Café Modern" />
             {caption("name")}
           </div>
 
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <label style={label} htmlFor="poi-category">Category</label>
+              <label style={fieldLabelStyle} htmlFor="poi-category">Category</label>
               <select id="poi-category" style={inputStyle} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 <option value="">Uncategorized</option>
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div style={{ flex: 1 }}>
-              <label style={label} htmlFor="poi-tags">Tags</label>
+              <label style={fieldLabelStyle} htmlFor="poi-tags">Tags</label>
               <TagInput inputId="poi-tags" value={tags} onChange={setTags} suggestions={tagSuggestions} />
             </div>
           </div>
 
           <div>
-            <label style={label} htmlFor="poi-address">Address</label>
+            <label style={fieldLabelStyle} htmlFor="poi-address">Address</label>
             <input id="poi-address" style={inputStyle} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street 12, Amsterdam" />
             {caption("address")}
           </div>
 
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <label style={label} htmlFor="poi-lat">Latitude</label>
+              <label style={fieldLabelStyle} htmlFor="poi-lat">Latitude</label>
               <input
                 id="poi-lat"
                 style={monoInputStyle}
@@ -309,7 +308,7 @@ export default function PoiFormModal({
               {caption("lat")}
             </div>
             <div style={{ flex: 1 }}>
-              <label style={label} htmlFor="poi-lng">Longitude</label>
+              <label style={fieldLabelStyle} htmlFor="poi-lng">Longitude</label>
               <input id="poi-lng" style={monoInputStyle} value={lng} onChange={(e) => { setSaveError(null); setLng(e.target.value); }} onBlur={maybeCheckDuplicate} placeholder="4.9041" />
               {caption("lng")}
             </div>
@@ -324,24 +323,24 @@ export default function PoiFormModal({
           </p>
 
           <div>
-            <label style={label} htmlFor="poi-phone">Phone</label>
+            <label style={fieldLabelStyle} htmlFor="poi-phone">Phone</label>
             <PhoneInput id="poi-phone" value={phone} onChange={setPhone} />
             {caption("phone")}
           </div>
 
           <div>
-            <label style={label} htmlFor="poi-email">Email</label>
+            <label style={fieldLabelStyle} htmlFor="poi-email">Email</label>
             <input id="poi-email" type="email" style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" />
           </div>
 
           <div>
-            <label style={label} htmlFor="poi-website">Website</label>
+            <label style={fieldLabelStyle} htmlFor="poi-website">Website</label>
             <input id="poi-website" style={inputStyle} value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" />
             {caption("website")}
           </div>
 
           <div>
-            <label style={label} htmlFor="poi-notes">Notes</label>
+            <label style={fieldLabelStyle} htmlFor="poi-notes">Notes</label>
             <textarea id="poi-notes" rows={3} style={textareaStyle} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything worth remembering…" />
           </div>
         </div>

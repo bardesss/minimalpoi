@@ -136,3 +136,35 @@ export const dangerButtonStyle: CSSProperties = {
   fontSize: "13.5px",
   cursor: "pointer",
 };
+
+/** The small bold caption above a form field, shared by every settings section and modal form. */
+export const fieldLabelStyle: CSSProperties = {
+  fontSize: 12,
+  fontWeight: 700,
+  color: theme.color.textBody,
+  marginBottom: 6,
+  display: "block",
+};
+
+/**
+ * A compact toggle chip (share-modal format/variant pickers): a ghost button
+ * that tints indigo while selected. Named `toggleChipStyle` rather than
+ * `chipStyle` to stay distinct from TagInput's tag-pill chip.
+ */
+export function toggleChipStyle(active: boolean): CSSProperties {
+  return {
+    ...ghostButtonStyle,
+    padding: "6px 12px",
+    ...(active ? { borderColor: theme.color.deepIndigoText, color: theme.color.deepIndigoText } : {}),
+  };
+}
+
+/** A left-aligned row button for pickable search/saved results. */
+export const resultButtonStyle: CSSProperties = {
+  textAlign: "left",
+  padding: "8px 10px",
+  borderRadius: theme.radius.input,
+  border: `1px solid ${theme.color.borderSubtle}`,
+  background: theme.color.surface0,
+  cursor: "pointer",
+};

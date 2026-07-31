@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { MapSettings, RouteDetail } from "../../types/api";
-import { ghostButtonStyle, primaryButtonStyle, theme } from "../../theme";
+import { ghostButtonStyle, primaryButtonStyle, theme, toggleChipStyle } from "../../theme";
 import { SHARE_FORMATS, shareFormat, type ShareFormat, type ShareVariant } from "../../lib/share/shareFormats";
 import { renderShareImage } from "../../lib/share/shareRender";
 import { shareFilename, sharePdfFilename } from "../../lib/share/shareFilename";
@@ -80,8 +80,6 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
   const canShare = typeof navigator !== "undefined" && !!navigator.canShare;
   const heading = format === "pdf" ? "Share route PDF" : "Share route image";
 
-  const chip = (active: boolean) => ({ ...ghostButtonStyle, padding: "6px 12px", ...(active ? { borderColor: theme.color.deepIndigoText, color: theme.color.deepIndigoText } : {}) });
-
   return (
     <ModalShell
       label={heading}
@@ -96,13 +94,13 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
 
         <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
           {SHARE_FORMATS.map((f) => (
-            <button key={f.key} type="button" style={chip(format === f.key)} onClick={() => setFormat(f.key)}>{f.label}</button>
+            <button key={f.key} type="button" style={toggleChipStyle(format === f.key)} onClick={() => setFormat(f.key)}>{f.label}</button>
           ))}
-          <button type="button" style={chip(format === "pdf")} onClick={() => setFormat("pdf")}>PDF</button>
+          <button type="button" style={toggleChipStyle(format === "pdf")} onClick={() => setFormat("pdf")}>PDF</button>
         </div>
         <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
           {VARIANTS.map((v) => (
-            <button key={v.key} type="button" style={chip(variant === v.key)} onClick={() => setVariant(v.key)}>{v.label}</button>
+            <button key={v.key} type="button" style={toggleChipStyle(variant === v.key)} onClick={() => setVariant(v.key)}>{v.label}</button>
           ))}
         </div>
 

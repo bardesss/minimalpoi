@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { PlaceSearchResult, PoiCreate, PoiDraft } from "../../../types/api";
 import type { PlaceSelection } from "./placeSelection";
-import { ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../../theme";
+import { ghostButtonStyle, inputStyle, primaryButtonStyle, resultButtonStyle, theme } from "../../../theme";
 import { useCreatePoi, usePlaceDraft, useSearchPlaces } from "../../../queries/hooks";
 
 function toPoiCreate(draft: PoiDraft): PoiCreate {
@@ -21,15 +21,6 @@ function toPoiCreate(draft: PoiDraft): PoiCreate {
     source_url: draft.source_url,
   };
 }
-
-const resultBtn = {
-  textAlign: "left" as const,
-  padding: "8px 10px",
-  borderRadius: theme.radius.input,
-  border: `1px solid ${theme.color.borderSubtle}`,
-  background: theme.color.surface0,
-  cursor: "pointer",
-};
 
 export default function SearchPlacePanel({ onPick }: { onPick: (sel: PlaceSelection) => void }) {
   const searchPlaces = useSearchPlaces();
@@ -129,7 +120,7 @@ export default function SearchPlacePanel({ onPick }: { onPick: (sel: PlaceSelect
           {results.length > 0 && (
             <div className="poi-scroll" style={{ maxHeight: 220, overflowY: "auto", display: "grid", gap: 4 }}>
               {results.map((r) => (
-                <button key={r.place_id} type="button" onClick={() => selectResult(r)} style={resultBtn}>
+                <button key={r.place_id} type="button" onClick={() => selectResult(r)} style={resultButtonStyle}>
                   <div style={{ fontFamily: theme.font.ui, fontSize: 13, color: theme.color.textPrimary }}>{r.name}</div>
                   {r.address && <div style={{ fontSize: 11.5, color: theme.color.textPlaceholder }}>{r.address}</div>}
                 </button>

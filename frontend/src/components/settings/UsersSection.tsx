@@ -3,9 +3,8 @@ import { useCreateUser, useDeleteUser, useUpdateUser, useUsers } from "../../que
 import { useAuth } from "../../auth/AuthContext";
 import { useToast } from "../Toast";
 import type { Role, UserRead } from "../../types/api";
-import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../theme";
+import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme, fieldLabelStyle } from "../../theme";
 
-const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" } as const;
 
 export default function UsersSection() {
   const users = useUsers().data ?? [];
@@ -106,9 +105,9 @@ export default function UsersSection() {
 
       {adding ? (
         <div style={{ border: `1px solid ${theme.color.borderCard}`, borderRadius: theme.radius.card, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-          <div><label style={label} htmlFor="nu-name">Username</label><input id="nu-name" style={inputStyle} value={newName} onChange={(e) => setNewName(e.target.value)} /></div>
-          <div><label style={label} htmlFor="nu-pass">Password</label><input id="nu-pass" type="password" style={inputStyle} value={newPass} onChange={(e) => setNewPass(e.target.value)} /></div>
-          <div><label style={label} htmlFor="nu-role">Role</label>
+          <div><label style={fieldLabelStyle} htmlFor="nu-name">Username</label><input id="nu-name" style={inputStyle} value={newName} onChange={(e) => setNewName(e.target.value)} /></div>
+          <div><label style={fieldLabelStyle} htmlFor="nu-pass">Password</label><input id="nu-pass" type="password" style={inputStyle} value={newPass} onChange={(e) => setNewPass(e.target.value)} /></div>
+          <div><label style={fieldLabelStyle} htmlFor="nu-role">Role</label>
             <select id="nu-role" style={inputStyle} value={newRole} onChange={(e) => setNewRole(e.target.value as Role)}>
               <option value="member">Member</option>
               <option value="admin">Admin</option>
