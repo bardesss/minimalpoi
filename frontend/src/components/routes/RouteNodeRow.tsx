@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { memo, type CSSProperties, type ReactNode } from "react";
 import type { RouteNode } from "../../types/api";
 import { theme } from "../../theme";
 import { useIsMobile, useIsCoarsePointer } from "../../lib/useMediaQuery";
@@ -28,7 +28,13 @@ function iconBtnStyle(size: number): CSSProperties {
 // own action buttons) unless `pinned` (start/end places, which never
 // reorder). Stays (★) show arrive→depart dates and a nights stepper; stops
 // (·) just show their name.
-export default function RouteNodeRow({
+//
+// Wrapped in React.memo at the bottom of the file: hovering any row sets
+// hoverNodeId on RoutesPage, which re-renders every row (each carrying a
+// useSortable subscription). Dragging is unaffected — the sortable state comes
+// from useSortable inside the row, whose own subscription still drives
+// re-renders that memo cannot block.
+function RouteNodeRow({
   node,
   routeId,
   canEdit,
@@ -184,3 +190,5 @@ export default function RouteNodeRow({
     </div>
   );
 }
+
+export default memo(RouteNodeRow);

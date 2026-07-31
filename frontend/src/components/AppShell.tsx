@@ -126,7 +126,12 @@ export default function AppShell() {
     [poisQuery.data],
   );
 
-  const selectedPoi = (poisQuery.data ?? []).find((p) => p.id === selectedId) ?? null;
+  // Resolved from the full POI set (not `filtered`), so a selected place stays
+  // open even when the current search/filter would hide it from the list.
+  const selectedPoi = useMemo(
+    () => (poisQuery.data ?? []).find((p) => p.id === selectedId) ?? null,
+    [poisQuery.data, selectedId],
+  );
   const addMode = formState?.mode === "add";
 
   async function onLogout() {
