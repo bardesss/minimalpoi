@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { createPortal } from "react-dom";
 import type { RouteNodeCreate, RouteNodeKind, RouteNodeRole } from "../../types/api";
 import { ghostButtonStyle, inputStyle, theme } from "../../theme";
-import { useIsMobile } from "../../lib/useMediaQuery";
-import { useDialog } from "../../lib/useDialog";
+import ModalShell from "./ModalShell";
 import SavedPlacePanel from "./placePanels/SavedPlacePanel";
 import SearchPlacePanel from "./placePanels/SearchPlacePanel";
 import ManualPointPanel from "./placePanels/ManualPointPanel";
@@ -42,10 +40,8 @@ export default function AddPlaceModal({
   onSubmit: (body: RouteNodeCreate) => void;
   onClose: () => void;
 }) {
-  const isMobile = useIsMobile();
   const [method, setMethod] = useState<Method | null>(null);
   const [nights, setNights] = useState(1);
-  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose);
 
   const title =
     role === "start" ? "Set start place"
@@ -57,23 +53,8 @@ export default function AddPlaceModal({
     onSubmit({ kind, ...(role ? { role } : {}), ...sel, nights: kind === "stay" ? nights : null });
   }
 
-  // Portalled to <body> so `position: fixed` resolves against the viewport.
-  // On mobile the timeline renders inside the bottom sheet's `transform`, which
-  // would otherwise become the containing block and trap this overlay in it —
-  // leaving the sheet greyed out with the card docked off-screen below it.
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-      onClick={onBackdropClick}
-      style={{ position: "fixed", inset: 0, zIndex: 2100, background: "rgba(26,24,22,.42)", backdropFilter: "blur(2px)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", animation: "fadeIn .16s ease" }}
-    >
-      <div
-        ref={dialogRef}
-        className="poi-scroll"
-        style={{ width: isMobile ? "100%" : 480, maxWidth: "100%", maxHeight: isMobile ? "92vh" : "90vh", overflowY: "auto", background: "#fff", borderRadius: isMobile ? "18px 18px 0 0" : theme.radius.modal, paddingBottom: isMobile ? "env(safe-area-inset-bottom)" : undefined, boxShadow: theme.shadow.modal, animation: isMobile ? "sheetUp .26s cubic-bezier(.32,.72,0,1)" : "popIn .2s ease" }}
-      >
+  return (
+    <ModalShell label={title} onClose={onClose} mobileSheet desktopWidth={480} zIndex={2100} cardClassName="poi-scroll">
         <div style={{ position: "sticky", top: 0, background: "#fff", display: "flex", alignItems: "center", gap: 8, padding: "18px 20px 14px", zIndex: 2 }}>
           {method !== null && (
             <button type="button" aria-label="Back" onClick={() => setMethod(null)} style={{ ...ghostButtonStyle, padding: "4px 10px" }}>←</button>
@@ -111,8 +92,6 @@ export default function AddPlaceModal({
             <ManualPointPanel onPick={pick} />
           )}
         </div>
-      </div>
-    </div>,
-    document.body,
+    </ModalShell>
   );
 }

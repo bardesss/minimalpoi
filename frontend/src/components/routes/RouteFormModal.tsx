@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { createPortal } from "react-dom";
 import type { RouteDetail, RouteNodeCreate } from "../../types/api";
 import { ApiError } from "../../api/client";
 import { ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../theme";
 import { useIsMobile } from "../../lib/useMediaQuery";
-import { useDialog } from "../../lib/useDialog";
 import { useCreateRoutePlan, useUpdateRoutePlan, usePois } from "../../queries/hooks";
 import AddPlaceModal from "./AddPlaceModal";
+import ModalShell from "./ModalShell";
 
 const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" } as const;
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
@@ -29,7 +28,6 @@ export default function RouteFormModal({
   onSaved: (route: RouteDetail) => void;
 }) {
   const isMobile = useIsMobile();
-  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose, { manageHistory: false });
   const createPlan = useCreateRoutePlan();
   const updatePlan = useUpdateRoutePlan();
   const pois = usePois().data ?? [];
@@ -99,22 +97,28 @@ export default function RouteFormModal({
     ? (updatePlan.isPending ? "Saving…" : "Save changes")
     : (createPlan.isPending ? "Creating…" : "Create route");
 
-  // Portalled to <body> so `position: fixed` resolves against the viewport and
-  // escapes the transformed mobile bottom-sheet containing block (matches the
-  // other four routes modals; see PR #185).
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-      onClick={onBackdropClick}
-      style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(26,24,22,.42)", backdropFilter: "blur(2px)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", animation: "fadeIn .16s ease" }}
+  return (
+    <ModalShell
+      label={title}
+      onClose={onClose}
+      mobileSheet
+      desktopWidth={520}
+      zIndex={2000}
+      cardClassName="poi-scroll"
+      dialogOptions={{ manageHistory: false }}
+      afterCard={picking !== null ? (
+        <AddPlaceModal
+          kind="stop"
+          role={picking}
+          onClose={() => setPicking(null)}
+          onSubmit={(body) => {
+            if (picking === "start") setStartBody(body);
+            else setEndBody(body);
+            setPicking(null);
+          }}
+        />
+      ) : null}
     >
-      <div
-        ref={dialogRef}
-        className="poi-scroll"
-        style={{ width: isMobile ? "100%" : 520, maxWidth: "100%", maxHeight: isMobile ? "92vh" : "90vh", overflowY: "auto", background: "#fff", borderRadius: isMobile ? "18px 18px 0 0" : theme.radius.modal, paddingBottom: isMobile ? "env(safe-area-inset-bottom)" : undefined, boxShadow: theme.shadow.modal, animation: isMobile ? "sheetUp .26s cubic-bezier(.32,.72,0,1)" : "popIn .2s ease" }}
-      >
         <div style={{ position: "sticky", top: 0, background: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 24px 16px", zIndex: 2 }}>
           <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: "-.02em" }}>{title}</h2>
           <button type="button" aria-label="Close" onClick={onClose} style={{ width: isMobile ? 44 : 30, height: isMobile ? 44 : 30, fontSize: isMobile ? 20 : 14, borderRadius: theme.radius.icon, border: "none", background: "#f5f4f2", color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
@@ -188,21 +192,6 @@ export default function RouteFormModal({
           </div>
         </div>
         </form>
-      </div>
-
-      {picking !== null && (
-        <AddPlaceModal
-          kind="stop"
-          role={picking}
-          onClose={() => setPicking(null)}
-          onSubmit={(body) => {
-            if (picking === "start") setStartBody(body);
-            else setEndBody(body);
-            setPicking(null);
-          }}
-        />
-      )}
-    </div>,
-    document.body,
+    </ModalShell>
   );
 }

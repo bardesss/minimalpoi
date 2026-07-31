@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import type { MapSettings, RouteDetail } from "../../types/api";
 import { ghostButtonStyle, primaryButtonStyle, theme } from "../../theme";
 import { SHARE_FORMATS, shareFormat, type ShareFormat, type ShareVariant } from "../../lib/share/shareFormats";
@@ -7,7 +6,7 @@ import { renderShareImage } from "../../lib/share/shareRender";
 import { shareFilename, sharePdfFilename } from "../../lib/share/shareFilename";
 import { renderSharePdf } from "../../lib/share/sharePdf";
 import { triggerDownload } from "../../lib/download";
-import { useDialog } from "../../lib/useDialog";
+import ModalShell from "./ModalShell";
 
 const VARIANTS: { key: ShareVariant; label: string }[] = [
   { key: "map", label: "Map background" },
@@ -17,7 +16,6 @@ const VARIANTS: { key: ShareVariant; label: string }[] = [
 type OutputMode = ShareFormat | "pdf";
 
 export default function ShareImageModal({ route, settings, onClose }: { route: RouteDetail; settings: MapSettings; onClose: () => void }) {
-  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose);
   const [format, setFormat] = useState<OutputMode>("square");
   const [variant, setVariant] = useState<ShareVariant>("map");
   const [blob, setBlob] = useState<Blob | null>(null);
@@ -84,12 +82,13 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
 
   const chip = (active: boolean) => ({ ...ghostButtonStyle, padding: "6px 12px", ...(active ? { borderColor: theme.color.deepIndigoText, color: theme.color.deepIndigoText } : {}) });
 
-  // Portalled to document.body (matches NavigateDayModal) so it escapes the
-  // transformed mobile bottom-sheet containing-block; z-index/radius match the
-  // house modal style.
-  return createPortal(
-    <div role="dialog" aria-modal="true" aria-label={heading} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100 }} onClick={onBackdropClick}>
-      <div ref={dialogRef} style={{ background: theme.color.surface0, borderRadius: theme.radius.modal, padding: 16, width: 420, maxWidth: "92vw", maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+  return (
+    <ModalShell
+      label={heading}
+      onClose={onClose}
+      tint="dark"
+      cardStyle={{ background: theme.color.surface0, borderRadius: theme.radius.modal, padding: 16, width: 420, maxWidth: "92vw", maxHeight: "90vh", overflowY: "auto" }}
+    >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <strong style={{ fontFamily: theme.font.ui }}>{heading}</strong>
           <button type="button" aria-label="Close" style={{ ...ghostButtonStyle, padding: "4px 10px" }} onClick={onClose}>×</button>
@@ -121,8 +120,6 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
           <button type="button" style={primaryButtonStyle} onClick={onDownload} disabled={format === "pdf" ? pdfBusy : (busy || !!error || !blob)}>{format === "pdf" ? "Download PDF" : "Download"}</button>
           {canShare && <button type="button" style={ghostButtonStyle} onClick={onShare} disabled={format === "pdf" ? pdfBusy : (busy || !!error || !blob)}>Share</button>}
         </div>
-      </div>
-    </div>,
-    document.body,
+    </ModalShell>
   );
 }

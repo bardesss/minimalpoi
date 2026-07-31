@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import type { RouteDetail, ShareInfo } from "../../types/api";
 import { ghostButtonStyle, primaryButtonStyle, dangerButtonStyle, inputStyle, theme } from "../../theme";
-import { useDialog } from "../../lib/useDialog";
+import ModalShell from "./ModalShell";
 import { deleteShare, putShare, regenerateShare } from "../../api/share";
 
 type ExpiryPreset = "never" | "7d" | "30d" | "custom";
@@ -20,7 +19,6 @@ function isoFromDateInput(value: string): string {
 }
 
 export default function ShareLinkModal({ route, onClose }: { route: RouteDetail; onClose: () => void }) {
-  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose);
   const qc = useQueryClient();
   const [share, setShare] = useState<ShareInfo | null>(route.share ?? null);
   const [busy, setBusy] = useState(false);
@@ -111,19 +109,13 @@ export default function ShareLinkModal({ route, onClose }: { route: RouteDetail;
     ...(active ? { borderColor: theme.color.deepIndigoText, color: theme.color.deepIndigoText } : {}),
   });
 
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Public link"
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100 }}
-      onClick={onBackdropClick}
+  return (
+    <ModalShell
+      label="Public link"
+      onClose={onClose}
+      tint="dark"
+      cardStyle={{ background: theme.color.surface0, borderRadius: theme.radius.modal, padding: 16, width: 420, maxWidth: "92vw", maxHeight: "90vh", overflowY: "auto" }}
     >
-      <div
-        ref={dialogRef}
-        style={{ background: theme.color.surface0, borderRadius: theme.radius.modal, padding: 16, width: 420, maxWidth: "92vw", maxHeight: "90vh", overflowY: "auto" }}
-        onClick={(e) => e.stopPropagation()}
-      >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <strong style={{ fontFamily: theme.font.ui }}>Public link</strong>
           <button type="button" aria-label="Close" style={{ ...ghostButtonStyle, padding: "4px 10px" }} onClick={onClose}>×</button>
@@ -193,8 +185,6 @@ export default function ShareLinkModal({ route, onClose }: { route: RouteDetail;
             </div>
           </>
         )}
-      </div>
-    </div>,
-    document.body,
+    </ModalShell>
   );
 }
