@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.10.5](https://github.com/bardesss/minimalpoi/compare/v3.10.4...v3.10.5) (2026-07-31)
+
+
+### Performance Improvements
+
+* **app:** memoize selectedPoi lookup in AppShell ([bd75959](https://github.com/bardesss/minimalpoi/commit/bd75959e55575da8306997f7381c19ec398e2da8))
+* **frontend:** cut redundant render work on the map, route, and detail hot paths ([92fc880](https://github.com/bardesss/minimalpoi/commit/92fc8804299a224997c23b25f502c268a1077622))
+* **map:** rebuild hover mini-card only when the hovered marker changes ([a86238c](https://github.com/bardesss/minimalpoi/commit/a86238c6918e62c129780122850aa94dd511c076))
+* **routes:** memoize nearbyPois so RouteMap stops re-uploading GeoJSON ([d9b8d29](https://github.com/bardesss/minimalpoi/commit/d9b8d29837265951e6e772df72592638b6d3ead5))
+* **routes:** memoize RouteNodeRow so a hover doesn't re-render every row ([6d49dad](https://github.com/bardesss/minimalpoi/commit/6d49dadbdccf2d2407b3caa160105ff6c25efa1c))
+
 ## [3.10.4](https://github.com/bardesss/minimalpoi/compare/v3.10.3...v3.10.4) (2026-07-30)
 
 
