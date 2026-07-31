@@ -52,3 +52,68 @@ def test_limiter_is_disabled_for_the_general_suite(client):
     for _ in range(8):
         r = client.post("/api/auth/login", json={"username": "nope", "password": "bad"})
         assert r.status_code == 401
+
+
+def _request(headers=None, cookies=None, client=("10.0.0.1", 1234)):
+    """A minimal Starlette Request for exercising the key function directly."""
+    from starlette.requests import Request
+
+    raw = [(k.lower().encode(), v.encode()) for k, v in (headers or {}).items()]
+    if cookies:
+        raw.append((b"cookie", "; ".join(f"{k}={v}" for k, v in cookies.items()).encode()))
+    return Request({
+        "type": "http", "method": "GET", "path": "/", "query_string": b"",
+        "headers": raw, "client": client, "scheme": "http", "server": ("test", 80),
+    })
+
+
+def test_distinct_bearer_tokens_get_distinct_buckets():
+    # Regression: MCP calls reach the app through httpx.ASGITransport, which stamps
+    # every in-process request with the same synthetic client address. Keying on the
+    # cookie alone collapsed every MCP caller into one shared bucket.
+    from app.apitokens import generate_api_token, hash_api_token
+    from app.ratelimit import user_or_ip
+
+    a, _, _ = generate_api_token()
+    b, _, _ = generate_api_token()
+    key_a = user_or_ip(_request(headers={"authorization": f"Bearer {a}"}))
+    key_b = user_or_ip(_request(headers={"authorization": f"Bearer {b}"}))
+
+    assert key_a != key_b
+    assert key_a == f"token:{hash_api_token(a)}"
+
+
+def test_bearer_key_does_not_contain_the_raw_token():
+    # The key lands in the limiter's in-memory store; the secret must not.
+    from app.apitokens import generate_api_token
+    from app.ratelimit import user_or_ip
+
+    full, _, _ = generate_api_token()
+    assert full not in user_or_ip(_request(headers={"authorization": f"Bearer {full}"}))
+
+
+def test_bearer_takes_precedence_over_a_cookie():
+    # Matches get_current_user's precedence (deps.py): a present bearer wins.
+    from app.apitokens import generate_api_token, hash_api_token
+    from app.ratelimit import user_or_ip
+
+    full, _, _ = generate_api_token()
+    key = user_or_ip(_request(
+        headers={"authorization": f"Bearer {full}"}, cookies={"access_token": "irrelevant"}
+    ))
+    assert key == f"token:{hash_api_token(full)}"
+
+
+def test_anonymous_requests_are_still_keyed_by_ip():
+    from app.ratelimit import user_or_ip
+
+    assert user_or_ip(_request(client=("203.0.113.9", 5))) == "203.0.113.9"
+
+
+def test_cookie_sessions_are_still_keyed_by_username(data_dir):
+    # data_dir: create_access_token reads the secret key from the data directory.
+    from app.ratelimit import user_or_ip
+    from app.security import create_access_token
+
+    token = create_access_token("alice", 0)
+    assert user_or_ip(_request(cookies={"access_token": token})) == "user:alice"

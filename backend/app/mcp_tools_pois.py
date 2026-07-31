@@ -84,6 +84,49 @@ async def _enrich_from_url(auth: str, url: str) -> dict:
         return r.json()
 
 
+# POIDraft attribute -> POI create field. `description` becomes `notes`, mirroring
+# the web form's applyDraft; category_id, tags, and email are never enriched.
+_ENRICHABLE = {
+    "name": "name", "address": "address", "city": "city", "country_code": "country_code",
+    "lat": "lat", "lng": "lng", "image_url": "image_url", "phone": "phone",
+    "website": "website", "description": "notes",
+}
+
+_REQUIRED = ("name", "lat", "lng")
+
+
+def _merge_draft(fields: dict, draft: dict) -> dict:
+    """Fill only the gaps — anything the caller passed explicitly wins."""
+    merged = dict(fields)
+    for draft_key, field in _ENRICHABLE.items():
+        if merged.get(field) is None and draft.get(draft_key) is not None:
+            merged[field] = draft[draft_key]
+    return merged
+
+
+async def _create_poi_enriched(auth: str, fields: dict) -> dict:
+    """Create a place, first filling gaps from `source_url` when one is given.
+
+    The outbound fetch is skipped when the caller already supplied every
+    enrichable field. An enrichment failure propagates rather than silently
+    creating a bare place.
+    """
+    source_url = fields.get("source_url")
+    if source_url and any(fields.get(f) is None for f in _ENRICHABLE.values()):
+        fields = _merge_draft(fields, await _enrich_from_url(auth, source_url))
+    missing = [f for f in _REQUIRED if fields.get(f) is None]
+    if missing:
+        joined = ", ".join(missing)
+        raise ValueError(
+            f"Cannot create a place without {joined}: {source_url} did not supply "
+            f"{'it' if len(missing) == 1 else 'them'}."
+            if source_url else
+            f"Cannot create a place without {joined}. Pass them directly, or pass "
+            f"source_url (a Google Maps or website link) to enrich them from it."
+        )
+    return await _create_poi(auth, fields)
+
+
 async def _search_places(auth: str, query: str) -> list[dict]:
     async with _client(auth) as c:
         r = await c.get("/api/places/search", params={"q": query})
@@ -100,10 +143,10 @@ async def _get_place_draft(auth: str, place_id: str) -> dict:
 
 @mcp.tool()
 async def create_poi(
-    name: str,
-    lat: float,
-    lng: float,
     ctx: Context,
+    name: str | None = None,
+    lat: float | None = None,
+    lng: float | None = None,
     address: str | None = None,
     city: str | None = None,
     country_code: str | None = None,
@@ -116,12 +159,15 @@ async def create_poi(
     image_url: str | None = None,
     source_url: str | None = None,
 ) -> dict:
-    """Create a place. Requires name and coordinates; category_id comes from list_categories."""
+    """Create a place. Pass source_url on its own — a Google Maps or website link —
+    and the name, coordinates, address, and other details are filled in from it
+    automatically; anything you pass explicitly wins over what the link supplies.
+    Otherwise pass name plus lat and lng. category_id comes from list_categories."""
     fields = {"name": name, "lat": lat, "lng": lng, "address": address, "city": city,
               "country_code": country_code, "category_id": category_id, "tags": tags or [],
               "notes": notes, "phone": phone, "email": email, "website": website,
               "image_url": image_url, "source_url": source_url}
-    return await _create_poi(_bearer(ctx), {k: v for k, v in fields.items() if v is not None})
+    return await _create_poi_enriched(_bearer(ctx), {k: v for k, v in fields.items() if v is not None})
 
 
 @mcp.tool()

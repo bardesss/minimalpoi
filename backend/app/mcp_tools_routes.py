@@ -122,6 +122,27 @@ async def _delete_route_node(auth: str, route_id: int, node_id: int) -> dict:
         return r.json()
 
 
+async def _set_role_node(auth: str, route_id: int, role: str, fields: dict) -> dict:
+    """Upsert the route's start or end.
+
+    POST /nodes 409s when the route already has a node in that role, and
+    RouteNodeUpdate carries no `role`, so relocating an existing start/end means
+    PATCHing its location instead. The PATCH path re-resolves the point and
+    re-mirrors a round trip's end, exactly as the web UI's drag does.
+    """
+    route = await _get_route(auth, route_id)
+    if role == "end" and route.get("round_trip"):
+        raise ValueError(
+            "This route is a round trip, so its end always mirrors its start and any "
+            "end you set here would be overwritten. Turn off round_trip with "
+            "update_route first, or move the start instead."
+        )
+    existing = next((n for n in route["nodes"] if n.get("role") == role), None)
+    if existing is not None:
+        return await _update_route_node(auth, route_id, existing["id"], fields)
+    return await _add_node(auth, route_id, {**fields, "kind": "stop", "role": role})
+
+
 @mcp.tool()
 async def update_route(route_id: int, ctx: Context, name: str | None = None,
                        start_date: str | None = None, end_date: str | None = None,
@@ -159,3 +180,29 @@ async def update_route_node(route_id: int, node_id: int, ctx: Context,
 async def delete_route_node(route_id: int, node_id: int, ctx: Context) -> dict:
     """Remove a stop/stay from a route (editor-only). Returns the updated route."""
     return await _delete_route_node(_bearer(ctx), route_id, node_id)
+
+
+@mcp.tool()
+async def set_route_start(route_id: int, ctx: Context, poi_id: int | None = None,
+                          name: str | None = None, lat: float | None = None,
+                          lng: float | None = None, notes: str | None = None) -> dict:
+    """Set where a route begins — an existing place (poi_id) or an ad-hoc point
+    (name+lat+lng). Moves the current start if the route already has one. On a
+    round-trip route the end follows the start automatically. Editor-only.
+    Returns the updated route."""
+    fields = {k: v for k, v in {"poi_id": poi_id, "name": name, "lat": lat, "lng": lng,
+                                "notes": notes}.items() if v is not None}
+    return await _set_role_node(_bearer(ctx), route_id, "start", fields)
+
+
+@mcp.tool()
+async def set_route_end(route_id: int, ctx: Context, poi_id: int | None = None,
+                        name: str | None = None, lat: float | None = None,
+                        lng: float | None = None, notes: str | None = None) -> dict:
+    """Set where a route finishes — an existing place (poi_id) or an ad-hoc point
+    (name+lat+lng). Moves the current end if the route already has one. Fails on a
+    round-trip route, whose end always mirrors its start. Editor-only. Returns the
+    updated route."""
+    fields = {k: v for k, v in {"poi_id": poi_id, "name": name, "lat": lat, "lng": lng,
+                                "notes": notes}.items() if v is not None}
+    return await _set_role_node(_bearer(ctx), route_id, "end", fields)
