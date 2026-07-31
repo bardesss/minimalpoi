@@ -1,4 +1,5 @@
 import { useResolveConflict, useSyncConflicts, useSyncNow, useSyncStatus } from "../../queries/hooks";
+import { useToast } from "../Toast";
 import type { SyncConflict, SyncResolution } from "../../types/api";
 import { dangerButtonStyle, ghostButtonStyle, primaryButtonStyle, theme } from "../../theme";
 
@@ -9,11 +10,26 @@ export default function SyncSection() {
   const conflicts = useSyncConflicts().data ?? [];
   const resolve = useResolveConflict();
   const syncNow = useSyncNow();
+  const { notify } = useToast();
 
   const lastRun = status?.last_run ? new Date(status.last_run).toLocaleString() : "Never";
 
-  function doResolve(c: SyncConflict, resolution: SyncResolution) {
-    resolve.mutate({ entity_type: c.entity_type, id: c.id, resolution });
+  async function doResolve(c: SyncConflict, resolution: SyncResolution) {
+    try {
+      await resolve.mutateAsync({ entity_type: c.entity_type, id: c.id, resolution });
+      notify("Conflict resolved");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Resolve failed", "error");
+    }
+  }
+
+  async function runSync() {
+    try {
+      await syncNow.mutateAsync();
+      notify("Sync complete");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Sync failed", "error");
+    }
   }
 
   return (
@@ -28,7 +44,7 @@ export default function SyncSection() {
         </span>
         <button
           type="button"
-          onClick={() => syncNow.mutate()}
+          onClick={runSync}
           disabled={syncNow.isPending}
           style={{ ...primaryButtonStyle, padding: "6px 14px", marginLeft: "auto" }}
         >

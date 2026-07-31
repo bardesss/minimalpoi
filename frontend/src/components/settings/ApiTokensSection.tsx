@@ -2,9 +2,8 @@ import { useState } from "react";
 import { useCreateToken, useRevokeToken, useTokens } from "../../queries/hooks";
 import { useToast } from "../Toast";
 import type { ApiTokenCreated } from "../../types/api";
-import { dangerButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, theme } from "../../theme";
+import { dangerButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, theme, fieldLabelStyle } from "../../theme";
 
-const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" } as const;
 
 function formatDate(iso: string | null): string {
   if (!iso) return "Never";
@@ -90,7 +89,7 @@ export default function ApiTokensSection() {
 
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 160 }}>
-          <label style={label} htmlFor="new-token-name">Token name</label>
+          <label style={fieldLabelStyle} htmlFor="new-token-name">Token name</label>
           <input id="new-token-name" style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Claude Desktop" />
         </div>
         <button type="button" onClick={create} disabled={name.trim() === "" || createToken.isPending} style={{ ...primaryButtonStyle, opacity: name.trim() === "" || createToken.isPending ? 0.5 : 1 }}>

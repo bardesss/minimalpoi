@@ -6,8 +6,8 @@ import { ApiError } from "../api/client";
 import type { RouteDetail } from "../types/api";
 import RouteMap from "../components/routes/RouteMap";
 import RouteTimeline from "../components/routes/RouteTimeline";
-import { inputStyle, primaryButtonStyle, theme } from "../theme";
-import BrandLogo from "../components/BrandLogo";
+import { theme } from "../theme";
+import { AuthCard, AuthField } from "../components/AuthCard";
 
 /** Adapts a `PublicRouteView` into the `RouteDetail` shape `RouteTimeline`
  * expects. Includes every field it actually reads (nodes, legs, round_trip,
@@ -72,30 +72,19 @@ function PasswordGate({ token, onUnlocked }: { token: string; onUnlocked: (route
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: theme.color.pageBg }}>
-      <form
-        onSubmit={onSubmit}
-        aria-label="Unlock shared route"
-        style={{ width: 320, background: theme.color.surface0, border: `1px solid ${theme.color.borderSubtle}`, borderRadius: theme.radius.modal, padding: "28px 26px", display: "flex", flexDirection: "column", gap: 14, boxShadow: theme.shadow.legend }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-          <BrandLogo size={28} />
-          <h1 style={{ margin: 0, fontSize: 15, fontWeight: 800, letterSpacing: "-.02em" }}>This route is password-protected</h1>
-        </div>
-        <label htmlFor="public-route-password" style={{ fontSize: 12, fontWeight: 700, color: theme.color.textBody }}>Password</label>
-        <input
-          id="public-route-password"
-          type="password"
-          style={inputStyle}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={rateLimited}
-          autoFocus
-        />
-        {error && <p style={{ margin: 0, fontSize: 12.5, color: theme.color.dangerText }}>{error}</p>}
-        <button type="submit" style={primaryButtonStyle} disabled={busy || rateLimited}>Unlock</button>
-      </form>
-    </div>
+    <AuthCard
+      ariaLabel="Unlock shared route"
+      heading="This route is password-protected"
+      onSubmit={onSubmit}
+      submitLabel="Unlock"
+      error={error}
+      submitDisabled={busy || rateLimited}
+      logoSize={28}
+      headingSize={15}
+      width={320}
+    >
+      <AuthField id="public-route-password" label="Password" type="password" value={password} onChange={setPassword} disabled={rateLimited} autoFocus />
+    </AuthCard>
   );
 }
 

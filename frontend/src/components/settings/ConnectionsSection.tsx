@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { useFullSettings, useUpdateSettings } from "../../queries/hooks";
 import { useToast } from "../Toast";
 import type { SettingsUpdate } from "../../types/api";
-import { inputStyle, primaryButtonStyle, theme } from "../../theme";
+import { inputStyle, primaryButtonStyle, theme, fieldLabelStyle } from "../../theme";
 
-const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" } as const;
 const nn = (s: string) => (s.trim() === "" ? null : s.trim());
 
 export default function ConnectionsSection() {
@@ -33,7 +32,7 @@ export default function ConnectionsSection() {
 
   if (!s) return <p style={{ fontSize: 13, color: theme.color.textSecondary }}>Loading…</p>;
 
-  function submit() {
+  async function submit() {
     const patch: SettingsUpdate = {
       trip_base_url: nn(baseUrl),
       trip_username: nn(username),
@@ -44,18 +43,22 @@ export default function ConnectionsSection() {
     };
     if (password !== "") patch.trip_password = password;
     if (googleKey !== "") patch.google_api_key = googleKey;
-    update.mutate(patch, {
-      onSuccess: () => { setPassword(""); setGoogleKey(""); notify("Connections saved"); },
-      onError: (e) => notify(e instanceof Error ? e.message : "Save failed", "error"),
-    });
+    try {
+      await update.mutateAsync(patch);
+      setPassword("");
+      setGoogleKey("");
+      notify("Connections saved");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Save failed", "error");
+    }
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div><label style={label} htmlFor="c-base">TRIP base URL</label><input id="c-base" style={inputStyle} value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://trip.example" /></div>
-      <div><label style={label} htmlFor="c-user">TRIP username</label><input id="c-user" style={inputStyle} value={username} onChange={(e) => setUsername(e.target.value)} /></div>
+      <div><label style={fieldLabelStyle} htmlFor="c-base">TRIP base URL</label><input id="c-base" style={inputStyle} value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://trip.example" /></div>
+      <div><label style={fieldLabelStyle} htmlFor="c-user">TRIP username</label><input id="c-user" style={inputStyle} value={username} onChange={(e) => setUsername(e.target.value)} /></div>
       <div>
-        <label style={label} htmlFor="c-pass">TRIP password <span style={{ color: theme.color.textPlaceholder, fontWeight: 500 }}>({s.trip_password_set ? "set" : "not set"})</span></label>
+        <label style={fieldLabelStyle} htmlFor="c-pass">TRIP password <span style={{ color: theme.color.textPlaceholder, fontWeight: 500 }}>({s.trip_password_set ? "set" : "not set"})</span></label>
         <input id="c-pass" type="password" style={inputStyle} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter to change" />
       </div>
       <div style={{ display: "flex", gap: 12 }}>
@@ -64,9 +67,9 @@ export default function ConnectionsSection() {
         </label>
       </div>
       <div style={{ display: "flex", gap: 12 }}>
-        <div style={{ flex: 1 }}><label style={label} htmlFor="c-int">Sync interval (s)</label><input id="c-int" style={inputStyle} value={interval} onChange={(e) => setIntervalSecs(e.target.value)} /></div>
+        <div style={{ flex: 1 }}><label style={fieldLabelStyle} htmlFor="c-int">Sync interval (s)</label><input id="c-int" style={inputStyle} value={interval} onChange={(e) => setIntervalSecs(e.target.value)} /></div>
         <div style={{ flex: 1 }}>
-          <label style={label} htmlFor="c-policy">Conflict policy</label>
+          <label style={fieldLabelStyle} htmlFor="c-policy">Conflict policy</label>
           <select id="c-policy" style={inputStyle} value={policy} onChange={(e) => setPolicy(e.target.value)}>
             <option value="minimalpoi_wins">MinimalPOI wins</option>
             <option value="trip_wins">TRIP wins</option>
@@ -74,10 +77,10 @@ export default function ConnectionsSection() {
         </div>
       </div>
       <div>
-        <label style={label} htmlFor="c-gkey">Google API key <span style={{ color: theme.color.textPlaceholder, fontWeight: 500 }}>({s.google_api_key_set ? "set" : "not set"})</span></label>
+        <label style={fieldLabelStyle} htmlFor="c-gkey">Google API key <span style={{ color: theme.color.textPlaceholder, fontWeight: 500 }}>({s.google_api_key_set ? "set" : "not set"})</span></label>
         <input id="c-gkey" type="password" style={inputStyle} value={googleKey} onChange={(e) => setGoogleKey(e.target.value)} placeholder="Enter to change" />
       </div>
-      <div><label style={label} htmlFor="c-nom">Nominatim URL</label><input id="c-nom" style={inputStyle} value={nominatim} onChange={(e) => setNominatim(e.target.value)} /></div>
+      <div><label style={fieldLabelStyle} htmlFor="c-nom">Nominatim URL</label><input id="c-nom" style={inputStyle} value={nominatim} onChange={(e) => setNominatim(e.target.value)} /></div>
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <button type="button" onClick={submit} disabled={update.isPending} style={primaryButtonStyle}>{update.isPending ? "Saving…" : "Save connections"}</button>
       </div>

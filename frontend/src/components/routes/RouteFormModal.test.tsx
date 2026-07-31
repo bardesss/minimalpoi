@@ -76,6 +76,17 @@ describe("RouteFormModal", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("renders into document.body, outside any transformed ancestor", () => {
+    const { container } = wrap(
+      <div style={{ transform: "translateY(100px)" }}>
+        <RouteFormModal teams={[]} existing={null} onClose={vi.fn()} onSaved={vi.fn()} />
+      </div>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "New route" });
+    expect(container.contains(dialog)).toBe(false);
+    expect(document.body.contains(dialog)).toBe(true);
+  });
+
   // Regression for the <form> wrap added for Enter-to-submit: pressing Enter
   // in the plain name field should submit the form (native implicit submit),
   // not be swallowed — there's no dedicated action button on this field.

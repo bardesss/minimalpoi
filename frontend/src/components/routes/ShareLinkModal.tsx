@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import type { RouteDetail, ShareInfo } from "../../types/api";
-import { ghostButtonStyle, primaryButtonStyle, dangerButtonStyle, inputStyle, theme } from "../../theme";
-import { useDialog } from "../../lib/useDialog";
+import { ghostButtonStyle, primaryButtonStyle, dangerButtonStyle, inputStyle, theme, toggleChipStyle } from "../../theme";
+import ModalShell from "./ModalShell";
 import { deleteShare, putShare, regenerateShare } from "../../api/share";
 
 type ExpiryPreset = "never" | "7d" | "30d" | "custom";
@@ -20,7 +19,6 @@ function isoFromDateInput(value: string): string {
 }
 
 export default function ShareLinkModal({ route, onClose }: { route: RouteDetail; onClose: () => void }) {
-  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose);
   const qc = useQueryClient();
   const [share, setShare] = useState<ShareInfo | null>(route.share ?? null);
   const [busy, setBusy] = useState(false);
@@ -105,25 +103,13 @@ export default function ShareLinkModal({ route, onClose }: { route: RouteDetail;
     }
   }
 
-  const chip = (active: boolean) => ({
-    ...ghostButtonStyle,
-    padding: "6px 12px",
-    ...(active ? { borderColor: theme.color.deepIndigoText, color: theme.color.deepIndigoText } : {}),
-  });
-
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Public link"
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100 }}
-      onClick={onBackdropClick}
+  return (
+    <ModalShell
+      label="Public link"
+      onClose={onClose}
+      tint="dark"
+      cardStyle={{ background: theme.color.surface0, borderRadius: theme.radius.modal, padding: 16, width: 420, maxWidth: "92vw", maxHeight: "90vh", overflowY: "auto" }}
     >
-      <div
-        ref={dialogRef}
-        style={{ background: theme.color.surface0, borderRadius: theme.radius.modal, padding: 16, width: 420, maxWidth: "92vw", maxHeight: "90vh", overflowY: "auto" }}
-        onClick={(e) => e.stopPropagation()}
-      >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <strong style={{ fontFamily: theme.font.ui }}>Public link</strong>
           <button type="button" aria-label="Close" style={{ ...ghostButtonStyle, padding: "4px 10px" }} onClick={onClose}>×</button>
@@ -148,10 +134,10 @@ export default function ShareLinkModal({ route, onClose }: { route: RouteDetail;
             <div style={{ marginBottom: 14 }}>
               <p style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" }}>Expires</p>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: expiryPreset === "custom" ? 8 : 0 }}>
-                <button type="button" style={chip(expiryPreset === "never")} aria-pressed={expiryPreset === "never"} onClick={() => onExpiryChange("never")} disabled={busy}>Never</button>
-                <button type="button" style={chip(expiryPreset === "7d")} aria-pressed={expiryPreset === "7d"} onClick={() => onExpiryChange("7d")} disabled={busy}>7 days</button>
-                <button type="button" style={chip(expiryPreset === "30d")} aria-pressed={expiryPreset === "30d"} onClick={() => onExpiryChange("30d")} disabled={busy}>30 days</button>
-                <button type="button" style={chip(expiryPreset === "custom")} aria-pressed={expiryPreset === "custom"} onClick={() => setExpiryPreset("custom")} disabled={busy}>Custom</button>
+                <button type="button" style={toggleChipStyle(expiryPreset === "never")} aria-pressed={expiryPreset === "never"} onClick={() => onExpiryChange("never")} disabled={busy}>Never</button>
+                <button type="button" style={toggleChipStyle(expiryPreset === "7d")} aria-pressed={expiryPreset === "7d"} onClick={() => onExpiryChange("7d")} disabled={busy}>7 days</button>
+                <button type="button" style={toggleChipStyle(expiryPreset === "30d")} aria-pressed={expiryPreset === "30d"} onClick={() => onExpiryChange("30d")} disabled={busy}>30 days</button>
+                <button type="button" style={toggleChipStyle(expiryPreset === "custom")} aria-pressed={expiryPreset === "custom"} onClick={() => setExpiryPreset("custom")} disabled={busy}>Custom</button>
               </div>
               {expiryPreset === "custom" && (
                 <input
@@ -193,8 +179,6 @@ export default function ShareLinkModal({ route, onClose }: { route: RouteDetail;
             </div>
           </>
         )}
-      </div>
-    </div>,
-    document.body,
+    </ModalShell>
   );
 }

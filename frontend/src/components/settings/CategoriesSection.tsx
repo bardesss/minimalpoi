@@ -3,7 +3,7 @@ import { useCategories, useCreateCategory, useDeleteCategory, useUpdateCategory 
 import { useToast } from "../Toast";
 import { CategoryIcon } from "../../lib/categoryIcon";
 import type { Category } from "../../types/api";
-import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../theme";
+import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme, fieldLabelStyle } from "../../theme";
 
 const ICONS = [
   "utensils", "coffee", "beer", "wine", "bed", "tree-pine", "mountain", "camera",
@@ -14,7 +14,6 @@ const ICONS = [
 
 interface Draft { id: number | null; name: string; color: string; icon: string | null; }
 const EMPTY: Draft = { id: null, name: "", color: theme.color.primary, icon: null };
-const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" } as const;
 
 export default function CategoriesSection() {
   const categories = useCategories().data ?? [];
@@ -66,15 +65,15 @@ export default function CategoriesSection() {
       {draft ? (
         <div style={{ border: `1px solid ${theme.color.borderCard}`, borderRadius: theme.radius.card, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
           <div>
-            <label style={label} htmlFor="cat-name">Category name</label>
+            <label style={fieldLabelStyle} htmlFor="cat-name">Category name</label>
             <input id="cat-name" style={inputStyle} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </div>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <label style={{ ...label, marginBottom: 0 }} htmlFor="cat-color">Color</label>
+            <label style={{ ...fieldLabelStyle, marginBottom: 0 }} htmlFor="cat-color">Color</label>
             <input id="cat-color" type="color" value={draft.color} onChange={(e) => setDraft({ ...draft, color: e.target.value })} style={{ width: 44, height: 32, border: "none", background: "none", cursor: "pointer" }} />
           </div>
           <div>
-            <span style={label}>Icon</span>
+            <span style={fieldLabelStyle}>Icon</span>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 6 }}>
               {ICONS.map((name) => (
                 <button key={name} type="button" aria-label={name} onClick={() => setDraft({ ...draft, icon: name })} style={{ height: 34, borderRadius: theme.radius.icon, cursor: "pointer", border: `1px solid ${draft.icon === name ? theme.color.primary : theme.color.borderStd}`, background: draft.icon === name ? theme.color.tintBg : "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>

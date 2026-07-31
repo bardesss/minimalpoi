@@ -33,4 +33,15 @@ describe("ConnectionsSection", () => {
     expect(patched).not.toHaveProperty("trip_password"); // untouched secret not sent
     expect(await screen.findByText(/connections saved/i)).toBeInTheDocument(); // save feedback
   });
+
+  it("shows an error toast when the save fails", async () => {
+    server.use(
+      http.get("/api/settings", () => HttpResponse.json(FULL)),
+      http.patch("/api/settings", () => HttpResponse.json({ detail: "nope" }, { status: 500 })),
+    );
+    renderWithProviders(<ConnectionsSection />);
+    await screen.findByDisplayValue("https://trip.example");
+    await userEvent.click(screen.getByRole("button", { name: /save connections/i }));
+    expect(await screen.findByText(/nope/i)).toBeInTheDocument();
+  });
 });

@@ -3,9 +3,8 @@ import { useCreateTeam, useDeleteTeam, useSetPreferredTeam, useTeamCandidates, u
 import { useAuth } from "../../auth/AuthContext";
 import { useToast } from "../Toast";
 import type { Team } from "../../types/api";
-import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../theme";
+import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme, fieldLabelStyle } from "../../theme";
 
-const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" } as const;
 
 interface Draft { id: number | null; name: string; memberIds: number[]; }
 
@@ -72,9 +71,9 @@ export default function TeamsSection() {
 
       {draft ? (
         <div style={{ border: `1px solid ${theme.color.borderCard}`, borderRadius: theme.radius.card, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-          <div><label style={label} htmlFor="team-name">Team name</label><input id="team-name" style={inputStyle} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></div>
+          <div><label style={fieldLabelStyle} htmlFor="team-name">Team name</label><input id="team-name" style={inputStyle} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></div>
           <div>
-            <span style={label}>Members</span>
+            <span style={fieldLabelStyle}>Members</span>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {candidates.map((c) => (
                 <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
@@ -93,7 +92,7 @@ export default function TeamsSection() {
       )}
 
       <div style={{ borderTop: `1px solid ${theme.color.borderSubtle}`, paddingTop: 14 }}>
-        <label style={label} htmlFor="pref-team">Preferred team <span style={{ color: theme.color.textPlaceholder, fontWeight: 500 }}>(visits count toward this team)</span></label>
+        <label style={fieldLabelStyle} htmlFor="pref-team">Preferred team <span style={{ color: theme.color.textPlaceholder, fontWeight: 500 }}>(visits count toward this team)</span></label>
         <select id="pref-team" style={{ ...inputStyle, maxWidth: 280 }} value={me?.preferred_team_id ?? ""} onChange={(e) => changePreferred(e.target.value)}>
           <option value="">None</option>
           {myTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}

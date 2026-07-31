@@ -1,8 +1,7 @@
 import { useState } from "react";
 import type { PlaceSearchResult, PoiDraft } from "../../types/api";
-import { ghostButtonStyle, inputStyle, theme } from "../../theme";
+import { ghostButtonStyle, inputStyle, theme, fieldLabelStyle } from "../../theme";
 
-const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" } as const;
 
 // The Google Places search sub-flow. Owns the query text, in-flight flag,
 // error and result list, so searching and browsing results doesn't re-render
@@ -52,7 +51,7 @@ export function PlaceSearchSection({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <label style={label} htmlFor="poi-place-search">Search places</label>
+      <label style={fieldLabelStyle} htmlFor="poi-place-search">Search places</label>
       <div style={{ display: "flex", gap: 8 }}>
         {/* Rendered inside the parent <form>, so Enter must be swallowed here
             or it would submit the form instead of running the search. */}

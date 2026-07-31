@@ -203,7 +203,6 @@ export default function RoutesPage() {
   return (
     <>
       <AppLayout
-        active="routes"
         routesEnabled={settingsQuery.data?.routes_enabled ?? false}
         sheetLabel="Routes"
         collapsed={collapsed}

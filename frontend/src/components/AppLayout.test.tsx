@@ -37,7 +37,7 @@ function renderLayout(over: Partial<React.ComponentProps<typeof AppLayout>> = {}
   return render(
     <MemoryRouter>
       <AppLayout
-        active="map" routesEnabled sheetLabel="Places" collapsed={false}
+        routesEnabled sheetLabel="Places" collapsed={false}
         onCollapse={vi.fn()} onExpand={vi.fn()} reopenLabel="» 2 places"
         sidebar={<div>SIDEBAR</div>} main={<div>MAIN</div>} account={account}
         {...over}

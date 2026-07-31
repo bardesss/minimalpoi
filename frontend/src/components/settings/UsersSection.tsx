@@ -3,9 +3,8 @@ import { useCreateUser, useDeleteUser, useUpdateUser, useUsers } from "../../que
 import { useAuth } from "../../auth/AuthContext";
 import { useToast } from "../Toast";
 import type { Role, UserRead } from "../../types/api";
-import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../theme";
+import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme, fieldLabelStyle } from "../../theme";
 
-const label = { fontSize: 12, fontWeight: 700, color: theme.color.textBody, marginBottom: 6, display: "block" } as const;
 
 export default function UsersSection() {
   const users = useUsers().data ?? [];
@@ -22,66 +21,52 @@ export default function UsersSection() {
   const [newName, setNewName] = useState("");
   const [newPass, setNewPass] = useState("");
   const [newRole, setNewRole] = useState<Role>("member");
-  const [error, setError] = useState<string | null>(null);
   const [resetFor, setResetFor] = useState<number | null>(null);
   const [resetPass, setResetPass] = useState("");
 
   async function create() {
-    setError(null);
     if (newName.trim() === "" || newPass === "") return;
     try {
       await createUser.mutateAsync({ username: newName.trim(), password: newPass, role: newRole });
       setAdding(false); setNewName(""); setNewPass(""); setNewRole("member");
       notify("User created");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Could not create user";
-      setError(msg);
-      notify(msg, "error");
+      notify(e instanceof Error ? e.message : "Could not create user", "error");
     }
   }
 
   async function patch(u: UserRead, body: { role?: Role; disabled?: boolean }) {
-    setError(null);
     try {
       await updateUser.mutateAsync({ id: u.id, body });
       notify("User updated");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Update failed";
-      setError(msg);
-      notify(msg, "error");
+      notify(e instanceof Error ? e.message : "Update failed", "error");
     }
   }
 
   async function saveReset(u: UserRead) {
     if (resetPass === "") return;
-    setError(null);
     try {
       await updateUser.mutateAsync({ id: u.id, body: { password: resetPass } });
       setResetFor(null); setResetPass("");
       notify("Password reset");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Reset failed";
-      setError(msg);
-      notify(msg, "error");
+      notify(e instanceof Error ? e.message : "Reset failed", "error");
     }
   }
 
   async function remove(u: UserRead) {
-    setError(null);
     if (!confirm(`Delete user "${u.username}"? This removes their visits and comments.`)) return;
     try {
       await deleteUser.mutateAsync(u.id);
       notify("User deleted");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Delete failed";
-      setError(msg);
-      notify(msg, "error");
+      notify(e instanceof Error ? e.message : "Delete failed", "error");
     }
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {error && <div role="alert" style={{ fontSize: 12.5, color: theme.color.dangerText }}>{error}</div>}
       {users.map((u) => {
         const locked = isOnlyAdmin(u);
         return (
@@ -106,16 +91,16 @@ export default function UsersSection() {
 
       {adding ? (
         <div style={{ border: `1px solid ${theme.color.borderCard}`, borderRadius: theme.radius.card, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-          <div><label style={label} htmlFor="nu-name">Username</label><input id="nu-name" style={inputStyle} value={newName} onChange={(e) => setNewName(e.target.value)} /></div>
-          <div><label style={label} htmlFor="nu-pass">Password</label><input id="nu-pass" type="password" style={inputStyle} value={newPass} onChange={(e) => setNewPass(e.target.value)} /></div>
-          <div><label style={label} htmlFor="nu-role">Role</label>
+          <div><label style={fieldLabelStyle} htmlFor="nu-name">Username</label><input id="nu-name" style={inputStyle} value={newName} onChange={(e) => setNewName(e.target.value)} /></div>
+          <div><label style={fieldLabelStyle} htmlFor="nu-pass">Password</label><input id="nu-pass" type="password" style={inputStyle} value={newPass} onChange={(e) => setNewPass(e.target.value)} /></div>
+          <div><label style={fieldLabelStyle} htmlFor="nu-role">Role</label>
             <select id="nu-role" style={inputStyle} value={newRole} onChange={(e) => setNewRole(e.target.value as Role)}>
               <option value="member">Member</option>
               <option value="admin">Admin</option>
             </select>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <button type="button" onClick={() => { setAdding(false); setError(null); }} style={ghostButtonStyle}>Cancel</button>
+            <button type="button" onClick={() => setAdding(false)} style={ghostButtonStyle}>Cancel</button>
             <button type="button" onClick={create} style={primaryButtonStyle}>Create</button>
           </div>
         </div>
