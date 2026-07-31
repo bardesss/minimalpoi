@@ -8,6 +8,7 @@ import PhoneInput from "./PhoneInput";
 import TagInput from "./TagInput";
 import { ImagePicker } from "./poiForm/ImagePicker";
 import { EnrichSection } from "./poiForm/EnrichSection";
+import { PlaceSearchSection } from "./poiForm/PlaceSearchSection";
 
 // Parse a single coordinate field into a finite number, or null when it isn't
 // usable. Accepts a decimal comma ("52,3676") as long as it's a lone value —
@@ -104,11 +105,6 @@ export default function PoiFormModal({
   const [enrichHost, setEnrichHost] = useState<string | null>(null);
   const [filledCount, setFilledCount] = useState(0);
 
-  const [searchText, setSearchText] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [results, setResults] = useState<PlaceSearchResult[]>([]);
-
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -161,35 +157,6 @@ export default function PoiFormModal({
     setFieldSources(draft.field_sources);
     setFilledCount(Object.keys(draft.field_sources).length);
     setEnrichHost(source);
-  }
-
-  async function runSearch() {
-    if (!onSearchPlaces || searchText.trim() === "") return;
-    setSearching(true);
-    setSearchError(null);
-    setResults([]);
-    try {
-      const found = await onSearchPlaces(searchText.trim());
-      setResults(found);
-      if (found.length === 0) setSearchError("No matching places found.");
-    } catch {
-      setSearchError("Search failed — add a Google API key in Settings, or fill the form manually.");
-    } finally {
-      setSearching(false);
-    }
-  }
-
-  async function pickPlace(result: PlaceSearchResult) {
-    if (!onPickPlace) return;
-    setSearchError(null);
-    setResults([]);
-    setSearchText("");
-    try {
-      const draft = await onPickPlace(result.place_id);
-      applyDraft(draft, "Google Places");
-    } catch {
-      setSearchError("Couldn't load that place — try another or fill the form manually.");
-    }
   }
 
   const caption = (field: string) =>
@@ -278,37 +245,7 @@ export default function PoiFormModal({
         <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <div style={{ padding: "0 24px 8px", display: "flex", flexDirection: "column", gap: 14 }}>
           {isAdd && onSearchPlaces && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={label} htmlFor="poi-place-search">Search places</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  id="poi-place-search"
-                  style={inputStyle}
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runSearch(); } }}
-                  placeholder="Search Google Places by name"
-                />
-                <button type="button" onClick={runSearch} disabled={searching} style={{ ...ghostButtonStyle, whiteSpace: "nowrap" }}>{searching ? "Searching…" : "Search"}</button>
-              </div>
-              {searchError && <div role="status" style={{ fontSize: 12, color: theme.color.dangerText }}>{searchError}</div>}
-              {results.length > 0 && (
-                <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 4, maxHeight: 200, overflowY: "auto", border: `1px solid ${theme.color.borderCard}`, borderRadius: theme.radius.input }}>
-                  {results.map((r) => (
-                    <li key={r.place_id}>
-                      <button
-                        type="button"
-                        onClick={() => pickPlace(r)}
-                        style={{ width: "100%", textAlign: "left", padding: "8px 10px", background: "transparent", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", gap: 2 }}
-                      >
-                        <span style={{ fontSize: 13, fontWeight: 700, color: theme.color.textPrimary }}>{r.name}</span>
-                        {r.address && <span style={{ fontSize: 11.5, color: theme.color.textPlaceholder }}>{r.address}</span>}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            <PlaceSearchSection onSearchPlaces={onSearchPlaces} onPickPlace={onPickPlace} onApplyDraft={applyDraft} />
           )}
 
           {isAdd && onEnrich && (
