@@ -66,7 +66,10 @@ export default function RoutesPage() {
 
   const detail = routeQuery.data;
   const canEdit = detail?.can_edit ?? false;
-  const nearbyPois = poisNotInRoute(poisQuery.data ?? [], detail?.nodes ?? []);
+  const nearbyPois = useMemo(
+    () => poisNotInRoute(poisQuery.data ?? [], detail?.nodes ?? []),
+    [poisQuery.data, detail?.nodes],
+  );
   // Full POI lookup (not the nearby-only `nearbyPois`) so on-route pins can
   // resolve their linked POI for the mini card.
   const poiById = useMemo(
