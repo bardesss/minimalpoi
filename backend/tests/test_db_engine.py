@@ -1,4 +1,5 @@
 import importlib.util
+import os
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,10 @@ from app.db import _normalize_db_url, _engine_config, _scalar_default_sql
 # psycopg is an optional extra; building a Postgres engine imports it. The SQLite
 # CI job installs only `.[dev]`, so skip the Postgres-engine test when it's absent.
 _HAS_PSYCOPG = importlib.util.find_spec("psycopg") is not None
+
+# Same gate the other Postgres-only suites use: a real server, or skip.
+POSTGRES = (os.environ.get("TEST_POSTGRES_URL")
+            or (os.environ.get("DATABASE_URL") if os.environ.get("DATABASE_URL", "").startswith(("postgres://", "postgresql")) else None))
 
 
 class _Default:
@@ -69,3 +74,34 @@ def test_reset_engine_uses_database_url(monkeypatch, tmp_path):
     assert db.engine.url.get_backend_name() == "postgresql"
     assert db.engine.url.get_driver_name() == "psycopg"
     db.reset_engine()  # dispose
+
+
+@pytest.mark.skipif(POSTGRES is None, reason="needs a real Postgres")
+def test_add_missing_indexes_backfills_on_postgres():
+    """The index backfill is dialect-agnostic DDL, but self-hosters on Postgres
+    are exactly who has a long-lived database predating an index — so prove it
+    against a real server, not just SQLite."""
+    from sqlalchemy import create_engine, inspect, text
+    from sqlmodel import SQLModel
+
+    from app import db
+    from app import models  # noqa: F401 — registers all tables on SQLModel.metadata
+
+    engine = create_engine(POSTGRES)
+    SQLModel.metadata.create_all(engine)
+
+    def indexed_columns() -> set[str]:
+        return {c for ix in inspect(engine).get_indexes("poi") for c in ix["column_names"]}
+
+    # Drop just this one index (leaving constraint-backed ones alone, which
+    # Postgres refuses to DROP INDEX anyway) to simulate a database created
+    # before POI.category_id was indexed.
+    with engine.begin() as conn:
+        conn.execute(text("DROP INDEX IF EXISTS ix_poi_category_id"))
+    assert "category_id" not in indexed_columns()
+
+    db._add_missing_indexes(engine)
+
+    assert "category_id" in indexed_columns()
+    db._add_missing_indexes(engine)  # idempotent
+    engine.dispose()
