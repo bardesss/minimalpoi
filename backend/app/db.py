@@ -107,6 +107,35 @@ def _add_missing_columns(engine) -> None:
                 logger.warning("Could not add column %s.%s: %s", table.name, col.name, exc)
 
 
+def _add_missing_indexes(engine) -> None:
+    """Additively backfill indexes declared on a model after its table already
+    existed.
+
+    The same gap as `_add_missing_columns`, one level down: `create_all` emits a
+    table's indexes only when it creates that table, so an index added to an
+    existing model in a later release never appears on a pre-existing database.
+    Nothing breaks — the query the index was meant to speed up just keeps doing a
+    full scan forever, which is easy to miss precisely because it is silent.
+
+    Runs after `_add_missing_columns` so an index on a newly-backfilled column
+    has its column to point at. `checkfirst` keeps it a no-op once present.
+    """
+    inspector = inspect(engine)
+    existing = set(inspector.get_table_names())
+    for table in SQLModel.metadata.sorted_tables:
+        if table.name not in existing:
+            continue  # brand-new table — create_all already made it with its indexes
+        have = {ix["name"] for ix in inspector.get_indexes(table.name)}
+        for index in table.indexes:
+            if index.name in have:
+                continue
+            try:
+                index.create(bind=engine, checkfirst=True)
+                logger.info("Created missing index %s on %s", index.name, table.name)
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("Could not create index %s on %s: %s", index.name, table.name, exc)
+
+
 def _purge_orphan_route_attachments() -> None:
     """Route-level attachments (node_id NULL) are unreachable now that documents
     attach to a stop or stay. Delete any leftovers — rows and their files — once.
@@ -139,6 +168,7 @@ def init_db() -> None:
         reset_engine()
     SQLModel.metadata.create_all(engine)
     _add_missing_columns(engine)
+    _add_missing_indexes(engine)
     _purge_orphan_route_attachments()
 
 

@@ -56,6 +56,64 @@ def test_indexes_are_created_on_a_fresh_db(tmp_path):
     engine.dispose()
 
 
+def _indexed_columns(engine, table: str) -> set[str]:
+    return {c for ix in inspect(engine).get_indexes(table) for c in ix["column_names"]}
+
+
+def _drop_indexes(engine, table: str) -> None:
+    """Drop every named index on a table, simulating a database created before
+    those indexes were declared on the model."""
+    names = [ix["name"] for ix in inspect(engine).get_indexes(table) if ix["name"]]
+    with engine.begin() as conn:
+        for name in names:
+            conn.execute(text(f'DROP INDEX "{name}"'))
+
+
+def test_add_missing_indexes_backfills_an_index_added_after_the_table_existed(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'old.db'}")
+    SQLModel.metadata.create_all(engine)
+    # A database created before POI.category_id / Comment.poi_id were indexed:
+    # the tables exist, so create_all() leaves them entirely alone and the new
+    # indexes never appear.
+    _drop_indexes(engine, "poi")
+    _drop_indexes(engine, "comment")
+    SQLModel.metadata.create_all(engine)  # no-op for existing tables
+    assert "category_id" not in _indexed_columns(engine, "poi")
+    assert "poi_id" not in _indexed_columns(engine, "comment")
+
+    dbmod._add_missing_indexes(engine)
+
+    assert "category_id" in _indexed_columns(engine, "poi")
+    assert "poi_id" in _indexed_columns(engine, "comment")
+    engine.dispose()
+
+
+def test_add_missing_indexes_is_idempotent_on_a_fresh_db(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'fresh.db'}")
+    SQLModel.metadata.create_all(engine)
+    before = _indexed_columns(engine, "poi")
+    dbmod._add_missing_indexes(engine)  # nothing missing → no-op, no error
+    dbmod._add_missing_indexes(engine)  # and safe to run again
+    assert _indexed_columns(engine, "poi") == before
+    engine.dispose()
+
+
+def test_init_db_backfills_indexes_on_an_existing_database(data_dir):
+    """The end-to-end path a self-hoster actually hits: an existing DB that
+    predates the index, upgraded by simply restarting the app."""
+    from app import db
+
+    db.reset_engine()
+    db.init_db()
+    _drop_indexes(db.engine, "poi")
+    assert "category_id" not in _indexed_columns(db.engine, "poi")
+
+    db.init_db()  # restart
+
+    assert "category_id" in _indexed_columns(db.engine, "poi")
+    db.reset_engine()
+
+
 def test_route_tables_created(data_dir):
     from sqlalchemy import inspect
     from app import db
