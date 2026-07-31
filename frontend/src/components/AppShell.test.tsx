@@ -136,4 +136,15 @@ describe("AppShell", () => {
     // DetailPanel is unique in exposing an "Edit place" button; the sidebar card also shows the name, so assert on the panel-only control.
     expect(await screen.findByRole("button", { name: /edit place/i })).toBeInTheDocument();
   });
+
+  it("keeps the selected place open even when search filters it out of the list", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    // Detail panel for POI 1 (Café Modern) is open — the panel-only "Edit place" button.
+    expect(await screen.findByRole("button", { name: /edit place/i })).toBeInTheDocument();
+    // Type a query that matches nothing; the sidebar list empties but selection persists.
+    await user.type(screen.getByLabelText(/search places/i), "zzzznomatch");
+    expect(screen.getByRole("button", { name: /edit place/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
+  });
 });
