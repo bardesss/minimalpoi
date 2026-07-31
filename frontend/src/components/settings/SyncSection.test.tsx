@@ -47,4 +47,15 @@ describe("SyncSection", () => {
     await userEvent.click(await screen.findByRole("button", { name: /sync now/i }));
     await waitFor(() => expect(synced).toBe(true));
   });
+
+  it("toasts after a successful manual sync", async () => {
+    server.use(
+      http.get("/api/sync/status", () => HttpResponse.json({ enabled: true, last_run: null, error_count: 0, conflict_count: 0 })),
+      http.get("/api/sync/conflicts", () => HttpResponse.json([])),
+      http.post("/api/sync/now", () => HttpResponse.json({ ran: true, errors: 0 })),
+    );
+    renderWithProviders(<SyncSection />);
+    await userEvent.click(await screen.findByRole("button", { name: /sync now/i }));
+    expect(await screen.findByText(/sync complete/i)).toBeInTheDocument();
+  });
 });
