@@ -4,7 +4,15 @@ import { render } from "@testing-library/react";
 import { createRef } from "react";
 import type { Map as MlMap } from "maplibre-gl";
 import MapView from "./MapView";
+import { buildPoiMiniCard } from "./PoiMiniCard";
 import type { Category, MapSettings, Poi } from "../types/api";
+
+// Mock the mini-card builder so we can count how often the (expensive) DOM
+// build runs. Returns a real element so setDOMContent still receives a node,
+// keeping the existing "opens a mini-card popup on marker hover" test valid.
+vi.mock("./PoiMiniCard", () => ({
+  buildPoiMiniCard: vi.fn(() => document.createElement("div")),
+}));
 
 // IMPORTANT: vi.mock is hoisted above all top-level code, so the factory may
 // only reference variables created via vi.hoisted (also hoisted). Declaring the
@@ -155,6 +163,23 @@ describe("MapView", () => {
     const popup = PopupMock.mock.results[0].value;
     expect(popup.setDOMContent).toHaveBeenCalled();
     expect(popup.addTo).toHaveBeenCalled();
+  });
+
+  it("rebuilds the hover mini-card only when the hovered marker changes", () => {
+    const poiB: Poi = { ...pois[0], id: 2, name: "B", lat: 52.38, lng: 4.91 };
+    const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+    render(<MapView pois={[pois[0], poiB]} categories={categories} settings={settings} selectedId={null} onSelect={() => {}} onMapClick={() => {}} addMode={false} visitedPoiIds={new Set()} mapRef={mapRef} />);
+    handlers.load();
+    const move = handlers["mousemove:unclustered"];
+    expect(move).toBeTypeOf("function");
+    vi.mocked(buildPoiMiniCard).mockClear();
+
+    move?.({ features: [{ properties: { id: 1 } }] } as never);
+    move?.({ features: [{ properties: { id: 1 } }] } as never); // same marker — no rebuild
+    expect(buildPoiMiniCard).toHaveBeenCalledTimes(1);
+
+    move?.({ features: [{ properties: { id: 2 } }] } as never); // different marker — rebuild
+    expect(buildPoiMiniCard).toHaveBeenCalledTimes(2);
   });
 
   it("selects the poi when a marker is clicked", () => {

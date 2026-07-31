@@ -130,9 +130,15 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
       addPoiLayers(map, categoryColorExpression(categoriesRef.current), selectedIdRef.current);
     });
 
+    // Which marker's hover mini-card is currently shown, so we rebuild the DOM
+    // card only when the pointer moves onto a *different* marker — not on every
+    // pointer move over the same one.
+    let hoveredId: number | null = null;
+
     map.on("click", "unclustered", (e) => {
       const f = e.features?.[0];
       if (f) onSelectRef.current(Number((f.properties as { id: number }).id));
+      hoveredId = null;
       hoverPopup.remove();
     });
     map.on("click", "clusters", (e) => {
@@ -167,12 +173,14 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
       const f = e.features?.[0];
       if (!f) return;
       const id = Number((f.properties as { id: number }).id);
+      if (id === hoveredId) return; // card for this marker is already shown
       const poi = poisRef.current.find((p) => p.id === id);
       if (!poi) return;
+      hoveredId = id;
       const card = buildPoiMiniCard({ poi, color: catColor(poi.category_id), pinned: false });
       hoverPopup.setLngLat([poi.lng, poi.lat]).setDOMContent(card).addTo(map);
     });
-    map.on("mouseleave", "unclustered", () => { hoverPopup.remove(); });
+    map.on("mouseleave", "unclustered", () => { hoveredId = null; hoverPopup.remove(); });
 
     // The map lives in a flex sibling of the 480px→0 collapsing sidebar; when
     // that animates, the container resizes and MapLibre must repaint to fill it.
