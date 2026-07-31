@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Category, PlaceSearchResult, PoiCreate, PoiDraft, TagInfo } from "../types/api";
 import { ApiError } from "../api/client";
-import { safeImageCss } from "../lib/safeUrl";
 import { ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, textareaStyle, theme } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 import { useDialog } from "../lib/useDialog";
 import PhoneInput from "./PhoneInput";
 import TagInput from "./TagInput";
+import { ImagePicker } from "./poiForm/ImagePicker";
 
 // Parse a single coordinate field into a finite number, or null when it isn't
 // usable. Accepts a decimal comma ("52,3676") as long as it's a lone value —
@@ -102,8 +102,6 @@ export default function PoiFormModal({
   const [enriching, setEnriching] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(initial?.image_url ?? null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [fieldSources, setFieldSources] = useState<Record<string, string>>({});
   const [enrichHost, setEnrichHost] = useState<string | null>(null);
   const [filledCount, setFilledCount] = useState(0);
@@ -147,7 +145,6 @@ export default function PoiFormModal({
 
   const isAdd = mode === "add";
   const isMobile = useIsMobile();
-  const safeImage = safeImageCss(imageUrl);
   // Add mode is a non-modal click-through overlay (so the map stays clickable
   // behind it) — no backdrop-close, no focus trap. Edit mode is a true modal.
   const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop: !isAdd, trapFocus: !isAdd });
@@ -185,22 +182,6 @@ export default function PoiFormModal({
       setEnrichError("Couldn't read that link — fill the form manually.");
     } finally {
       setEnriching(false);
-    }
-  }
-
-  async function onPickFile(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-picking the same file later
-    if (!file || !onUploadImage) return;
-    setUploading(true);
-    setUploadError(null);
-    try {
-      const { url } = await onUploadImage(file);
-      setImageUrl(url);
-    } catch (err) {
-      setUploadError(err instanceof ApiError ? err.message : "Upload failed — try a different image.");
-    } finally {
-      setUploading(false);
     }
   }
 
@@ -375,22 +356,7 @@ export default function PoiFormModal({
             </div>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <label style={label} htmlFor="poi-image">Photo</label>
-            {safeImage && (
-              <div aria-label="Image preview" style={{ width: 96, height: 64, borderRadius: theme.radius.input, backgroundImage: `url(${safeImage})`, backgroundSize: "cover", backgroundPosition: "center", border: `1px solid ${theme.color.borderCard}` }} />
-            )}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              {onUploadImage && (
-                <input id="poi-image" type="file" accept="image/*" aria-label="Choose image" onChange={onPickFile} style={{ fontSize: 12 }} />
-              )}
-              {imageUrl && (
-                <button type="button" onClick={() => setImageUrl(null)} style={{ ...ghostButtonStyle, padding: "6px 12px" }}>Remove image</button>
-              )}
-            </div>
-            {uploading && <span role="status" style={{ fontSize: 12, color: theme.color.textPlaceholder }}>Uploading…</span>}
-            {uploadError && <div role="status" style={{ fontSize: 12, color: theme.color.dangerText }}>{uploadError}</div>}
-          </div>
+          <ImagePicker imageUrl={imageUrl} onImageUrl={setImageUrl} onUploadImage={onUploadImage} />
 
           {duplicateId != null && (
             <div role="status" style={{ padding: "10px 12px", borderRadius: theme.radius.input, background: theme.color.tintBg, border: `1px solid ${theme.color.tintBorder}`, color: theme.color.deepIndigoText, fontSize: 12.5 }}>
