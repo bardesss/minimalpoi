@@ -335,7 +335,6 @@ export default function AppShell() {
 
   return (
     <AppLayout
-      active="map"
       routesEnabled={settingsQuery.data?.routes_enabled ?? false}
       sheetLabel="Places"
       collapsed={sidebarCollapsed}

@@ -23,8 +23,12 @@ const seg = (active: boolean, variant: Variant): CSSProperties => ({
  * - `icon` (desktop): icon-only, small enough to sit in the sidebar header row.
  * - `labeled` (mobile): icon + text, so the control reads clearly on a phone.
  * The accessible name comes from aria-label either way (also a hover tooltip).
+ *
+ * The active segment comes from NavLink's own `isActive` (which already emits
+ * aria-current), rather than a prop drilled down from the page — one source of
+ * truth, so the highlight and aria-current cannot desync.
  */
-export default function NavToggle({ active, variant = "icon" }: { active: "map" | "routes"; variant?: Variant }) {
+export default function NavToggle({ variant = "icon" }: { variant?: Variant }) {
   return (
     <nav
       aria-label="Sections"
@@ -37,11 +41,11 @@ export default function NavToggle({ active, variant = "icon" }: { active: "map" 
         borderRadius: theme.radius.icon,
       }}
     >
-      <NavLink to="/" end aria-label="Map" title="Map" style={seg(active === "map", variant)}>
+      <NavLink to="/" end aria-label="Map" title="Map" style={({ isActive }) => seg(isActive, variant)}>
         <MapPin size={16} aria-hidden />
         {variant === "labeled" && "Map"}
       </NavLink>
-      <NavLink to="/routes" aria-label="Routes" title="Routes" style={seg(active === "routes", variant)}>
+      <NavLink to="/routes" aria-label="Routes" title="Routes" style={({ isActive }) => seg(isActive, variant)}>
         <Route size={16} aria-hidden />
         {variant === "labeled" && "Routes"}
       </NavLink>

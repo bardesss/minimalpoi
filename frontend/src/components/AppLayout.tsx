@@ -8,7 +8,6 @@ import NavToggle from "./NavToggle";
 import BrandLogo from "./BrandLogo";
 
 export interface AppLayoutProps {
-  active: "map" | "routes";
   routesEnabled: boolean;
   sheetLabel: string;
   collapsed: boolean;
@@ -39,8 +38,8 @@ export default function AppLayout(props: AppLayoutProps) {
   const isMobile = useIsMobile();
   // Give the POI grid's 3rd column (see PoiList) room on very wide screens.
   const wide = useMediaQuery("(min-width: 1600px)");
-  const navDesktop = props.routesEnabled ? <NavToggle active={props.active} variant="icon" /> : null;
-  const navMobile = props.routesEnabled ? <NavToggle active={props.active} variant="labeled" /> : null;
+  const navDesktop = props.routesEnabled ? <NavToggle variant="icon" /> : null;
+  const navMobile = props.routesEnabled ? <NavToggle variant="labeled" /> : null;
   const footer = <AccountFooter {...props.account} />;
 
   if (isMobile) {
