@@ -310,7 +310,7 @@ MinimalPOI runs an [MCP](https://modelcontextprotocol.io) server so AI clients
 
 **Capabilities:**
 - **Places (POIs):** list, get, check for duplicates, create, update, delete; create straight from a Google Maps or website link with the details filled in automatically; enrich a URL into a draft place without creating it; search Google Places by name (requires a configured Google API key).
-- **Routes & stops/stays:** list, get, create, update, delete, reorder (requires the admin-enabled Route module).
+- **Routes & stops/stays:** list, get, create, update, delete, reorder, and set the route's start and end points (requires the admin-enabled Route module).
 - **Visits & ratings:** mark visited, set 1–5 rating, remove visit.
 - **Comments:** add, edit, delete.
 - **Reference data:** read-only categories and tags.

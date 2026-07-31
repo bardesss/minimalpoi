@@ -83,3 +83,89 @@ async def test_non_editor_cannot_update_or_delete_route(client):
     with pytest.raises(ValueError) as e:
         await _delete_route(other, rid)
     assert "403" in str(e.value)
+
+
+@pytest.mark.anyio
+async def test_set_route_start_creates_then_relocates(client):
+    auth = _auth(client)
+    _enable_routes()
+    from app.mcp_tools_routes import _create_route, _set_role_node
+
+    rid = (await _create_route(auth, {"name": "Trip", "start_date": "2026-08-01"}))["id"]
+
+    created = await _set_role_node(auth, rid, "start", {"name": "Home", "lat": 52.0, "lng": 4.0})
+    start = next(n for n in created["nodes"] if n["role"] == "start")
+    assert start["name"] == "Home"
+    assert start["kind"] == "stop"          # role nodes are coerced to a single point
+
+    moved = await _set_role_node(auth, rid, "start", {"name": "Office", "lat": 51.9, "lng": 4.5})
+    starts = [n for n in moved["nodes"] if n["role"] == "start"]
+    assert len(starts) == 1                 # relocated, not a second start (POST would 409)
+    assert starts[0]["id"] == start["id"]
+    assert starts[0]["name"] == "Office"
+
+
+@pytest.mark.anyio
+async def test_set_route_start_accepts_a_poi_id(client):
+    auth = _auth(client)
+    _enable_routes()
+    poi = client.post("/api/pois", json={"name": "Depot", "lat": 51.5, "lng": 4.4},
+                      headers={"Authorization": auth}).json()
+    from app.mcp_tools_routes import _create_route, _set_role_node
+
+    rid = (await _create_route(auth, {"name": "Trip", "start_date": "2026-08-01"}))["id"]
+    detail = await _set_role_node(auth, rid, "start", {"poi_id": poi["id"]})
+
+    start = next(n for n in detail["nodes"] if n["role"] == "start")
+    assert start["poi_id"] == poi["id"]
+    assert start["name"] == "Depot"          # snapshotted so it survives POI deletion
+    assert start["lat"] == 51.5
+
+
+@pytest.mark.anyio
+async def test_start_and_end_coexist_with_middle_stops(client):
+    auth = _auth(client)
+    _enable_routes()
+    from app.mcp_tools_routes import _create_route, _add_route_stop, _set_role_node
+
+    rid = (await _create_route(auth, {"name": "Trip", "start_date": "2026-08-01"}))["id"]
+    await _set_role_node(auth, rid, "start", {"name": "Home", "lat": 52.0, "lng": 4.0})
+    await _add_route_stop(auth, rid, {"name": "Middle", "lat": 51.7, "lng": 4.2})
+    detail = await _set_role_node(auth, rid, "end", {"name": "Airport", "lat": 51.4, "lng": 4.8})
+
+    roles = [n["role"] for n in detail["nodes"]]
+    assert roles.count("start") == 1 and roles.count("end") == 1
+    assert any(n["role"] is None and n["name"] == "Middle" for n in detail["nodes"])
+
+
+@pytest.mark.anyio
+async def test_set_route_end_rejects_round_trip_routes(client):
+    # _sync_round_trip copies the start onto the end on every write, so an accepted
+    # set_route_end would be silently overwritten. Fail loudly instead.
+    auth = _auth(client)
+    _enable_routes()
+    from app.mcp_tools_routes import _create_route, _set_role_node
+
+    rid = (await _create_route(auth, {
+        "name": "Loop", "start_date": "2026-08-01", "round_trip": True,
+    }))["id"]
+    await _set_role_node(auth, rid, "start", {"name": "Home", "lat": 52.0, "lng": 4.0})
+
+    with pytest.raises(ValueError) as e:
+        await _set_role_node(auth, rid, "end", {"name": "Elsewhere", "lat": 50.0, "lng": 3.0})
+
+    assert "round trip" in str(e.value)
+
+
+@pytest.mark.anyio
+async def test_non_editor_cannot_set_a_route_start(client):
+    owner = _auth(client)
+    _enable_routes()
+    from app.mcp_tools_routes import _create_route, _set_role_node
+
+    rid = (await _create_route(owner, {"name": "Trip", "start_date": "2026-08-01"}))["id"]
+    other = _member_token(client)
+
+    with pytest.raises(ValueError) as e:
+        await _set_role_node(other, rid, "start", {"name": "Hijacked", "lat": 1.0, "lng": 2.0})
+    assert "403" in str(e.value) or "404" in str(e.value)
