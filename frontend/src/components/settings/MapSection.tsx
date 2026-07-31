@@ -29,7 +29,7 @@ export default function MapSection() {
 
   if (!s) return <p style={{ fontSize: 13, color: theme.color.textSecondary }}>Loading…</p>;
 
-  function submit() {
+  async function submit() {
     const patch: SettingsUpdate = {
       map_tile_url: tileUrl.trim(),
       cookie_secure: cookieSecure,
@@ -41,10 +41,12 @@ export default function MapSection() {
     if (lat.trim() !== "" && Number.isFinite(latN)) patch.default_map_center_lat = latN;
     if (lng.trim() !== "" && Number.isFinite(lngN)) patch.default_map_center_lng = lngN;
     if (zoom.trim() !== "" && Number.isFinite(zoomN)) patch.default_map_zoom = zoomN;
-    update.mutate(patch, {
-      onSuccess: () => notify("Map settings saved"),
-      onError: (e) => notify(e instanceof Error ? e.message : "Save failed", "error"),
-    });
+    try {
+      await update.mutateAsync(patch);
+      notify("Map settings saved");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Save failed", "error");
+    }
   }
 
   return (

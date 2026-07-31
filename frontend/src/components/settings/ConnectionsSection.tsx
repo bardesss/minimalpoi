@@ -32,7 +32,7 @@ export default function ConnectionsSection() {
 
   if (!s) return <p style={{ fontSize: 13, color: theme.color.textSecondary }}>Loading…</p>;
 
-  function submit() {
+  async function submit() {
     const patch: SettingsUpdate = {
       trip_base_url: nn(baseUrl),
       trip_username: nn(username),
@@ -43,10 +43,14 @@ export default function ConnectionsSection() {
     };
     if (password !== "") patch.trip_password = password;
     if (googleKey !== "") patch.google_api_key = googleKey;
-    update.mutate(patch, {
-      onSuccess: () => { setPassword(""); setGoogleKey(""); notify("Connections saved"); },
-      onError: (e) => notify(e instanceof Error ? e.message : "Save failed", "error"),
-    });
+    try {
+      await update.mutateAsync(patch);
+      setPassword("");
+      setGoogleKey("");
+      notify("Connections saved");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Save failed", "error");
+    }
   }
 
   return (
