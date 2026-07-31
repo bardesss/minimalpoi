@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.11.0](https://github.com/bardesss/minimalpoi/compare/v3.10.5...v3.11.0) (2026-07-31)
+
+
+### Features
+
+* **settings:** add success/error toasts to SyncSection ([b9b20a9](https://github.com/bardesss/minimalpoi/commit/b9b20a9d580ff89a2e1a373b8edfffe35996ee9c))
+
+
+### Bug Fixes
+
+* **routes:** portal RouteFormModal to body so it escapes the mobile sheet ([78be015](https://github.com/bardesss/minimalpoi/commit/78be0151e277407391f7ac809205dae13dc3c8f8))
+
 ## [3.10.5](https://github.com/bardesss/minimalpoi/compare/v3.10.4...v3.10.5) (2026-07-31)
 
 
