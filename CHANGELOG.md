@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.11.1](https://github.com/bardesss/minimalpoi/compare/v3.11.0...v3.11.1) (2026-07-31)
+
+
+### Bug Fixes
+
+* **db:** backfill model indexes that were added after a table already existed ([0f2c158](https://github.com/bardesss/minimalpoi/commit/0f2c15883ae67a491ff56b39afde745a6271a954))
+* **db:** backfill model indexes that were added after a table already existed ([5da0b64](https://github.com/bardesss/minimalpoi/commit/5da0b649b8195f4a95a64008506a1cf5da969117))
+
 ## [3.11.0](https://github.com/bardesss/minimalpoi/compare/v3.10.5...v3.11.0) (2026-07-31)
 
 
