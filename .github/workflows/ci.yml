@@ -16,8 +16,13 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      # Install from the lock file so CI exercises the same pinned versions the
+      # Docker image ships, then add the project itself without letting pip
+      # re-resolve anything.
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          pip install --require-hashes -r requirements-dev.lock
+          pip install -e . --no-deps
       - name: Run tests
         run: python -m pytest -v
   backend-tests-postgres:
@@ -45,8 +50,12 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      # Same lock file as the SQLite job — it already carries the `postgres`
+      # extra, which the runtime image bakes in unconditionally.
       - name: Install dependencies
-        run: pip install -e ".[dev,postgres]"
+        run: |
+          pip install --require-hashes -r requirements-dev.lock
+          pip install -e . --no-deps
       # Scoped to the dialect-sensitive suites: engine selection / URL
       # normalization / boolean-default (test_db_engine), the SQLite->Postgres
       # migration incl. the sequence reset (test_migrate_sqlite_to_postgres, whose
