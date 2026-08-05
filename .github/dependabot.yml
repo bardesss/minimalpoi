@@ -1,0 +1,53 @@
+# Security alerts already work without this file — they come from the
+# dependency graph, which reads frontend/package-lock.json and backend/uv.lock.
+# What this adds is *scheduled version* updates, so routine bumps arrive as
+# reviewable PRs instead of accumulating until something breaks.
+#
+# Updates are grouped so a quiet week is one PR per ecosystem rather than a
+# dozen. Majors stay ungrouped and land on their own — those are the ones that
+# need a real look.
+#
+# Note on the `uv` ecosystem: Dependabot updates uv.lock (and matching pins in
+# pyproject.toml), but does not yet bump transitive dependencies the way
+# `uv lock --upgrade` does, and does not support `versioning-strategy` at all.
+# So treat these PRs as covering our direct deps; run `uv lock --upgrade`
+# by hand now and then to refresh the rest of the graph.
+version: 2
+
+updates:
+  - package-ecosystem: "uv"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    groups:
+      backend-minor-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    groups:
+      frontend-minor-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      # TypeScript is deliberately held at 5.x: typescript-eslint caps the
+      # TypeScript versions it supports, so a major bump here breaks linting
+      # before the plugin catches up. Revisit when typescript-eslint lifts it.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # The Dockerfile pins python:3.12-slim and the uv image it copies the binary
+  # from; without this they would silently never be updated.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
