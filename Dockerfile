@@ -33,25 +33,18 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && gosu nobody true
 
-# Install runtime dependencies explicitly.
-# Keep this list in sync with [project].dependencies AND the `postgres` extra
-# in [project.optional-dependencies] in backend/pyproject.toml.
+# Install runtime dependencies from the committed lock file: every package is
+# pinned to an exact version and verified against its hashes, so an image built
+# today and one built in six months from the same commit are identical.
+# Regenerate it (plus the dev variant) from the repo root after touching
+# [project].dependencies — see the header comment inside requirements.lock.
 # (We do NOT use `pip install ./backend` because pyproject.toml references
 #  ../LICENSE outside the build context, which breaks pip's build isolation.)
-RUN pip install --no-cache-dir \
-    "fastapi>=0.115" \
-    "uvicorn[standard]>=0.30" \
-    "sqlmodel>=0.0.22" \
-    "pyjwt>=2.9" \
-    "bcrypt>=4.2" \
-    "cryptography>=43" \
-    "python-multipart>=0.0.9" \
-    "httpx>=0.27" \
-    "pillow>=11" \
-    "phonenumbers>=8.13" \
-    "slowapi>=0.1.9" \
-    "mcp>=1.12,<2" \
-    "psycopg[binary]>=3.2"
+# Copied on its own, before the source, so this layer stays cached across
+# source-only changes.
+COPY backend/requirements.lock /tmp/requirements.lock
+RUN pip install --no-cache-dir --require-hashes -r /tmp/requirements.lock \
+    && rm /tmp/requirements.lock
 
 # Copy backend source
 COPY backend/ /app/backend/
