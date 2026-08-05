@@ -5,7 +5,7 @@
 # independent — so building it once natively and copying into each arch's
 # runtime image is safe, and it keeps the multi-arch build from hanging for
 # hours on the emulated `npm run build`.
-FROM --platform=$BUILDPLATFORM node:20-alpine AS frontend
+FROM --platform=$BUILDPLATFORM node:25-alpine AS frontend
 
 WORKDIR /app/frontend
 
