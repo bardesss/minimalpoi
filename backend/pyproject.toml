@@ -1,15 +1,11 @@
 # After changing anything under [project].dependencies or the extras below,
-# regenerate the lock chain from the repo root (tests/test_dockerfile_deps.py
-# fails until you do):
+# refresh the lock (tests/test_dockerfile_deps.py fails until you do):
 #
 #   uv lock --project backend
-#   uv export --project backend --frozen --no-emit-project --extra postgres \
-#       -o backend/requirements.lock
-#   uv export --project backend --frozen --no-emit-project --extra postgres \
-#       --extra dev -o backend/requirements-dev.lock
 #
-# requirements.lock is what the Docker image installs; requirements-dev.lock is
-# what CI installs. Both are committed so builds are reproducible.
+# uv.lock is the only committed lock. CI installs it with `uv sync --frozen`,
+# and the Dockerfile's `deps` stage turns it into a hash-pinned pin list with
+# `uv export` at build time — so there is nothing else to regenerate by hand.
 [project]
 name = "minimalpoi-backend"
 version = "1.0.0"
