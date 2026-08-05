@@ -32,7 +32,7 @@ dev = [
     "pytest>=8.3",
     "anyio>=4",
 ]
-postgres = ["psycopg[binary]>=3.2"]
+postgres = ["psycopg[binary]>=3.3.4"]
 
 [tool.setuptools]
 # Scope package discovery to the actual source package. Without this,
