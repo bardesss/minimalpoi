@@ -82,12 +82,6 @@ class FakeResizeObserver {
 vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 
 vi.mock("maplibre-gl", () => ({
-  default: {
-    Map: MapMock,
-    NavigationControl: vi.fn(),
-    GeolocateControl: GeolocateControlMock,
-    Popup: PopupMock,
-  },
   Map: MapMock,
   NavigationControl: vi.fn(),
   GeolocateControl: GeolocateControlMock,

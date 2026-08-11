@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
-import maplibregl, { type GeoJSONSource, type Map as MlMap } from "maplibre-gl";
+// maplibre-gl 6 dropped the default export; the namespace import replaces it.
+import * as maplibregl from "maplibre-gl";
+import type { GeoJSONSource, Map as MlMap } from "maplibre-gl";
 import type { Category, MapSettings, Poi, RouteLeg, RouteNode, RouteNodeKind } from "../../types/api";
 import { resolveMapStyle } from "../../map/style";
 import { routeLine } from "../../map/routeLine";
