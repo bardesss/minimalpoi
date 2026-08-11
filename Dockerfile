@@ -33,14 +33,14 @@ RUN npm run build
 # (environment markers, evaluated by pip at install time on the target) rather
 # than platform-specific, so producing it natively is safe and keeps multi-arch
 # builds off QEMU.
-FROM --platform=$BUILDPLATFORM python:3.12-slim AS deps
+FROM --platform=$BUILDPLATFORM python:3.14-slim AS deps
 COPY --from=ghcr.io/astral-sh/uv:0.11.14 /uv /bin/uv
 WORKDIR /lock
 COPY backend/pyproject.toml backend/uv.lock ./
 RUN uv export --frozen --no-emit-project --extra postgres -o requirements.txt
 
 # ── Stage 3: runtime ──────────────────────────────────────────────────────────
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
