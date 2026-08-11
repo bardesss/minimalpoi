@@ -5,7 +5,7 @@ import type { GeoJSONSource, Map as MlMap } from "maplibre-gl";
 import type { Category, MapSettings, Poi } from "../types/api";
 import { categoryColorExpression } from "../map/colorExpression";
 import { toFeatureCollection } from "../map/featureCollection";
-import { resolveMapStyle } from "../map/style";
+import { MAP_FONT, resolveMapStyle } from "../map/style";
 import { buildPoiMiniCard } from "./PoiMiniCard";
 import { theme } from "../theme";
 
@@ -45,7 +45,7 @@ function addPoiLayers(map: MlMap, color: ReturnType<typeof categoryColorExpressi
     type: "symbol",
     source: "pois",
     filter: ["has", "point_count"],
-    layout: { "text-field": ["get", "point_count_abbreviated"], "text-font": ["Open Sans Bold"], "text-size": 13 },
+    layout: { "text-field": ["get", "point_count_abbreviated"], "text-font": MAP_FONT, "text-size": 13 },
     paint: { "text-color": "#1a1a1a" },
   });
   // Visited halo: a larger filled circle drawn behind the dot, so visited

@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource, Map as MlMap } from "maplibre-gl";
 import type { Category, MapSettings, Poi, RouteLeg, RouteNode, RouteNodeKind } from "../../types/api";
-import { resolveMapStyle } from "../../map/style";
+import { MAP_FONT, resolveMapStyle } from "../../map/style";
 import { routeLine } from "../../map/routeLine";
 import { toFeatureCollection } from "../../map/featureCollection";
 import { categoryColorExpression } from "../../map/colorExpression";
@@ -51,7 +51,7 @@ function addPoiLayers(map: MlMap, color: ReturnType<typeof categoryColorExpressi
     type: "symbol",
     source: "route-pois",
     filter: ["has", "point_count"],
-    layout: { "text-field": ["get", "point_count_abbreviated"], "text-font": ["Open Sans Bold"], "text-size": 12 },
+    layout: { "text-field": ["get", "point_count_abbreviated"], "text-font": MAP_FONT, "text-size": 12 },
     paint: { "text-color": "#1a1a1a" },
   });
   map.addLayer({
@@ -96,7 +96,7 @@ function addRouteLayers(map: MlMap) {
     filter: ["has", "seq"],  // middle nodes only; start/end get a glyph
     layout: {
       "text-field": ["to-string", ["get", "seq"]],
-      "text-font": ["Open Sans Bold"],
+      "text-font": MAP_FONT,
       "text-size": 12,
     },
     paint: {
@@ -111,7 +111,7 @@ function addRouteLayers(map: MlMap) {
     filter: ["has", "role"],
     layout: {
       "text-field": ["match", ["get", "role"], "start", "▶", "end", "■", ""],
-      "text-font": ["Open Sans Bold"],
+      "text-font": MAP_FONT,
       "text-size": 13,
     },
     paint: { "text-color": "#ffffff" },
