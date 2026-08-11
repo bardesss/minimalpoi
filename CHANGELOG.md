@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.13.0](https://github.com/bardesss/minimalpoi/compare/v3.12.0...v3.13.0) (2026-08-11)
+
+
+### Features
+
+* **settings:** show the MCP server URL with a copy button ([41ffc7e](https://github.com/bardesss/minimalpoi/commit/41ffc7ee613df132312fb0bb35fdc78e40129898))
+* **settings:** show the MCP server URL with a copy button ([da60e67](https://github.com/bardesss/minimalpoi/commit/da60e67df110a850eff64c670ed9c8e73a63b896))
+
 ## [3.12.0](https://github.com/bardesss/minimalpoi/compare/v3.11.1...v3.12.0) (2026-07-31)
 
 
