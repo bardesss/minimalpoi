@@ -1,4 +1,6 @@
-import maplibregl, { type Map as MlMap, type LngLatBoundsLike } from "maplibre-gl";
+// maplibre-gl 6 dropped the default export; the namespace import replaces it.
+import * as maplibregl from "maplibre-gl";
+import type { Map as MlMap, LngLatBoundsLike } from "maplibre-gl";
 import type { MapSettings, RouteDetail } from "../../types/api";
 import { resolveMapStyle } from "../../map/style";
 import { routeLine } from "../../map/routeLine";

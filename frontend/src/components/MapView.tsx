@@ -1,5 +1,7 @@
 import { useEffect, useRef, type MutableRefObject } from "react";
-import maplibregl, { type GeoJSONSource, type Map as MlMap } from "maplibre-gl";
+// maplibre-gl 6 dropped the default export; the namespace import replaces it.
+import * as maplibregl from "maplibre-gl";
+import type { GeoJSONSource, Map as MlMap } from "maplibre-gl";
 import type { Category, MapSettings, Poi } from "../types/api";
 import { categoryColorExpression } from "../map/colorExpression";
 import { toFeatureCollection } from "../map/featureCollection";
@@ -115,7 +117,9 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
       positionOptions: { enableHighAccuracy: true },
     });
     map.addControl(geolocate, "top-right");
-    geolocate.on("geolocate", (e: GeolocationPosition) => {
+    // maplibre-gl 6 delivers a GeolocatePositionEvent (not the raw
+    // GeolocationPosition); `coords` is unchanged, and the event map infers it.
+    geolocate.on("geolocate", (e) => {
       onUserLocateRef.current?.({ lng: e.coords.longitude, lat: e.coords.latitude });
     });
 
