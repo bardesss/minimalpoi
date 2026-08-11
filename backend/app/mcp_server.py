@@ -7,29 +7,13 @@ validation, rate-limiting, and SSE behavior is reused verbatim.
 import contextlib
 
 import httpx
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
-# main.py registers this app via an exact `Route("/api/mcp", ...)` (not
-# `app.mount`, see the comment there for why), which forwards the ASGI scope
-# untouched - no path is stripped the way a Mount would. So the SDK's
-# internal route must match the real, full request path exactly, not its own
-# default `/mcp` sub-path.
-#
-# `transport_security` disables the SDK's DNS-rebinding Host/Origin check,
-# which otherwise only accepts `localhost`/`127.0.0.1`/`::1` Host headers
-# (mismatching MinimalPOI's real deployment hostname, and Starlette
-# TestClient's synthetic `testserver` host, with a 421). That protection
-# guards servers that trust an ambient "you can reach me on localhost"
-# credential; every request here is instead independently authenticated by
-# `mcp_auth.BearerAuthMiddleware` before it reaches this app, so the Host
-# header carries no trust decision to rebind.
-mcp = FastMCP(
-    "MinimalPOI",
-    stateless_http=True,
-    streamable_http_path="/api/mcp",
-    transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
-)
+# `mcp` 2.0 renamed `FastMCP` to `MCPServer` and moved every transport option
+# off the constructor onto `streamable_http_app()` — see `run_mcp_session`
+# below, which is where the transport is now configured.
+mcp = MCPServer("MinimalPOI")
 
 
 def _bearer(ctx: Context) -> str:
@@ -100,13 +84,30 @@ async def run_mcp_session():
     manager for the lifetime of the caller's `async with` block. Call once
     per FastAPI app lifespan (see `main.lifespan`).
 
-    Resetting the private `_session_manager` forces FastMCP to lazily build a
-    brand-new `StreamableHTTPSessionManager` on the next `streamable_http_app()`
-    call, sidestepping the "run() at most once per instance" restriction
-    across repeated lifespans. The `mcp` FastMCP instance itself (and its
-    registered tools) is left untouched.
+    Every `streamable_http_app()` call constructs a brand-new
+    `StreamableHTTPSessionManager`, which sidesteps the "run() at most once
+    per instance" restriction across repeated lifespans. The `MCPServer`
+    instance itself (and its registered tools) is left untouched.
+
+    main.py registers the proxy via an exact `Route("/api/mcp", ...)` (not
+    `app.mount`, see the comment there for why), which forwards the ASGI scope
+    untouched - no path is stripped the way a Mount would. So the SDK's
+    internal route must match the real, full request path exactly, not its own
+    default `/mcp` sub-path.
+
+    `transport_security` disables the SDK's DNS-rebinding Host/Origin check,
+    which otherwise only accepts `localhost`/`127.0.0.1`/`::1` Host headers
+    (mismatching MinimalPOI's real deployment hostname, and Starlette
+    TestClient's synthetic `testserver` host, with a 421). That protection
+    guards servers that trust an ambient "you can reach me on localhost"
+    credential; every request here is instead independently authenticated by
+    `mcp_auth.BearerAuthMiddleware` before it reaches this app, so the Host
+    header carries no trust decision to rebind.
     """
-    mcp._session_manager = None
-    mcp_app.set(mcp.streamable_http_app())
+    mcp_app.set(mcp.streamable_http_app(
+        streamable_http_path="/api/mcp",
+        stateless_http=True,
+        transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+    ))
     async with mcp.session_manager.run():
         yield
