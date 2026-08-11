@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.13.2](https://github.com/bardesss/minimalpoi/compare/v3.13.1...v3.13.2) (2026-08-11)
+
+
+### Bug Fixes
+
+* **map:** use a fontstack the glyph server actually serves ([8548d0d](https://github.com/bardesss/minimalpoi/commit/8548d0d51906583cd99587c6fe79e426c344bc57))
+* **map:** use a fontstack the glyph server actually serves ([87991fe](https://github.com/bardesss/minimalpoi/commit/87991fe27e016a396517faca3f7927c1d8b06d02))
+
 ## [3.13.1](https://github.com/bardesss/minimalpoi/compare/v3.13.0...v3.13.1) (2026-08-11)
 
 
