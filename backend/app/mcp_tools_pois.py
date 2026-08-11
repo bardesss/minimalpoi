@@ -6,7 +6,7 @@ calls the app's own /api endpoints in-process. The private coroutines are
 exercised directly in tests with an explicit auth string, without
 constructing an MCP Context.
 """
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 from .mcp_server import _bearer, _client, _raise_for_tool, mcp
 

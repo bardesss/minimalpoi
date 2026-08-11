@@ -66,17 +66,19 @@ async def test_list_pois_tool_call_round_trips_through_mcp(client):
     ) as http_client:
         async with streamable_http_client(
             "http://mcp.internal/api/mcp", http_client=http_client
-        ) as (read_stream, write_stream, _get_session_id):
+        # mcp 2.0 dropped the third `get_session_id` element from the yield.
+        ) as (read_stream, write_stream):
             async with ClientSession(read_stream, write_stream) as session:
                 await session.initialize()
                 result = await session.call_tool("list_pois", {})
 
-    assert not result.isError
+    # mcp 2.0 renamed CallToolResult's fields to snake_case.
+    assert not result.is_error
 
-    if result.structuredContent is not None:
-        # FastMCP wraps non-object return types (here, a bare list) under a
+    if result.structured_content is not None:
+        # MCPServer wraps non-object return types (here, a bare list) under a
         # "result" key per the MCP output-schema convention.
-        pois = result.structuredContent.get("result", result.structuredContent)
+        pois = result.structured_content.get("result", result.structured_content)
     else:
         text = next(block.text for block in result.content if block.type == "text")
         pois = json.loads(text)
