@@ -2,13 +2,17 @@ import { useState } from "react";
 import { useCreateToken, useRevokeToken, useTokens } from "../../queries/hooks";
 import { useToast } from "../Toast";
 import type { ApiTokenCreated } from "../../types/api";
-import { dangerButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, theme, fieldLabelStyle } from "../../theme";
+import { dangerButtonStyle, ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, theme, fieldLabelStyle } from "../../theme";
 
 
 function formatDate(iso: string | null): string {
   if (!iso) return "Never";
   return new Date(iso).toLocaleDateString();
 }
+
+// The API (and so the MCP endpoint) is always served from the same origin as
+// the SPA, including behind a reverse proxy - the app only ever calls /api/*.
+const mcpUrl = `${window.location.origin}/api/mcp`;
 
 export default function ApiTokensSection() {
   const tokens = useTokens().data ?? [];
@@ -17,7 +21,7 @@ export default function ApiTokensSection() {
   const { notify } = useToast();
   const [name, setName] = useState("");
   const [revealed, setRevealed] = useState<ApiTokenCreated | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"token" | "url" | null>(null);
 
   async function create() {
     if (name.trim() === "") return;
@@ -25,7 +29,7 @@ export default function ApiTokensSection() {
       const created = await createToken.mutateAsync(name.trim());
       setName("");
       setRevealed(created);
-      setCopied(false);
+      setCopied(null);
       notify("Token created");
     } catch (e) {
       notify(e instanceof Error ? e.message : "Could not create token", "error");
@@ -40,13 +44,12 @@ export default function ApiTokensSection() {
     });
   }
 
-  async function copyToken() {
-    if (!revealed) return;
+  async function copy(text: string, what: "token" | "url") {
     try {
-      await navigator.clipboard.writeText(revealed.token);
-      setCopied(true);
+      await navigator.clipboard.writeText(text);
+      setCopied(what);
     } catch {
-      // clipboard unavailable (permissions/browser support) — token is still shown for manual copy
+      // clipboard unavailable (permissions/browser support) — value is still shown for manual copy
     }
   }
 
@@ -56,6 +59,17 @@ export default function ApiTokensSection() {
         API tokens let external tools (like an MCP client) act on your behalf. Keep them secret.
       </p>
 
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <span style={fieldLabelStyle}>MCP server URL</span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <code style={{ ...monoInputStyle, flex: 1, display: "block", wordBreak: "break-all" }}>{mcpUrl}</code>
+          <button type="button" aria-label="Copy MCP server URL" onClick={() => copy(mcpUrl, "url")} style={{ ...ghostButtonStyle, padding: "6px 14px", flexShrink: 0 }}>{copied === "url" ? "Copied" : "Copy"}</button>
+        </div>
+        <p style={{ fontSize: 12, color: theme.color.textSecondary, margin: 0 }}>
+          Streamable HTTP transport, with the header <code style={{ fontFamily: theme.font.mono }}>Authorization: Bearer &lt;token&gt;</code>.
+        </p>
+      </div>
+
       {revealed && (
         <div style={{ border: `1px solid ${theme.color.tintBorder}`, background: theme.color.tintBg, borderRadius: theme.radius.card, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
           <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: theme.color.deepIndigoText }}>
@@ -63,7 +77,7 @@ export default function ApiTokensSection() {
           </p>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <code style={{ ...monoInputStyle, flex: 1, display: "block", wordBreak: "break-all" }}>{revealed.token}</code>
-            <button type="button" onClick={copyToken} style={{ ...primaryButtonStyle, padding: "6px 14px", flexShrink: 0 }}>{copied ? "Copied" : "Copy"}</button>
+            <button type="button" aria-label="Copy token" onClick={() => copy(revealed.token, "token")} style={{ ...primaryButtonStyle, padding: "6px 14px", flexShrink: 0 }}>{copied === "token" ? "Copied" : "Copy"}</button>
           </div>
           <button type="button" onClick={() => setRevealed(null)} style={{ alignSelf: "flex-start", background: "none", border: "none", padding: 0, fontSize: 12, fontWeight: 700, color: theme.color.textSecondary, cursor: "pointer" }}>
             Done

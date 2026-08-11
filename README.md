@@ -305,7 +305,7 @@ MinimalPOI runs an [MCP](https://modelcontextprotocol.io) server so AI clients
 - Create an API token in **Settings → API access → Create token** (any logged-in user). Copy it immediately — it's shown once and can't be retrieved later; revoke it anytime if needed.
 - Configure your MCP client with:
   - **Transport:** Streamable HTTP
-  - **URL:** `https://<your-host>/api/mcp`
+  - **URL:** `https://<your-host>/api/mcp` — shown with a copy button in **Settings → API access**
   - **Header:** `Authorization: Bearer <token>`
 
 **Capabilities:**
