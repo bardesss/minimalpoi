@@ -16,7 +16,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           version: "0.11.14"
-          python-version: "3.12"
+          python-version: "3.14"
       # --frozen installs uv.lock exactly as committed and fails if it has
       # drifted from pyproject.toml, so CI exercises the same pinned versions
       # the image ships rather than re-resolving them.
@@ -49,7 +49,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           version: "0.11.14"
-          python-version: "3.12"
+          python-version: "3.14"
       # Same lock as the SQLite job, plus the `postgres` extra the runtime image
       # bakes in unconditionally.
       - name: Install dependencies
