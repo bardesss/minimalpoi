@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.13.1](https://github.com/bardesss/minimalpoi/compare/v3.13.0...v3.13.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* **map:** emit the maplibre-gl 6 worker chunk so tiles load ([f6332f2](https://github.com/bardesss/minimalpoi/commit/f6332f2647d93556ea1d3be01a558512b9b6078e))
+* **map:** emit the maplibre-gl 6 worker chunk so tiles load ([48de999](https://github.com/bardesss/minimalpoi/commit/48de9992735e958b1e9edd296e911e051467c664))
+
 ## [3.13.0](https://github.com/bardesss/minimalpoi/compare/v3.12.0...v3.13.0) (2026-08-11)
 
 
