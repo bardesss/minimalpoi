@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.13.3](https://github.com/bardesss/minimalpoi/compare/v3.13.2...v3.13.3) (2026-09-04)
+
+
+### Miscellaneous Chores
+
+* release 3.13.3 ([29f9ab7](https://github.com/bardesss/minimalpoi/commit/29f9ab7dfcdfb4b1a9fa7a98a9fb5e2a501c738d))
+
 ## [3.13.2](https://github.com/bardesss/minimalpoi/compare/v3.13.1...v3.13.2) (2026-08-11)
 
 
