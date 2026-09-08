@@ -30,7 +30,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3",
-    "anyio>=4",
+    "anyio>=4.15.1",
 ]
 postgres = ["psycopg[binary]>=3.3.5"]
 
@@ -59,6 +59,13 @@ filterwarnings = [
     # time. Harmless on the supported Python 3.12 (where it isn't deprecated);
     # this narrow ignore keeps the suite green on newer interpreters too.
     "ignore:'asyncio\\.iscoroutinefunction' is deprecated:DeprecationWarning",
+    # anyio 4.15 deprecated the `anyio.abc.BlockingPortal` alias in favour of
+    # `anyio.from_thread.BlockingPortal`. starlette's TestClient still reads the
+    # old path at module scope (starlette/testclient.py), so importing
+    # `fastapi.testclient` raises at collection time under `error`. Confirmed
+    # still present in the newest starlette (1.6.0); MinimalPOI's own code never
+    # touches the alias. Drop this once starlette moves to the new path.
+    "ignore:The anyio\\.abc\\.BlockingPortal alias is deprecated:DeprecationWarning",
     # The `mcp` SDK's stateless streamable-HTTP transport spawns a per-request
     # task holding an anyio memory-object stream pair (see
     # StreamableHTTPSessionManager._handle_stateless_request). Our test suite
