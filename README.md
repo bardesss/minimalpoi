@@ -68,10 +68,6 @@ Drop a pin or paste a link to auto-fill the details, rate the spots you've been,
 - **Full backup & restore** — download a complete **ZIP archive** of everything (places, photos, users, teams, comments, ratings, settings) and restore it into a fresh instance.
 - **Local images** — enriched images are downloaded and served from your own server, and manual upload works too (auto-converted to WebP, 10 MB cap).
 
-### 🔁 TRIP sync (optional)
-- **Two-way reconciliation** — connect a [TRIP](https://github.com/itskovacs/trip) instance and MinimalPOI keeps categories and places in sync **both ways** — creates, edits, and deletes propagate — on a configurable interval and conflict policy.
-- **Conflict resolution** — a built-in view lets you settle each clash by keeping the MinimalPOI or the TRIP version; entirely optional, so enable it only if you use TRIP.
-
 ### 🔒 Security & self-hosting
 - **Hardened by default** — per-action rate limiting, an encrypted-at-rest Google API key, auto-`Secure` login cookies over HTTPS, and a non-root, health-checked container.
 - **Update notifications** — checks GitHub releases and tells you when a newer version is out.

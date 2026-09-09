@@ -3,14 +3,12 @@ import { useAuth } from "../auth/AuthContext";
 import { theme } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 import { useDialog } from "../lib/useDialog";
-import { useFullSettings } from "../queries/hooks";
 import AboutSection from "./settings/AboutSection";
 import ApiTokensSection from "./settings/ApiTokensSection";
 import CategoriesSection from "./settings/CategoriesSection";
 import ConnectionsSection from "./settings/ConnectionsSection";
 import DataSection from "./settings/DataSection";
 import MapSection from "./settings/MapSection";
-import SyncSection from "./settings/SyncSection";
 import TagsSection from "./settings/TagsSection";
 import TeamsSection from "./settings/TeamsSection";
 import UsersSection from "./settings/UsersSection";
@@ -22,13 +20,11 @@ interface SectionDef {
   Component: ComponentType;
 }
 
-// Ordered by concern, admin-only sections grouped first: external integrations
-// (Connections + its Sync), then Map/feature toggles, then Users; followed by
-// the member-visible sections (Teams, content, Data, About). Keeping Sync next
-// to Connections matters — they configure the same TRIP subsystem.
+// Ordered by concern, admin-only sections grouped first: Connections, then
+// Map/feature toggles, then Users; followed by the member-visible sections
+// (Teams, content, Data, About).
 const SECTIONS: SectionDef[] = [
   { key: "connections", label: "Connections", adminOnly: true, Component: ConnectionsSection },
-  { key: "sync", label: "Sync", adminOnly: true, Component: SyncSection },
   { key: "map", label: "Map", adminOnly: true, Component: MapSection },
   { key: "users", label: "Users", adminOnly: true, Component: UsersSection },
   { key: "teams", label: "Teams", adminOnly: false, Component: TeamsSection },
@@ -44,13 +40,8 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
   const isMobile = useIsMobile();
   const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose);
   const isAdmin = user?.role === "admin";
-  // Full settings only exist for admins; gate the fetch so members don't 403.
-  // Sync is meaningless until a TRIP instance is wired up (a base URL is set),
-  // so hide that tab until then.
-  const fullSettings = useFullSettings(isAdmin);
-  const tripConfigured = !!fullSettings.data?.trip_base_url;
   const visible = SECTIONS.filter(
-    (s) => (!s.adminOnly || isAdmin) && (s.key !== "sync" || tripConfigured),
+    (s) => !s.adminOnly || isAdmin
   );
   const [activeKey, setActiveKey] = useState(visible[0]?.key ?? "data");
   const active = visible.find((s) => s.key === activeKey) ?? visible[0];

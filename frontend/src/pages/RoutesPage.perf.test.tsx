@@ -12,7 +12,7 @@ const poi = (id: number, name: string): Poi => ({
   id, name, address: null, city: null, country_code: null, lat: 52.3 + id / 100, lng: 4.9,
   category_id: null, tags: [], notes: null, phone: null, email: null, website: null,
   image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "",
-  trip_place_id: null, trip_sync_status: "s", avg_rating: null, rating_count: 0,
+  avg_rating: null, rating_count: 0,
 });
 const pois: Poi[] = [poi(100, "OnRoute"), poi(200, "Nearby")];
 const onRouteNode: RouteNode = {

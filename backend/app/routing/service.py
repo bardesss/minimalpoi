@@ -50,7 +50,7 @@ async def recompute_legs(session: Session, route_id: int) -> None:
     fallback on any miss. Runs after any node add/edit/delete/reorder."""
     nodes = ordered_nodes(session, route_id)
     # Per-row delete to match house style (the codebase never bulk-deletes via
-    # sqlmodel.delete — see trip/engine.py).
+    # sqlmodel.delete).
     for old in session.exec(select(RouteLeg).where(RouteLeg.route_id == route_id)).all():
         session.delete(old)
     if len(nodes) < 2:

@@ -12,7 +12,7 @@ describe("CategoriesSection", () => {
     server.use(
       http.post("/api/categories", async ({ request }) => {
         created = await request.json();
-        return HttpResponse.json({ id: 9, name: "Bars", color: "#4f46e5", icon: "beer", created_by: 1, trip_category_id: null, trip_sync_status: "local_only" }, { status: 201 });
+        return HttpResponse.json({ id: 9, name: "Bars", color: "#4f46e5", icon: "beer", created_by: 1 }, { status: 201 });
       }),
     );
     renderWithProviders(<CategoriesSection />);

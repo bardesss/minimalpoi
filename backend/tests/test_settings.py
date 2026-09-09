@@ -6,23 +6,22 @@ def test_settings_defaults_and_secret_handling(client):
     _setup_admin(client)
     got = client.get("/api/settings").json()
     assert got["map_tile_url"] == "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
-    assert got["trip_conflict_policy"] == "minimalpoi_wins"
-    assert got["trip_password_set"] is False
+    assert got["nominatim_url"] == "https://nominatim.openstreetmap.org"
+    assert got["google_api_key_set"] is False
 
-    # set a TRIP password; it is stored but never returned
+    # set a Google API key; it is stored but never returned
     patched = client.patch("/api/settings", json={
-        "trip_base_url": "https://trip.lan",
-        "trip_username": "me",
-        "trip_password": "s3cret",
+        "nominatim_url": "https://nominatim.lan",
+        "google_api_key": "s3cret",
     }).json()
-    assert patched["trip_username"] == "me"
-    assert patched["trip_password_set"] is True
-    assert "trip_password" not in patched
-    assert "trip_password_enc" not in patched
+    assert patched["nominatim_url"] == "https://nominatim.lan"
+    assert patched["google_api_key_set"] is True
+    assert "google_api_key" not in patched
+    assert "google_api_key_enc" not in patched
 
-    # empty string clears the password
-    cleared = client.patch("/api/settings", json={"trip_password": ""}).json()
-    assert cleared["trip_password_set"] is False
+    # empty string clears the key
+    cleared = client.patch("/api/settings", json={"google_api_key": ""}).json()
+    assert cleared["google_api_key_set"] is False
 
 
 def test_settings_admin_only_members_use_map_endpoint(client):
@@ -30,7 +29,7 @@ def test_settings_admin_only_members_use_map_endpoint(client):
     client.post("/api/users", json={"username": "bob", "password": "pw123456"})
     client.post("/api/auth/logout")
     client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
-    # Full settings (TRIP host/username, secrets-set flags) are admin-only now.
+    # Full settings (Nominatim host, secrets-set flags) are admin-only.
     assert client.get("/api/settings").status_code == 403
     assert client.patch("/api/settings", json={"map_tile_url": "x"}).status_code == 403
     # Members read the map-only payload to render the map — and it leaks nothing.
@@ -38,20 +37,20 @@ def test_settings_admin_only_members_use_map_endpoint(client):
     assert m.status_code == 200
     body = m.json()
     assert "map_tile_url" in body
-    assert "trip_username" not in body and "trip_base_url" not in body
+    assert "google_api_key_set" not in body and "nominatim_url" not in body
 
 
-def test_trip_password_is_encrypted_and_recoverable(client, data_dir):
+def test_google_api_key_is_encrypted_and_recoverable(client, data_dir):
     _setup_admin(client)
-    client.patch("/api/settings", json={"trip_password": "s3cret"})
+    client.patch("/api/settings", json={"google_api_key": "s3cret"})
     from sqlmodel import Session
     from app import db
     from app.crypto import decrypt
     from app.models import Settings
     with Session(db.engine) as session:
         row = session.get(Settings, 1)
-        assert row.trip_password_enc and row.trip_password_enc != "s3cret"
-        assert decrypt(row.trip_password_enc) == "s3cret"
+        assert row.google_api_key_enc and row.google_api_key_enc != "s3cret"
+        assert decrypt(row.google_api_key_enc) == "s3cret"
 
 
 def test_cookie_secure_default_off(client):

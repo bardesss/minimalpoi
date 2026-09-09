@@ -1,8 +1,8 @@
 """One-shot copy of all data from the default SQLite DB into a Postgres target.
 
 Iterates SQLModel.metadata.sorted_tables (FK-safe) rather than a hand-maintained
-list, so it can't silently drop tables the ORM backup omits (routes, tokens,
-tombstones). PKs are preserved and Postgres sequences reset afterward.
+list, so it can't silently drop tables the ORM backup omits (routes, tokens).
+PKs are preserved and Postgres sequences reset afterward.
 """
 import logging
 import os

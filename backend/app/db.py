@@ -163,12 +163,140 @@ def _purge_orphan_route_attachments() -> None:
         logger.info("Purged %d orphaned route-level attachment(s)", len(orphans))
 
 
+# Schema left behind by the removed TRIP sync feature. Dropped once, on the
+# first start after upgrading; a second run finds nothing to do.
+_REMOVED_SYNC_USERNAME = "__trip_sync__"
+_REMOVED_TRIP_COLUMNS = {
+    "poi": ("trip_place_id", "trip_sync_status", "trip_synced_snapshot",
+            "trip_synced_at", "trip_last_error"),
+    "category": ("trip_category_id", "trip_sync_status", "trip_synced_snapshot",
+                 "trip_synced_at", "trip_last_error"),
+    "settings": ("trip_base_url", "trip_username", "trip_password_enc", "trip_sync_enabled",
+                 "trip_sync_interval_seconds", "trip_conflict_policy", "trip_last_sync_at"),
+}
+
+
+def _retire_sync_account(engine) -> None:
+    """Hand anything the old TRIP sync account created to the deleted-user
+    placeholder, then delete the account. Reassignment must come first, or
+    Postgres rejects the delete on the created_by foreign key.
+
+    Mirrors `delete_user` in routers/users.py: the six owned tables get
+    reassigned, and the four tables SQLModel declares with
+    `ondelete="CASCADE"` (ApiToken, Visit, Comment, TeamMember) get deleted
+    explicitly rather than left for the database to cascade. Postgres would
+    cascade them on its own, but this app never turns on
+    `PRAGMA foreign_keys=ON` for SQLite, so relying on the cascade there
+    would leave orphaned rows with a dangling user_id behind."""
+    from sqlmodel import Session, select
+
+    from .models import (POI, ApiToken, Category, Comment, Route, RouteAttachment,
+                         RouteShare, Team, TeamMember, User, Visit,
+                         deleted_placeholder_user)
+
+    with Session(engine) as session:
+        ghost = session.exec(select(User).where(User.username == _REMOVED_SYNC_USERNAME)).first()
+        if ghost is None:
+            return
+        placeholder = deleted_placeholder_user(session)
+        owned = ((POI, "created_by"), (Category, "created_by"), (Team, "created_by"),
+                 (Route, "created_by"), (RouteShare, "created_by"),
+                 (RouteAttachment, "uploaded_by"))
+        for model, field in owned:
+            for row in session.exec(select(model).where(getattr(model, field) == ghost.id)).all():
+                setattr(row, field, placeholder.id)
+                session.add(row)
+
+        for row in session.exec(select(ApiToken).where(ApiToken.user_id == ghost.id)).all():
+            session.delete(row)
+        for model in (Visit, Comment):
+            for row in session.exec(select(model).where(model.user_id == ghost.id)).all():
+                session.delete(row)
+        for row in session.exec(select(TeamMember).where(TeamMember.user_id == ghost.id)).all():
+            session.delete(row)
+
+        session.delete(ghost)
+        session.commit()
+        logger.info("Retired the %s account left by TRIP sync", _REMOVED_SYNC_USERNAME)
+
+
+def _drop_removed_trip_columns(engine) -> None:
+    """One-time, idempotent purge of the TRIP sync schema.
+
+    There is no migrations framework, and `create_all` never *removes* anything,
+    so columns and tables belonging to a deleted feature would linger forever.
+    Nothing reads them, so every step here is best-effort: a failure is logged
+    rather than blocking startup. That is genuinely harmless for the retired
+    account and the tombstone table, but NOT for the column drops below: five
+    of the removed columns (poi.trip_sync_status, category.trip_sync_status,
+    settings.trip_sync_enabled, settings.trip_sync_interval_seconds,
+    settings.trip_conflict_policy) are NOT NULL with no server default, so on
+    a SQLite older than 3.35 (which lacks ALTER TABLE ... DROP COLUMN) the
+    leftover column survives and every subsequent INSERT into that table
+    fails.
+    """
+    inspector = inspect(engine)
+    existing = set(inspector.get_table_names())
+
+    if "user" in existing:
+        try:
+            _retire_sync_account(engine)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Could not retire the TRIP sync account: %s", exc)
+
+    if "tombstone" in existing:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text('DROP TABLE "tombstone"'))
+            logger.info("Dropped the tombstone table left by TRIP sync")
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Could not drop the tombstone table: %s", exc)
+
+    for table, columns in _REMOVED_TRIP_COLUMNS.items():
+        if table not in existing:
+            continue
+        have = {c["name"] for c in inspector.get_columns(table)}
+        for column in columns:
+            if column not in have:
+                continue
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(f'ALTER TABLE "{table}" DROP COLUMN "{column}"'))
+                logger.info("Dropped removed column %s.%s", table, column)
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.error(
+                    "Could not drop column %s.%s: %s. This column is NOT NULL with no "
+                    "default, so inserts into %s will now fail. SQLite 3.35 or newer "
+                    "is required to drop columns.",
+                    table, column, exc, table,
+                )
+
+    # Last, and Postgres-only: SQLModel mapped the old SyncStatus enum to a
+    # native `syncstatus` type, which DROP COLUMN leaves behind. It can only go
+    # once no column uses it, hence after the loop above. SQLite has no native
+    # enum types, so there is nothing to drop there. A leftover type really is
+    # harmless — it would only collide if an identically named enum were ever
+    # reintroduced — so this one warns rather than errors on failure.
+    if engine.dialect.name == "postgresql":
+        try:
+            with engine.begin() as conn:
+                found = conn.execute(
+                    text("SELECT 1 FROM pg_type WHERE typname = 'syncstatus'")
+                ).first()
+                conn.execute(text("DROP TYPE IF EXISTS syncstatus"))
+            if found is not None:
+                logger.info("Dropped the syncstatus enum type left by TRIP sync")
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Could not drop the syncstatus enum type: %s", exc)
+
+
 def init_db() -> None:
     if engine is None:
         reset_engine()
     SQLModel.metadata.create_all(engine)
     _add_missing_columns(engine)
     _add_missing_indexes(engine)
+    _drop_removed_trip_columns(engine)
     _purge_orphan_route_attachments()
 
 

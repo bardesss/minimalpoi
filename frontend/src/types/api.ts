@@ -19,8 +19,6 @@ export interface Category {
   color: string;
   icon: string | null;
   created_by: number;
-  trip_category_id: number | null;
-  trip_sync_status: string;
 }
 
 export interface Poi {
@@ -42,8 +40,6 @@ export interface Poi {
   created_by: number;
   created_at: string;
   updated_at: string;
-  trip_place_id: number | null;
-  trip_sync_status: string;
   avg_rating: number | null;
   rating_count: number;
 }
@@ -123,25 +119,12 @@ export interface ImportResult {
 }
 
 export interface Settings extends MapSettings {
-  trip_base_url: string | null;
-  trip_username: string | null;
-  trip_password_set: boolean;
-  trip_sync_enabled: boolean;
-  trip_sync_interval_seconds: number;
-  trip_conflict_policy: string;
   google_api_key_set: boolean;
   nominatim_url: string | null;
   cookie_secure: boolean;
-  trip_last_sync_at: string | null;
 }
 
 export interface SettingsUpdate {
-  trip_base_url?: string | null;
-  trip_username?: string | null;
-  trip_password?: string | null;
-  trip_sync_enabled?: boolean;
-  trip_sync_interval_seconds?: number;
-  trip_conflict_policy?: string;
   google_api_key?: string | null;
   nominatim_url?: string | null;
   map_tile_url?: string;
@@ -235,30 +218,6 @@ export interface Comment {
 
 export interface CommentCreate {
   text: string;
-}
-
-export interface SyncStatus {
-  enabled: boolean;
-  last_run: string | null;
-  error_count: number;
-  conflict_count: number;
-}
-
-export interface SyncConflict {
-  entity_type: "place" | "category";
-  id: number;
-  name: string;
-  trip_id: number | null;
-  status: "conflict" | "error";
-  last_error: string | null;
-}
-
-export type SyncResolution = "local" | "trip";
-
-export interface SyncResolve {
-  entity_type: "place" | "category";
-  id: number;
-  resolution: SyncResolution;
 }
 
 export type RouteNodeKind = "stay" | "stop";

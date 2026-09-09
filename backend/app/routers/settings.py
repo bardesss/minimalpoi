@@ -8,17 +8,11 @@ from ..schemas import MapSettingsRead, SettingsRead, SettingsUpdate
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 # Fields whose plaintext is encrypted into a *_enc column.
-SECRET_FIELDS = {"trip_password": "trip_password_enc", "google_api_key": "google_api_key_enc"}
+SECRET_FIELDS = {"google_api_key": "google_api_key_enc"}
 
 
 def _to_read(s: Settings) -> SettingsRead:
     return SettingsRead(
-        trip_base_url=s.trip_base_url,
-        trip_username=s.trip_username,
-        trip_password_set=bool(s.trip_password_enc),
-        trip_sync_enabled=s.trip_sync_enabled,
-        trip_sync_interval_seconds=s.trip_sync_interval_seconds,
-        trip_conflict_policy=s.trip_conflict_policy,
         google_api_key_set=bool(s.google_api_key_enc),
         nominatim_url=s.nominatim_url,
         map_tile_url=s.map_tile_url,
@@ -26,14 +20,13 @@ def _to_read(s: Settings) -> SettingsRead:
         default_map_center_lng=s.default_map_center_lng,
         default_map_zoom=s.default_map_zoom,
         cookie_secure=s.cookie_secure,
-        trip_last_sync_at=s.trip_last_sync_at,
         routes_enabled=s.routes_enabled,
     )
 
 
 @router.get("/map", response_model=MapSettingsRead)
 def read_map_settings(session: SessionDep, _: CurrentUser) -> MapSettingsRead:
-    # Map-only fields any member needs to render the map — no TRIP host/username.
+    # Map-only fields any member needs to render the map — no secrets.
     s = get_or_create_settings(session)
     return MapSettingsRead(
         map_tile_url=s.map_tile_url,
