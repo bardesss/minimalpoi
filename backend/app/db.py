@@ -163,12 +163,93 @@ def _purge_orphan_route_attachments() -> None:
         logger.info("Purged %d orphaned route-level attachment(s)", len(orphans))
 
 
+# Schema left behind by the removed TRIP sync feature. Dropped once, on the
+# first start after upgrading; a second run finds nothing to do.
+_REMOVED_SYNC_USERNAME = "__trip_sync__"
+_REMOVED_TRIP_COLUMNS = {
+    "poi": ("trip_place_id", "trip_sync_status", "trip_synced_snapshot",
+            "trip_synced_at", "trip_last_error"),
+    "category": ("trip_category_id", "trip_sync_status", "trip_synced_snapshot",
+                 "trip_synced_at", "trip_last_error"),
+    "settings": ("trip_base_url", "trip_username", "trip_password_enc", "trip_sync_enabled",
+                 "trip_sync_interval_seconds", "trip_conflict_policy", "trip_last_sync_at"),
+}
+
+
+def _retire_sync_account(engine) -> None:
+    """Hand anything the old TRIP sync account created to the deleted-user
+    placeholder, then delete the account. Reassignment must come first, or
+    Postgres rejects the delete on the created_by foreign key."""
+    from sqlmodel import Session, select
+
+    from .models import (POI, Category, Route, RouteAttachment, RouteShare, Team, User,
+                         deleted_placeholder_user)
+
+    with Session(engine) as session:
+        ghost = session.exec(select(User).where(User.username == _REMOVED_SYNC_USERNAME)).first()
+        if ghost is None:
+            return
+        placeholder = deleted_placeholder_user(session)
+        owned = ((POI, "created_by"), (Category, "created_by"), (Team, "created_by"),
+                 (Route, "created_by"), (RouteShare, "created_by"),
+                 (RouteAttachment, "uploaded_by"))
+        for model, field in owned:
+            for row in session.exec(select(model).where(getattr(model, field) == ghost.id)).all():
+                setattr(row, field, placeholder.id)
+                session.add(row)
+        session.delete(ghost)
+        session.commit()
+        logger.info("Retired the %s account left by TRIP sync", _REMOVED_SYNC_USERNAME)
+
+
+def _drop_removed_trip_columns(engine) -> None:
+    """One-time, idempotent purge of the TRIP sync schema.
+
+    There is no migrations framework, and `create_all` never *removes* anything,
+    so columns and tables belonging to a deleted feature would linger forever.
+    Nothing reads them, so every step here is best-effort: a failure (an ancient
+    SQLite without ALTER TABLE ... DROP COLUMN, say) is logged and the leftover
+    stays behind harmlessly rather than blocking startup.
+    """
+    inspector = inspect(engine)
+    existing = set(inspector.get_table_names())
+
+    if "user" in existing:
+        try:
+            _retire_sync_account(engine)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Could not retire the TRIP sync account: %s", exc)
+
+    if "tombstone" in existing:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text('DROP TABLE "tombstone"'))
+            logger.info("Dropped the tombstone table left by TRIP sync")
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Could not drop the tombstone table: %s", exc)
+
+    for table, columns in _REMOVED_TRIP_COLUMNS.items():
+        if table not in existing:
+            continue
+        have = {c["name"] for c in inspector.get_columns(table)}
+        for column in columns:
+            if column not in have:
+                continue
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(f'ALTER TABLE "{table}" DROP COLUMN "{column}"'))
+                logger.info("Dropped removed column %s.%s", table, column)
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("Could not drop column %s.%s: %s", table, column, exc)
+
+
 def init_db() -> None:
     if engine is None:
         reset_engine()
     SQLModel.metadata.create_all(engine)
     _add_missing_columns(engine)
     _add_missing_indexes(engine)
+    _drop_removed_trip_columns(engine)
     _purge_orphan_route_attachments()
 
 
