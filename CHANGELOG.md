@@ -1,5 +1,21 @@
 # Changelog
 
+## [4.0.0](https://github.com/bardesss/minimalpoi/compare/v3.13.3...v4.0.0) (2026-09-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* POST /api/sync/now, GET /api/sync/status, GET /api/sync/conflicts and POST /api/sync/resolve are removed. The trip_* fields disappear from the POI, category and settings API responses, and the first start after upgrading permanently drops the trip_* columns, the tombstone table and the __trip_sync__ account from the database.
+
+### Features
+
+* remove TRIP sync ([bb649e1](https://github.com/bardesss/minimalpoi/commit/bb649e1e64a0975df8de98c9d3930a2233109d1d))
+
+
+### Bug Fixes
+
+* address final review findings on the TRIP-sync removal branch ([ddb7b5d](https://github.com/bardesss/minimalpoi/commit/ddb7b5d14c69ae8fec237a5eb76c8234bd73fddd))
+
 ## [3.13.3](https://github.com/bardesss/minimalpoi/compare/v3.13.2...v3.13.3) (2026-09-04)
 
 
