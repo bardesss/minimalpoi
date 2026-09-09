@@ -179,10 +179,19 @@ _REMOVED_TRIP_COLUMNS = {
 def _retire_sync_account(engine) -> None:
     """Hand anything the old TRIP sync account created to the deleted-user
     placeholder, then delete the account. Reassignment must come first, or
-    Postgres rejects the delete on the created_by foreign key."""
+    Postgres rejects the delete on the created_by foreign key.
+
+    Mirrors `delete_user` in routers/users.py: the six owned tables get
+    reassigned, and the four tables SQLModel declares with
+    `ondelete="CASCADE"` (ApiToken, Visit, Comment, TeamMember) get deleted
+    explicitly rather than left for the database to cascade. Postgres would
+    cascade them on its own, but this app never turns on
+    `PRAGMA foreign_keys=ON` for SQLite, so relying on the cascade there
+    would leave orphaned rows with a dangling user_id behind."""
     from sqlmodel import Session, select
 
-    from .models import (POI, Category, Route, RouteAttachment, RouteShare, Team, User,
+    from .models import (POI, ApiToken, Category, Comment, Route, RouteAttachment,
+                         RouteShare, Team, TeamMember, User, Visit,
                          deleted_placeholder_user)
 
     with Session(engine) as session:
@@ -197,6 +206,15 @@ def _retire_sync_account(engine) -> None:
             for row in session.exec(select(model).where(getattr(model, field) == ghost.id)).all():
                 setattr(row, field, placeholder.id)
                 session.add(row)
+
+        for row in session.exec(select(ApiToken).where(ApiToken.user_id == ghost.id)).all():
+            session.delete(row)
+        for model in (Visit, Comment):
+            for row in session.exec(select(model).where(model.user_id == ghost.id)).all():
+                session.delete(row)
+        for row in session.exec(select(TeamMember).where(TeamMember.user_id == ghost.id)).all():
+            session.delete(row)
+
         session.delete(ghost)
         session.commit()
         logger.info("Retired the %s account left by TRIP sync", _REMOVED_SYNC_USERNAME)
