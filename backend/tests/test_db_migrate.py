@@ -122,3 +122,89 @@ def test_route_tables_created(data_dir):
     tables = set(inspect(db.engine).get_table_names())
     assert {"route", "routenode", "routeleg", "routeattachment"} <= tables
     db.reset_engine()
+
+
+_PRE_REMOVAL_COLUMNS = {
+    "poi": ["trip_place_id INTEGER", "trip_sync_status VARCHAR", "trip_synced_snapshot JSON",
+            "trip_synced_at DATETIME", "trip_last_error VARCHAR"],
+    "category": ["trip_category_id INTEGER", "trip_sync_status VARCHAR", "trip_synced_snapshot JSON",
+                 "trip_synced_at DATETIME", "trip_last_error VARCHAR"],
+    "settings": ["trip_base_url VARCHAR", "trip_username VARCHAR", "trip_password_enc VARCHAR",
+                 "trip_sync_enabled BOOLEAN", "trip_sync_interval_seconds INTEGER",
+                 "trip_conflict_policy VARCHAR", "trip_last_sync_at DATETIME"],
+}
+
+
+def _seed_pre_removal_schema(engine) -> None:
+    """Put back the schema a pre-v4 database carries: the trip_* columns and
+    the tombstone table."""
+    with engine.begin() as conn:
+        for table, columns in _PRE_REMOVAL_COLUMNS.items():
+            for column in columns:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column}"))
+        conn.execute(text(
+            "CREATE TABLE tombstone (id INTEGER PRIMARY KEY, entity_type VARCHAR, "
+            "trip_id INTEGER, origin VARCHAR, created_at DATETIME)"
+        ))
+
+
+def _trip_columns(engine, table: str) -> set[str]:
+    return {c for c in _cols(engine, table) if c.startswith("trip_")}
+
+
+def test_init_db_purges_the_trip_sync_schema(data_dir):
+    """The upgrade path a self-hoster hits: a pre-v4 database, upgraded by
+    restarting the app. The columns, the table and the sync account go, and
+    content the sync account created survives under the deleted-user
+    placeholder."""
+    from sqlmodel import Session, select
+    from app import db
+    from app.models import POI, DELETED_USERNAME, User
+
+    db.reset_engine()
+    db.init_db()
+    _seed_pre_removal_schema(db.engine)
+    with Session(db.engine) as session:
+        ghost = User(username="__trip_sync__", password_hash="!", disabled=True)
+        session.add(ghost)
+        session.commit()
+        session.refresh(ghost)
+        session.add(POI(name="Imported place", lat=1.0, lng=2.0, created_by=ghost.id))
+        session.commit()
+    assert _trip_columns(db.engine, "settings")
+    assert "tombstone" in set(inspect(db.engine).get_table_names())
+
+    db.init_db()  # the upgrade restart
+
+    assert "tombstone" not in set(inspect(db.engine).get_table_names())
+    for table in ("poi", "category", "settings"):
+        assert _trip_columns(db.engine, table) == set()
+    with Session(db.engine) as session:
+        assert session.exec(select(User).where(User.username == "__trip_sync__")).first() is None
+        placeholder = session.exec(select(User).where(User.username == DELETED_USERNAME)).first()
+        poi = session.exec(select(POI).where(POI.name == "Imported place")).first()
+        assert poi is not None and poi.created_by == placeholder.id
+
+    db.init_db()  # a second restart — must still be a no-op after a real purge
+
+    assert "tombstone" not in set(inspect(db.engine).get_table_names())
+    for table in ("poi", "category", "settings"):
+        assert _trip_columns(db.engine, table) == set()
+    with Session(db.engine) as session:
+        assert session.exec(select(User).where(User.username == "__trip_sync__")).first() is None
+        poi = session.exec(select(POI).where(POI.name == "Imported place")).first()
+        assert poi is not None and poi.created_by == placeholder.id
+    db.reset_engine()
+
+
+def test_trip_purge_is_a_no_op_on_a_clean_database(data_dir):
+    from app import db
+
+    db.reset_engine()
+    db.init_db()
+    before = {t: _cols(db.engine, t) for t in ("poi", "category", "settings")}
+
+    db.init_db()  # nothing left to purge — must not raise or change anything
+
+    assert {t: _cols(db.engine, t) for t in ("poi", "category", "settings")} == before
+    db.reset_engine()
