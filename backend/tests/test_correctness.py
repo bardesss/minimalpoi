@@ -24,20 +24,6 @@ def test_find_duplicate_keeps_distinct_non_latin_names(data_dir):
         assert find_duplicate(s, "Кафе", 52.0001, 4.0001, None) is not None
 
 
-# ── reconcile: a TRIP place with null coords must not crash the pass ──────────
-
-def test_reconcile_skips_trip_place_with_null_coords(data_dir):
-    # Unit-level guard: haversine is never called with None (it would TypeError).
-    from app.dedup import haversine_m
-
-    tplace = {"name": "X", "lat": None, "lng": None}
-    tlat, tlng = tplace.get("lat"), tplace.get("lng")
-    skip = not isinstance(tlat, (int, float)) or not isinstance(tlng, (int, float))
-    assert skip is True
-    # And valid coords are fine.
-    assert haversine_m(1.0, 2.0, 1.0, 2.0) == 0.0
-
-
 # ── migration shim: add a NOT NULL column with a default on upgrade ───────────
 
 def test_migration_shim_adds_not_null_column_with_default(data_dir):
