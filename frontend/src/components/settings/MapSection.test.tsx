@@ -7,8 +7,6 @@ import { renderWithProviders } from "../../test/utils";
 import MapSection from "./MapSection";
 
 const FULL = {
-  trip_base_url: null, trip_username: null, trip_password_set: false,
-  trip_sync_enabled: false, trip_sync_interval_seconds: 300, trip_conflict_policy: "minimalpoi_wins",
   google_api_key_set: false, nominatim_url: null,
   map_tile_url: "https://t.example/s.json", default_map_center_lat: 52, default_map_center_lng: 4,
   default_map_zoom: 11, cookie_secure: false, routes_enabled: false,

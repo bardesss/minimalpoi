@@ -29,12 +29,12 @@ def test_create_user_rejects_short_password(client):
 # ── reserved username ────────────────────────────────────────────────────────
 
 def test_setup_rejects_reserved_username(client):
-    assert client.post("/api/auth/setup", json={"username": "__trip_sync__", "password": "pw123456"}).status_code == 400
+    assert client.post("/api/auth/setup", json={"username": "__deleted_user__", "password": "pw123456"}).status_code == 400
 
 
 def test_create_user_rejects_reserved_username(client):
     _admin(client)
-    assert client.post("/api/users", json={"username": "__TRIP_SYNC__", "password": "pw123456"}).status_code == 400
+    assert client.post("/api/users", json={"username": "__DELETED_USER__", "password": "pw123456"}).status_code == 400
 
 
 # ── owner / admin checks ─────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 from app import models as m
-from app.models import SYNC_USERNAME, DELETED_USERNAME, SYSTEM_USERNAMES, deleted_placeholder_user
+from app.models import DELETED_USERNAME, SYSTEM_USERNAMES, deleted_placeholder_user
 
 
 def _ondelete(table, col):
@@ -36,7 +36,7 @@ def test_system_usernames_and_sentinel(data_dir):
     from sqlmodel import Session
     from app import db
     db.reset_engine(); db.init_db()
-    assert SYSTEM_USERNAMES == {SYNC_USERNAME, DELETED_USERNAME}
+    assert SYSTEM_USERNAMES == {DELETED_USERNAME}
     with Session(db.engine) as s:
         u1 = deleted_placeholder_user(s)
         assert u1.username == DELETED_USERNAME and u1.disabled is True

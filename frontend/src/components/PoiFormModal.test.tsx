@@ -37,7 +37,7 @@ describe("parseCoordPair", () => {
   });
 });
 
-const cats: Category[] = [{ id: 1, name: "Restaurants", color: "#E1574C", icon: null, created_by: 1, trip_category_id: null, trip_sync_status: "s" }];
+const cats: Category[] = [{ id: 1, name: "Restaurants", color: "#E1574C", icon: null, created_by: 1 }];
 
 // Overrides matchMedia -> mobile so mobile-only affordances (the ≥44px close
 // button, the "Pick on map" button) render. Returns a restore function.

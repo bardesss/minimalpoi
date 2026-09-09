@@ -3,7 +3,7 @@ import type { Poi, PoiFilter } from "../types/api";
 import * as country from "./country";
 import { filterPois, UNCATEGORIZED_ID } from "./filterPois";
 
-const mk = (over: Partial<Poi>): Poi => ({ id: 0, name: "", address: null, city: null, country_code: null, lat: 0, lng: 0, category_id: null, tags: [], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "synced", avg_rating: null, rating_count: 0, ...over });
+const mk = (over: Partial<Poi>): Poi => ({ id: 0, name: "", address: null, city: null, country_code: null, lat: 0, lng: 0, category_id: null, tags: [], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", avg_rating: null, rating_count: 0, ...over });
 
 const base: PoiFilter = { search: "", categoryIds: [], visited: "any" };
 const f = (over: Partial<PoiFilter>): PoiFilter => ({ ...base, ...over });

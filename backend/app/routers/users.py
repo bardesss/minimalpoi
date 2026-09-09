@@ -30,11 +30,11 @@ def _admin_count(session: Session) -> int:
 
 
 def _guard_system(user: User) -> None:
-    # Reserved system accounts (TRIP-sync, the deleted-user sentinel) own
-    # inbound/reassigned content; editing or deleting them would orphan that
-    # attribution. Neither can be logged into anyway.
+    # The deleted-user sentinel owns content reassigned from removed users;
+    # editing or deleting it would orphan that attribution. It can't be
+    # logged into anyway.
     if user.username in SYSTEM_USERNAMES:
-        raise HTTPException(status_code=403, detail="The sync system account cannot be modified")
+        raise HTTPException(status_code=403, detail="The deleted-user placeholder account cannot be modified")
 
 
 @router.get("", response_model=list[UserRead])

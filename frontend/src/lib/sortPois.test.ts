@@ -9,7 +9,6 @@ function poi(over: Partial<Poi>): Poi {
     lat: 0, lng: 0, category_id: null, tags: [], notes: null, phone: null,
     email: null, website: null, image_url: null, source_url: null,
     created_by: 1, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
-    trip_place_id: null, trip_sync_status: "synced",
     avg_rating: null, rating_count: 0,
     ...over,
   } as Poi;

@@ -35,7 +35,7 @@ vi.mock("@tanstack/react-virtual", () => ({
   useVirtualizer: useVirtualizerMock,
 }));
 
-const base: Poi = { id: 1, name: "A", address: "x, Town", city: null, country_code: null, lat: 1, lng: 2, category_id: null, tags: [], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "synced", avg_rating: null, rating_count: 0 };
+const base: Poi = { id: 1, name: "A", address: "x, Town", city: null, country_code: null, lat: 1, lng: 2, category_id: null, tags: [], notes: null, phone: null, email: null, website: null, image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", avg_rating: null, rating_count: 0 };
 
 describe("PoiList", () => {
   beforeEach(() => {
