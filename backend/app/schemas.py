@@ -1,10 +1,10 @@
 from datetime import date, datetime
-from typing import Annotated, Literal
+from typing import Annotated
 
 from pydantic import StringConstraints
 from sqlmodel import Field, SQLModel
 
-from .models import LegSource, NodeRole, Role, RouteNodeKind, SyncStatus
+from .models import LegSource, NodeRole, Role, RouteNodeKind
 
 
 class StatusResponse(SQLModel):
@@ -24,10 +24,6 @@ class ImageUploadResult(SQLModel):
 class RestoreResult(SQLModel):
     restored: dict[str, int]
 
-
-class SyncRunResult(SQLModel):
-    ran: bool
-    errors: int = 0
 
 # Username is trimmed and must be non-blank. Password has a floor (basic
 # strength) and a 72-char ceiling so bcrypt's 72-byte truncation can't silently
@@ -119,8 +115,6 @@ class CategoryRead(SQLModel):
     color: str
     icon: str | None
     created_by: int
-    trip_category_id: int | None
-    trip_sync_status: SyncStatus
 
 
 class POICreate(SQLModel):
@@ -176,8 +170,6 @@ class POIRead(SQLModel):
     created_by: int
     created_at: datetime
     updated_at: datetime
-    trip_place_id: int | None
-    trip_sync_status: SyncStatus
     # Aggregated across all users' visits; populated by the list endpoint only.
     avg_rating: float | None = None
     rating_count: int = 0
@@ -228,7 +220,7 @@ class CommentRead(SQLModel):
 
 
 class MapSettingsRead(SQLModel):
-    """Public, map-only view — safe for any logged-in member (no TRIP/secret fields)."""
+    """Public, map-only view — safe for any logged-in member (no secret fields)."""
     map_tile_url: str
     default_map_center_lat: float
     default_map_center_lng: float
@@ -237,12 +229,6 @@ class MapSettingsRead(SQLModel):
 
 
 class SettingsRead(SQLModel):
-    trip_base_url: str | None
-    trip_username: str | None
-    trip_password_set: bool
-    trip_sync_enabled: bool
-    trip_sync_interval_seconds: int
-    trip_conflict_policy: str
     google_api_key_set: bool
     nominatim_url: str | None
     map_tile_url: str
@@ -250,17 +236,10 @@ class SettingsRead(SQLModel):
     default_map_center_lng: float
     default_map_zoom: float
     cookie_secure: bool
-    trip_last_sync_at: datetime | None
     routes_enabled: bool
 
 
 class SettingsUpdate(SQLModel):
-    trip_base_url: str | None = None
-    trip_username: str | None = None
-    trip_password: str | None = None
-    trip_sync_enabled: bool | None = None
-    trip_sync_interval_seconds: int | None = None
-    trip_conflict_policy: str | None = None
     google_api_key: str | None = None
     nominatim_url: str | None = None
     map_tile_url: str | None = None
@@ -269,28 +248,6 @@ class SettingsUpdate(SQLModel):
     default_map_zoom: float | None = None
     cookie_secure: bool | None = None
     routes_enabled: bool | None = None
-
-
-class SyncStatusRead(SQLModel):
-    enabled: bool
-    last_run: datetime | None
-    error_count: int
-    conflict_count: int
-
-
-class SyncConflictRead(SQLModel):
-    entity_type: str  # "place" | "category"
-    id: int
-    name: str
-    trip_id: int | None
-    status: str       # "conflict" | "error"
-    last_error: str | None
-
-
-class SyncResolve(SQLModel):
-    entity_type: Literal["place", "category"]
-    id: int
-    resolution: Literal["local", "trip"]
 
 
 class EnrichRequest(SQLModel):

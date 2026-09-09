@@ -6,7 +6,7 @@ files, with ids preserved so foreign keys stay consistent on restore. Restore
 is a v1 "rebuild a fresh instance" operation — it clears the target tables and
 loads the archive, and is only allowed into an empty instance.
 
-Secrets (password hashes, encrypted TRIP/Google credentials) are included so a
+Secrets (password hashes, the encrypted Google credential) are included so a
 same-host restore is complete; the encrypted settings only decrypt if
 `data/secret.key` is the same key (copy the volume's key, or re-enter the
 credentials after a cross-host restore).
@@ -24,7 +24,7 @@ from pathlib import Path
 from sqlmodel import Session, select
 
 from .enrich.images import UnsupportedImageError, images_dir, process_image
-from .models import POI, Category, Comment, Settings, Team, TeamMember, Tombstone, User, Visit, utcnow
+from .models import POI, Category, Comment, Settings, Team, TeamMember, User, Visit, utcnow
 
 BACKUP_VERSION = 1
 
@@ -35,8 +35,6 @@ ZIP_MAX_TOTAL_BYTES = 500 * 1024 * 1024
 _IMAGE_EXTS = {".webp", ".jpg", ".jpeg", ".png"}
 
 # (json key, model) in foreign-key-safe insert order. Reverse for deletes.
-# Tombstones are included so a restored instance doesn't re-import TRIP items it
-# had previously deleted.
 _TABLES = [
     ("users", User),
     ("teams", Team),
@@ -45,7 +43,6 @@ _TABLES = [
     ("pois", POI),
     ("visits", Visit),
     ("comments", Comment),
-    ("tombstones", Tombstone),
 ]
 
 

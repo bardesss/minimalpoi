@@ -19,14 +19,14 @@ def test_add_missing_columns_backfills_a_late_added_column(tmp_path):
     SQLModel.metadata.create_all(engine)
 
     cols = _cols(engine, "settings")
-    assert "trip_last_sync_at" not in cols  # the column that broke the settings read
-    assert "trip_base_url" not in cols
+    assert "nominatim_url" not in cols  # a column added after settings first shipped
+    assert "google_api_key_enc" not in cols
 
     dbmod._add_missing_columns(engine)
 
     cols = _cols(engine, "settings")
-    assert "trip_last_sync_at" in cols
-    assert "trip_base_url" in cols  # other nullable columns are backfilled too
+    assert "nominatim_url" in cols
+    assert "google_api_key_enc" in cols  # other nullable columns are backfilled too
     engine.dispose()
 
 

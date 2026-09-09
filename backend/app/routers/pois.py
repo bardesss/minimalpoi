@@ -8,7 +8,7 @@ from ..dedup import find_duplicate
 from ..deps import CurrentUser, SessionDep, require_owner_or_admin
 from ..enrich.images import localize
 from ..ratelimit import IMPORT_LIMIT, WRITE_LIMIT, limiter, user_or_ip
-from ..models import POI, Category, Comment, Tombstone, Visit, utcnow
+from ..models import POI, Category, Comment, Visit, utcnow
 from ..phone import to_e164
 from ..portability import parse_csv, parse_geojson, pois_to_geojson
 from ..schemas import (
@@ -200,8 +200,6 @@ def delete_poi(poi_id: int, session: SessionDep, user: CurrentUser) -> Response:
     for model in (Visit, Comment):
         for row in session.exec(select(model).where(model.poi_id == poi_id)).all():
             session.delete(row)
-    if poi.trip_place_id is not None:
-        session.add(Tombstone(entity_type="place", trip_id=poi.trip_place_id, origin="local"))
     session.delete(poi)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
