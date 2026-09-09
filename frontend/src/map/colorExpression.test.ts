@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Category } from "../types/api";
 import { categoryColorExpression } from "./colorExpression";
 
-const cat = (id: number, color: string): Category => ({ id, name: "c", color, icon: null, created_by: 1, trip_category_id: null, trip_sync_status: "s" });
+const cat = (id: number, color: string): Category => ({ id, name: "c", color, icon: null, created_by: 1 });
 
 describe("categoryColorExpression", () => {
   it("returns a constant when there are no categories", () => {

@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { Poi } from "../types/api";
 import { buildPoiMiniCard, poiWebsiteHost } from "./PoiMiniCard";
 
-const base: Poi = { id: 7, name: "Café Modern", address: "Street 12, Amsterdam", city: null, country_code: null, lat: 52.37, lng: 4.9, category_id: 1, tags: [], notes: null, phone: null, email: null, website: "https://cafemodern.nl/menu", image_url: "https://img.test/a.jpg", source_url: null, created_by: 1, created_at: "", updated_at: "", trip_place_id: null, trip_sync_status: "synced", avg_rating: null, rating_count: 0 };
+const base: Poi = { id: 7, name: "Café Modern", address: "Street 12, Amsterdam", city: null, country_code: null, lat: 52.37, lng: 4.9, category_id: 1, tags: [], notes: null, phone: null, email: null, website: "https://cafemodern.nl/menu", image_url: "https://img.test/a.jpg", source_url: null, created_by: 1, created_at: "", updated_at: "", avg_rating: null, rating_count: 0 };
 
 describe("poiWebsiteHost", () => {
   it("returns the bare host for a valid website", () => {
