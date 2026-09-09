@@ -225,9 +225,15 @@ def _drop_removed_trip_columns(engine) -> None:
 
     There is no migrations framework, and `create_all` never *removes* anything,
     so columns and tables belonging to a deleted feature would linger forever.
-    Nothing reads them, so every step here is best-effort: a failure (an ancient
-    SQLite without ALTER TABLE ... DROP COLUMN, say) is logged and the leftover
-    stays behind harmlessly rather than blocking startup.
+    Nothing reads them, so every step here is best-effort: a failure is logged
+    rather than blocking startup. That is genuinely harmless for the retired
+    account and the tombstone table, but NOT for the column drops below: five
+    of the removed columns (poi.trip_sync_status, category.trip_sync_status,
+    settings.trip_sync_enabled, settings.trip_sync_interval_seconds,
+    settings.trip_conflict_policy) are NOT NULL with no server default, so on
+    a SQLite older than 3.35 (which lacks ALTER TABLE ... DROP COLUMN) the
+    leftover column survives and every subsequent INSERT into that table
+    fails.
     """
     inspector = inspect(engine)
     existing = set(inspector.get_table_names())
@@ -258,7 +264,12 @@ def _drop_removed_trip_columns(engine) -> None:
                     conn.execute(text(f'ALTER TABLE "{table}" DROP COLUMN "{column}"'))
                 logger.info("Dropped removed column %s.%s", table, column)
             except Exception as exc:  # pragma: no cover - defensive
-                logger.warning("Could not drop column %s.%s: %s", table, column, exc)
+                logger.error(
+                    "Could not drop column %s.%s: %s. This column is NOT NULL with no "
+                    "default, so inserts into %s will now fail. SQLite 3.35 or newer "
+                    "is required to drop columns.",
+                    table, column, exc, table,
+                )
 
 
 def init_db() -> None:
