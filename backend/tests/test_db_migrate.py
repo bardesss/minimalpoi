@@ -159,7 +159,7 @@ def test_init_db_purges_the_trip_sync_schema(data_dir):
     placeholder."""
     from sqlmodel import Session, select
     from app import db
-    from app.models import POI, DELETED_USERNAME, User
+    from app.models import POI, Comment, DELETED_USERNAME, User
 
     db.reset_engine()
     db.init_db()
@@ -169,7 +169,15 @@ def test_init_db_purges_the_trip_sync_schema(data_dir):
         session.add(ghost)
         session.commit()
         session.refresh(ghost)
-        session.add(POI(name="Imported place", lat=1.0, lng=2.0, created_by=ghost.id))
+        poi = POI(name="Imported place", lat=1.0, lng=2.0, created_by=ghost.id)
+        session.add(poi)
+        session.commit()
+        session.refresh(poi)
+        # A row on a table with ondelete="CASCADE" (Comment.user_id): Postgres
+        # would drop this on its own when the ghost account is deleted, but
+        # SQLite never enforces that cascade, so the purge must delete it
+        # explicitly — same as delete_user does for a real account.
+        session.add(Comment(poi_id=poi.id, user_id=ghost.id, text="synced note"))
         session.commit()
     assert _trip_columns(db.engine, "settings")
     assert "tombstone" in set(inspect(db.engine).get_table_names())
@@ -184,6 +192,7 @@ def test_init_db_purges_the_trip_sync_schema(data_dir):
         placeholder = session.exec(select(User).where(User.username == DELETED_USERNAME)).first()
         poi = session.exec(select(POI).where(POI.name == "Imported place")).first()
         assert poi is not None and poi.created_by == placeholder.id
+        assert session.exec(select(Comment).where(Comment.text == "synced note")).first() is None
 
     db.init_db()  # a second restart — must still be a no-op after a real purge
 
@@ -194,6 +203,7 @@ def test_init_db_purges_the_trip_sync_schema(data_dir):
         assert session.exec(select(User).where(User.username == "__trip_sync__")).first() is None
         poi = session.exec(select(POI).where(POI.name == "Imported place")).first()
         assert poi is not None and poi.created_by == placeholder.id
+        assert session.exec(select(Comment).where(Comment.text == "synced note")).first() is None
     db.reset_engine()
 
 
