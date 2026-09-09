@@ -209,8 +209,10 @@ def test_restore_loads_an_archive_into_a_fresh_instance(client):
 
 def test_restore_ignores_fields_removed_from_the_model(data_dir):
     """A pre-v4 archive carries trip_* keys and a tombstones section. Both are
-    gone from the models now, and the archive must still restore rather than
-    fail on an unknown field."""
+    gone from _TABLES now, so restore_backup never even looks at those sections
+    — they are not in scope for restoration. This test verifies that the archive
+    can still restore (trip_* fields on POIs/Categories are silently accepted),
+    and that tombstones was not accidentally re-added to _TABLES."""
     from sqlmodel import Session, select
     from app import db
     from app.backup import restore_backup
@@ -234,7 +236,7 @@ def test_restore_ignores_fields_removed_from_the_model(data_dir):
     with Session(db.engine) as session:
         counts = restore_backup(session, data)
 
-    assert "tombstones" not in counts  # the section is ignored, not restored
+    assert "tombstones" not in counts  # guard against tombstones being re-added to _TABLES
     with Session(db.engine) as session:
         assert session.exec(select(POI)).first().name == "Cafe"
         assert session.exec(select(Category)).first().name == "Parks"
