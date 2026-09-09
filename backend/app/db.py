@@ -271,6 +271,24 @@ def _drop_removed_trip_columns(engine) -> None:
                     table, column, exc, table,
                 )
 
+    # Last, and Postgres-only: SQLModel mapped the old SyncStatus enum to a
+    # native `syncstatus` type, which DROP COLUMN leaves behind. It can only go
+    # once no column uses it, hence after the loop above. SQLite has no native
+    # enum types, so there is nothing to drop there. A leftover type really is
+    # harmless — it would only collide if an identically named enum were ever
+    # reintroduced — so this one warns rather than errors on failure.
+    if engine.dialect.name == "postgresql":
+        try:
+            with engine.begin() as conn:
+                found = conn.execute(
+                    text("SELECT 1 FROM pg_type WHERE typname = 'syncstatus'")
+                ).first()
+                conn.execute(text("DROP TYPE IF EXISTS syncstatus"))
+            if found is not None:
+                logger.info("Dropped the syncstatus enum type left by TRIP sync")
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Could not drop the syncstatus enum type: %s", exc)
+
 
 def init_db() -> None:
     if engine is None:

@@ -60,14 +60,20 @@ jobs:
       # setup also runs create_all + _add_missing_columns and copies boolean
       # columns on real Postgres), the ON DELETE FK map (test_fk_ondelete), and
       # the delete-flow behaviour that map produces end-to-end against real
-      # enforced foreign keys (test_postgres_delete_flows). The full app suite is
-      # NOT run here: many pre-existing tests assume SQLite's non-enforcement of
-      # foreign keys (they insert rows with dangling created_by FKs) and an empty
-      # shared database, so they can't pass unmodified against a single Postgres
-      # instance. Widening this job to the whole suite is a separate follow-up
-      # (FK-satisfying fixtures + universal per-test isolation).
+      # enforced foreign keys (test_postgres_delete_flows). Plus the two TRIP
+      # purge tests from test_db_migrate.py, by node id rather than by file:
+      # that module's other tests build their own `sqlite:///` engines and would
+      # be meaningless (or fail) here, while these two are the branch's most
+      # destructive path and only Postgres has both enforced foreign keys — the
+      # reason `_retire_sync_account` reassigns before it deletes — and the
+      # native `syncstatus` enum type the purge has to drop. The full app suite
+      # is NOT run here: many pre-existing tests assume SQLite's non-enforcement
+      # of foreign keys (they insert rows with dangling created_by FKs) and an
+      # empty shared database, so they can't pass unmodified against a single
+      # Postgres instance. Widening this job to the whole suite is a separate
+      # follow-up (FK-satisfying fixtures + universal per-test isolation).
       - name: Run dialect + delete-flow tests against Postgres
-        run: uv run --frozen python -m pytest -v tests/test_db_engine.py tests/test_migrate_sqlite_to_postgres.py tests/test_fk_ondelete.py tests/test_postgres_delete_flows.py
+        run: uv run --frozen python -m pytest -v tests/test_db_engine.py tests/test_migrate_sqlite_to_postgres.py tests/test_fk_ondelete.py tests/test_postgres_delete_flows.py tests/test_db_migrate.py::test_init_db_purges_the_trip_sync_schema tests/test_db_migrate.py::test_trip_purge_is_a_no_op_on_a_clean_database
   frontend-tests:
     runs-on: ubuntu-latest
     defaults:
