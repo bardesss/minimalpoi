@@ -3,7 +3,6 @@ import { useAuth } from "../auth/AuthContext";
 import { theme } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 import { useDialog } from "../lib/useDialog";
-import { useFullSettings } from "../queries/hooks";
 import AboutSection from "./settings/AboutSection";
 import ApiTokensSection from "./settings/ApiTokensSection";
 import CategoriesSection from "./settings/CategoriesSection";
@@ -41,9 +40,6 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
   const isMobile = useIsMobile();
   const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose);
   const isAdmin = user?.role === "admin";
-  // Full settings only exist for admins; gate the fetch so members don't 403.
-  // Prefetch here so ConnectionsSection doesn't show a loading state when opened.
-  useFullSettings(isAdmin);
   const visible = SECTIONS.filter(
     (s) => !s.adminOnly || isAdmin
   );
