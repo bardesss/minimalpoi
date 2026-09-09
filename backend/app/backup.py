@@ -74,6 +74,10 @@ def _coerce(annotation, value):
 
 
 def _build_row(model, d: dict):
+    # Keys the model no longer defines (a pre-v4 archive's trip_* columns, say)
+    # are accepted and ignored: SQLModel's table models skip validation and
+    # never set an unmapped attribute. Older archives therefore still restore —
+    # test_restore_ignores_fields_removed_from_the_model pins that.
     fields = model.model_fields
     return model(**{k: _coerce(fields[k].annotation, v) if k in fields else v for k, v in d.items()})
 

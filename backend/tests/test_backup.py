@@ -205,3 +205,37 @@ def test_restore_loads_an_archive_into_a_fresh_instance(client):
         assert s.get(POI, 9).name == "Vondel"
         assert s.get(Category, 3).name == "Parks"
     assert (images_dir() / "v.webp").is_file()
+
+
+def test_restore_ignores_fields_removed_from_the_model(data_dir):
+    """A pre-v4 archive carries trip_* keys and a tombstones section. Both are
+    gone from the models now, and the archive must still restore rather than
+    fail on an unknown field."""
+    from sqlmodel import Session, select
+    from app import db
+    from app.backup import restore_backup
+    from app.models import POI, Category
+
+    db.reset_engine()
+    db.init_db()
+    data = {
+        "version": 1,
+        "users": [{"id": 1, "username": "admin", "password_hash": "x", "role": "admin"}],
+        "categories": [{"id": 3, "name": "Parks", "color": "#2F9E63", "icon": None, "created_by": 1,
+                        "trip_category_id": 9, "trip_sync_status": "synced",
+                        "trip_synced_snapshot": None, "trip_synced_at": None, "trip_last_error": None}],
+        "pois": [{"id": 5, "name": "Cafe", "lat": 52.37, "lng": 4.9, "created_by": 1, "category_id": 3,
+                  "tags": [], "trip_place_id": 42, "trip_sync_status": "synced",
+                  "trip_synced_snapshot": None, "trip_synced_at": None, "trip_last_error": None}],
+        "tombstones": [{"id": 1, "entity_type": "place", "trip_id": 7, "origin": "local"}],
+        "settings": {"id": 1, "trip_base_url": "https://trip.lan", "trip_sync_enabled": True,
+                     "map_tile_url": "https://tiles.example/style.json"},
+    }
+    with Session(db.engine) as session:
+        counts = restore_backup(session, data)
+
+    assert "tombstones" not in counts  # the section is ignored, not restored
+    with Session(db.engine) as session:
+        assert session.exec(select(POI)).first().name == "Cafe"
+        assert session.exec(select(Category)).first().name == "Parks"
+    db.reset_engine()
