@@ -5,8 +5,8 @@ import type { Category } from "../types/api";
 import Legend from "./Legend";
 
 const cats: Category[] = [
-  { id: 1, name: "Restaurants", color: "#E1574C", icon: null, created_by: 1, trip_category_id: null, trip_sync_status: "s" },
-  { id: 2, name: "Nature", color: "#2F9E63", icon: null, created_by: 1, trip_category_id: null, trip_sync_status: "s" },
+  { id: 1, name: "Restaurants", color: "#E1574C", icon: null, created_by: 1 },
+  { id: 2, name: "Nature", color: "#2F9E63", icon: null, created_by: 1 },
 ];
 
 describe("Legend", () => {
