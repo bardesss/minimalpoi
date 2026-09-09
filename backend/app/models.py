@@ -54,14 +54,6 @@ class TeamMember(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", primary_key=True, ondelete="CASCADE")
 
 
-class SyncStatus(str, Enum):
-    LOCAL_ONLY = "local_only"
-    PENDING = "pending"
-    SYNCED = "synced"
-    CONFLICT = "conflict"
-    ERROR = "error"
-
-
 class Category(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
@@ -69,13 +61,6 @@ class Category(SQLModel, table=True):
     icon: str | None = Field(default=None)  # lucide icon name, MinimalPOI-local
     created_by: int = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=utcnow)
-
-    # TRIP sync state, managed by the sync engine.
-    trip_category_id: int | None = Field(default=None)
-    trip_sync_status: SyncStatus = Field(default=SyncStatus.LOCAL_ONLY)
-    trip_synced_snapshot: dict | None = Field(default=None, sa_column=Column(JSON))
-    trip_synced_at: datetime | None = Field(default=None)
-    trip_last_error: str | None = Field(default=None)
 
 
 class POI(SQLModel, table=True):
@@ -97,12 +82,6 @@ class POI(SQLModel, table=True):
     created_by: int = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
-
-    trip_place_id: int | None = Field(default=None)
-    trip_sync_status: SyncStatus = Field(default=SyncStatus.LOCAL_ONLY)
-    trip_synced_snapshot: dict | None = Field(default=None, sa_column=Column(JSON))
-    trip_synced_at: datetime | None = Field(default=None)
-    trip_last_error: str | None = Field(default=None)
 
 
 class RouteNodeKind(str, Enum):
@@ -194,14 +173,6 @@ class RouteShare(SQLModel, table=True):
     password_hash: str | None = Field(default=None)
 
 
-class Tombstone(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    entity_type: str  # "place" | "category"
-    trip_id: int      # the TRIP id of the deleted place/category
-    origin: str       # "local" | "trip"
-    created_at: datetime = Field(default_factory=utcnow)
-
-
 class Visit(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("poi_id", "user_id", name="uq_visit_poi_user"),)
     id: int | None = Field(default=None, primary_key=True)
@@ -222,12 +193,6 @@ class Comment(SQLModel, table=True):
 
 class Settings(SQLModel, table=True):
     id: int | None = Field(default=1, primary_key=True)
-    trip_base_url: str | None = Field(default=None)
-    trip_username: str | None = Field(default=None)
-    trip_password_enc: str | None = Field(default=None)
-    trip_sync_enabled: bool = Field(default=False)
-    trip_sync_interval_seconds: int = Field(default=300)
-    trip_conflict_policy: str = Field(default="minimalpoi_wins")
     google_api_key_enc: str | None = Field(default=None)
     nominatim_url: str | None = Field(default="https://nominatim.openstreetmap.org")
     map_tile_url: str = Field(
@@ -239,35 +204,19 @@ class Settings(SQLModel, table=True):
     # Set the `Secure` flag on the auth cookie. Default off so the app works
     # over plain HTTP on a LAN / offline; enable when running behind TLS.
     cookie_secure: bool = Field(default=False)
-    # Stamp of the last completed sync run (UTC); surfaced by GET /api/sync/status.
-    trip_last_sync_at: datetime | None = Field(default=None)
     # Opt-in Route module. When false, all /api/routes* endpoints 404 and the
     # client hides the Routes nav. NOT NULL with a scalar default so the
     # additive column backfill (db._add_missing_columns) can add it in place.
     routes_enabled: bool = Field(default=False)
 
 
-SYNC_USERNAME = "__trip_sync__"
-
-
-def sync_system_user(session) -> "User":
-    user = session.exec(select(User).where(User.username == SYNC_USERNAME)).first()
-    if user is None:
-        user = User(username=SYNC_USERNAME, password_hash="!", role=Role.MEMBER, disabled=True)
-        session.add(user)
-        session.commit()
-        session.refresh(user)
-    return user
-
-
 DELETED_USERNAME = "__deleted_user__"
-SYSTEM_USERNAMES = {SYNC_USERNAME, DELETED_USERNAME}
+SYSTEM_USERNAMES = {DELETED_USERNAME}
 
 
 def deleted_placeholder_user(session) -> "User":
     """The stand-in owner for content whose creator was deleted (keeps
-    created_by NOT NULL and the content intact). Disabled, un-loginable —
-    mirrors sync_system_user."""
+    created_by NOT NULL and the content intact). Disabled, un-loginable."""
     user = session.exec(select(User).where(User.username == DELETED_USERNAME)).first()
     if user is None:
         user = User(username=DELETED_USERNAME, password_hash="!", role=Role.MEMBER, disabled=True)

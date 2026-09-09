@@ -41,7 +41,6 @@ def test_poi_crud(client):
     poi = created.json()
     assert poi["name"] == "Café Modern"
     assert poi["tags"] == ["popular"]
-    assert poi["trip_sync_status"] == "local_only"
 
     updated = client.patch(f"/api/pois/{poi['id']}", json={"notes": "great coffee"})
     assert updated.json()["notes"] == "great coffee"
@@ -92,33 +91,6 @@ def test_delete_poi_cascades_children(client):
     with Session(db.engine) as session:
         assert session.exec(select(Visit).where(Visit.poi_id == poi_id)).all() == []
         assert session.exec(select(Comment).where(Comment.poi_id == poi_id)).all() == []
-
-
-def test_delete_synced_poi_writes_tombstone(client):
-    cat_id = _setup(client)
-    poi = client.post(
-        "/api/pois",
-        json={"name": "Synced Place", "lat": 1.0, "lng": 2.0, "category_id": cat_id},
-    ).json()
-
-    # Simulate a synced POI by setting trip_place_id directly in the DB.
-    from sqlmodel import Session, select
-    from app import db
-    from app.models import POI, Tombstone
-    with Session(db.engine) as session:
-        p = session.get(POI, poi["id"])
-        p.trip_place_id = 555
-        session.add(p)
-        session.commit()
-
-    assert client.delete(f"/api/pois/{poi['id']}").status_code == 204
-
-    with Session(db.engine) as session:
-        tombstones = session.exec(select(Tombstone)).all()
-        assert len(tombstones) == 1
-        assert tombstones[0].entity_type == "place"
-        assert tombstones[0].trip_id == 555
-        assert tombstones[0].origin == "local"
 
 
 def test_list_pois_includes_average_rating(client):

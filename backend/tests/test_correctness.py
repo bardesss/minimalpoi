@@ -110,17 +110,3 @@ def test_restore_does_not_wipe_on_malformed_row(data_dir):
     # The existing POI is still there — the destructive delete never ran.
     with Session(db.engine) as s:
         assert s.exec(select(POI)).first().name == "Keep"
-
-
-def test_backup_includes_tombstones(data_dir):
-    from app import backup, db
-    from app.models import Tombstone
-
-    db.reset_engine()
-    db.init_db()
-    with Session(db.engine) as s:
-        s.add(Tombstone(entity_type="place", trip_id=7, origin="local"))
-        s.commit()
-        data = backup.build_backup(s)
-    assert "tombstones" in data
-    assert data["tombstones"][0]["trip_id"] == 7
