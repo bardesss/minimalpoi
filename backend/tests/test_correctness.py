@@ -1,6 +1,4 @@
 """Backend correctness fixes (audit batch 3)."""
-from datetime import datetime, timezone
-
 import pytest
 from sqlmodel import Session, select
 
@@ -24,31 +22,6 @@ def test_find_duplicate_keeps_distinct_non_latin_names(data_dir):
         assert find_duplicate(s, "Ресторан", 52.0, 4.0, None) is None
         # The same name still matches.
         assert find_duplicate(s, "Кафе", 52.0001, 4.0001, None) is not None
-
-
-# ── sync: tz-naive vs tz-aware datetime comparison ───────────────────────────
-
-def test_local_changed_handles_naive_and_aware():
-    from app.trip.snapshot import local_changed
-
-    aware = datetime(2026, 1, 2, tzinfo=timezone.utc)
-    naive = datetime(2026, 1, 1)
-    assert local_changed(aware, naive) is True   # no TypeError
-    assert local_changed(naive, aware) is False
-
-
-# ── sync: applying a snapshot must not null out required columns ──────────────
-
-def test_apply_place_snapshot_keeps_required_fields_when_snapshot_null():
-    from app.trip.resolve import apply_place_snapshot
-
-    class P:
-        pass
-
-    poi = P()
-    poi.name, poi.lat, poi.lng = "Orig", 1.0, 2.0
-    apply_place_snapshot(poi, {"name": None, "lat": None, "lng": None, "links": []}, None)
-    assert poi.name == "Orig" and poi.lat == 1.0 and poi.lng == 2.0
 
 
 # ── reconcile: a TRIP place with null coords must not crash the pass ──────────

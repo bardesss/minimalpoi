@@ -55,6 +55,5 @@ GOOGLE_LIMIT = "30/minute"         # paid Places API — denial-of-wallet
 ENRICH_LIMIT = "20/minute"         # outbound fetch amplification
 UPLOAD_LIMIT = "60/minute"         # disk exhaustion
 IMPORT_LIMIT = "10/minute"         # bulk CPU/disk
-SYNC_LIMIT = "1 per 30 seconds"    # hammering the TRIP API
 WRITE_LIMIT = "60/minute"          # row-spam on create endpoints
 PUBLIC_LIMIT = "60/minute"         # unauthenticated share-link scraping/guessing
