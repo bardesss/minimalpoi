@@ -31,6 +31,22 @@ describe("ConnectionsSection", () => {
     expect(await screen.findByText(/connections saved/i)).toBeInTheDocument(); // save feedback
   });
 
+  it("does not send the google api key when it is left untouched", async () => {
+    let patched: Record<string, unknown> | null = null;
+    server.use(
+      http.get("/api/settings", () => HttpResponse.json(FULL)),
+      http.patch("/api/settings", async ({ request }) => {
+        patched = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(FULL);
+      }),
+    );
+    renderWithProviders(<ConnectionsSection />);
+    await screen.findByDisplayValue("https://nom.example");
+    await userEvent.click(screen.getByRole("button", { name: /save connections/i }));
+    await waitFor(() => expect(patched).not.toBeNull());
+    expect(patched).not.toHaveProperty("google_api_key");
+  });
+
   it("shows an error toast when the save fails", async () => {
     server.use(
       http.get("/api/settings", () => HttpResponse.json(FULL)),
