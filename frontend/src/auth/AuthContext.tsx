@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { ApiError, setUnauthorizedHandler } from "../api/client";
+import { SessionNotPersistedError } from "./errors";
 import { getMe, login as loginRequest, logout as logoutRequest } from "../api/auth";
 import type { UserRead } from "../types/api";
 
@@ -47,7 +48,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (username: string, password: string) => {
-    setUser(await loginRequest(username, password));
+    const loggedIn = await loginRequest(username, password);
+    // A 200 from the login endpoint doesn't prove a session exists — it proves
+    // the credentials were right. The cookie carrying that session can still be
+    // discarded by the browser (a Secure cookie on a plain-HTTP origin is), and
+    // trusting the response body alone is what renders a signed-in shell whose
+    // every request is anonymous. Read the session back before claiming it.
+    try {
+      await getMe();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) throw new SessionNotPersistedError();
+      throw err;
+    }
+    setUser(loggedIn);
   };
 
   const signOut = async () => {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
@@ -50,5 +50,55 @@ describe("MapSection", () => {
     await userEvent.click(screen.getByRole("button", { name: /save map settings/i }));
     await waitFor(() => expect(patched).not.toBeNull());
     expect(patched).toHaveProperty("routes_enabled", true);
+  });
+
+  describe("enabling secure cookies", () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    function stubSettings() {
+      let patched: Record<string, unknown> | null = null;
+      server.use(
+        http.get("/api/settings", () => HttpResponse.json(FULL)),
+        http.patch("/api/settings", async ({ request }) => {
+          patched = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ ...FULL, cookie_secure: true });
+        }),
+      );
+      return () => patched;
+    }
+
+    // jsdom serves the page over http://localhost, which is exactly the origin
+    // where a Secure cookie would be discarded and lock the admin out.
+    it("asks for confirmation before turning it on over plain HTTP", async () => {
+      const patched = stubSettings();
+      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+      renderWithProviders(<MapSection />);
+      const toggle = await screen.findByRole("checkbox", { name: /secure cookie/i });
+      await userEvent.click(toggle);
+      await userEvent.click(screen.getByRole("button", { name: /save map settings/i }));
+      await waitFor(() => expect(confirmSpy).toHaveBeenCalledTimes(1));
+      expect(confirmSpy.mock.calls[0][0]).toMatch(/https/i);
+      expect(patched()).toBeNull();
+    });
+
+    it("saves once the warning is accepted", async () => {
+      const patched = stubSettings();
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      renderWithProviders(<MapSection />);
+      await userEvent.click(await screen.findByRole("checkbox", { name: /secure cookie/i }));
+      await userEvent.click(screen.getByRole("button", { name: /save map settings/i }));
+      await waitFor(() => expect(patched()).not.toBeNull());
+      expect(patched()).toHaveProperty("cookie_secure", true);
+    });
+
+    it("stays out of the way when the setting is not being turned on", async () => {
+      const patched = stubSettings();
+      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+      renderWithProviders(<MapSection />);
+      await userEvent.click(await screen.findByRole("checkbox", { name: /route planner/i }));
+      await userEvent.click(screen.getByRole("button", { name: /save map settings/i }));
+      await waitFor(() => expect(patched()).not.toBeNull());
+      expect(confirmSpy).not.toHaveBeenCalled();
+    });
   });
 });
