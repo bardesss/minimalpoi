@@ -30,6 +30,18 @@ export default function MapSection() {
   if (!s) return <p style={{ fontSize: 13, color: theme.color.textSecondary }}>Loading…</p>;
 
   async function submit() {
+    // Turning this on from a page that isn't HTTPS sets a cookie the browser
+    // will discard, signing the admin out on the next request — and the toggle
+    // that undoes it lives behind that login. Warn before it happens.
+    if (cookieSecure && !settings.data?.cookie_secure && window.location.protocol !== "https:") {
+      const proceed = confirm(
+        "Enable secure cookies? You are not on an https:// page, so the login cookie " +
+        "will be rejected and you will be signed out — and this setting can only be " +
+        "turned off again from inside the app. Only continue if you normally reach " +
+        "MinimalPOI over HTTPS.",
+      );
+      if (!proceed) return;
+    }
     const patch: SettingsUpdate = {
       map_tile_url: tileUrl.trim(),
       cookie_secure: cookieSecure,
