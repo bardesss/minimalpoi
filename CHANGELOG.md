@@ -1,5 +1,15 @@
 # Changelog
 
+## [4.0.1](https://github.com/bardesss/minimalpoi/compare/v4.0.0...v4.0.1) (2026-09-20)
+
+
+### Bug Fixes
+
+* **frontend:** detect a login whose session cookie was dropped ([f4fa4fe](https://github.com/bardesss/minimalpoi/commit/f4fa4fed29b2ea1ea35641d3d9071d7da9e74bed))
+* **frontend:** detect a login whose session cookie was dropped ([3a34d82](https://github.com/bardesss/minimalpoi/commit/3a34d82401e37afa2611423a82042c03c7f669a9))
+* **frontend:** end the session when an authenticated request 401s ([67bd2dd](https://github.com/bardesss/minimalpoi/commit/67bd2dd1c1e4b1b885c5ba0582feb0ea6946b77a))
+* **frontend:** end the session when an authenticated request 401s ([2a34ca6](https://github.com/bardesss/minimalpoi/commit/2a34ca69f96d9571f4a4ceaeed4fb0054c66fcff))
+
 ## [4.0.0](https://github.com/bardesss/minimalpoi/compare/v3.13.3...v4.0.0) (2026-09-09)
 
 
