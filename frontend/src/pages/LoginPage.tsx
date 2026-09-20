@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { SessionNotPersistedError, sessionNotPersistedMessage } from "../auth/errors";
 import { AuthCard, AuthField } from "../components/AuthCard";
 
 export default function LoginPage() {
@@ -18,7 +19,11 @@ export default function LoginPage() {
       await signIn(username, password);
       navigate("/", { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Login failed");
+      if (err instanceof SessionNotPersistedError) {
+        setError(sessionNotPersistedMessage(window.location.protocol));
+      } else {
+        setError(err instanceof ApiError ? err.message : "Login failed");
+      }
     }
   }
 
