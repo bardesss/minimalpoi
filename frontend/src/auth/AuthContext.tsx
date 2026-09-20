@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { ApiError } from "../api/client";
+import { ApiError, setUnauthorizedHandler } from "../api/client";
 import { getMe, login as loginRequest, logout as logoutRequest } from "../api/auth";
 import type { UserRead } from "../types/api";
 
@@ -36,6 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
+  }, []);
+
+  // A 401 from any authenticated endpoint means the session is gone, whatever
+  // the UI still believes. Drop the user so RequireAuth sends them to the login
+  // page, instead of rendering a signed-in shell whose every query fails.
+  useEffect(() => {
+    setUnauthorizedHandler(() => setUser(null));
+    return () => setUnauthorizedHandler(null);
   }, []);
 
   const signIn = async (username: string, password: string) => {
