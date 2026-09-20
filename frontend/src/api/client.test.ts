@@ -1,7 +1,10 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { apiFetch, fetchBlob } from "./client";
+import { apiFetch, fetchBlob, setUnauthorizedHandler } from "./client";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  setUnauthorizedHandler(null);
+});
 
 function mockFetch(status: number, body: unknown) {
   vi.stubGlobal(
@@ -62,4 +65,44 @@ test("fetchBlob throws ApiError and extracts JSON detail on error", async () => 
     status: 403,
     message: "Export disabled",
   });
+});
+
+test("a 401 on a data endpoint notifies the unauthorized handler", async () => {
+  const onUnauthorized = vi.fn();
+  setUnauthorizedHandler(onUnauthorized);
+  mockFetch(401, { detail: "Not authenticated" });
+  await expect(apiFetch("/api/pois")).rejects.toMatchObject({ status: 401 });
+  expect(onUnauthorized).toHaveBeenCalledTimes(1);
+});
+
+test("a 401 on an auth endpoint does not notify — a bad password is not a dead session", async () => {
+  const onUnauthorized = vi.fn();
+  setUnauthorizedHandler(onUnauthorized);
+  mockFetch(401, { detail: "Invalid credentials" });
+  await expect(apiFetch("/api/auth/login", { method: "POST" })).rejects.toMatchObject({ status: 401 });
+  expect(onUnauthorized).not.toHaveBeenCalled();
+});
+
+test("a 401 on a public share link does not notify — a visitor has no session to end", async () => {
+  const onUnauthorized = vi.fn();
+  setUnauthorizedHandler(onUnauthorized);
+  mockFetch(401, { detail: "Wrong password" });
+  await expect(apiFetch("/api/public/routes/abc/unlock", { method: "POST" })).rejects.toMatchObject({ status: 401 });
+  expect(onUnauthorized).not.toHaveBeenCalled();
+});
+
+test("a non-401 error does not notify the unauthorized handler", async () => {
+  const onUnauthorized = vi.fn();
+  setUnauthorizedHandler(onUnauthorized);
+  mockFetch(500, { detail: "Boom" });
+  await expect(apiFetch("/api/pois")).rejects.toMatchObject({ status: 500 });
+  expect(onUnauthorized).not.toHaveBeenCalled();
+});
+
+test("fetchBlob shares the unauthorized path", async () => {
+  const onUnauthorized = vi.fn();
+  setUnauthorizedHandler(onUnauthorized);
+  mockFetch(401, { detail: "Not authenticated" });
+  await expect(fetchBlob("/api/backup")).rejects.toMatchObject({ status: 401 });
+  expect(onUnauthorized).toHaveBeenCalledTimes(1);
 });

@@ -3,6 +3,7 @@ import { http, HttpResponse } from "msw";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { server } from "../test/msw";
+import { apiFetch } from "../api/client";
 import { AuthProvider, useAuth } from "./AuthContext";
 
 function Probe() {
@@ -52,5 +53,30 @@ test("signIn then signOut updates the user", async () => {
   await userEvent.click(screen.getByRole("button", { name: "sign in" }));
   await waitFor(() => expect(screen.getByText("user: ada")).toBeInTheDocument());
   await userEvent.click(screen.getByRole("button", { name: "sign out" }));
+  await waitFor(() => expect(screen.getByText("user: none")).toBeInTheDocument());
+});
+
+function DataProbe() {
+  const { user, loading } = useAuth();
+  if (loading) return <p>loading</p>;
+  return (
+    <div>
+      <p>user: {user ? user.username : "none"}</p>
+      <button onClick={() => void apiFetch("/api/pois").catch(() => {})}>load places</button>
+    </div>
+  );
+}
+
+test("a 401 from a data endpoint ends the session rather than leaving a signed-in shell", async () => {
+  server.use(
+    http.get("/api/pois", () => HttpResponse.json({ detail: "Not authenticated" }, { status: 401 })),
+  );
+  render(
+    <AuthProvider>
+      <DataProbe />
+    </AuthProvider>,
+  );
+  await waitFor(() => expect(screen.getByText("user: admin")).toBeInTheDocument());
+  await userEvent.click(screen.getByRole("button", { name: "load places" }));
   await waitFor(() => expect(screen.getByText("user: none")).toBeInTheDocument());
 });
