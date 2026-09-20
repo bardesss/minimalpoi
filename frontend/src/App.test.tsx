@@ -40,9 +40,21 @@ test("redirects to setup on first run", async () => {
 });
 
 test("after first-run setup, lands on the app (not bounced back to setup)", async () => {
+  // /me has to follow the session the setup+login actually creates: a server
+  // that answers 401 forever while accepting the login is the dropped-cookie
+  // fault, which signIn now refuses to paper over.
+  let signedIn = false;
   server.use(
     http.get("/api/auth/setup-status", () => HttpResponse.json({ needs_setup: true })),
-    http.get("/api/auth/me", () => HttpResponse.json({ detail: "Not authenticated" }, { status: 401 })),
+    http.get("/api/auth/me", () =>
+      signedIn
+        ? HttpResponse.json({ id: 1, username: "admin", role: "admin" })
+        : HttpResponse.json({ detail: "Not authenticated" }, { status: 401 }),
+    ),
+    http.post("/api/auth/login", () => {
+      signedIn = true;
+      return HttpResponse.json({ id: 1, username: "admin", role: "admin" });
+    }),
   );
   renderApp("/setup");
   await screen.findByRole("heading", { name: "Create the admin account" });
