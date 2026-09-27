@@ -1,6 +1,6 @@
 // frontend/src/components/Sidebar/PoiCard.test.tsx
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Category, Poi } from "../../types/api";
 import PoiCard from "./PoiCard";
@@ -48,5 +48,21 @@ describe("PoiCard", () => {
   it("omits the visited badge when not visited", () => {
     render(<PoiCard poi={poi} category={cat} selected={false} onSelect={() => {}} />);
     expect(screen.queryByLabelText(/visited/i)).not.toBeInTheDocument();
+  });
+
+  it("marks the selected card with aria-current", () => {
+    render(<PoiCard poi={poi} category={undefined} selected onSelect={() => {}} />);
+    expect(screen.getByRole("button")).toHaveAttribute("aria-current", "true");
+  });
+
+  it("reports hover and focus in and out", async () => {
+    const onHover = vi.fn();
+    render(<PoiCard poi={poi} category={undefined} selected={false} onSelect={() => {}} onHover={onHover} />);
+    const card = screen.getByRole("button");
+    fireEvent.mouseEnter(card);
+    fireEvent.mouseLeave(card);
+    fireEvent.focus(card);
+    fireEvent.blur(card);
+    expect(onHover.mock.calls).toEqual([[poi.id], [null], [poi.id], [null]]);
   });
 });
