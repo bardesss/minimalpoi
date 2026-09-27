@@ -24,7 +24,7 @@ from pathlib import Path
 from sqlmodel import Session, select
 
 from .enrich.images import UnsupportedImageError, images_dir, process_image
-from .models import POI, Category, Comment, Settings, Team, TeamMember, User, Visit, utcnow
+from .models import POI, Category, Comment, Settings, Team, TeamMember, User, Visit, as_utc, utcnow
 
 BACKUP_VERSION = 1
 
@@ -67,7 +67,7 @@ def _coerce(annotation, value):
     candidates = [a for a in args if a is not type(None)] if args else [annotation]
     for t in candidates:
         if isinstance(t, type) and issubclass(t, datetime):
-            return datetime.fromisoformat(value)
+            return as_utc(datetime.fromisoformat(value))
         if isinstance(t, type) and issubclass(t, enum.Enum):
             return t(value)
     return value
