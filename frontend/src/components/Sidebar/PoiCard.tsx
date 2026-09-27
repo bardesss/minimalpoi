@@ -3,6 +3,7 @@ import type { Category, Poi } from "../../types/api";
 import { theme, tintFromColor } from "../../theme";
 import { safeImageCss } from "../../lib/safeUrl";
 import { cityFromAddress, countryCodeFromAddress } from "../../lib/country";
+import { CategoryIcon } from "../../lib/categoryIcon";
 import Flag from "../Flag";
 
 
@@ -52,13 +53,19 @@ function PoiCard({
       }}
     >
       <div
+        data-testid="card-band"
         style={{
-          height: 78,
+          height: thumb ? 78 : 44,
           background: thumb ? `center/cover no-repeat url("${thumb}"), ${tint}` : tint,
           position: "relative",
         }}
       >
         <span style={{ position: "absolute", left: 8, top: 8, width: 18, height: 18, borderRadius: "50%", background: color, border: "2px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,.3)" }} />
+        {!thumb && (
+          <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", display: "inline-flex" }}>
+            <CategoryIcon name={category?.icon ?? null} size={18} color={color} />
+          </span>
+        )}
         {visited && (
           <span
             aria-label="Visited by you"
@@ -71,7 +78,7 @@ function PoiCard({
         {poi.avg_rating != null && (
           <span
             aria-label={`Average rating ${poi.avg_rating.toFixed(1)} from ${poi.rating_count} ${poi.rating_count === 1 ? "rating" : "ratings"}`}
-            style={{ position: "absolute", right: 8, top: 8, display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 999, background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: 1.4 }}
+            style={{ position: "absolute", right: thumb ? 8 : 36, top: 8, display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 999, background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: 1.4 }}
           >
             <span aria-hidden style={{ color: theme.color.starActive }}>★</span>
             {poi.avg_rating.toFixed(1)}

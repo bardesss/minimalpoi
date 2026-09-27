@@ -69,6 +69,7 @@ export default function SidebarContent(props: SidebarContentProps) {
       />
       {!props.mobile && <ListToolbar {...filterProps} count={props.pois.length} />}
       <PoiList
+        key={props.density}
         pois={props.pois}
         categoriesById={props.categoriesById}
         myVisitedPoiIds={props.myVisitedPoiIds}
@@ -78,6 +79,7 @@ export default function SidebarContent(props: SidebarContentProps) {
         isError={props.isError}
         onRetry={props.onRetry}
         onHover={props.onHover}
+        density={props.density}
       />
     </>
   );

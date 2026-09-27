@@ -96,4 +96,15 @@ describe("PoiList", () => {
     render(<PoiList pois={[base, { ...base, id: 2, name: "B" }]} categoriesById={{}} myVisitedPoiIds={new Set([2])} selectedId={null} onSelect={() => {}} isLoading={false} isError={false} onRetry={() => {}} />);
     expect(screen.getAllByLabelText(/visited/i)).toHaveLength(1);
   });
+
+  it("renders compact rows in a single column for the list density", () => {
+    const pois = [base, { ...base, id: 2, name: "B" }, { ...base, id: 3, name: "C" }];
+    render(
+      <PoiList pois={pois} categoriesById={{}} myVisitedPoiIds={new Set()} selectedId={3} onSelect={() => {}} isLoading={false} isError={false} onRetry={() => {}} density="list" />,
+    );
+    // one place per row → 3 rows; selected id 3 is row index 2
+    expect(useVirtualizerMock).toHaveBeenLastCalledWith(expect.objectContaining({ count: 3 }));
+    expect(scrollToIndex).toHaveBeenCalledWith(2, expect.objectContaining({ align: "auto" }));
+    expect(screen.getByRole("button", { name: /^B/ }).style.minHeight).toBe("48px");
+  });
 });

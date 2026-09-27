@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Category, Poi } from "../../types/api";
+import type { ListDensity } from "../../lib/listDensityPref";
 import { theme } from "../../theme";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import PoiCard from "./PoiCard";
+import PoiRow from "./PoiRow";
 
 /** Estimated row height (card + gap) used to seed the virtualizer before rows
  * are actually measured. Cards have a slightly variable height (rating badge,
@@ -21,6 +23,7 @@ export default function PoiList({
   onRetry,
   myVisitedPoiIds,
   onHover,
+  density = "cards",
 }: {
   pois: Poi[];
   categoriesById: Record<number, Category>;
@@ -31,17 +34,19 @@ export default function PoiList({
   onRetry: () => void;
   myVisitedPoiIds: Set<number>;
   onHover?: (id: number | null) => void;
+  density?: ListDensity;
 }) {
   const parentRef = useRef<HTMLDivElement | null>(null);
-  // 3 columns only on very wide screens; 2 otherwise.
+  // 3 columns only on very wide screens; 2 otherwise. The "List" density is
+  // always a single column of compact rows.
   const wide = useMediaQuery("(min-width: 1600px)");
-  const cols = wide ? 3 : 2;
+  const cols = density === "list" ? 1 : wide ? 3 : 2;
   const rowCount = Math.ceil(pois.length / cols);
 
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => ESTIMATED_ROW_HEIGHT,
+    estimateSize: () => (density === "list" ? 58 : ESTIMATED_ROW_HEIGHT),
     overscan: 6,
   });
 
@@ -102,13 +107,17 @@ export default function PoiList({
                 transform: `translateY(${vr.start}px)`,
                 display: "grid",
                 gridTemplateColumns: `repeat(${cols}, 1fr)`,
-                gap: 10,
-                paddingBottom: 10,
+                gap: density === "list" ? 6 : 10,
+                paddingBottom: density === "list" ? 6 : 10,
               }}
             >
-              {rowPois.map((p) => (
-                <PoiCard key={p.id} poi={p} category={p.category_id != null ? categoriesById[p.category_id] : undefined} selected={p.id === selectedId} onSelect={onSelect} visited={myVisitedPoiIds.has(p.id)} onHover={onHover} />
-              ))}
+              {rowPois.map((p) =>
+                density === "list" ? (
+                  <PoiRow key={p.id} poi={p} category={p.category_id != null ? categoriesById[p.category_id] : undefined} selected={p.id === selectedId} onSelect={onSelect} visited={myVisitedPoiIds.has(p.id)} onHover={onHover} />
+                ) : (
+                  <PoiCard key={p.id} poi={p} category={p.category_id != null ? categoriesById[p.category_id] : undefined} selected={p.id === selectedId} onSelect={onSelect} visited={myVisitedPoiIds.has(p.id)} onHover={onHover} />
+                ),
+              )}
             </div>
           );
         })}
