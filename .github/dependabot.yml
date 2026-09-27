@@ -36,6 +36,12 @@ updates:
       # before the plugin catches up. Revisit when typescript-eslint lifts it.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # jsdom 30.1 moved its wrapper-to-impl mapping into a private registry,
+      # which breaks vitest's jsdom fetch shim (it reads the Blob impl's bytes
+      # through that mapping), so FormData uploads throw under msw. Held at
+      # 30.0.x (package.json pins ~30.0.1); lift once vitest supports 30.1.
+      - dependency-name: "jsdom"
+        versions: [">=30.1.0"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
