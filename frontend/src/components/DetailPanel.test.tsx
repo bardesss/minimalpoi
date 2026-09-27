@@ -28,13 +28,30 @@ describe("DetailPanel", () => {
     expect(dangerousLink).toBeUndefined();
   });
 
-  it("requires a second click to confirm delete", async () => {
+  it("deletes via the More actions menu with a confirmation", async () => {
     const onDelete = vi.fn();
     renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={onDelete} />);
-    await userEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /more actions/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /delete place/i }));
     expect(onDelete).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("button", { name: /confirm delete/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^delete$/i }));
     expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the place action row", () => {
+    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+    expect(screen.getByRole("group", { name: /place actions/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /directions/i })).toBeInTheDocument();
+  });
+
+  it("uses a compact 72px band with the category icon when there is no photo", () => {
+    renderWithProviders(<DetailPanel poi={{ ...poi, image_url: null }} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+    expect(screen.getByTestId("detail-hero").style.height).toBe("72px");
+  });
+
+  it("uses the tall hero when there is a photo", () => {
+    renderWithProviders(<DetailPanel poi={{ ...poi, image_url: "https://img.example/a.jpg" }} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+    expect(screen.getByTestId("detail-hero").style.height).toBe("208px");
   });
 
   it("fires onEdit", async () => {

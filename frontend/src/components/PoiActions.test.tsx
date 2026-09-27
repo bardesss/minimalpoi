@@ -54,6 +54,17 @@ describe("PoiActions — no review yet", () => {
     expect(await screen.findByRole("button", { name: /save review/i })).toBeDisabled();
   });
 
+  it("gives each rating star a 44px hit area", async () => {
+    server.use(
+      http.get("/api/pois/1/visits", () => HttpResponse.json([])),
+      http.get("/api/pois/1/comments", () => HttpResponse.json([])),
+    );
+    renderWithProviders(<PoiActions poiId={1} />);
+    const star = await screen.findByRole("button", { name: "Rate 1" });
+    expect(star.style.minWidth).toBe("44px");
+    expect(star.style.minHeight).toBe("44px");
+  });
+
   it("resets the draft when you navigate to a different POI", async () => {
     // Both POIs are unreviewed, so the editor shows for each.
     server.use(

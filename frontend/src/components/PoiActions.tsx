@@ -21,14 +21,14 @@ function RatingStars({ value }: { value: number }) {
 /** Interactive star rating used to set or change your own review. */
 function RatePicker({ value, onRate, size = 26 }: { value: number; onRate: (n: number) => void; size?: number }) {
   return (
-    <span aria-label="Rating" style={{ display: "inline-flex", gap: 4 }}>
+    <span aria-label="Rating" style={{ display: "inline-flex", gap: 0 }}>
       {[1, 2, 3, 4, 5].map((n) => (
         <button
           key={n}
           type="button"
           aria-label={`Rate ${n}`}
           onClick={() => onRate(n)}
-          style={{ border: "none", background: "none", cursor: "pointer", fontSize: size, lineHeight: 1, padding: 0, color: value >= n ? theme.color.starActive : theme.color.starInactive }}
+          style={{ border: "none", background: "none", cursor: "pointer", fontSize: size, lineHeight: 1, padding: 0, minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", color: value >= n ? theme.color.starActive : theme.color.starInactive }}
         >
           {value >= n ? "★" : "☆"}
         </button>
