@@ -4,6 +4,7 @@ import { ghostButtonStyle, theme } from "../../theme";
 import { useIsMobile } from "../../lib/useMediaQuery";
 import type { MapViewMode } from "../../lib/mapViewPref";
 import type { SortMode } from "../../lib/sortPref";
+import type { ListDensity } from "../../lib/listDensityPref";
 import type { VisitedFilter } from "../../types/api";
 import FilterControls from "./FilterControls";
 
@@ -15,6 +16,8 @@ export default function FilterPopover({
   onSortChange,
   viewMode,
   onViewModeChange,
+  density,
+  onDensityChange,
   mobile = false,
 }: {
   visited: VisitedFilter;
@@ -23,6 +26,8 @@ export default function FilterPopover({
   onSortChange: (mode: SortMode) => void;
   viewMode: MapViewMode;
   onViewModeChange: (mode: MapViewMode) => void;
+  density: ListDensity;
+  onDensityChange: (d: ListDensity) => void;
   mobile?: boolean;
 }) {
   const isMobile = useIsMobile();
@@ -91,6 +96,8 @@ export default function FilterPopover({
               onSortChange={onSortChange}
               viewMode={viewMode}
               onViewModeChange={onViewModeChange}
+              density={density}
+              onDensityChange={onDensityChange}
               mobile={mobile}
             />
           </div>
