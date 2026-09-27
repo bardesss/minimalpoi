@@ -120,7 +120,7 @@ describe("MapView", () => {
     handlers.load();
     expect(mapInstance.addSource).toHaveBeenCalledWith("pois", expect.objectContaining({ type: "geojson", cluster: true, clusterMaxZoom: 13, clusterRadius: 50 }));
     const layerIds = mapInstance.addLayer.mock.calls.map((c) => (c[0] as { id: string }).id);
-    expect(layerIds).toEqual(["clusters", "cluster-count", "poi-visited", "unclustered", "poi-selected"]);
+    expect(layerIds).toEqual(["clusters", "cluster-count", "poi-visited", "unclustered", "poi-hover", "poi-selected"]);
   });
 
   it("seeds the source with the latest pois when data arrives before the map finishes loading", () => {
@@ -208,5 +208,14 @@ describe("MapView", () => {
     await act(async () => {});
     expect(mapInstance.setPadding).toHaveBeenCalledWith({ top: 0, right: 0, bottom: 400, left: 0 });
     expect(mapInstance.easeTo).not.toHaveBeenCalled();
+  });
+
+  it("adds a hover layer and filters it to highlightId", () => {
+    const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+    const { rerender } = render(<MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={() => {}} onMapClick={() => {}} addMode={false} visitedPoiIds={new Set()} mapRef={mapRef} highlightId={null} />);
+    handlers.load();
+    expect(mapInstance.addLayer).toHaveBeenCalledWith(expect.objectContaining({ id: "poi-hover" }));
+    rerender(<MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={() => {}} onMapClick={() => {}} addMode={false} visitedPoiIds={new Set()} mapRef={mapRef} highlightId={1} />);
+    expect(mapInstance.setFilter).toHaveBeenCalledWith("poi-hover", ["==", ["get", "id"], 1]);
   });
 });

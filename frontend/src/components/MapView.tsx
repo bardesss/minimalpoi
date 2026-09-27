@@ -24,11 +24,13 @@ interface Props {
   onMoveEnd?: (center: { lng: number; lat: number }) => void;
   /** Fires when the GeolocateControl gets a location fix — seeds the distance sort from the user's real position. */
   onUserLocate?: (center: { lng: number; lat: number }) => void;
+  /** Pin to ring while its list card is hovered/focused. */
+  highlightId?: number | null;
 }
 
 const VISITED_RING_COLOR = "#4f46e5";
 
-function addPoiLayers(map: MlMap, color: ReturnType<typeof categoryColorExpression>, selectedId: number | null) {
+function addPoiLayers(map: MlMap, color: ReturnType<typeof categoryColorExpression>, selectedId: number | null, highlightId: number | null) {
   map.addLayer({
     id: "clusters",
     type: "circle",
@@ -66,6 +68,13 @@ function addPoiLayers(map: MlMap, color: ReturnType<typeof categoryColorExpressi
     paint: { "circle-color": color as never, "circle-radius": 7, "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 },
   });
   map.addLayer({
+    id: "poi-hover",
+    type: "circle",
+    source: "pois",
+    filter: ["==", ["get", "id"], highlightId ?? -1],
+    paint: { "circle-color": "rgba(0,0,0,0)", "circle-radius": 13, "circle-stroke-color": theme.color.primary, "circle-stroke-width": 3 },
+  });
+  map.addLayer({
     id: "poi-selected",
     type: "circle",
     source: "pois",
@@ -74,7 +83,7 @@ function addPoiLayers(map: MlMap, color: ReturnType<typeof categoryColorExpressi
   });
 }
 
-export default function MapView({ pois, categories, settings, selectedId, onSelect, onMapClick, addMode, visitedPoiIds, mapRef, onMoveEnd, onUserLocate }: Props) {
+export default function MapView({ pois, categories, settings, selectedId, onSelect, onMapClick, addMode, visitedPoiIds, mapRef, onMoveEnd, onUserLocate, highlightId = null }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Keep latest callbacks/flags in refs so the load handler closure stays current.
   const onSelectRef = useRef(onSelect);
@@ -90,6 +99,7 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
   const poisRef = useRef(pois);
   const categoriesRef = useRef(categories);
   const selectedIdRef = useRef(selectedId);
+  const highlightIdRef = useRef(highlightId);
   onSelectRef.current = onSelect;
   onMapClickRef.current = onMapClick;
   addModeRef.current = addMode;
@@ -99,6 +109,7 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
   poisRef.current = pois;
   categoriesRef.current = categories;
   selectedIdRef.current = selectedId;
+  highlightIdRef.current = highlightId;
 
   // Init once.
   useEffect(() => {
@@ -132,7 +143,7 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
         clusterMaxZoom: 13,
         clusterRadius: 50,
       });
-      addPoiLayers(map, categoryColorExpression(categoriesRef.current), selectedIdRef.current);
+      addPoiLayers(map, categoryColorExpression(categoriesRef.current), selectedIdRef.current, highlightIdRef.current);
     });
 
     // Which marker's hover mini-card is currently shown, so we rebuild the DOM
@@ -218,6 +229,13 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
     if (!map || !map.getLayer("poi-selected")) return;
     map.setFilter("poi-selected", ["==", ["get", "id"], selectedId ?? -1]);
   }, [selectedId, mapRef]);
+
+  // Ring the pin whose list card is hovered/focused.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.getLayer("poi-hover")) return;
+    map.setFilter("poi-hover", ["==", ["get", "id"], highlightId ?? -1]);
+  }, [highlightId, mapRef]);
 
   return <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />;
 }

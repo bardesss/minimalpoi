@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Category, Poi } from "../types/api";
 import { renderWithProviders } from "../test/utils";
@@ -28,13 +28,30 @@ describe("DetailPanel", () => {
     expect(dangerousLink).toBeUndefined();
   });
 
-  it("requires a second click to confirm delete", async () => {
+  it("deletes via the More actions menu with a confirmation", async () => {
     const onDelete = vi.fn();
     renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={onDelete} />);
-    await userEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /more actions/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /delete place/i }));
     expect(onDelete).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("button", { name: /confirm delete/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^delete$/i }));
     expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the place action row", () => {
+    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+    expect(screen.getByRole("group", { name: /place actions/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /directions/i })).toBeInTheDocument();
+  });
+
+  it("uses a compact 72px band with the category icon when there is no photo", () => {
+    renderWithProviders(<DetailPanel poi={{ ...poi, image_url: null }} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+    expect(screen.getByTestId("detail-hero").style.height).toBe("72px");
+  });
+
+  it("uses the tall hero when there is a photo", () => {
+    renderWithProviders(<DetailPanel poi={{ ...poi, image_url: "https://img.example/a.jpg" }} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+    expect(screen.getByTestId("detail-hero").style.height).toBe("208px");
   });
 
   it("fires onEdit", async () => {
@@ -44,35 +61,11 @@ describe("DetailPanel", () => {
     expect(onEdit).toHaveBeenCalled();
   });
 
-  it("renders a full-screen overlay on mobile (no drag handle) with a working close", async () => {
-    const onClose = vi.fn();
-    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={onClose} onEdit={() => {}} onDelete={() => {}} mobile />);
-    expect(screen.getByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
-    expect(screen.queryByRole("separator")).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /close/i }));
-    expect(onClose).toHaveBeenCalled();
-  });
-
   it("closes on Escape", async () => {
     const onClose = vi.fn();
     renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={onClose} onEdit={() => {}} onDelete={() => {}} />);
     await userEvent.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalled();
-  });
-
-  it("closes on Escape in the mobile full-screen branch", async () => {
-    const onClose = vi.fn();
-    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={onClose} onEdit={() => {}} onDelete={() => {}} mobile />);
-    await userEvent.keyboard("{Escape}");
-    expect(onClose).toHaveBeenCalled();
-  });
-
-  it("insets the mobile close button below the safe area", () => {
-    renderWithProviders(
-      <DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} mobile />,
-    );
-    const close = screen.getByRole("button", { name: /close/i });
-    expect(close.style.top).toContain("safe-area-inset-top");
   });
 
   it("keeps the desktop close button at a plain offset (no safe-area)", () => {
@@ -96,16 +89,41 @@ describe("DetailPanel", () => {
     expect(scroller.contains(editBtn)).toBe(false);
   });
 
-  it("registers a left inset for the desktop side panel, none on mobile", () => {
+  it("registers a left inset for the desktop side panel", () => {
     const out: { get?: () => Insets } = {};
     function Probe() { out.get = useMapInsetsReader(); return null; }
-    const { rerender } = renderWithProviders(
+    renderWithProviders(
       <MapInsetsProvider><Probe /><DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} /></MapInsetsProvider>,
     );
     expect(out.get!().left).toBe(368);
-    rerender(
-      <MapInsetsProvider><Probe /><DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} mobile /></MapInsetsProvider>,
-    );
-    expect(out.get!().left).toBe(0);
+  });
+
+  it("Escape while confirming a delete cancels the confirmation, not the panel", async () => {
+    const onClose = vi.fn();
+    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={onClose} onEdit={() => {}} onDelete={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: /more actions/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /delete place/i }));
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByText(/delete this place\?/i)).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("drops an armed delete confirmation when another place is shown", async () => {
+    const props = { category: cat, onClose: () => {}, onEdit: () => {}, onDelete: () => {} };
+    const { rerender } = renderWithProviders(<DetailPanel poi={poi} {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: /more actions/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /delete place/i }));
+    expect(screen.getByText(/delete this place\?/i)).toBeInTheDocument();
+    rerender(<DetailPanel poi={{ ...poi, id: 2, name: "Other" }} {...props} />);
+    expect(screen.queryByText(/delete this place\?/i)).not.toBeInTheDocument();
+  });
+
+  it("scrolls back to the top when another place is shown", () => {
+    const props = { category: cat, onClose: () => {}, onEdit: () => {}, onDelete: () => {} };
+    const { container, rerender } = renderWithProviders(<DetailPanel poi={poi} {...props} />);
+    const scroller = container.querySelector(".poi-scroll") as HTMLElement;
+    Object.defineProperty(scroller, "scrollTop", { value: 240, writable: true, configurable: true });
+    act(() => { rerender(<DetailPanel poi={{ ...poi, id: 2, name: "Other" }} {...props} />); });
+    expect(scroller.scrollTop).toBe(0);
   });
 });

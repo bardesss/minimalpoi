@@ -3,16 +3,17 @@
 // pois/categories/settings handlers from test/msw.ts. (Later tasks 13/15/18
 // extend this file and re-import `server`/`http`/`HttpResponse`/`samplePois`
 // when they add per-test `server.use(...)` overrides.)
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { renderWithProviders } from "../test/utils";
+import { renderWithProviders, stubMediaQueries } from "../test/utils";
 import { server, samplePois, sampleSettings } from "../test/msw";
 import AppShell from "./AppShell";
 
 const mapPropsSpy = vi.fn();
-vi.mock("./MapView", () => ({ default: (props: { pois: { id: number }[] }) => { mapPropsSpy(props.pois); return null; } }));
+const mapHighlightSpy = vi.fn();
+vi.mock("./MapView", () => ({ default: (props: { pois: { id: number }[]; highlightId?: number | null }) => { mapPropsSpy(props.pois); mapHighlightSpy(props.highlightId ?? null); return null; } }));
 
 describe("AppShell", () => {
   it("loads POIs into the sidebar list", async () => {
@@ -123,10 +124,9 @@ describe("AppShell", () => {
     await user.click(screen.getByRole("button", { name: /café modern/i }));
     // Wait for the detail panel heading to appear
     expect(await screen.findByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
-    // Click Delete (first click shows confirm)
+    await user.click(screen.getByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("menuitem", { name: /delete place/i }));
     await user.click(screen.getByRole("button", { name: /^delete$/i }));
-    // Click Confirm delete
-    await user.click(screen.getByRole("button", { name: /confirm delete/i }));
     // Detail panel should close
     expect(screen.queryByRole("heading", { name: "Café Modern" })).not.toBeInTheDocument();
   });
@@ -146,5 +146,61 @@ describe("AppShell", () => {
     await user.type(screen.getByLabelText(/search places/i), "zzzznomatch");
     expect(screen.getByRole("button", { name: /edit place/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
+  });
+});
+
+describe("AppShell detail placement", () => {
+  let restore: (() => void) | null = null;
+  afterEach(() => { restore?.(); restore = null; });
+
+  it("narrow desktop: shows the detail inside the sidebar, hiding the list, and returns to it", async () => {
+    restore = stubMediaQueries((q) => q === "(min-width: 769px) and (max-width: 1279px)");
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    const back = await screen.findByRole("button", { name: /back to list/i });
+    expect(screen.getByLabelText(/search places/i).closest("[inert]")).not.toBeNull();
+    await user.click(back);
+    expect(screen.queryByRole("button", { name: /back to list/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/search places/i).closest("[inert]")).toBeNull();
+  });
+
+  it("mobile: shows the detail sheet and hides the list sheet", async () => {
+    restore = stubMediaQueries((q) => q === "(max-width: 768px)");
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    expect(await screen.findByRole("separator", { name: /drag to resize details/i })).toBeInTheDocument();
+    // The hidden list sheet's separator keeps its aria-label, but an
+    // aria-hidden ancestor blanks its computed accessible name — so it can't
+    // be found by accessible name here; look it up by the attribute instead.
+    const listHandle = document.querySelector('[aria-label="Drag to resize list"]') as HTMLElement;
+    expect(listHandle).not.toBeNull();
+    expect(listHandle.closest("section")).toHaveAttribute("inert");
+  });
+
+  it("wide desktop (default): keeps the overlay panel", async () => {
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    expect(await screen.findByRole("button", { name: /edit place/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /back to list/i })).not.toBeInTheDocument();
+  });
+
+  it("narrow desktop: the '/' hotkey closes the in-sidebar detail and focuses search", async () => {
+    restore = stubMediaQueries((q) => q === "(min-width: 769px) and (max-width: 1279px)");
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    await screen.findByRole("button", { name: /back to list/i });
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "/", bubbles: true, cancelable: true }));
+    });
+    await waitFor(() => expect(screen.queryByRole("button", { name: /back to list/i })).not.toBeInTheDocument());
+    const search = screen.getByLabelText(/search places/i);
+    expect(search.closest("[inert]")).toBeNull();
+    await waitFor(() => expect(search).toHaveFocus());
+  });
+
+  it("mobile: focusing a list card does not highlight its pin", async () => {
+    restore = stubMediaQueries((q) => q === "(max-width: 768px)");
+    renderWithProviders(<AppShell />);
+    const card = (await screen.findByText("Café Modern")).closest("button") as HTMLElement;
+    mapHighlightSpy.mockClear();
+    act(() => { card.focus(); });
+    expect(mapHighlightSpy).not.toHaveBeenCalledWith(1);
   });
 });

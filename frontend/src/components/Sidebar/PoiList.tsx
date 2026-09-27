@@ -20,6 +20,7 @@ export default function PoiList({
   isError,
   onRetry,
   myVisitedPoiIds,
+  onHover,
 }: {
   pois: Poi[];
   categoriesById: Record<number, Category>;
@@ -29,6 +30,7 @@ export default function PoiList({
   isError: boolean;
   onRetry: () => void;
   myVisitedPoiIds: Set<number>;
+  onHover?: (id: number | null) => void;
 }) {
   const parentRef = useRef<HTMLDivElement | null>(null);
   // 3 columns only on very wide screens; 2 otherwise.
@@ -105,7 +107,7 @@ export default function PoiList({
               }}
             >
               {rowPois.map((p) => (
-                <PoiCard key={p.id} poi={p} category={p.category_id != null ? categoriesById[p.category_id] : undefined} selected={p.id === selectedId} onSelect={onSelect} visited={myVisitedPoiIds.has(p.id)} />
+                <PoiCard key={p.id} poi={p} category={p.category_id != null ? categoriesById[p.category_id] : undefined} selected={p.id === selectedId} onSelect={onSelect} visited={myVisitedPoiIds.has(p.id)} onHover={onHover} />
               ))}
             </div>
           );

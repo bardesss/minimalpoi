@@ -18,6 +18,9 @@ export interface AppLayoutProps {
   main: ReactNode;
   account: { username: string; role: string; onLogout: () => void; onOpenSettings: () => void; updateAvailable: boolean };
   sheetCount?: number;
+  /** A selected place's detail view. Mobile: replaces the list sheet (which
+   * stays mounted, hidden). Desktop: replaces the list inside the sidebar. */
+  detail?: ReactNode;
 }
 
 const reopenBtn = {
@@ -50,6 +53,7 @@ export default function AppLayout(props: AppLayoutProps) {
           label={props.sheetLabel}
           initial="half"
           headerRight={props.sheetCount != null ? <CountBadge n={props.sheetCount} /> : undefined}
+          hidden={props.detail != null}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 16px 2px" }}>
             <BrandLogo size={24} />
@@ -59,6 +63,7 @@ export default function AppLayout(props: AppLayoutProps) {
           {props.sidebar}
           {footer}
         </BottomSheet>
+        {props.detail}
       </div>
     );
   }
@@ -79,11 +84,21 @@ export default function AppLayout(props: AppLayoutProps) {
         }}
       >
         {!props.collapsed && (
-          <>
-            <SidebarHeader onCollapse={props.onCollapse} nav={navDesktop} />
-            {props.sidebar}
-            {footer}
-          </>
+          <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+            {/* The list stays mounted under the detail so its scroll position survives. */}
+            <div
+              inert={props.detail != null || undefined}
+              aria-hidden={props.detail != null || undefined}
+              style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", visibility: props.detail != null ? "hidden" : undefined }}
+            >
+              <SidebarHeader onCollapse={props.onCollapse} nav={navDesktop} />
+              {props.sidebar}
+              {footer}
+            </div>
+            {props.detail != null && (
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>{props.detail}</div>
+            )}
+          </div>
         )}
       </aside>
       <main style={{ flex: 1, position: "relative", background: theme.color.mapBg }}>

@@ -74,6 +74,11 @@ export function useDialog<T extends HTMLElement = HTMLElement>(
       // Only the top-most dialog handles Escape and traps Tab.
       if (!isTop()) return;
       if (e.key === "Escape") {
+        // An open menu inside the dialog dismisses itself first (MenuButton),
+        // as does any element marked to handle Escape on its own.
+        const target = e.target as Element | null;
+        if (target?.closest?.('[role="menu"]')) return;
+        if (target?.closest?.('[data-dialog-escape="ignore"]')) return;
         e.stopPropagation();
         onCloseRef.current();
         return;
