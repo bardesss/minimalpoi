@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import type { Category, Poi } from "../types/api";
 import { renderWithProviders } from "../test/utils";
 import DetailPanel from "./DetailPanel";
+import { MapInsetsProvider, useMapInsetsReader } from "../map/useMapInsets";
+import type { Insets } from "../map/mapInsets";
 
 const poi: Poi = { id: 1, name: "Café Modern", address: "Street 12, Amsterdam", city: "Amsterdam", country_code: "NL", lat: 52.37012, lng: 4.90011, category_id: 1, tags: ["popular", "outdoor"], notes: "Nice spot", phone: "+31 20 300 1234", email: "info@place.nl", website: "https://place.nl", image_url: null, source_url: null, created_by: 1, created_at: "", updated_at: "", avg_rating: null, rating_count: 0 };
 const cat: Category = { id: 1, name: "Restaurants", color: "#E1574C", icon: "utensils", created_by: 1 };
@@ -92,5 +94,18 @@ describe("DetailPanel", () => {
     // ...but the Edit/Delete footer is a pinned sibling OUTSIDE the scroller.
     const editBtn = screen.getByRole("button", { name: /edit place/i });
     expect(scroller.contains(editBtn)).toBe(false);
+  });
+
+  it("registers a left inset for the desktop side panel, none on mobile", () => {
+    const out: { get?: () => Insets } = {};
+    function Probe() { out.get = useMapInsetsReader(); return null; }
+    const { rerender } = renderWithProviders(
+      <MapInsetsProvider><Probe /><DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} /></MapInsetsProvider>,
+    );
+    expect(out.get!().left).toBe(368);
+    rerender(
+      <MapInsetsProvider><Probe /><DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} mobile /></MapInsetsProvider>,
+    );
+    expect(out.get!().left).toBe(0);
   });
 });

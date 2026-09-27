@@ -11,6 +11,7 @@ import { routeSignature } from "../../lib/routeSignature";
 import { useIsMobile } from "../../lib/useMediaQuery";
 import { buildPoiMiniCard } from "../PoiMiniCard";
 import { theme } from "../../theme";
+import { useApplyMapInsets } from "../../map/useMapInsets";
 
 const LINE_COLOR = "#4f46e5";
 const PASSED_COLOR = "#a8a39b"; // muted grey — de-emphasises days already travelled
@@ -336,6 +337,9 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Centre the camera on the part of the map not covered by the sheet/panel.
+  useApplyMapInsets(mapRef);
 
   // Redraw the route when the node chain or leg geometry changes. The line/points
   // always redraw; the camera only re-fits when node ids/coords change.

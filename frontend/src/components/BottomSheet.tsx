@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { theme } from "../theme";
 import { useSheetDrag } from "./useSheetDrag";
 import type { Snap } from "./useSheetDrag";
+import { useMapInset } from "../map/useMapInsets";
 
 /**
  * Map-first bottom sheet. The map stays fully interactive above it; only the
@@ -19,7 +20,7 @@ export default function BottomSheet({
   label?: string;
   headerRight?: ReactNode;
 }) {
-  const { translate, dragging, handlers } = useSheetDrag(initial);
+  const { translate, restTranslate, dragging, handlers } = useSheetDrag(initial);
 
   // The sheet is a full-height element pushed DOWN by `translate`, so the part
   // on screen is only `viewport - translate`. Size the content area to exactly
@@ -30,6 +31,10 @@ export default function BottomSheet({
   const HANDLE_H = 44;
   const viewport = typeof window === "undefined" ? 800 : window.innerHeight;
   const contentHeight = Math.max(viewport - translate - HANDLE_H, 0);
+
+  // Tell the map how much of it the sheet covers at rest, so the camera frames
+  // the visible part. Uses the settled snap, not the live finger position.
+  useMapInset("bottom-sheet", { bottom: Math.max(viewport - restTranslate, 0) });
 
   return (
     <section
