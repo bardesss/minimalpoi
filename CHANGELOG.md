@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.1.0](https://github.com/bardesss/minimalpoi/compare/v4.0.1...v4.1.0) (2026-09-27)
+
+
+### Features
+
+* add a Proxmox VE Community Scripts LXC installer ([c8448cf](https://github.com/bardesss/minimalpoi/commit/c8448cf20263ad2f5d943dc07ffb6b70c88fb206))
+* add a Proxmox VE Community Scripts LXC installer ([67560c7](https://github.com/bardesss/minimalpoi/commit/67560c7655b5e97c5229ba53cbd809dbfebc5b23)), closes [#248](https://github.com/bardesss/minimalpoi/issues/248)
+
+
+### Bug Fixes
+
+* **backend:** store share expiries and restored timestamps as aware UTC ([3ed00dc](https://github.com/bardesss/minimalpoi/commit/3ed00dc5f9f2a9207bd841d5b4a6aec59e63a6ae))
+
 ## [4.0.1](https://github.com/bardesss/minimalpoi/compare/v4.0.0...v4.0.1) (2026-09-20)
 
 
