@@ -12,6 +12,7 @@ function PoiCard({
   selected,
   onSelect,
   visited = false,
+  onHover,
 }: {
   poi: Poi;
   category: Category | undefined;
@@ -19,6 +20,8 @@ function PoiCard({
   onSelect: (id: number) => void;
   /** The current user has visited this place. */
   visited?: boolean;
+  /** Hover/focus in (id) and out (null) — drives the map pin highlight. */
+  onHover?: (id: number | null) => void;
 }) {
   const color = category?.color ?? theme.color.fallbackPin;
   const tint = tintFromColor(color);
@@ -31,6 +34,11 @@ function PoiCard({
       type="button"
       onClick={() => onSelect(poi.id)}
       className="hover-card"
+      aria-current={selected ? "true" : undefined}
+      onMouseEnter={() => onHover?.(poi.id)}
+      onMouseLeave={() => onHover?.(null)}
+      onFocus={() => onHover?.(poi.id)}
+      onBlur={() => onHover?.(null)}
       style={{
         textAlign: "left",
         padding: 0,

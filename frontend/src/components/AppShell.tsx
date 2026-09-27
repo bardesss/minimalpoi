@@ -48,6 +48,7 @@ export default function AppShell() {
   const mapRef = useRef<MlMap | null>(null);
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [hoverId, setHoverId] = useState<number | null>(null);
   const [flyRequest, setFlyRequest] = useState<FlyRequest | null>(null);
   const [searchText, setSearchText] = useState("");
   const [activeCategoryIds, setActiveCategoryIds] = useState<number[]>([]);
@@ -283,6 +284,7 @@ export default function AppShell() {
       sortMode={sortMode}
       onSortChange={changeSort}
       mobile={isMobile}
+      onHover={setHoverId}
     />
   );
 
@@ -319,6 +321,7 @@ export default function AppShell() {
           mapRef={mapRef}
           onMoveEnd={handleMoveEnd}
           onUserLocate={(c) => setMapCenter(c)}
+          highlightId={hoverId}
         />
       )}
       {!isMobile && <Legend categories={categories} counts={counts} uncategorizedCount={hasUncategorized ? counts[UNCATEGORIZED_ID] ?? 0 : 0} />}
