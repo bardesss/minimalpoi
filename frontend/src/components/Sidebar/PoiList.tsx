@@ -46,7 +46,7 @@ export default function PoiList({
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => (density === "list" ? 58 : ESTIMATED_ROW_HEIGHT),
+    estimateSize: () => (density === "list" ? 52 : ESTIMATED_ROW_HEIGHT),
     overscan: 6,
   });
 
@@ -89,7 +89,7 @@ export default function PoiList({
     );
   }
   return (
-    <div ref={parentRef} className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 12 }}>
+    <div ref={parentRef} className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: density === "list" ? "8px 12px 12px" : 12 }}>
       <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
         {rowVirtualizer.getVirtualItems().map((vr) => {
           const start = vr.index * cols;
@@ -107,8 +107,8 @@ export default function PoiList({
                 transform: `translateY(${vr.start}px)`,
                 display: "grid",
                 gridTemplateColumns: `repeat(${cols}, 1fr)`,
-                gap: density === "list" ? 6 : 10,
-                paddingBottom: density === "list" ? 6 : 10,
+                gap: density === "list" ? 4 : 10,
+                paddingBottom: density === "list" ? 4 : 10,
               }}
             >
               {rowPois.map((p) =>

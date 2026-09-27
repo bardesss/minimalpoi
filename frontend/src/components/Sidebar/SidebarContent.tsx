@@ -55,6 +55,7 @@ export default function SidebarContent(props: SidebarContentProps) {
       <SearchBox
         value={props.search}
         onChange={props.onSearch}
+        compact={props.mobile}
         // Mobile tucks the filters trigger beside search so it doesn't cost a row;
         // desktop shows the filters inline in their own bar below the chips.
         trailing={props.mobile ? <FilterPopover {...filterProps} mobile /> : undefined}

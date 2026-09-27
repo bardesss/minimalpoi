@@ -12,17 +12,18 @@ import PoiList from "./PoiList";
 // rendered cards and the reveal-on-select wiring without fighting jsdom.
 const { scrollToIndex, useVirtualizerMock } = vi.hoisted(() => {
   const scrollToIndex = vi.fn();
-  const useVirtualizerMock = vi.fn((options: { count: number }) => {
+  const useVirtualizerMock = vi.fn((options: { count: number; estimateSize?: () => number }) => {
+    const rowSize = options.estimateSize?.() ?? 150;
     const rows = Array.from({ length: options.count }, (_, i) => ({
       key: i,
       index: i,
-      start: i * 150,
-      end: (i + 1) * 150,
-      size: 150,
+      start: i * rowSize,
+      end: (i + 1) * rowSize,
+      size: rowSize,
       lane: 0,
     }));
     return {
-      getTotalSize: () => options.count * 150,
+      getTotalSize: () => options.count * rowSize,
       getVirtualItems: () => rows,
       scrollToIndex,
       measureElement: () => {},
@@ -106,5 +107,23 @@ describe("PoiList", () => {
     expect(useVirtualizerMock).toHaveBeenLastCalledWith(expect.objectContaining({ count: 3 }));
     expect(scrollToIndex).toHaveBeenCalledWith(2, expect.objectContaining({ align: "auto" }));
     expect(screen.getByRole("button", { name: /^B/ }).style.minHeight).toBe("48px");
+  });
+
+  it("uses estimateSize of 52 for list density", () => {
+    const pois = [base, { ...base, id: 2, name: "B" }];
+    render(
+      <PoiList pois={pois} categoriesById={{}} myVisitedPoiIds={new Set()} selectedId={null} onSelect={() => {}} isLoading={false} isError={false} onRetry={() => {}} density="list" />,
+    );
+    const callOptions = useVirtualizerMock.mock.calls[useVirtualizerMock.mock.calls.length - 1][0];
+    expect(callOptions.estimateSize!()).toBe(52);
+  });
+
+  it("uses estimateSize of 150 for cards density", () => {
+    const pois = [base, { ...base, id: 2, name: "B" }];
+    render(
+      <PoiList pois={pois} categoriesById={{}} myVisitedPoiIds={new Set()} selectedId={null} onSelect={() => {}} isLoading={false} isError={false} onRetry={() => {}} density="cards" />,
+    );
+    const callOptions = useVirtualizerMock.mock.calls[useVirtualizerMock.mock.calls.length - 1][0];
+    expect(callOptions.estimateSize!()).toBe(150);
   });
 });
