@@ -1,5 +1,23 @@
 # Changelog
 
+## [4.2.0](https://github.com/bardesss/minimalpoi/compare/v4.1.0...v4.2.0) (2026-09-27)
+
+
+### Features
+
+* **map:** add an inset store for UI that covers the map ([161465b](https://github.com/bardesss/minimalpoi/commit/161465bc1bb0e69e57829d096e06a8b4d0730a68))
+* **map:** frame the camera around the sheet and detail panel ([4026f10](https://github.com/bardesss/minimalpoi/commit/4026f1025c260d3686c433d54d1944c1b91ff328))
+* **map:** pad both maps by the registered insets ([e7f9d66](https://github.com/bardesss/minimalpoi/commit/e7f9d6640e0ad0150e7e5c5903a7f67c9504fc2b))
+* **map:** provide map insets and sync them to MapLibre padding ([1f2b5f8](https://github.com/bardesss/minimalpoi/commit/1f2b5f83260cd33405175a4d25557e4bcafc411e))
+* **ui:** register the bottom sheet and detail panel as map insets ([c261a95](https://github.com/bardesss/minimalpoi/commit/c261a95abe1ff607007cb0083e126191ae3c6994))
+
+
+### Bug Fixes
+
+* **map:** apply insets instantly on mount and reconcile interrupted padding ([bc14e63](https://github.com/bardesss/minimalpoi/commit/bc14e63ae9519711e742f08f9b78369e95418ee5))
+* **map:** keep the selected place in the visible part of the map ([007e2cf](https://github.com/bardesss/minimalpoi/commit/007e2cfa84fdc08d38c81378011f7d3038d7fefa))
+* **ui:** stop dialogs closing themselves under StrictMode ([7f124e0](https://github.com/bardesss/minimalpoi/commit/7f124e09fa5ac718d3d7e4c3bc56037bb8f3e526))
+
 ## [4.1.0](https://github.com/bardesss/minimalpoi/compare/v4.0.1...v4.1.0) (2026-09-27)
 
 
