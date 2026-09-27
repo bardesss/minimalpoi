@@ -15,7 +15,7 @@ Drop a pin or paste a link to auto-fill the details, rate the spots you've been,
 - [✨ Features](#-features)
 - [🚀 Deploy](#-deploy)
   - [Option A — Docker](#option-a--docker-recommended) · [Option B — docker compose](#option-b--docker-compose) · [Option C — Podman](#option-c--podman)
-  - [Other platforms](#other-platforms) · [Unraid](#unraid)
+  - [Other platforms](#other-platforms) · [Unraid](#unraid) · [Proxmox VE (LXC)](#proxmox-ve-lxc)
   - [⚙️ Configuration](#-configuration)
   - [Using Postgres](#using-postgres) · [Migrating to Postgres](#migrating-existing-sqlite-data-to-postgres)
   - [Behind a reverse proxy](#behind-a-reverse-proxy)
@@ -145,6 +145,25 @@ set **Template repositories** (or just fill the fields manually) using
 pre-configures the `7676` web UI port, a `/data` appdata path, and Unraid's
 default `PUID=99` / `PGID=100`. After it starts, click the container's WebUI to
 reach the first-run setup screen.
+
+### Proxmox VE (LXC)
+
+[`proxmox/`](proxmox/) holds a [Proxmox VE Community Scripts](https://community-scripts.org/)
+installer that sets MinimalPOI up in an unprivileged Debian 13 LXC. It runs natively, without
+Docker: Python 3.14 via uv, a frontend built in the container, and a systemd
+`minimalpoi` service running one uvicorn worker on `:7676`. Run this in the Proxmox host shell:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/bardesss/minimalpoi/main/proxmox/ct/minimalpoi.sh)"
+```
+
+When it finishes, open `http://<ct-ip>:7676` to reach the first-run setup screen.
+Data (database, images, `secret.key`) is stored in `/data` inside the container and settings
+in `/opt/minimalpoi.env`. To update, run the same one-liner in the **container's** console. It
+installs the latest release and leaves `/data` alone. (The container's built-in `update` command only
+works for scripts listed on community-scripts.org, and MinimalPOI isn't listed yet.) The Docker-only `PUID`/`PGID`/`TRUST_PROXY` variables don't
+apply here. Behind a reverse proxy, set `FORWARDED_ALLOW_IPS` in `/opt/minimalpoi.env` to the
+proxy's IP and run `systemctl restart minimalpoi`.
 
 ### ⚙️ Configuration
 
