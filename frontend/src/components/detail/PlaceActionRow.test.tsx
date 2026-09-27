@@ -48,4 +48,11 @@ describe("PlaceActionRow", () => {
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining("Café Modern — Street 12, Amsterdam — https://"));
     expect(await screen.findByText(/copied/i)).toBeInTheDocument();
   });
+
+  it("orders the actions Directions, Call, Share, Email, Website so Share stays in view on a phone", () => {
+    renderWithProviders(<PlaceActionRow poi={poi} />);
+    const group = screen.getByRole("group", { name: /place actions/i });
+    const labels = Array.from(group.children).map((el) => el.textContent?.trim());
+    expect(labels).toEqual(["Directions", "Call", "Share", "Email", "Website"]);
+  });
 });

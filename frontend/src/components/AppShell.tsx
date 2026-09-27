@@ -65,11 +65,20 @@ export default function AppShell() {
   const [duplicateId, setDuplicateId] = useState<number | null>(null);
   const pendingSearchFocusRef = useRef(false);
 
+  // Narrow desktop with a selection: the detail sits in the sidebar (or will,
+  // once expanded) over the inert list, so #poi-search can't take focus.
+  const detailInSidebar = !isMobile && isNarrow && selectedId != null;
+
   // Global "/" or Ctrl/Cmd-K shortcut: reveal the sidebar (desktop) and focus
   // the search input. On mobile the sidebar/search box is always mounted
   // inside the bottom sheet, so no expand step is needed there.
   useSearchHotkey(() => {
-    if (sidebarCollapsed) {
+    if (detailInSidebar) {
+      // Close it and focus search once the list is back (effect below).
+      setSelectedId(null);
+      if (sidebarCollapsed) setSidebarCollapsed(false);
+      pendingSearchFocusRef.current = true;
+    } else if (sidebarCollapsed) {
       // #poi-search isn't in the DOM until the sidebar re-mounts; defer the
       // focus to the effect below, which fires once it does.
       setSidebarCollapsed(false);
@@ -82,13 +91,13 @@ export default function AppShell() {
   });
 
   useEffect(() => {
-    if (!sidebarCollapsed && pendingSearchFocusRef.current) {
+    if (!sidebarCollapsed && !detailInSidebar && pendingSearchFocusRef.current) {
       pendingSearchFocusRef.current = false;
       const el = document.getElementById("poi-search") as HTMLInputElement | null;
       el?.focus();
       el?.select();
     }
-  }, [sidebarCollapsed]);
+  }, [sidebarCollapsed, detailInSidebar]);
 
   const categories = categoriesQuery.data ?? [];
   const categoriesById = useMemo(
@@ -284,7 +293,7 @@ export default function AppShell() {
       sortMode={sortMode}
       onSortChange={changeSort}
       mobile={isMobile}
-      onHover={setHoverId}
+      onHover={isMobile ? undefined : setHoverId}
     />
   );
 
@@ -321,7 +330,7 @@ export default function AppShell() {
           mapRef={mapRef}
           onMoveEnd={handleMoveEnd}
           onUserLocate={(c) => setMapCenter(c)}
-          highlightId={hoverId}
+          highlightId={isMobile ? null : hoverId}
         />
       )}
       {!isMobile && <Legend categories={categories} counts={counts} uncategorizedCount={hasUncategorized ? counts[UNCATEGORIZED_ID] ?? 0 : 0} />}

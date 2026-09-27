@@ -59,12 +59,17 @@ export function DetailHero({ poi, category, compact = false, overlay }: { poi: P
   );
 }
 
-/** Name, address and the one-tap actions — the part the mobile sheet shows at peek. */
-export function DetailSummary({ poi }: { poi: Poi }) {
+const oneLine = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } as const;
+
+/** Name, address and the one-tap actions — the part the mobile sheet shows at
+ * peek. `compact` clamps the name and address to one line each (full text in
+ * `title`) so the action row stays inside the peek height. */
+export function DetailSummary({ poi, compact = false }: { poi: Poi; compact?: boolean }) {
+  const clamp = compact ? oneLine : undefined;
   return (
     <div style={{ padding: "18px 20px 0" }}>
-      <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1.15 }}>{poi.name}</h2>
-      {poi.address && <p style={{ margin: "8px 0 12px", fontSize: 13.5, color: theme.color.textSecondary }}>📍 {poi.address}</p>}
+      <h2 title={compact ? poi.name : undefined} style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1.15, ...clamp }}>{poi.name}</h2>
+      {poi.address && <p title={compact ? poi.address : undefined} style={{ margin: "8px 0 12px", fontSize: 13.5, color: theme.color.textSecondary, ...clamp }}>📍 {poi.address}</p>}
       {!poi.address && <div style={{ height: 12 }} />}
       <PlaceActionRow poi={poi} />
     </div>

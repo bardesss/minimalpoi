@@ -12,7 +12,8 @@ import { server, samplePois, sampleSettings } from "../test/msw";
 import AppShell from "./AppShell";
 
 const mapPropsSpy = vi.fn();
-vi.mock("./MapView", () => ({ default: (props: { pois: { id: number }[] }) => { mapPropsSpy(props.pois); return null; } }));
+const mapHighlightSpy = vi.fn();
+vi.mock("./MapView", () => ({ default: (props: { pois: { id: number }[]; highlightId?: number | null }) => { mapPropsSpy(props.pois); mapHighlightSpy(props.highlightId ?? null); return null; } }));
 
 describe("AppShell", () => {
   it("loads POIs into the sidebar list", async () => {
@@ -179,5 +180,27 @@ describe("AppShell detail placement", () => {
     renderWithProviders(<AppShell />, { route: "/?place=1" });
     expect(await screen.findByRole("button", { name: /edit place/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /back to list/i })).not.toBeInTheDocument();
+  });
+
+  it("narrow desktop: the '/' hotkey closes the in-sidebar detail and focuses search", async () => {
+    restore = stubMediaQueries((q) => q === "(min-width: 769px) and (max-width: 1279px)");
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    await screen.findByRole("button", { name: /back to list/i });
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "/", bubbles: true, cancelable: true }));
+    });
+    await waitFor(() => expect(screen.queryByRole("button", { name: /back to list/i })).not.toBeInTheDocument());
+    const search = screen.getByLabelText(/search places/i);
+    expect(search.closest("[inert]")).toBeNull();
+    await waitFor(() => expect(search).toHaveFocus());
+  });
+
+  it("mobile: focusing a list card does not highlight its pin", async () => {
+    restore = stubMediaQueries((q) => q === "(max-width: 768px)");
+    renderWithProviders(<AppShell />);
+    const card = (await screen.findByText("Café Modern")).closest("button") as HTMLElement;
+    mapHighlightSpy.mockClear();
+    act(() => { card.focus(); });
+    expect(mapHighlightSpy).not.toHaveBeenCalledWith(1);
   });
 });
