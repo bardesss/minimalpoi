@@ -51,6 +51,10 @@ export function useDialog<T extends HTMLElement = HTMLElement>(
   const myId = idRef.current;
   const isTop = () => dialogStack[dialogStack.length - 1] === myId;
 
+  // Handle for this instance's deferred history.back() (see the history
+  // effect's cleanup). Survives StrictMode's simulated unmount/remount.
+  const pendingBackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Register on the stack for the lifetime of the mount. A StrictMode
   // double-invoke removes then re-adds the id, so it stays present exactly once.
   useEffect(() => {
@@ -105,10 +109,18 @@ export function useDialog<T extends HTMLElement = HTMLElement>(
   useEffect(() => {
     if (!manageHistory) return;
     let closedByPop = false;
-    // Opening a dialog clears any stale suppression left by a programmatic
-    // close whose echo popstate had no listener to consume it.
-    suppressPop = false;
-    window.history.pushState({ __dialog: true }, "");
+    if (pendingBackRef.current !== null) {
+      // StrictMode re-ran this effect straight after its simulated cleanup:
+      // our history entry was never consumed, so keep it rather than
+      // pushing a second one (whose echo would close the dialog).
+      clearTimeout(pendingBackRef.current);
+      pendingBackRef.current = null;
+    } else {
+      // Opening a dialog clears any stale suppression left by a programmatic
+      // close whose echo popstate had no listener to consume it.
+      suppressPop = false;
+      window.history.pushState({ __dialog: true }, "");
+    }
     function onPop() {
       // Ignore (and clear) the echo of a lower/own programmatic history.back().
       if (suppressPop) {
@@ -124,11 +136,15 @@ export function useDialog<T extends HTMLElement = HTMLElement>(
     window.addEventListener("popstate", onPop);
     return () => {
       window.removeEventListener("popstate", onPop);
-      // Programmatic close: consume our own entry. Flag the resulting popstate
+      // Programmatic close: consume our own entry, deferred one task so a
+      // StrictMode re-run can cancel it (above). Flag the resulting popstate
       // so the now-top lower dialog ignores it instead of closing too.
       if (!closedByPop) {
-        suppressPop = true;
-        window.history.back();
+        pendingBackRef.current = setTimeout(() => {
+          pendingBackRef.current = null;
+          suppressPop = true;
+          window.history.back();
+        }, 0);
       }
     };
   }, [manageHistory]);
