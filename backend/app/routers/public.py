@@ -12,7 +12,7 @@ password). Keep it minimal and defensive:
   in `routes.py` but stripped down to what a stranger with a link should see.
 """
 import hashlib
-from datetime import timedelta, timezone
+from datetime import timedelta
 
 import jwt
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -21,7 +21,7 @@ from sqlmodel import select
 
 from ..config import get_secret_key
 from ..deps import SessionDep
-from ..models import Route, RouteShare, get_or_create_settings, utcnow
+from ..models import Route, RouteShare, as_utc, get_or_create_settings, utcnow
 from ..ratelimit import LOGIN_LIMIT, PUBLIC_LIMIT, limiter
 from ..routing.service import derive, legs_for, ordered_nodes
 from ..schemas import PublicMapSettings, PublicRouteResponse, PublicRouteView, RouteLegRead, RouteNodeRead, UnlockBody
@@ -41,12 +41,7 @@ def _noindex(resp: Response) -> None:
 def _expired(expires_at) -> bool:
     if expires_at is None:
         return False
-    # Values set via the API (ShareSettingsUpdate.expires_at) are typically
-    # naive (no tzinfo); utcnow() is tz-aware. Treat naive values as UTC so
-    # the comparison below doesn't raise.
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    return expires_at < utcnow()
+    return as_utc(expires_at) < utcnow()
 
 
 def _active_share_or_404(session, token: str) -> RouteShare:
