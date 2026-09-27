@@ -343,9 +343,9 @@ export default function AppShell() {
           highlightId={isMobile ? null : hoverId}
         />
       )}
-      {!isMobile && <Legend categories={categories} counts={counts} uncategorizedCount={hasUncategorized ? counts[UNCATEGORIZED_ID] ?? 0 : 0} />}
+      {!isMobile && sidebarCollapsed && <Legend categories={categories} counts={counts} uncategorizedCount={hasUncategorized ? counts[UNCATEGORIZED_ID] ?? 0 : 0} />}
       {detailProps && detailMode === "panel" && <DetailPanel {...detailProps} />}
-      {!(isMobile && selectedPoi) && <AddFab onClick={openAdd} mobile={isMobile} />}
+      {!(detailMode === "sheet" || detailMode === "panel") && <AddFab onClick={openAdd} mobile={isMobile} />}
       {formState && (
         <PoiFormModal
           mode={formState.mode}
