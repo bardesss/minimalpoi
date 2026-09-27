@@ -1,5 +1,23 @@
 # Changelog
 
+## [4.3.0](https://github.com/bardesss/minimalpoi/compare/v4.2.0...v4.3.0) (2026-09-27)
+
+
+### Features
+
+* **ui:** add a mobile detail sheet and an in-sidebar detail view ([71c4d7d](https://github.com/bardesss/minimalpoi/commit/71c4d7d2dec53f7742ad24bd7eacde2a2b4416f6))
+* **ui:** add directions, call, email, website and share actions for a place ([ed654bc](https://github.com/bardesss/minimalpoi/commit/ed654bccc154e2b9a02a7fefc85cc82c98f43aaa))
+* **ui:** add place actions, move delete into a menu and slim the photo-less hero ([1353439](https://github.com/bardesss/minimalpoi/commit/1353439735b9667849e43f0b54b729a086aad2e9))
+* **ui:** add tel/directions link helpers and a narrow-desktop breakpoint ([bc76173](https://github.com/bardesss/minimalpoi/commit/bc76173972790d8de7b40cc86468a42a733eba98))
+* **ui:** highlight a place's pin while its card is hovered, mark the selected card ([a2ffedc](https://github.com/bardesss/minimalpoi/commit/a2ffedc699b38e602b4a4982dea7f47d6bbb4238))
+* **ui:** place detail per form factor with directions, call and share ([b6a59c4](https://github.com/bardesss/minimalpoi/commit/b6a59c4a820b9d9562e302c960735d84ea41a296))
+* **ui:** show place detail as a sheet on phones and in the sidebar on narrow desktops ([d829910](https://github.com/bardesss/minimalpoi/commit/d82991037854ed8a62bdb4437d0ae302e0fcf9fd))
+
+
+### Bug Fixes
+
+* **ui:** harden the place detail across place switches, delete confirm and hotkeys ([263018e](https://github.com/bardesss/minimalpoi/commit/263018ebbc3410c9b48263cfac0c0684b7f8515c))
+
 ## [4.2.0](https://github.com/bardesss/minimalpoi/compare/v4.1.0...v4.2.0) (2026-09-27)
 
 
