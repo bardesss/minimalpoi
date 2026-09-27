@@ -75,7 +75,7 @@ function PoiRow({
         </span>
       )}
       {thumb && (
-        <span data-testid="row-thumb" aria-hidden style={{ flex: "none", width: 40, height: 40, borderRadius: 8, background: `center/cover no-repeat url("${thumb}")` }} />
+        <span data-testid="row-thumb" aria-hidden style={{ flex: "none", width: 38, height: 38, borderRadius: 8, background: `center/cover no-repeat url("${thumb}")` }} />
       )}
     </button>
   );

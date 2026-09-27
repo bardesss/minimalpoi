@@ -18,10 +18,18 @@ describe("AccountMenu", () => {
     expect(onLogout).toHaveBeenCalledOnce();
   });
 
+  it("names the open menu after the user and role", async () => {
+    render(<AccountMenu username="amy" role="admin" onLogout={() => {}} onOpenSettings={() => {}} updateAvailable={false} />);
+    await userEvent.click(screen.getByRole("button", { name: "Account (amy)" }));
+    expect(screen.getByRole("menu", { name: "Account: amy, Admin" })).toBeInTheDocument();
+  });
+
   it("flags an available update on the avatar and the Settings item", async () => {
     render(<AccountMenu username="amy" role="member" onLogout={() => {}} onOpenSettings={() => {}} updateAvailable />);
-    expect(screen.getByLabelText("Update available")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Account (amy)" }));
+    const trigger = screen.getByRole("button", { name: "Account (amy), update available" });
+    expect(trigger.querySelector("[aria-label]")).toBeNull();
+    expect(trigger.querySelector('[aria-hidden="true"]')).not.toBeNull();
+    await userEvent.click(trigger);
     expect(screen.getByRole("menuitem", { name: /settings · update available/i })).toBeInTheDocument();
   });
 });

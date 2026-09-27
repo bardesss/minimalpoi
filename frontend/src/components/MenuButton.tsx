@@ -29,7 +29,8 @@ export default function MenuButton({
   items: MenuItem[];
   triggerStyle?: CSSProperties;
   placement?: "below" | "above";
-  /** Rendered at the top of the open menu, not a menuitem, not focusable. */
+  /** Rendered at the top of the open menu, not a menuitem, not focusable.
+   * Visual only (aria-hidden): put anything a screen reader needs in `menuLabel`. */
   heading?: ReactNode;
 }) {
   const isMobile = useIsMobile();
@@ -126,7 +127,7 @@ export default function MenuButton({
             }}
           >
             {heading != null && (
-              <div role="presentation" style={{ padding: "10px 12px 8px", borderBottom: `1px solid ${theme.color.borderSubtle}` }}>{heading}</div>
+              <div aria-hidden style={{ padding: "10px 12px 8px", borderBottom: `1px solid ${theme.color.borderSubtle}` }}>{heading}</div>
             )}
             {items.map((item, i) => (
               <button

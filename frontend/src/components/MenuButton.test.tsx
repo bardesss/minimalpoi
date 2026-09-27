@@ -35,6 +35,8 @@ describe("MenuButton", () => {
     render(<MenuButton label="A" ariaLabel="Acct" menuLabel="Account" heading={<span>amy</span>} items={[{ key: "x", label: "X", onSelect: () => {} }]} />);
     await userEvent.click(screen.getByRole("button", { name: "Acct" }));
     expect(screen.getByText("amy")).toBeInTheDocument();
+    // Visual only: the menu's aria-label carries the same information.
+    expect(screen.getByText("amy").closest('[aria-hidden="true"]')).not.toBeNull();
     expect(screen.getAllByRole("menuitem")).toHaveLength(1);
   });
 });

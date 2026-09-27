@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import BottomSheet from "./BottomSheet";
+import MenuButton from "./MenuButton";
 import { MapInsetsProvider, useMapInsetsReader } from "../map/useMapInsets";
 import type { Insets } from "../map/mapInsets";
 
@@ -49,7 +50,7 @@ describe("BottomSheet", () => {
         <BottomSheet label="Places" initial="half"><div>CONTENT</div></BottomSheet>
       </MapInsetsProvider>,
     );
-    const handle = screen.getByRole("separator", { name: /drag to resize/i });
+    const handle = screen.getByTestId("sheet-handle");
     const before = out.get!().bottom;
     // Drag well past "full" so the release can only settle there.
     fireEvent.pointerDown(handle, { clientY: 600, pointerId: 1 });
@@ -95,6 +96,73 @@ describe("BottomSheet", () => {
   it("renders headerLeft content in the handle row", () => {
     render(<BottomSheet label="Places" headerLeft={<span>NAV</span>}><div>CONTENT</div></BottomSheet>);
     const nav = screen.getByText("NAV");
-    expect(nav.closest('[role="separator"]')).not.toBeNull();
+    expect(nav.closest('[data-testid="sheet-handle"]')).not.toBeNull();
+  });
+
+  it("labels only the grip as the separator, so the handle row's controls stay exposed", () => {
+    render(<BottomSheet label="Places" headerRight={<button>Acct</button>}><div /></BottomSheet>);
+    const row = screen.getByTestId("sheet-handle");
+    expect(row).not.toHaveAttribute("role");
+    expect(row).not.toHaveAttribute("aria-label");
+    const grip = screen.getByRole("separator", { name: "Drag to resize list" });
+    expect(row).toContainElement(grip);
+    expect(grip).not.toContainElement(screen.getByRole("button", { name: "Acct" }));
+  });
+
+  it("stacks the handle row above the content and positions the slots without transforms", () => {
+    render(<BottomSheet label="Places" headerLeft={<span>L</span>} headerRight={<span>R</span>}><div /></BottomSheet>);
+    expect(screen.getByTestId("sheet-handle").style.zIndex).toBe("1");
+    for (const text of ["L", "R"]) {
+      const slot = screen.getByText(text).parentElement as HTMLElement;
+      expect(slot.style.transform).toBe("");
+      expect(slot.style.top).toBe("0px");
+      expect(slot.style.bottom).toBe("0px");
+      expect(slot.style.display).toBe("flex");
+      expect(slot.style.alignItems).toBe("center");
+    }
+  });
+
+  it("tapping the open menu's backdrop in a header slot closes it without moving the sheet", () => {
+    const out: { get?: () => Insets } = {};
+    render(
+      <MapInsetsProvider>
+        <Probe out={out} />
+        <BottomSheet
+          label="Places"
+          initial="half"
+          headerRight={<MenuButton label="A" ariaLabel="Acct" menuLabel="Account" items={[{ key: "x", label: "X", onSelect: () => {} }]} />}
+        >
+          <div>CONTENT</div>
+        </BottomSheet>
+      </MapInsetsProvider>,
+    );
+    const before = out.get!().bottom;
+    fireEvent.click(screen.getByRole("button", { name: "Acct" }));
+    const backdrop = screen.getByRole("menu").previousElementSibling as HTMLElement;
+    fireEvent.pointerDown(backdrop, { clientY: 300, pointerId: 1 });
+    fireEvent.pointerUp(backdrop, { clientY: 300, pointerId: 1 });
+    fireEvent.click(backdrop);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(out.get!().bottom).toBe(before);
+  });
+
+  it("tapping non-button content in a header slot does not cycle the snap", () => {
+    const out: { get?: () => Insets } = {};
+    render(
+      <MapInsetsProvider>
+        <Probe out={out} />
+        <BottomSheet label="Places" initial="half" headerRight={<span>40 places</span>}><div /></BottomSheet>
+      </MapInsetsProvider>,
+    );
+    const before = out.get!().bottom;
+    const badge = screen.getByText("40 places");
+    fireEvent.pointerDown(badge, { clientY: 300, pointerId: 1 });
+    fireEvent.pointerUp(badge, { clientY: 300, pointerId: 1 });
+    expect(out.get!().bottom).toBe(before);
+    // A tap on the handle row itself still cycles.
+    const row = screen.getByTestId("sheet-handle");
+    fireEvent.pointerDown(row, { clientY: 300, pointerId: 1 });
+    fireEvent.pointerUp(row, { clientY: 300, pointerId: 1 });
+    expect(out.get!().bottom).not.toBe(before);
   });
 });

@@ -29,10 +29,11 @@ describe("PoiRow", () => {
     expect(onHover.mock.calls).toEqual([[7], [null]]);
   });
 
-  it("shows a 40px thumbnail only when there is a photo", () => {
+  it("shows a 38px thumbnail only when there is a photo", () => {
     const { rerender } = render(<PoiRow poi={poi} category={cat} selected={false} onSelect={() => {}} />);
     expect(screen.queryByTestId("row-thumb")).not.toBeInTheDocument();
     rerender(<PoiRow poi={{ ...poi, image_url: "https://img.example/a.jpg" }} category={cat} selected={false} onSelect={() => {}} />);
-    expect(screen.getByTestId("row-thumb").style.width).toBe("40px");
+    expect(screen.getByTestId("row-thumb").style.width).toBe("38px");
+    expect(screen.getByTestId("row-thumb").style.height).toBe("38px");
   });
 });

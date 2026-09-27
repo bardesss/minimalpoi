@@ -13,14 +13,14 @@ export default function AccountMenu({ username, role, onLogout, onOpenSettings, 
   const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
   return (
     <MenuButton
-      ariaLabel={`Account (${username})`}
-      menuLabel="Account"
+      ariaLabel={updateAvailable ? `Account (${username}), update available` : `Account (${username})`}
+      menuLabel={`Account: ${username}, ${roleLabel}`}
       triggerStyle={{ position: "relative", width: 36, height: 36, padding: 0, borderRadius: "50%", border: "none", background: theme.gradient.brand, color: "#fff", fontFamily: theme.font.ui, fontWeight: 800, fontSize: 13, cursor: "pointer", flex: "none" }}
       label={
         <>
           {username.slice(0, 1).toUpperCase()}
           {updateAvailable && (
-            <span aria-label="Update available" style={{ position: "absolute", top: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: theme.color.primary, border: "2px solid #fff" }} />
+            <span aria-hidden style={{ position: "absolute", top: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: theme.color.primary, border: "2px solid #fff" }} />
           )}
         </>
       }

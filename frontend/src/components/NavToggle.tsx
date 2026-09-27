@@ -20,8 +20,9 @@ const seg = (active: boolean, variant: Variant): CSSProperties => ({
 
 /**
  * Toggle between the Map and Routes sections.
- * - `icon` (desktop): icon-only, small enough to sit in the sidebar header row.
- * - `labeled` (mobile): icon + text, so the control reads clearly on a phone.
+ * - `icon`: icon-only, compact enough for the desktop sidebar header and the
+ *   mobile sheet's 44px handle row (beside the centred grip).
+ * - `labeled`: icon + text, for places with room to spare.
  * The accessible name comes from aria-label either way (also a hover tooltip).
  *
  * The active segment comes from NavLink's own `isActive` (which already emits
