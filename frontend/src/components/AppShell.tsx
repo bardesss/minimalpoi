@@ -11,12 +11,14 @@ import { containerCenter } from "../map/mapInsets";
 import { readMapViewMode, writeMapViewMode, type MapViewMode } from "../lib/mapViewPref";
 import { readSortMode, writeSortMode, type SortMode } from "../lib/sortPref";
 import { sortPois } from "../lib/sortPois";
-import { useIsMobile } from "../lib/useMediaQuery";
+import { useIsMobile, useIsNarrowDesktop } from "../lib/useMediaQuery";
 import { useSearchHotkey } from "../lib/useSearchHotkey";
 import SidebarContent from "./Sidebar/SidebarContent";
 import MapView from "./MapView";
 import Legend from "./Legend";
 import DetailPanel from "./DetailPanel";
+import DetailSheet from "./detail/DetailSheet";
+import SidebarDetail from "./detail/SidebarDetail";
 import AddFab from "./AddFab";
 import PoiFormModal, { type PoiFormInitial } from "./PoiFormModal";
 import SettingsModal from "./SettingsModal";
@@ -26,6 +28,7 @@ export default function AppShell() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const isNarrow = useIsNarrowDesktop();
   const poisQuery = usePois();
   const categoriesQuery = useCategories();
   const tagsQuery = useTags();
@@ -283,6 +286,24 @@ export default function AppShell() {
     />
   );
 
+  // Where the selected place's detail goes: a sheet on phones, inside the
+  // sidebar on narrow desktops (unless it's collapsed), else the overlay panel.
+  const detailMode: "sheet" | "sidebar" | "panel" | null =
+    !selectedPoi ? null : isMobile ? "sheet" : isNarrow && !sidebarCollapsed ? "sidebar" : "panel";
+  const detailProps = selectedPoi
+    ? {
+        poi: selectedPoi,
+        category: selectedPoi.category_id != null ? categoriesById[selectedPoi.category_id] : undefined,
+        onClose: () => setSelectedId(null),
+        onEdit: () => openEdit(selectedPoi),
+        onDelete: confirmDelete,
+      }
+    : null;
+  const layoutDetail =
+    detailProps && detailMode === "sheet" ? <DetailSheet {...detailProps} />
+    : detailProps && detailMode === "sidebar" ? <SidebarDetail {...detailProps} />
+    : undefined;
+
   const main = (
     <>
       {settingsQuery.data && (
@@ -301,16 +322,7 @@ export default function AppShell() {
         />
       )}
       {!isMobile && <Legend categories={categories} counts={counts} uncategorizedCount={hasUncategorized ? counts[UNCATEGORIZED_ID] ?? 0 : 0} />}
-      {selectedPoi && (
-        <DetailPanel
-          poi={selectedPoi}
-          category={selectedPoi.category_id != null ? categoriesById[selectedPoi.category_id] : undefined}
-          onClose={() => setSelectedId(null)}
-          onEdit={() => openEdit(selectedPoi)}
-          onDelete={confirmDelete}
-          mobile={isMobile}
-        />
-      )}
+      {detailProps && detailMode === "panel" && <DetailPanel {...detailProps} />}
       {!(isMobile && selectedPoi) && <AddFab onClick={openAdd} mobile={isMobile} />}
       {formState && (
         <PoiFormModal
@@ -350,6 +362,7 @@ export default function AppShell() {
       sheetCount={filtered.length}
       sidebar={sidebarContent}
       main={main}
+      detail={layoutDetail}
       account={{
         username: user?.username ?? "",
         role: user?.role ?? "member",

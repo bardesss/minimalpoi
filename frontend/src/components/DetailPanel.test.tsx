@@ -61,35 +61,11 @@ describe("DetailPanel", () => {
     expect(onEdit).toHaveBeenCalled();
   });
 
-  it("renders a full-screen overlay on mobile (no drag handle) with a working close", async () => {
-    const onClose = vi.fn();
-    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={onClose} onEdit={() => {}} onDelete={() => {}} mobile />);
-    expect(screen.getByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
-    expect(screen.queryByRole("separator")).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /close/i }));
-    expect(onClose).toHaveBeenCalled();
-  });
-
   it("closes on Escape", async () => {
     const onClose = vi.fn();
     renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={onClose} onEdit={() => {}} onDelete={() => {}} />);
     await userEvent.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalled();
-  });
-
-  it("closes on Escape in the mobile full-screen branch", async () => {
-    const onClose = vi.fn();
-    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={onClose} onEdit={() => {}} onDelete={() => {}} mobile />);
-    await userEvent.keyboard("{Escape}");
-    expect(onClose).toHaveBeenCalled();
-  });
-
-  it("insets the mobile close button below the safe area", () => {
-    renderWithProviders(
-      <DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} mobile />,
-    );
-    const close = screen.getByRole("button", { name: /close/i });
-    expect(close.style.top).toContain("safe-area-inset-top");
   });
 
   it("keeps the desktop close button at a plain offset (no safe-area)", () => {
@@ -116,13 +92,9 @@ describe("DetailPanel", () => {
   it("registers a left inset for the desktop side panel, none on mobile", () => {
     const out: { get?: () => Insets } = {};
     function Probe() { out.get = useMapInsetsReader(); return null; }
-    const { rerender } = renderWithProviders(
+    renderWithProviders(
       <MapInsetsProvider><Probe /><DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} /></MapInsetsProvider>,
     );
     expect(out.get!().left).toBe(368);
-    rerender(
-      <MapInsetsProvider><Probe /><DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} mobile /></MapInsetsProvider>,
-    );
-    expect(out.get!().left).toBe(0);
   });
 });

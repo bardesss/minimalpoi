@@ -13,27 +13,22 @@ export default function DetailPanel({
   onClose,
   onEdit,
   onDelete,
-  mobile = false,
 }: {
   poi: Poi;
   category: Category | undefined;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  mobile?: boolean;
 }) {
-  // Not a backdrop modal: Escape/back/return-focus always apply, but the
-  // focus trap only makes sense in the full-screen mobile branch — the
-  // desktop side panel is non-modal and trapping it would strand keyboard
-  // focus away from the list/map.
-  const { dialogRef } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop: false, trapFocus: mobile });
-  // The desktop panel sits over the map's left edge; the mobile view is a
-  // full-screen overlay, so the map behind it needs no padding.
-  useMapInset("detail-panel", mobile ? null : { left: DETAIL_PANEL_WIDTH });
+  // Not a backdrop modal: Escape/back/return-focus always apply. The panel is
+  // non-modal (it sits beside the list/map), so no focus trap.
+  const { dialogRef } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop: false, trapFocus: false });
+  // The panel sits over the map's left edge.
+  useMapInset("detail-panel", { left: DETAIL_PANEL_WIDTH });
 
-  const close = <CloseButton onClick={onClose} style={{ position: "absolute", top: mobile ? "calc(14px + env(safe-area-inset-top))" : 14, right: 14 }} />;
+  const close = <CloseButton onClick={onClose} style={{ position: "absolute", top: 14, right: 14 }} />;
   const footer = (
-    <div style={{ display: "flex", gap: 9, padding: "14px 18px", paddingBottom: mobile ? "calc(14px + env(safe-area-inset-bottom))" : 14, borderTop: `1px solid ${theme.color.borderSubtle}`, background: "#fff", flex: "none" }}>
+    <div style={{ display: "flex", gap: 9, padding: "14px 18px", paddingBottom: 14, borderTop: `1px solid ${theme.color.borderSubtle}`, background: "#fff", flex: "none" }}>
       <DetailControls layout="footer" onEdit={onEdit} onDelete={onDelete} />
     </div>
   );
@@ -44,15 +39,6 @@ export default function DetailPanel({
       <DetailBody poi={poi} />
     </div>
   );
-
-  if (mobile) {
-    return (
-      <section ref={dialogRef} aria-label={poi.name} style={{ position: "fixed", inset: 0, zIndex: 2000, background: "#fff", display: "flex", flexDirection: "column" }}>
-        {content}
-        {footer}
-      </section>
-    );
-  }
 
   return (
     <div
