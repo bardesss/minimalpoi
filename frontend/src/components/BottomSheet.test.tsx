@@ -61,4 +61,34 @@ describe("BottomSheet", () => {
     expect(out.get!().bottom).not.toBeCloseTo(before);
     expect(out.get!().bottom).toBeCloseTo(window.innerHeight * 0.9);
   });
+
+  it("registers under a custom inset key and none while hidden", () => {
+    const out: { get?: () => Insets } = {};
+    const { rerender } = render(
+      <MapInsetsProvider>
+        <Probe out={out} />
+        <BottomSheet label="Details" initial="peek" insetKey="detail-sheet"><div>X</div></BottomSheet>
+      </MapInsetsProvider>,
+    );
+    expect(out.get!().bottom).toBeCloseTo(window.innerHeight * 0.28);
+    rerender(
+      <MapInsetsProvider>
+        <Probe out={out} />
+        <BottomSheet label="Details" initial="peek" insetKey="detail-sheet" hidden><div>X</div></BottomSheet>
+      </MapInsetsProvider>,
+    );
+    expect(out.get!().bottom).toBe(0);
+  });
+
+  it("is invisible and inert while hidden", () => {
+    render(<BottomSheet label="Places" hidden><button>inside</button></BottomSheet>);
+    const section = screen.getByText("inside").closest("section")!;
+    expect(section.style.visibility).toBe("hidden");
+    expect(section).toHaveAttribute("inert");
+  });
+
+  it("uses a custom handle label", () => {
+    render(<BottomSheet label="Details" handleLabel="Drag to resize details"><div /></BottomSheet>);
+    expect(screen.getByRole("separator", { name: "Drag to resize details" })).toBeInTheDocument();
+  });
 });

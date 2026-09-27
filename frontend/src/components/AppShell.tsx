@@ -11,12 +11,14 @@ import { containerCenter } from "../map/mapInsets";
 import { readMapViewMode, writeMapViewMode, type MapViewMode } from "../lib/mapViewPref";
 import { readSortMode, writeSortMode, type SortMode } from "../lib/sortPref";
 import { sortPois } from "../lib/sortPois";
-import { useIsMobile } from "../lib/useMediaQuery";
+import { useIsMobile, useIsNarrowDesktop } from "../lib/useMediaQuery";
 import { useSearchHotkey } from "../lib/useSearchHotkey";
 import SidebarContent from "./Sidebar/SidebarContent";
 import MapView from "./MapView";
 import Legend from "./Legend";
 import DetailPanel from "./DetailPanel";
+import DetailSheet from "./detail/DetailSheet";
+import SidebarDetail from "./detail/SidebarDetail";
 import AddFab from "./AddFab";
 import PoiFormModal, { type PoiFormInitial } from "./PoiFormModal";
 import SettingsModal from "./SettingsModal";
@@ -26,6 +28,7 @@ export default function AppShell() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const isNarrow = useIsNarrowDesktop();
   const poisQuery = usePois();
   const categoriesQuery = useCategories();
   const tagsQuery = useTags();
@@ -45,6 +48,7 @@ export default function AppShell() {
   const mapRef = useRef<MlMap | null>(null);
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [hoverId, setHoverId] = useState<number | null>(null);
   const [flyRequest, setFlyRequest] = useState<FlyRequest | null>(null);
   const [searchText, setSearchText] = useState("");
   const [activeCategoryIds, setActiveCategoryIds] = useState<number[]>([]);
@@ -61,11 +65,20 @@ export default function AppShell() {
   const [duplicateId, setDuplicateId] = useState<number | null>(null);
   const pendingSearchFocusRef = useRef(false);
 
+  // Narrow desktop with a selection: the detail sits in the sidebar (or will,
+  // once expanded) over the inert list, so #poi-search can't take focus.
+  const detailInSidebar = !isMobile && isNarrow && selectedId != null;
+
   // Global "/" or Ctrl/Cmd-K shortcut: reveal the sidebar (desktop) and focus
   // the search input. On mobile the sidebar/search box is always mounted
   // inside the bottom sheet, so no expand step is needed there.
   useSearchHotkey(() => {
-    if (sidebarCollapsed) {
+    if (detailInSidebar) {
+      // Close it and focus search once the list is back (effect below).
+      setSelectedId(null);
+      if (sidebarCollapsed) setSidebarCollapsed(false);
+      pendingSearchFocusRef.current = true;
+    } else if (sidebarCollapsed) {
       // #poi-search isn't in the DOM until the sidebar re-mounts; defer the
       // focus to the effect below, which fires once it does.
       setSidebarCollapsed(false);
@@ -78,13 +91,13 @@ export default function AppShell() {
   });
 
   useEffect(() => {
-    if (!sidebarCollapsed && pendingSearchFocusRef.current) {
+    if (!sidebarCollapsed && !detailInSidebar && pendingSearchFocusRef.current) {
       pendingSearchFocusRef.current = false;
       const el = document.getElementById("poi-search") as HTMLInputElement | null;
       el?.focus();
       el?.select();
     }
-  }, [sidebarCollapsed]);
+  }, [sidebarCollapsed, detailInSidebar]);
 
   const categories = categoriesQuery.data ?? [];
   const categoriesById = useMemo(
@@ -280,8 +293,27 @@ export default function AppShell() {
       sortMode={sortMode}
       onSortChange={changeSort}
       mobile={isMobile}
+      onHover={isMobile ? undefined : setHoverId}
     />
   );
+
+  // Where the selected place's detail goes: a sheet on phones, inside the
+  // sidebar on narrow desktops (unless it's collapsed), else the overlay panel.
+  const detailMode: "sheet" | "sidebar" | "panel" | null =
+    !selectedPoi ? null : isMobile ? "sheet" : isNarrow && !sidebarCollapsed ? "sidebar" : "panel";
+  const detailProps = selectedPoi
+    ? {
+        poi: selectedPoi,
+        category: selectedPoi.category_id != null ? categoriesById[selectedPoi.category_id] : undefined,
+        onClose: () => setSelectedId(null),
+        onEdit: () => openEdit(selectedPoi),
+        onDelete: confirmDelete,
+      }
+    : null;
+  const layoutDetail =
+    detailProps && detailMode === "sheet" ? <DetailSheet {...detailProps} />
+    : detailProps && detailMode === "sidebar" ? <SidebarDetail {...detailProps} />
+    : undefined;
 
   const main = (
     <>
@@ -298,19 +330,11 @@ export default function AppShell() {
           mapRef={mapRef}
           onMoveEnd={handleMoveEnd}
           onUserLocate={(c) => setMapCenter(c)}
+          highlightId={isMobile ? null : hoverId}
         />
       )}
       {!isMobile && <Legend categories={categories} counts={counts} uncategorizedCount={hasUncategorized ? counts[UNCATEGORIZED_ID] ?? 0 : 0} />}
-      {selectedPoi && (
-        <DetailPanel
-          poi={selectedPoi}
-          category={selectedPoi.category_id != null ? categoriesById[selectedPoi.category_id] : undefined}
-          onClose={() => setSelectedId(null)}
-          onEdit={() => openEdit(selectedPoi)}
-          onDelete={confirmDelete}
-          mobile={isMobile}
-        />
-      )}
+      {detailProps && detailMode === "panel" && <DetailPanel {...detailProps} />}
       {!(isMobile && selectedPoi) && <AddFab onClick={openAdd} mobile={isMobile} />}
       {formState && (
         <PoiFormModal
@@ -350,6 +374,7 @@ export default function AppShell() {
       sheetCount={filtered.length}
       sidebar={sidebarContent}
       main={main}
+      detail={layoutDetail}
       account={{
         username: user?.username ?? "",
         role: user?.role ?? "member",

@@ -32,6 +32,7 @@ export interface SidebarContentProps {
   onSortChange: (mode: SortMode) => void;
   /** Mobile: chips scroll horizontally and the filters tuck beside the search box. */
   mobile?: boolean;
+  onHover?: (id: number | null) => void;
 }
 
 /** Search + filters + results list — shared by the desktop aside and the mobile sheet. */
@@ -71,6 +72,7 @@ export default function SidebarContent(props: SidebarContentProps) {
         isLoading={props.isLoading}
         isError={props.isError}
         onRetry={props.onRetry}
+        onHover={props.onHover}
       />
     </>
   );
