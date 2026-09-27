@@ -30,6 +30,18 @@ describe("useDialog", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it("ignores Escape pressed inside an open menu within the dialog", () => {
+    const onClose = vi.fn();
+    render(<Dialog onClose={onClose} />);
+    const menu = document.createElement("div");
+    menu.setAttribute("role", "menu");
+    const item = document.createElement("button");
+    menu.appendChild(item);
+    screen.getByRole("dialog").appendChild(menu);
+    act(() => { item.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("focuses the first focusable element on open", () => {
     render(<Dialog onClose={() => {}} />);
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "first" }));
