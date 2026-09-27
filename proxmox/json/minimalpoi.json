@@ -1,0 +1,51 @@
+{
+  "name": "MinimalPOI",
+  "slug": "minimalpoi",
+  "categories": [0],
+  "date_created": "2026-09-27",
+  "type": "ct",
+  "updateable": true,
+  "privileged": false,
+  "interface_port": 7676,
+  "documentation": "https://github.com/bardesss/minimalpoi#readme",
+  "website": "https://github.com/bardesss/minimalpoi",
+  "repository": "https://github.com/bardesss/minimalpoi",
+  "logo": "https://raw.githubusercontent.com/bardesss/minimalpoi/main/frontend/public/favicon.svg",
+  "description": "MinimalPOI is a self-hosted, multi-user map for saving and organising places of interest, with tags, lists, image uploads, backups and an optional route planner with live team collaboration. A FastAPI backend serves the React web UI and stores everything in SQLite.",
+  "install_methods": [
+    {
+      "type": "default",
+      "script": "ct/minimalpoi.sh",
+      "config_path": "/opt/minimalpoi.env",
+      "resources": {
+        "cpu": 2,
+        "ram": 2048,
+        "hdd": 8,
+        "os": "Debian",
+        "version": "13"
+      }
+    }
+  ],
+  "default_credentials": {
+    "username": null,
+    "password": null
+  },
+  "notes": [
+    {
+      "text": "On first visit to http://<IP>:7676 the setup screen asks you to create the admin account.",
+      "type": "info"
+    },
+    {
+      "text": "Google Places / Directions API keys are optional and are set in the app's settings, not at install time.",
+      "type": "info"
+    },
+    {
+      "text": "Behind a reverse proxy, set FORWARDED_ALLOW_IPS in /opt/minimalpoi.env to the proxy's IP and restart the service.",
+      "type": "info"
+    },
+    {
+      "text": "The database, uploaded images and secret.key live in /data. Back up that directory.",
+      "type": "warning"
+    }
+  ]
+}
