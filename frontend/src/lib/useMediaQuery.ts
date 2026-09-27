@@ -32,3 +32,9 @@ export function useIsMobile(): boolean {
 export function useIsCoarsePointer(): boolean {
   return useMediaQuery("(pointer: coarse)");
 }
+
+/** True for desktop widths too narrow for the overlay detail panel beside the
+ * sidebar (769–1279px); the detail then replaces the list inside the sidebar. */
+export function useIsNarrowDesktop(): boolean {
+  return useMediaQuery("(min-width: 769px) and (max-width: 1279px)");
+}
