@@ -14,11 +14,19 @@ export default function BottomSheet({
   initial = "half",
   label,
   headerRight,
+  insetKey = "bottom-sheet",
+  hidden = false,
+  handleLabel = "Drag to resize list",
 }: {
   children: ReactNode;
   initial?: Snap;
   label?: string;
   headerRight?: ReactNode;
+  /** Map-inset registry key; a second sheet needs its own. */
+  insetKey?: string;
+  /** Keep the sheet mounted (its snap survives) but invisible, inert and not covering the map. */
+  hidden?: boolean;
+  handleLabel?: string;
 }) {
   const { translate, restTranslate, dragging, handlers } = useSheetDrag(initial);
 
@@ -34,11 +42,13 @@ export default function BottomSheet({
 
   // Tell the map how much of it the sheet covers at rest, so the camera frames
   // the visible part. Uses the settled snap, not the live finger position.
-  useMapInset("bottom-sheet", { bottom: Math.max(viewport - restTranslate, 0) });
+  useMapInset(insetKey, hidden ? null : { bottom: Math.max(viewport - restTranslate, 0) });
 
   return (
     <section
       aria-label={label}
+      inert={hidden || undefined}
+      aria-hidden={hidden || undefined}
       style={{
         position: "fixed",
         left: 0,
@@ -57,12 +67,14 @@ export default function BottomSheet({
         boxShadow: "0 -8px 30px rgba(0,0,0,.18)",
         display: "flex",
         flexDirection: "column",
+        visibility: hidden ? "hidden" : undefined,
+        pointerEvents: hidden ? "none" : undefined,
       }}
     >
       <div
         {...handlers}
         role="separator"
-        aria-label="Drag to resize list"
+        aria-label={handleLabel}
         style={{
           position: "relative",
           flex: "none",
