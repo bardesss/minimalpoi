@@ -68,10 +68,22 @@ describe("AppLayout", () => {
   it("mobile: nav and account live in the sheet's handle row (no brand row, no footer)", () => {
     restore = stubMediaQueries((q) => q === "(max-width: 768px)");
     renderLayout();
-    const handle = screen.getByRole("separator", { name: /drag to resize list/i });
+    const handle = screen.getByTestId("sheet-handle");
+    expect(within(handle).getByRole("separator", { name: /drag to resize list/i })).toBeInTheDocument();
     expect(within(handle).getByRole("button", { name: "Account (amy)" })).toBeInTheDocument();
     expect(within(handle).getByRole("link", { name: "Routes" })).toBeInTheDocument();
     expect(screen.queryByText("MinimalPOI")).not.toBeInTheDocument();
+  });
+
+  it("mobile: the handle row uses the compact icon nav so it clears the grip", () => {
+    restore = stubMediaQueries((q) => q === "(max-width: 768px)");
+    renderLayout();
+    const handle = screen.getByTestId("sheet-handle");
+    for (const name of ["Map", "Routes"]) {
+      const link = within(handle).getByRole("link", { name });
+      expect(link).toHaveAttribute("title", name);
+      expect(link.textContent).toBe("");
+    }
   });
 
   it("hides the nav toggle when routes are disabled", () => {

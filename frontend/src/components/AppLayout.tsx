@@ -40,8 +40,9 @@ export default function AppLayout(props: AppLayoutProps) {
   const isMobile = useIsMobile();
   // Give the POI grid's 3rd column (see PoiList) room on very wide screens.
   const wide = useMediaQuery("(min-width: 1600px)");
-  const navDesktop = props.routesEnabled ? <NavToggle variant="icon" /> : null;
-  const navMobile = props.routesEnabled ? <NavToggle variant="labeled" /> : null;
+  // Icon-only on both: in the mobile handle row the labeled variant is wider
+  // than the space beside the centred grip and taller than the 44px row.
+  const nav = props.routesEnabled ? <NavToggle variant="icon" /> : null;
   const account = <AccountMenu {...props.account} />;
 
   if (isMobile) {
@@ -51,7 +52,7 @@ export default function AppLayout(props: AppLayoutProps) {
         <BottomSheet
           label={props.sheetLabel}
           initial="half"
-          headerLeft={navMobile ?? undefined}
+          headerLeft={nav ?? undefined}
           headerRight={
             <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
               {props.sheetCount != null && <CountBadge n={props.sheetCount} />}
@@ -90,7 +91,7 @@ export default function AppLayout(props: AppLayoutProps) {
               aria-hidden={props.detail != null || undefined}
               style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", visibility: props.detail != null ? "hidden" : undefined }}
             >
-              <SidebarHeader onCollapse={props.onCollapse} nav={navDesktop} account={account} />
+              <SidebarHeader onCollapse={props.onCollapse} nav={nav} account={account} />
               {props.sidebar}
             </div>
             {props.detail != null && (
