@@ -62,7 +62,7 @@ function PoiCard({
       >
         <span style={{ position: "absolute", left: 8, top: 8, width: 18, height: 18, borderRadius: "50%", background: color, border: "2px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,.3)" }} />
         {!thumb && (
-          <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", display: "inline-flex" }}>
+          <span data-testid="card-icon" style={{ position: "absolute", left: 34, top: "50%", transform: "translateY(-50%)", display: "inline-flex" }}>
             <CategoryIcon name={category?.icon ?? null} size={18} color={color} />
           </span>
         )}
@@ -78,7 +78,7 @@ function PoiCard({
         {poi.avg_rating != null && (
           <span
             aria-label={`Average rating ${poi.avg_rating.toFixed(1)} from ${poi.rating_count} ${poi.rating_count === 1 ? "rating" : "ratings"}`}
-            style={{ position: "absolute", right: thumb ? 8 : 36, top: 8, display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 999, background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: 1.4 }}
+            style={{ position: "absolute", right: 8, top: 8, display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 999, background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: 1.4 }}
           >
             <span aria-hidden style={{ color: theme.color.starActive }}>★</span>
             {poi.avg_rating.toFixed(1)}
