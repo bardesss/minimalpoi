@@ -1,11 +1,12 @@
 // frontend/src/components/MapView.test.tsx
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 import { createRef } from "react";
 import type { Map as MlMap } from "maplibre-gl";
 import MapView from "./MapView";
 import { buildPoiMiniCard } from "./PoiMiniCard";
 import type { Category, MapSettings, Poi } from "../types/api";
+import { MapInsetsProvider, useMapInset } from "../map/useMapInsets";
 
 // Mock the mini-card builder so we can count how often the (expensive) DOM
 // build runs. Returns a real element so setDOMContent still receives a node,
@@ -42,6 +43,12 @@ const { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock, 
     easeTo: vi.fn(),
     flyTo: vi.fn(),
     fitBounds: vi.fn(),
+    getContainer: vi.fn(() => ({ clientWidth: 1000, clientHeight: 800 })),
+    getPadding: vi.fn(() => ({ top: 0, right: 0, bottom: 0, left: 0 })),
+    setPadding: vi.fn(),
+    isMoving: vi.fn(() => false),
+    once: vi.fn(),
+    off: vi.fn(),
   };
   // A regular function (not an arrow) so `new maplibregl.Map()` can construct
   // it — Vitest 4 invokes the mock implementation as a constructor, and arrow
@@ -186,5 +193,20 @@ describe("MapView", () => {
     // The first-constructed Popup is the hoverPopup; clicking a marker must
     // dismiss any transient hover popup left open from a preceding hover.
     expect(PopupMock.mock.results[0].value.remove).toHaveBeenCalled();
+  });
+
+  it("pads the camera by the insets registered in the provider", async () => {
+    function Sheet() { useMapInset("sheet", { bottom: 400 }); return null; }
+    const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+    // The sheet renders AFTER the map, as in the mobile layout.
+    render(
+      <MapInsetsProvider>
+        <MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={() => {}} onMapClick={() => {}} addMode={false} visitedPoiIds={new Set()} mapRef={mapRef} />
+        <Sheet />
+      </MapInsetsProvider>,
+    );
+    await act(async () => {});
+    expect(mapInstance.setPadding).toHaveBeenCalledWith({ top: 0, right: 0, bottom: 400, left: 0 });
+    expect(mapInstance.easeTo).not.toHaveBeenCalled();
   });
 });

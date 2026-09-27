@@ -13,6 +13,8 @@ function vh(fraction: number): number {
 
 export interface SheetDrag {
   translate: number;
+  /** Translate of the current snap — changes only when a snap settles or the viewport resizes. */
+  restTranslate: number;
   dragging: boolean;
   handlers: {
     onPointerDown: (e: React.PointerEvent) => void;
@@ -89,6 +91,7 @@ export function useSheetDrag(initial: Snap): SheetDrag {
 
   return {
     translate,
+    restTranslate: vh(DEFAULT_HIDE[snap]),
     dragging,
     handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
   };

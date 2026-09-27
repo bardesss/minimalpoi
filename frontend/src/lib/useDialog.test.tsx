@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useDialog } from "./useDialog";
@@ -14,7 +15,12 @@ function Dialog({ onClose, closeOnBackdrop, trapFocus, manageHistory }: { onClos
   );
 }
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  // Here rather than at the end of a test, so a failing test can't leak fake
+  // timers into the ones after it.
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 describe("useDialog", () => {
   it("closes on Escape", () => {
@@ -103,9 +109,11 @@ describe("useDialog", () => {
   });
 
   it("calls history.back() on unmount (default manageHistory)", () => {
-    const back = vi.spyOn(window.history, "back");
+    vi.useFakeTimers();
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
     const { unmount } = render(<Dialog onClose={() => {}} />);
     unmount();
+    act(() => { vi.runAllTimers(); });
     expect(back).toHaveBeenCalled();
   });
 
@@ -169,5 +177,38 @@ describe("useDialog stacking", () => {
     act(() => { window.dispatchEvent(new PopStateEvent("popstate")); });
     expect(onCloseTop).toHaveBeenCalledOnce();
     expect(onCloseBottom).not.toHaveBeenCalled();
+  });
+});
+
+describe("useDialog under StrictMode", () => {
+  it("keeps a single history entry and stays open after the double-invoked effect", () => {
+    vi.useFakeTimers();
+    const push = vi.spyOn(window.history, "pushState");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const onClose = vi.fn();
+    render(<StrictMode><Dialog onClose={onClose} /></StrictMode>);
+    act(() => { vi.runAllTimers(); });
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(back).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("still closes exactly once on a real hardware Back", () => {
+    vi.useFakeTimers();
+    vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const onClose = vi.fn();
+    render(<StrictMode><Dialog onClose={onClose} /></StrictMode>);
+    act(() => { vi.runAllTimers(); });
+    act(() => { window.dispatchEvent(new PopStateEvent("popstate")); });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("consumes its entry once on a real unmount", () => {
+    vi.useFakeTimers();
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const { unmount } = render(<StrictMode><Dialog onClose={() => {}} /></StrictMode>);
+    unmount();
+    act(() => { vi.runAllTimers(); });
+    expect(back).toHaveBeenCalledTimes(1);
   });
 });

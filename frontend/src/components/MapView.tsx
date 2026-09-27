@@ -8,6 +8,7 @@ import { toFeatureCollection } from "../map/featureCollection";
 import { MAP_FONT, resolveMapStyle } from "../map/style";
 import { buildPoiMiniCard } from "./PoiMiniCard";
 import { theme } from "../theme";
+import { useApplyMapInsets } from "../map/useMapInsets";
 
 interface Props {
   pois: Poi[];
@@ -199,6 +200,9 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Centre the camera on the part of the map not covered by the sheet/panel.
+  useApplyMapInsets(mapRef);
 
   // Update source data when filtered pois or my-visited set change.
   useEffect(() => {
