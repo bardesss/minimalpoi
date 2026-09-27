@@ -48,6 +48,32 @@ describe("useSheetDrag", () => {
     expect(result.current.restTranslate).toBeCloseTo(startRest);
   });
 
+  it("a fast full-length swipe from peek ends at full, not one snap short", () => {
+    const now = vi.spyOn(performance, "now");
+    const { result } = renderHook(() => useSheetDrag("peek"));
+    now.mockReturnValue(1000);
+    act(() => result.current.handlers.onPointerDown(ev(700)));
+    now.mockReturnValue(1100);
+    act(() => result.current.handlers.onPointerMove(ev(450)));
+    now.mockReturnValue(1200);
+    act(() => result.current.handlers.onPointerMove(ev(200)));   // 500px in 200ms
+    act(() => result.current.handlers.onPointerUp());
+    expect(result.current.restTranslate).toBeCloseTo(window.innerHeight * 0.1);
+  });
+
+  it("a flick followed by a hold before release snaps to nearest", () => {
+    const now = vi.spyOn(performance, "now");
+    const { result } = renderHook(() => useSheetDrag("half"));
+    const startRest = result.current.restTranslate;
+    now.mockReturnValue(1000);
+    act(() => result.current.handlers.onPointerDown(ev(500)));
+    now.mockReturnValue(1040);
+    act(() => result.current.handlers.onPointerMove(ev(460)));   // fast...
+    now.mockReturnValue(1340);
+    act(() => result.current.handlers.onPointerUp());             // ...then held 300ms
+    expect(result.current.restTranslate).toBeCloseTo(startRest);
+  });
+
   it("ignores pointer-downs on controls inside the handle", () => {
     const { result } = renderHook(() => useSheetDrag("half"));
     const startRest = result.current.restTranslate;

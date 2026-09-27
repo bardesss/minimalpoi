@@ -14,6 +14,10 @@ function vh(fraction: number): number {
 /** Release speed (px/ms) above which a drag counts as a fling. */
 export const FLING_VELOCITY = 0.5;
 
+/** Only movement this recent (ms before release) counts toward the fling speed,
+ * so a quick drag followed by a hold settles on the nearest snap instead. */
+const FLING_WINDOW_MS = 80;
+
 /** One snap further in the fling's direction (positive velocity = downward =
  * less open), clamped at the ends; null when the release was too slow. */
 export function flingSnap(start: Snap, velocity: number): Snap | null {
@@ -39,8 +43,8 @@ export interface SheetDrag {
  * Drag-to-snap behaviour shared by the map-first sheets (the list sheet and the
  * mobile detail card): follow the finger vertically, then settle on the nearest
  * of peek / half / full on release; a tap with no real movement cycles toward
- * more open; a quick flick moves one snap in the flick's direction regardless
- * of where the sheet would otherwise land.
+ * more open; a quick flick moves at least one snap in the flick's direction
+ * (further if the finger already dragged the sheet past it).
  */
 export function useSheetDrag(initial: Snap): SheetDrag {
   const [snap, setSnap] = useState<Snap>(initial);
@@ -95,6 +99,7 @@ export function useSheetDrag(initial: Snap): SheetDrag {
   );
 
   const onPointerUp = useCallback(() => {
+    const releasedAt = performance.now();
     const d = drag.current;
     drag.current = null;
     setDragging(false);
@@ -104,18 +109,7 @@ export function useSheetDrag(initial: Snap): SheetDrag {
       setSnap((s) => (s === "full" ? "peek" : ORDER[ORDER.indexOf(s) + 1]));
       return;
     }
-    // A quick flick moves one snap in the flick's direction, regardless of
-    // where the sheet would otherwise land.
-    const first = d.samples[0];
-    const last = d.samples[d.samples.length - 1];
-    const dt = last.t - first.t;
-    const velocity = dt > 0 ? (last.y - first.y) / dt : 0;
-    const flung = flingSnap(d.startSnap, velocity);
-    if (flung) {
-      setSnap(flung);
-      return;
-    }
-    // Snap to whichever rest position the sheet is now closest to.
+    // Whichever rest position the sheet is now closest to.
     let best: Snap = "peek";
     let bestDist = Infinity;
     for (const s of ORDER) {
@@ -124,6 +118,21 @@ export function useSheetDrag(initial: Snap): SheetDrag {
         bestDist = dist;
         best = s;
       }
+    }
+    // Speed over the last moments before release (measured up to the release
+    // itself, so a pause before lifting the finger cancels the fling).
+    const recent = d.samples.filter((s) => releasedAt - s.t <= FLING_WINDOW_MS);
+    let velocity = 0;
+    if (recent.length >= 2) {
+      const dt = releasedAt - recent[0].t;
+      velocity = dt > 0 ? (recent[recent.length - 1].y - recent[0].y) / dt : 0;
+    }
+    // A quick flick moves at least one snap in its direction; a long fast
+    // swipe that already passed that snap keeps the further one.
+    const flung = flingSnap(d.startSnap, velocity);
+    if (flung) {
+      const pick = velocity < 0 ? Math.max : Math.min;
+      best = ORDER[pick(ORDER.indexOf(best), ORDER.indexOf(flung))];
     }
     setSnap(best);
   }, [translate]);
