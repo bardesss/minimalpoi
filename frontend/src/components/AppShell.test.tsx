@@ -123,10 +123,9 @@ describe("AppShell", () => {
     await user.click(screen.getByRole("button", { name: /café modern/i }));
     // Wait for the detail panel heading to appear
     expect(await screen.findByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
-    // Click Delete (first click shows confirm)
+    await user.click(screen.getByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("menuitem", { name: /delete place/i }));
     await user.click(screen.getByRole("button", { name: /^delete$/i }));
-    // Click Confirm delete
-    await user.click(screen.getByRole("button", { name: /confirm delete/i }));
     // Detail panel should close
     expect(screen.queryByRole("heading", { name: "Café Modern" })).not.toBeInTheDocument();
   });
