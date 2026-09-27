@@ -9,6 +9,7 @@ import LoginPage from "./pages/LoginPage";
 import PublicRoutePage from "./pages/PublicRoutePage";
 import RoutesPage from "./pages/RoutesPage";
 import SetupPage from "./pages/SetupPage";
+import { MapInsetsProvider } from "./map/useMapInsets";
 
 export default function App() {
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
@@ -43,34 +44,36 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/setup" element={<SetupPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/s/:token" element={<PublicRoutePage />} />
-      <Route
-        path="/"
-        element={
-          <RequireAuth>
-            <AppShell />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/routes"
-        element={
-          <RequireAuth>
-            <RoutesPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/routes/:id"
-        element={
-          <RequireAuth>
-            <RoutesPage />
-          </RequireAuth>
-        }
-      />
-    </Routes>
+    <MapInsetsProvider>
+      <Routes>
+        <Route path="/setup" element={<SetupPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/s/:token" element={<PublicRoutePage />} />
+        <Route
+          path="/"
+          element={
+            <RequireAuth>
+              <AppShell />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/routes"
+          element={
+            <RequireAuth>
+              <RoutesPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/routes/:id"
+          element={
+            <RequireAuth>
+              <RoutesPage />
+            </RequireAuth>
+          }
+        />
+      </Routes>
+    </MapInsetsProvider>
   );
 }
