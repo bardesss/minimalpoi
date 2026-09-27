@@ -4,7 +4,10 @@ import { dangerButtonStyle, primaryButtonStyle, theme, tintFromColor } from "../
 import { safeImageCss, safeLinkHref } from "../lib/safeUrl";
 import { formatPhoneDisplay } from "../lib/phone";
 import { useDialog } from "../lib/useDialog";
+import { useMapInset } from "../map/useMapInsets";
 import PoiActions from "./PoiActions";
+
+export const DETAIL_PANEL_WIDTH = 368;
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
@@ -29,6 +32,9 @@ export default function DetailPanel({
   // desktop side panel is non-modal and trapping it would strand keyboard
   // focus away from the list/map.
   const { dialogRef } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop: false, trapFocus: mobile });
+  // The desktop panel sits over the map's left edge; the mobile view is a
+  // full-screen overlay, so the map behind it needs no padding.
+  useMapInset("detail-panel", mobile ? null : { left: DETAIL_PANEL_WIDTH });
   const color = category?.color ?? theme.color.fallbackPin;
   const tint = tintFromColor(color);
   const heroImage = safeImageCss(poi.image_url);
@@ -117,7 +123,7 @@ export default function DetailPanel({
   return (
     <div
       ref={dialogRef}
-      style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 368, zIndex: 800, background: "#fff", boxShadow: theme.shadow.detail, display: "flex", flexDirection: "column", animation: "slideIn .22s ease" }}
+      style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: DETAIL_PANEL_WIDTH, zIndex: 800, background: "#fff", boxShadow: theme.shadow.detail, display: "flex", flexDirection: "column", animation: "slideIn .22s ease" }}
     >
       <div className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
         {hero}
