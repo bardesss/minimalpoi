@@ -6,6 +6,8 @@ import { useCategories, useCreatePoi, useDeletePoi, useEnrich, useMyVisits, useP
 import { filterPois, UNCATEGORIZED_ID } from "../lib/filterPois";
 import type { Category, Poi, PoiCreate, VisitedFilter } from "../types/api";
 import { boundsOf } from "../map/bounds";
+import { useFlyToSelection, type FlyRequest } from "../map/useFlyToSelection";
+import { containerCenter } from "../map/mapInsets";
 import { readMapViewMode, writeMapViewMode, type MapViewMode } from "../lib/mapViewPref";
 import { readSortMode, writeSortMode, type SortMode } from "../lib/sortPref";
 import { sortPois } from "../lib/sortPois";
@@ -43,6 +45,7 @@ export default function AppShell() {
   const mapRef = useRef<MlMap | null>(null);
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [flyRequest, setFlyRequest] = useState<FlyRequest | null>(null);
   const [searchText, setSearchText] = useState("");
   const [activeCategoryIds, setActiveCategoryIds] = useState<number[]>([]);
   const [visitedFilter, setVisitedFilter] = useState<VisitedFilter>("any");
@@ -144,13 +147,14 @@ export default function AppShell() {
   }
 
   // Stable identity so memoized PoiCards (in the virtualized list) don't
-  // re-render on every parent render (e.g. a distance re-sort).
+  // re-render on every parent render (e.g. a distance re-sort). The camera
+  // move happens in useFlyToSelection, after the detail panel has registered
+  // its map inset, so the place lands in the visible part of the map.
   const selectPoi = useCallback((id: number) => {
     setSelectedId(id);
-    const poi = (poisQuery.data ?? []).find((p) => p.id === id);
-    const map = mapRef.current;
-    if (poi && map) map.flyTo({ center: [poi.lng, poi.lat], zoom: Math.max(map.getZoom(), 14), duration: 600 });
-  }, [poisQuery.data]);
+    setFlyRequest((r) => ({ id, seq: (r?.seq ?? 0) + 1 }));
+  }, []);
+  useFlyToSelection(mapRef, poisQuery.data, flyRequest);
 
   const [searchParams, setSearchParams] = useSearchParams();
   // Deep-link: /?place=<id> preselects a POI (target of the route map's "Open").
@@ -316,8 +320,10 @@ export default function AppShell() {
           tagSuggestions={tagsQuery.data ?? []}
           coords={addCoords}
           getMapCenter={() => {
-            const c = mapRef.current?.getCenter();
-            return c ? { lng: c.lng, lat: c.lat } : null;
+            // The pick-on-map crosshair is centred on the screen, which the
+            // padded getCenter() no longer matches once insets apply.
+            const m = mapRef.current;
+            return m ? containerCenter(m) : null;
           }}
           onSubmit={submitForm}
           onClose={closeForm}
