@@ -10,6 +10,7 @@ import { useFlyToSelection, type FlyRequest } from "../map/useFlyToSelection";
 import { containerCenter } from "../map/mapInsets";
 import { readMapViewMode, writeMapViewMode, type MapViewMode } from "../lib/mapViewPref";
 import { readSortMode, writeSortMode, type SortMode } from "../lib/sortPref";
+import { readListDensity, writeListDensity, type ListDensity } from "../lib/listDensityPref";
 import { sortPois } from "../lib/sortPois";
 import { useIsMobile, useIsNarrowDesktop } from "../lib/useMediaQuery";
 import { useSearchHotkey } from "../lib/useSearchHotkey";
@@ -56,6 +57,13 @@ export default function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mapViewMode, setMapViewMode] = useState<MapViewMode>(() => readMapViewMode());
   const [sortMode, setSortMode] = useState<SortMode>(() => readSortMode());
+  // Stored choice wins; otherwise compact rows on phones, cards on desktop.
+  const [storedDensity, setStoredDensity] = useState<ListDensity | null>(() => readListDensity());
+  const density: ListDensity = storedDensity ?? (isMobile ? "list" : "cards");
+  function changeDensity(d: ListDensity) {
+    setStoredDensity(d);
+    writeListDensity(d);
+  }
   const [mapCenter, setMapCenter] = useState<{ lng: number; lat: number } | null>(null);
   const sortModeRef = useRef(sortMode);
   sortModeRef.current = sortMode;
@@ -292,6 +300,8 @@ export default function AppShell() {
       onViewModeChange={changeMapViewMode}
       sortMode={sortMode}
       onSortChange={changeSort}
+      density={density}
+      onDensityChange={changeDensity}
       mobile={isMobile}
       onHover={isMobile ? undefined : setHoverId}
     />

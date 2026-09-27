@@ -1,6 +1,7 @@
 import type { Category, Poi, VisitedFilter } from "../../types/api";
 import type { MapViewMode } from "../../lib/mapViewPref";
 import type { SortMode } from "../../lib/sortPref";
+import type { ListDensity } from "../../lib/listDensityPref";
 import CategoryChips from "./CategoryChips";
 import FilterPopover from "./FilterPopover";
 import ListToolbar from "./ListToolbar";
@@ -30,6 +31,8 @@ export interface SidebarContentProps {
   onViewModeChange: (mode: MapViewMode) => void;
   sortMode: SortMode;
   onSortChange: (mode: SortMode) => void;
+  density: ListDensity;
+  onDensityChange: (d: ListDensity) => void;
   /** Mobile: chips scroll horizontally and the filters tuck beside the search box. */
   mobile?: boolean;
   onHover?: (id: number | null) => void;
@@ -44,6 +47,8 @@ export default function SidebarContent(props: SidebarContentProps) {
     onSortChange: props.onSortChange,
     viewMode: props.viewMode,
     onViewModeChange: props.onViewModeChange,
+    density: props.density,
+    onDensityChange: props.onDensityChange,
   };
   return (
     <>
