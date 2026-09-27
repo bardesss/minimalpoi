@@ -51,13 +51,14 @@ describe("BottomSheet", () => {
     );
     const handle = screen.getByRole("separator", { name: /drag to resize/i });
     const before = out.get!().bottom;
-    fireEvent.pointerDown(handle, { clientY: 400, pointerId: 1 });
-    fireEvent.pointerMove(handle, { clientY: 300, pointerId: 1 });
+    // Drag well past "full" so the release can only settle there.
+    fireEvent.pointerDown(handle, { clientY: 600, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientY: 100, pointerId: 1 });
     expect(out.get!().bottom).toBe(before);
-    fireEvent.pointerUp(handle, { clientY: 300, pointerId: 1 });
-    // A 100px upward drag from "half" settles nearer "half" or "full"; either
-    // way the inset now reflects a settled snap, not the finger position.
-    const snaps = [0.52, 0.9].map((f) => window.innerHeight * f);
-    expect(snaps.some((s) => Math.abs(s - out.get!().bottom) < 0.5)).toBe(true);
+    fireEvent.pointerUp(handle, { clientY: 100, pointerId: 1 });
+    // The inset now reflects the settled snap ("full" shows 90% of the
+    // viewport), not the finger position.
+    expect(out.get!().bottom).not.toBeCloseTo(before);
+    expect(out.get!().bottom).toBeCloseTo(window.innerHeight * 0.9);
   });
 });

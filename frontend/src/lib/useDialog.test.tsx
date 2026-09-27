@@ -15,7 +15,12 @@ function Dialog({ onClose, closeOnBackdrop, trapFocus, manageHistory }: { onClos
   );
 }
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  // Here rather than at the end of a test, so a failing test can't leak fake
+  // timers into the ones after it.
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 describe("useDialog", () => {
   it("closes on Escape", () => {
@@ -110,7 +115,6 @@ describe("useDialog", () => {
     unmount();
     act(() => { vi.runAllTimers(); });
     expect(back).toHaveBeenCalled();
-    vi.useRealTimers();
   });
 
   it("does not push a history entry on open when manageHistory is false", () => {
@@ -177,8 +181,6 @@ describe("useDialog stacking", () => {
 });
 
 describe("useDialog under StrictMode", () => {
-  afterEach(() => vi.useRealTimers());
-
   it("keeps a single history entry and stays open after the double-invoked effect", () => {
     vi.useFakeTimers();
     const push = vi.spyOn(window.history, "pushState");
