@@ -91,4 +91,10 @@ describe("BottomSheet", () => {
     render(<BottomSheet label="Details" handleLabel="Drag to resize details"><div /></BottomSheet>);
     expect(screen.getByRole("separator", { name: "Drag to resize details" })).toBeInTheDocument();
   });
+
+  it("renders headerLeft content in the handle row", () => {
+    render(<BottomSheet label="Places" headerLeft={<span>NAV</span>}><div>CONTENT</div></BottomSheet>);
+    const nav = screen.getByText("NAV");
+    expect(nav.closest('[role="separator"]')).not.toBeNull();
+  });
 });

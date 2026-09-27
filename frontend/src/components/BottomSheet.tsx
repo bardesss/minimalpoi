@@ -13,6 +13,7 @@ export default function BottomSheet({
   children,
   initial = "half",
   label,
+  headerLeft,
   headerRight,
   insetKey = "bottom-sheet",
   hidden = false,
@@ -21,6 +22,7 @@ export default function BottomSheet({
   children: ReactNode;
   initial?: Snap;
   label?: string;
+  headerLeft?: ReactNode;
   headerRight?: ReactNode;
   /** Map-inset registry key; a second sheet needs its own. */
   insetKey?: string;
@@ -88,6 +90,9 @@ export default function BottomSheet({
           WebkitUserSelect: "none",
         }}
       >
+        {headerLeft && (
+          <span style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)" }}>{headerLeft}</span>
+        )}
         <div style={{ width: 40, height: 5, borderRadius: 999, background: theme.color.borderStd }} />
         {headerRight && (
           <span style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)" }}>

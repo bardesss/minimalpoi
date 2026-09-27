@@ -18,4 +18,9 @@ describe("SidebarHeader", () => {
     render(<SidebarHeader onCollapse={onCollapse} />);
     expect(screen.getByRole("button", { name: /collapse panel/i })).toBeInTheDocument();
   });
+
+  it("renders the account slot", () => {
+    render(<SidebarHeader onCollapse={vi.fn()} account={<button>ACCT</button>} />);
+    expect(screen.getByRole("button", { name: "ACCT" })).toBeInTheDocument();
+  });
 });
