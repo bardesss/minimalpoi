@@ -1,6 +1,6 @@
 // frontend/src/components/MapView.test.tsx
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 import { createRef } from "react";
 import type { Map as MlMap } from "maplibre-gl";
 import MapView from "./MapView";
@@ -195,15 +195,18 @@ describe("MapView", () => {
     expect(PopupMock.mock.results[0].value.remove).toHaveBeenCalled();
   });
 
-  it("pads the camera by the insets registered in the provider", () => {
+  it("pads the camera by the insets registered in the provider", async () => {
     function Sheet() { useMapInset("sheet", { bottom: 400 }); return null; }
     const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+    // The sheet renders AFTER the map, as in the mobile layout.
     render(
       <MapInsetsProvider>
-        <Sheet />
         <MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={() => {}} onMapClick={() => {}} addMode={false} visitedPoiIds={new Set()} mapRef={mapRef} />
+        <Sheet />
       </MapInsetsProvider>,
     );
+    await act(async () => {});
     expect(mapInstance.setPadding).toHaveBeenCalledWith({ top: 0, right: 0, bottom: 400, left: 0 });
+    expect(mapInstance.easeTo).not.toHaveBeenCalled();
   });
 });

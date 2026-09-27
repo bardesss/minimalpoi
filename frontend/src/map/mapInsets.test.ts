@@ -74,6 +74,10 @@ describe("paddingFor", () => {
   it("clamps against the map container size", () => {
     expect(paddingFor(fakeMap(375, 812), { top: 0, right: 0, bottom: 900, left: 0 }).bottom).toBe(692);
   });
+
+  it("rounds to whole pixels so an eased padding can settle on it exactly", () => {
+    expect(paddingFor(fakeMap(375, 812), { top: 0.4, right: 0, bottom: 422.24, left: 10.5 })).toEqual({ top: 0, right: 0, bottom: 422, left: 11 });
+  });
 });
 
 describe("containerCenter", () => {

@@ -69,10 +69,12 @@ export function clampInsets(i: Insets, width: number, height: number, min = MIN_
   return { top, right, bottom, left };
 }
 
-/** The padding to hand MapLibre for `insets` on this map's container. */
+/** The padding to hand MapLibre for `insets` on this map's container, in
+ * whole pixels (so an eased padding can settle on exactly this value). */
 export function paddingFor(map: MlMap, insets: Insets): Insets {
   const c = map.getContainer();
-  return clampInsets(insets, c.clientWidth, c.clientHeight);
+  const p = clampInsets(insets, c.clientWidth, c.clientHeight);
+  return { top: Math.round(p.top), right: Math.round(p.right), bottom: Math.round(p.bottom), left: Math.round(p.left) };
 }
 
 /** Geo point under the container's centre pixel. Unlike `map.getCenter()`,
