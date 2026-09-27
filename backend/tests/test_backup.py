@@ -241,3 +241,32 @@ def test_restore_ignores_fields_removed_from_the_model(data_dir):
         assert session.exec(select(POI)).first().name == "Cafe"
         assert session.exec(select(Category)).first().name == "Parks"
     db.reset_engine()
+
+
+def test_restore_accepts_naive_timestamps_as_utc(data_dir):
+    """Archives exported before timestamps were stored timezone-aware carry
+    naive ISO strings ("2026-01-02T03:04:05"). They must still restore, read
+    as UTC."""
+    from datetime import datetime, timezone
+    from sqlmodel import Session, select
+    from app import db
+    from app.backup import restore_backup
+    from app.models import POI
+
+    db.reset_engine()
+    db.init_db()
+    data = {
+        "version": 1,
+        "users": [{"id": 1, "username": "admin", "password_hash": "x", "role": "admin",
+                   "created_at": "2026-01-02T03:04:05"}],
+        "pois": [{"id": 5, "name": "Cafe", "lat": 52.37, "lng": 4.9, "created_by": 1,
+                  "tags": [], "created_at": "2026-01-02T03:04:05",
+                  "updated_at": "2026-01-02T03:04:05.123456"}],
+    }
+    with Session(db.engine) as session:
+        restore_backup(session, data)
+
+    with Session(db.engine) as session:
+        poi = session.exec(select(POI)).first()
+        assert poi.created_at == datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    db.reset_engine()

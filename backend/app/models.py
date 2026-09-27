@@ -9,6 +9,17 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def as_utc(value: datetime) -> datetime:
+    """Return `value` as an aware UTC datetime, reading a naive one as UTC.
+
+    Datetime columns only accept aware values, but naive ones still arrive
+    from API clients that omit the offset and from backups exported before
+    timestamps were stored timezone-aware."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 class Role(str, Enum):
     ADMIN = "admin"
     MEMBER = "member"

@@ -1,10 +1,10 @@
 from datetime import date, datetime
 from typing import Annotated
 
-from pydantic import StringConstraints
+from pydantic import AfterValidator, StringConstraints
 from sqlmodel import Field, SQLModel
 
-from .models import LegSource, NodeRole, Role, RouteNodeKind
+from .models import LegSource, NodeRole, Role, RouteNodeKind, as_utc
 
 
 class StatusResponse(SQLModel):
@@ -397,8 +397,9 @@ class RouteAttachmentRead(SQLModel):
 
 
 class ShareSettingsUpdate(SQLModel):
-    # expires_at: null clears expiry; a datetime sets it.
-    expires_at: datetime | None = None
+    # expires_at: null clears expiry; a datetime sets it. A value without an
+    # offset is read as UTC.
+    expires_at: Annotated[datetime, AfterValidator(as_utc)] | None = None
     # password: a non-empty string sets/replaces it. remove_password clears it.
     # Both omitted => leave the password unchanged.
     password: Password | None = None
