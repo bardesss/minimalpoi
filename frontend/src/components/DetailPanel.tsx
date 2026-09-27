@@ -1,9 +1,11 @@
+import { useRef } from "react";
 import type { Category, Poi } from "../types/api";
 import { theme } from "../theme";
 import { useDialog } from "../lib/useDialog";
 import { useMapInset } from "../map/useMapInsets";
 import { CloseButton, DetailBody, DetailHero, DetailSummary } from "./detail/DetailParts";
 import DetailControls from "./detail/DetailControls";
+import { useResetScrollOn } from "./detail/useResetScrollOn";
 
 export const DETAIL_PANEL_WIDTH = 368;
 
@@ -25,15 +27,17 @@ export default function DetailPanel({
   const { dialogRef } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop: false, trapFocus: false });
   // The panel sits over the map's left edge.
   useMapInset("detail-panel", { left: DETAIL_PANEL_WIDTH });
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  useResetScrollOn(scrollRef, poi.id);
 
   const close = <CloseButton onClick={onClose} style={{ position: "absolute", top: 14, right: 14 }} />;
   const footer = (
     <div style={{ display: "flex", gap: 9, padding: "14px 18px", paddingBottom: 14, borderTop: `1px solid ${theme.color.borderSubtle}`, background: "#fff", flex: "none" }}>
-      <DetailControls layout="footer" onEdit={onEdit} onDelete={onDelete} />
+      <DetailControls key={poi.id} layout="footer" onEdit={onEdit} onDelete={onDelete} />
     </div>
   );
   const content = (
-    <div className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+    <div ref={scrollRef} className="poi-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
       <DetailHero poi={poi} category={category} overlay={close} />
       <DetailSummary poi={poi} />
       <DetailBody poi={poi} />

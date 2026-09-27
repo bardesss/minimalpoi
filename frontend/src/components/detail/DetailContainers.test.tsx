@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Category, Poi } from "../../types/api";
 import { renderWithProviders } from "../../test/utils";
@@ -48,5 +48,57 @@ describe("SidebarDetail", () => {
     function Probe() { out.get = useMapInsetsReader(); return null; }
     renderWithProviders(<MapInsetsProvider><Probe /><SidebarDetail poi={poi} category={cat} onClose={noop} onEdit={noop} onDelete={noop} /></MapInsetsProvider>);
     expect(out.get!()).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+  });
+});
+
+const other: Poi = { ...poi, id: 2, name: "Other Place" };
+
+async function armConfirm() {
+  await userEvent.click(screen.getByRole("button", { name: /more actions/i }));
+  await userEvent.click(screen.getByRole("menuitem", { name: /delete place/i }));
+  expect(screen.getByText(/delete this place\?/i)).toBeInTheDocument();
+}
+
+describe.each([
+  ["DetailSheet", DetailSheet],
+  ["SidebarDetail", SidebarDetail],
+] as const)("%s switching places", (_name, Container) => {
+  const props = { category: cat, onClose: noop, onEdit: noop, onDelete: noop };
+
+  it("drops an armed delete confirmation when another place is shown", async () => {
+    const { rerender } = renderWithProviders(<Container poi={poi} {...props} />);
+    await armConfirm();
+    rerender(<Container poi={other} {...props} />);
+    expect(screen.queryByText(/delete this place\?/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /more actions/i })).toBeInTheDocument();
+  });
+
+  it("scrolls back to the top when another place is shown", () => {
+    const { container, rerender } = renderWithProviders(<Container poi={poi} {...props} />);
+    const scroller = container.querySelector(".poi-scroll") as HTMLElement;
+    Object.defineProperty(scroller, "scrollTop", { value: 240, writable: true, configurable: true });
+    act(() => { rerender(<Container poi={other} {...props} />); });
+    expect(scroller.scrollTop).toBe(0);
+  });
+});
+
+describe("DetailSheet peek summary", () => {
+  it("clamps the name and address to one line each, keeping the full text as a title", () => {
+    const long = { ...poi, name: "A very long place name that would otherwise wrap onto two lines", address: "Some Really Long Street Name 123, 1234 AB Amsterdam, Netherlands" };
+    renderWithProviders(<DetailSheet poi={long} category={cat} onClose={noop} onEdit={noop} onDelete={noop} />);
+    const name = screen.getByRole("heading", { name: long.name });
+    expect(name.style.whiteSpace).toBe("nowrap");
+    expect(name.style.textOverflow).toBe("ellipsis");
+    expect(name.style.overflow).toBe("hidden");
+    expect(name).toHaveAttribute("title", long.name);
+    const address = screen.getByText(long.address, { exact: false });
+    expect(address.style.whiteSpace).toBe("nowrap");
+    expect(address.style.textOverflow).toBe("ellipsis");
+    expect(address).toHaveAttribute("title", long.address);
+  });
+
+  it("does not clamp the summary in the sidebar detail", () => {
+    renderWithProviders(<SidebarDetail poi={poi} category={cat} onClose={noop} onEdit={noop} onDelete={noop} />);
+    expect(screen.getByRole("heading", { name: poi.name }).style.whiteSpace).toBe("");
   });
 });

@@ -36,4 +36,35 @@ describe("DetailControls", () => {
     expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /edit place/i })).toBeInTheDocument();
   });
+
+  async function armConfirm() {
+    await userEvent.click(screen.getByRole("button", { name: /more actions/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /delete place/i }));
+  }
+
+  it("moves focus to Cancel when the confirmation appears, and back to the menu trigger after Cancel", async () => {
+    render(<DetailControls layout="footer" onEdit={() => {}} onDelete={() => {}} />);
+    await armConfirm();
+    expect(screen.getByRole("button", { name: /cancel/i })).toHaveFocus();
+    await userEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(screen.getByRole("button", { name: /more actions/i })).toHaveFocus();
+  });
+
+  it("cancels the confirmation on Escape and returns focus to the menu trigger", async () => {
+    const onDelete = vi.fn();
+    render(<DetailControls layout="footer" onEdit={() => {}} onDelete={onDelete} />);
+    await armConfirm();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByText(/delete this place\?/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /more actions/i })).toHaveFocus();
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it.each(["footer", "header"] as const)("keeps every control at least 44px tall (%s layout)", async (layout) => {
+    render(<DetailControls layout={layout} onEdit={() => {}} onDelete={() => {}} />);
+    expect(screen.getByRole("button", { name: /edit place/i }).style.minHeight).toBe("44px");
+    await armConfirm();
+    expect(screen.getByRole("button", { name: /cancel/i }).style.minHeight).toBe("44px");
+    expect(screen.getByRole("button", { name: /^delete$/i }).style.minHeight).toBe("44px");
+  });
 });

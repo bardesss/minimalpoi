@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Category, Poi } from "../types/api";
 import { renderWithProviders } from "../test/utils";
@@ -89,12 +89,41 @@ describe("DetailPanel", () => {
     expect(scroller.contains(editBtn)).toBe(false);
   });
 
-  it("registers a left inset for the desktop side panel, none on mobile", () => {
+  it("registers a left inset for the desktop side panel", () => {
     const out: { get?: () => Insets } = {};
     function Probe() { out.get = useMapInsetsReader(); return null; }
     renderWithProviders(
       <MapInsetsProvider><Probe /><DetailPanel poi={poi} category={cat} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} /></MapInsetsProvider>,
     );
     expect(out.get!().left).toBe(368);
+  });
+
+  it("Escape while confirming a delete cancels the confirmation, not the panel", async () => {
+    const onClose = vi.fn();
+    renderWithProviders(<DetailPanel poi={poi} category={cat} onClose={onClose} onEdit={() => {}} onDelete={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: /more actions/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /delete place/i }));
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByText(/delete this place\?/i)).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("drops an armed delete confirmation when another place is shown", async () => {
+    const props = { category: cat, onClose: () => {}, onEdit: () => {}, onDelete: () => {} };
+    const { rerender } = renderWithProviders(<DetailPanel poi={poi} {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: /more actions/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /delete place/i }));
+    expect(screen.getByText(/delete this place\?/i)).toBeInTheDocument();
+    rerender(<DetailPanel poi={{ ...poi, id: 2, name: "Other" }} {...props} />);
+    expect(screen.queryByText(/delete this place\?/i)).not.toBeInTheDocument();
+  });
+
+  it("scrolls back to the top when another place is shown", () => {
+    const props = { category: cat, onClose: () => {}, onEdit: () => {}, onDelete: () => {} };
+    const { container, rerender } = renderWithProviders(<DetailPanel poi={poi} {...props} />);
+    const scroller = container.querySelector(".poi-scroll") as HTMLElement;
+    Object.defineProperty(scroller, "scrollTop", { value: 240, writable: true, configurable: true });
+    act(() => { rerender(<DetailPanel poi={{ ...poi, id: 2, name: "Other" }} {...props} />); });
+    expect(scroller.scrollTop).toBe(0);
   });
 });

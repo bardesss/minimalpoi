@@ -37,7 +37,8 @@ function ActionLink({ href, icon, label, external = false }: { href: string; ico
   );
 }
 
-/** One-tap things to do with a place: get there, call, email, visit, share.
+/** One-tap things to do with a place: get there, call, share, email, visit
+ * (Share early so it stays in view on a phone-width row).
  * Each action shows only when its data exists; links are built from
  * sanitised values (tel digits, safeLinkHref) — never raw user strings. */
 export default function PlaceActionRow({ poi }: { poi: Poi }) {
@@ -73,12 +74,12 @@ export default function PlaceActionRow({ poi }: { poi: Poi }) {
     <div role="group" aria-label="Place actions" className="no-scrollbar" style={{ display: "flex", gap: 8, overflowX: "auto", margin: "0 0 16px" }}>
       <ActionLink href={directions} icon={<Navigation size={18} aria-hidden />} label="Directions" external />
       {tel && <ActionLink href={tel} icon={<Phone size={18} aria-hidden />} label="Call" />}
-      {poi.email && <ActionLink href={`mailto:${poi.email}`} icon={<Mail size={18} aria-hidden />} label="Email" />}
-      {website && <ActionLink href={website} icon={<Globe size={18} aria-hidden />} label="Website" external />}
       <button type="button" onClick={share} style={actionStyle} className="hover-btn">
         <Share2 size={18} aria-hidden />
         Share
       </button>
+      {poi.email && <ActionLink href={`mailto:${poi.email}`} icon={<Mail size={18} aria-hidden />} label="Email" />}
+      {website && <ActionLink href={website} icon={<Globe size={18} aria-hidden />} label="Website" external />}
     </div>
   );
 }
