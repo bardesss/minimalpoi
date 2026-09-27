@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { Search } from "lucide-react";
 import { theme } from "../../theme";
 
-export default function SearchBox({ value, onChange, trailing }: { value: string; onChange: (v: string) => void; trailing?: ReactNode }) {
+export default function SearchBox({ value, onChange, trailing, compact = false }: { value: string; onChange: (v: string) => void; trailing?: ReactNode; compact?: boolean }) {
   return (
-    <div style={{ padding: "14px 20px 4px" }}>
+    <div style={{ padding: compact ? "8px 20px 4px" : "14px 20px 4px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
           <Search size={14} color={theme.color.textInputIcon} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} aria-hidden />
