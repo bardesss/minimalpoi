@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { theme } from "../../theme";
 import BrandLogo from "../BrandLogo";
 
-export default function SidebarHeader({ onCollapse, nav }: { onCollapse: () => void; nav?: ReactNode }) {
+export default function SidebarHeader({ onCollapse, nav, account }: { onCollapse: () => void; nav?: ReactNode; account?: ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "18px 20px 16px", background: theme.gradient.asideHeader }}>
       <BrandLogo size={32} />
@@ -11,6 +11,7 @@ export default function SidebarHeader({ onCollapse, nav }: { onCollapse: () => v
         <div style={{ fontSize: 11, fontWeight: 500, color: theme.color.textPlaceholder, letterSpacing: ".01em" }}>Points of Interest Manager</div>
       </div>
       {nav}
+      {account}
       <button type="button" aria-label="Collapse panel" onClick={onCollapse} style={{ flex: "none", width: 30, height: 30, borderRadius: theme.radius.icon, background: "#fff", border: `1px solid ${theme.color.borderStd}`, color: theme.color.textSecondary, cursor: "pointer" }}>«</button>
     </div>
   );
