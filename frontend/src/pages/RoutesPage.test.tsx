@@ -132,8 +132,8 @@ describe("RoutesPage", () => {
   it("shows planned end date with the scheduled hint when they differ", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
-    expect(await screen.findByText(/2026-07-20/)).toBeInTheDocument();   // planned end
-    expect(screen.getByText(/scheduled:\s*2026-07-16/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Jul 14.*Jul 20, 2026|Jul 14.*20, 2026/)).toBeInTheDocument();   // planned range
+    expect(screen.getByText(/scheduled:\s*Thu, Jul 16, 2026/i)).toBeInTheDocument();
   });
 
   it("opens the route form modal in edit mode from the Edit button", async () => {

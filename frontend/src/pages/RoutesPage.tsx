@@ -16,6 +16,7 @@ import ShareImageModal from "../components/routes/ShareImageModal";
 import ShareLinkModal from "../components/routes/ShareLinkModal";
 import RouteFormModal from "../components/routes/RouteFormModal";
 import { formatTravel } from "../lib/formatTravel";
+import { formatDate, formatDateRange } from "../lib/formatDate";
 import { passedNodeIds, todayIso } from "../lib/dayState";
 import { exportRoute, type RouteExportFormat } from "../api/routes";
 import { triggerDownload } from "../lib/download";
@@ -127,7 +128,7 @@ export default function RoutesPage() {
               >
                 <div style={{ fontFamily: theme.font.ui, fontWeight: 700, fontSize: 14, color: theme.color.textPrimary }}>{r.name}</div>
                 <div style={{ fontSize: 12, color: theme.color.textSecondary, marginTop: 2 }}>
-                  {r.start_date} → {r.end_date ?? r.scheduled_end_date} · {r.node_count} stops · by {r.owner_username}{r.team_name ? ` · ${r.team_name}` : ""}
+                  {formatDateRange(r.start_date, r.end_date ?? r.scheduled_end_date)} · {r.node_count} stops · by {r.owner_username}{r.team_name ? ` · ${r.team_name}` : ""}
                 </div>
               </button>
             ))}
@@ -148,9 +149,9 @@ export default function RoutesPage() {
                 <div style={{ minWidth: 0 }}>
                   <h2 style={{ margin: "0 0 4px", fontFamily: theme.font.ui, fontWeight: 800, fontSize: 17, color: theme.color.textPrimary }}>{detail.name}</h2>
                   <p style={{ margin: isMobile ? 0 : "0 0 12px", fontSize: 12.5, color: theme.color.textSecondary }}>
-                    {detail.start_date} → {detail.end_date ?? detail.scheduled_end_date}
+                    {formatDateRange(detail.start_date, detail.end_date ?? detail.scheduled_end_date)}
                     {detail.end_date && detail.end_date !== detail.scheduled_end_date && (
-                      <span style={{ color: theme.color.textPlaceholder }}> · scheduled: {detail.scheduled_end_date}</span>
+                      <span style={{ color: theme.color.textPlaceholder }}> · scheduled: {formatDate(detail.scheduled_end_date)}</span>
                     )}
                     {detail.team_name && <span style={{ color: theme.color.textPlaceholder }}> · team: {detail.team_name}</span>}
                     {detail.total_distance_m > 0 && <> · {formatTravel(detail.total_distance_m, detail.total_duration_s)}</>}
