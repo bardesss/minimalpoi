@@ -220,6 +220,23 @@ describe("MapView", () => {
     expect(PopupMock.mock.results[0].value.remove).toHaveBeenCalled();
   });
 
+  it("does not select a poi when a marker is clicked while placing a pin (addMode)", () => {
+    const onSelect = vi.fn();
+    const onMapClick = vi.fn();
+    const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+    const { rerender } = render(<MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={onSelect} onMapClick={onMapClick} addMode={true} visitedPoiIds={new Set()} mapRef={mapRef} />);
+    handlers.load();
+    handlers["click:unclustered"]?.({ features: [{ properties: { id: 1 } }] } as never);
+    handlers["click:"]?.({ lngLat: { lng: 4.9, lat: 52.37 } } as never);
+    expect(onSelect).not.toHaveBeenCalled();
+    // The general map click still places the pin.
+    expect(onMapClick).toHaveBeenCalledWith(4.9, 52.37);
+    // Leaving pick mode restores marker selection.
+    rerender(<MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={onSelect} onMapClick={onMapClick} addMode={false} visitedPoiIds={new Set()} mapRef={mapRef} />);
+    handlers["click:unclustered"]?.({ features: [{ properties: { id: 1 } }] } as never);
+    expect(onSelect).toHaveBeenCalledWith(1);
+  });
+
   it("pads the camera by the insets registered in the provider", async () => {
     function Sheet() { useMapInset("sheet", { bottom: 400 }); return null; }
     const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
@@ -258,7 +275,7 @@ describe("MapView", () => {
       expect(marker.setLngLat).toHaveBeenCalledWith([4.9, 52.37]);
       expect(marker.addTo).toHaveBeenCalledWith(mapInstance);
       const el = marker.getElement();
-      expect(el.getAttribute("aria-label")).toBe("New place location (drag to move)");
+      expect(el.getAttribute("aria-label")).toBe("Place location (drag to move)");
     });
 
     it("moves the same marker on a coordinate change instead of constructing a new one", () => {
