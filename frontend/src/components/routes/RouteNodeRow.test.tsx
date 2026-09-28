@@ -23,7 +23,7 @@ describe("RouteNodeRow", () => {
   it("shows a stay with its date range and nights", () => {
     render(<RouteNodeRow node={stay} routeId={1} canEdit />);
     expect(screen.getByText("Amsterdam")).toBeInTheDocument();
-    expect(screen.getByText("2026-07-14 → 2026-07-16")).toBeInTheDocument();
+    expect(screen.getByText(/Jul 14.*Jul 16, 2026|Jul 14.*16, 2026/)).toBeInTheDocument();
     expect(screen.getByText(/2 nights/)).toBeInTheDocument();
   });
 

@@ -22,6 +22,20 @@ describe("MenuButton", () => {
     expect(screen.getByRole("menu").style.bottom).toBe("calc(100% + 4px)");
   });
 
+  it("anchors the menu at the right edge by default", async () => {
+    render(<MenuButton label="⋯" ariaLabel="More" menuLabel="M" items={[{ key: "a", label: "A", onSelect: () => {} }]} />);
+    await userEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.getByRole("menu").style.right).toBe("0px");
+    expect(screen.getByRole("menu").style.left).toBe("");
+  });
+
+  it("anchors the menu at the left edge when align is left", async () => {
+    render(<MenuButton label="⋯" ariaLabel="More" menuLabel="M" align="left" items={[{ key: "a", label: "A", onSelect: () => {} }]} />);
+    await userEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.getByRole("menu").style.left).toBe("0px");
+    expect(screen.getByRole("menu").style.right).toBe("");
+  });
+
   it("closes on Escape and returns focus to the trigger", async () => {
     render(<MenuButton label="⋯" ariaLabel="More" menuLabel="M" items={[{ key: "a", label: "A", onSelect: () => {} }]} />);
     const trigger = screen.getByRole("button", { name: "More" });

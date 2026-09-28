@@ -14,6 +14,8 @@ const detail: RouteDetail = {
   created_by: 1, owner_username: "admin", team_id: 9, team_name: "Ghosts", round_trip: false, can_edit: true,
   nodes: [], legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
 };
+const nonEditorDetail: RouteDetail = { ...detail, can_edit: false };
+const routeState: { detail: RouteDetail } = { detail };
 
 vi.mock("../components/routes/RouteMap", () => ({
   default: (props: Record<string, unknown>) => {
@@ -30,7 +32,7 @@ vi.mock("../components/routes/ShareImageModal", () => ({
 
 vi.mock("../queries/hooks", () => ({
   useRoutes: () => ({ data: [{ id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-20", scheduled_end_date: "2026-07-16", node_count: 0, created_by: 1, owner_username: "admin", team_id: 3, team_name: "Crew" }], isLoading: false }),
-  useRoute: () => ({ data: detail, isLoading: false }),
+  useRoute: () => ({ data: routeState.detail, isLoading: false }),
   useSettings: () => ({ data: { map_tile_url: "", default_map_center_lat: 52, default_map_center_lng: 4, default_map_zoom: 11, routes_enabled: true } }),
   useTeams: () => ({ data: [{ id: 3, name: "Crew", created_by: 1, member_ids: [1] }] }),
   useCreateRoutePlan: () => ({ mutateAsync: createPlanAsync, isPending: false }),
@@ -56,6 +58,7 @@ vi.mock("../auth/AuthContext", () => ({
 vi.mock("../queries/useRouteEvents", () => ({ useRouteEvents: () => {} }));
 
 beforeEach(() => {
+  routeState.detail = detail;
   createPlanAsync.mockClear();
   deleteAsync.mockClear();
 });
@@ -132,8 +135,8 @@ describe("RoutesPage", () => {
   it("shows planned end date with the scheduled hint when they differ", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
-    expect(await screen.findByText(/2026-07-20/)).toBeInTheDocument();   // planned end
-    expect(screen.getByText(/scheduled:\s*2026-07-16/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Jul 14.*Jul 20, 2026|Jul 14.*20, 2026/)).toBeInTheDocument();   // planned range
+    expect(screen.getByText(/scheduled:\s*Thu, Jul 16, 2026/i)).toBeInTheDocument();
   });
 
   it("opens the route form modal in edit mode from the Edit button", async () => {
@@ -178,10 +181,54 @@ describe("RoutesPage", () => {
     expect(await screen.findAllByText(/Ghosts/)).not.toHaveLength(0);
   });
 
-  it("shows a Share image button, disabled for a node-less route", async () => {
+  it("puts the title on its own full-width row above the actions", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
-    expect(await screen.findByRole("button", { name: /share image/i })).toBeDisabled();
+    const title = await screen.findByRole("heading", { name: "NL trip" });
+    const share = screen.getByRole("button", { name: /share/i });
+    // The title block is not a flex sibling of the actions any more: the actions come after it in its own row.
+    expect(title.closest("[data-testid=route-title-block]")).not.toBeNull();
+    expect(share.closest("[data-testid=route-title-block]")).toBeNull();
+  });
+
+  it("groups export and sharing in one Share menu", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /share/i }));
+    const menu = screen.getByRole("menu", { name: /share route/i });
+    for (const name of [/export geojson/i, /export gpx/i, /export kml/i]) {
+      expect(within(menu).getByRole("menuitem", { name })).toBeInTheDocument();
+    }
+  });
+
+  it("offers Public link to editors only", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /share/i }));
+    const menu = screen.getByRole("menu", { name: /share route/i });
+    expect(within(menu).getByRole("menuitem", { name: /public link/i })).toBeInTheDocument();
+  });
+
+  it("hides Public link and Edit from non-editors, and opens Share rightward", async () => {
+    routeState.detail = nonEditorDetail;
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /share/i }));
+    expect(screen.queryByRole("button", { name: /^edit$/i })).not.toBeInTheDocument();
+    const menu = screen.getByRole("menu", { name: /share route/i });
+    expect(within(menu).queryByRole("menuitem", { name: /public link/i })).not.toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: /export gpx/i })).toBeInTheDocument();
+    // With no Edit button before it the trigger sits at the sidebar's left
+    // edge, so the menu must hang from its left edge to stay visible.
+    expect(menu.style.left).toBe("0px");
+  });
+
+  it("leaves Share image out of the menu for a route with no stops", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /share/i }));
+    const menu = screen.getByRole("menu", { name: /share route/i });
+    expect(within(menu).queryByRole("menuitem", { name: /share image/i })).not.toBeInTheDocument();
   });
 
   it("edit route modal offers the caller's teams to reassign", async () => {

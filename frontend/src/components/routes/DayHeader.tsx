@@ -7,7 +7,7 @@ import { useIsMobile } from "../../lib/useMediaQuery";
 // hit area). Left: chevron + a prominent day label with a quiet "Day N" marker;
 // the stop count shows only when collapsed. Right: the day's driving total plus
 // a Navigate button. The label mutes for past days.
-export default function DayHeader({ label, dayNumber, distance_m, duration_s, collapsed, muted, stopCount, onToggle, onNavigate }: {
+export default function DayHeader({ label, dayNumber, distance_m, duration_s, collapsed, muted, stopCount, onToggle, onNavigate, color }: {
   label: string;
   dayNumber: number;
   distance_m: number;
@@ -17,6 +17,7 @@ export default function DayHeader({ label, dayNumber, distance_m, duration_s, co
   stopCount: number;
   onToggle: () => void;
   onNavigate: () => void;
+  color?: string;
 }) {
   const isMobile = useIsMobile();
   return (
@@ -28,6 +29,13 @@ export default function DayHeader({ label, dayNumber, distance_m, duration_s, co
         style={{ display: "flex", alignItems: "baseline", gap: 8, flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
       >
         <span aria-hidden style={{ fontSize: 9, color: theme.color.textPlaceholder }}>{collapsed ? "▸" : "▾"}</span>
+        {color && (
+          <span
+            data-testid="day-color"
+            aria-hidden
+            style={{ width: 10, height: 10, borderRadius: "50%", background: color, flex: "none", alignSelf: "center" }}
+          />
+        )}
         <span style={{ fontFamily: theme.font.ui, fontSize: 13, fontWeight: 800, letterSpacing: ".02em", color: muted ? theme.color.textPlaceholder : theme.color.textPrimary }}>{label}</span>
         <span style={{ fontSize: 11, fontWeight: 700, color: theme.color.textPlaceholder }}>Day {dayNumber}</span>
         {collapsed && <span style={{ fontSize: 11, fontWeight: 700, color: theme.color.textCoord }}>· {stopCount} stops</span>}

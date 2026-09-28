@@ -14,7 +14,12 @@ vi.mock("../api/public", () => ({
   unlockPublicRoute: (...args: unknown[]) => unlockPublicRoute(...args),
 }));
 
-vi.mock("../components/routes/RouteMap", () => ({ default: () => <div data-testid="route-map" /> }));
+vi.mock("../components/routes/RouteMap", () => ({
+  default: (props: Record<string, unknown>) => {
+    (globalThis as Record<string, unknown>).__publicRouteMapProps = props;
+    return <div data-testid="route-map" />;
+  },
+}));
 
 const openRoute: PublicRouteResponse = {
   locked: false,
@@ -65,6 +70,16 @@ describe("PublicRoutePage", () => {
     expect(screen.queryByRole("button", { name: /add stop/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /add stay/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /remove chamonix/i })).not.toBeInTheDocument();
+  });
+
+  it("colours the map by day, matching the itinerary", async () => {
+    getPublicRoute.mockResolvedValue(openRoute);
+    renderPage();
+    await screen.findByText("Chamonix");
+    const props = (globalThis as Record<string, unknown>).__publicRouteMapProps as { dayIndexByNode?: Map<number, number> };
+    expect(props.dayIndexByNode).toBeInstanceOf(Map);
+    expect(props.dayIndexByNode!.size).toBeGreaterThan(0);
+    expect(props.dayIndexByNode!.get(1)).toBe(0);
   });
 
   it("shows a password form when locked and unlocks on submit", async () => {

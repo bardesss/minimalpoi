@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { theme, tintFromColor, inputStyle, monoInputStyle, textareaStyle, ghostButtonStyle, fieldLabelStyle, toggleChipStyle, resultButtonStyle } from "./theme";
+import { theme, tintFromColor, inputStyle, monoInputStyle, textareaStyle, ghostButtonStyle, fieldLabelStyle, toggleChipStyle, resultButtonStyle, routeDayColors, routeDayColor } from "./theme";
 
 describe("theme", () => {
   it("exposes the brand indigo", () => {
@@ -44,7 +44,22 @@ function contrastOnWhite(hex: string): number {
   return 1.05 / (L + 0.05); // (white 1.0 + .05) / (fg L + .05)
 }
 
+describe("routeDayColor", () => {
+  it("cycles through the 6 route day colours", () => {
+    expect(routeDayColor(0)).toBe(routeDayColors[0]);
+    expect(routeDayColor(7)).toBe(routeDayColors[1]);
+  });
+
+  it("has six distinct colours", () => {
+    expect(new Set(routeDayColors).size).toBe(6);
+  });
+});
+
 describe("contrast", () => {
+  it("every route day colour meets WCAG AA on white (12px seq labels)", () => {
+    for (const c of routeDayColors) expect(contrastOnWhite(c), c).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("hint/coordinate text meets WCAG AA on white", () => {
     expect(contrastOnWhite(theme.color.textPlaceholder)).toBeGreaterThanOrEqual(4.5);
     expect(contrastOnWhite(theme.color.textCoord)).toBeGreaterThanOrEqual(4.5);

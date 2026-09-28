@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, daysBetween, groupNodesByDay, placeInDay, dayOffsetForDrop, dropIntoDay } from "./routeDays";
+import { addDays, dayIndexByNode, daysBetween, groupNodesByDay, placeInDay, dayOffsetForDrop, dropIntoDay, stayCovering } from "./routeDays";
 import type { RouteDetail, RouteLeg, RouteNode } from "../types/api";
 
 function stay(id: number, position: number, name: string, arrive: string, depart: string, nights: number): RouteNode {
@@ -158,6 +158,23 @@ describe("dayOffsetForDrop", () => {
   });
 });
 
+describe("stayCovering", () => {
+  const nodes = [stay(1, 1, "Café de Jaren", "2026-10-09", "2026-10-12", 3), stop(2, 2, "Rijksmuseum")];
+  it("returns the stay and night number for a middle night", () => {
+    expect(stayCovering(nodes, "2026-10-10")).toEqual({ node: nodes[0], night: 2, nights: 3 });
+    expect(stayCovering(nodes, "2026-10-11")).toEqual({ node: nodes[0], night: 3, nights: 3 });
+  });
+  it("is null on the arrive day, the depart day and outside the stay", () => {
+    expect(stayCovering(nodes, "2026-10-09")).toBeNull();
+    expect(stayCovering(nodes, "2026-10-12")).toBeNull();
+    expect(stayCovering(nodes, "2026-10-20")).toBeNull();
+  });
+  it("ignores stays without dates", () => {
+    const undated = { ...nodes[0], arrive_date: null, depart_date: null };
+    expect(stayCovering([undated], "2026-10-10")).toBeNull();
+  });
+});
+
 describe("dropIntoDay", () => {
   const multi: RouteDetail = {
     id: 5, name: "E", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-16",
@@ -183,5 +200,26 @@ describe("dropIntoDay", () => {
     const { day_offset, position } = dropIntoDay(multi, groups, 2, 2);
     expect(day_offset).toBe(2);              // departure day
     expect(position).toBe(4);                // after S2 (pos 3)
+  });
+});
+
+describe("dayIndexByNode", () => {
+  it("maps each node to the index of the first day group it appears in", () => {
+    const m = dayIndexByNode(route);
+    expect(m.get(1)).toBe(0); // Aalborg arrives on day 14
+    expect(m.get(2)).toBe(1); // Skottevik arrives on day 15
+    expect(m.get(3)).toBe(2); // Fennefossen travelled on day 16
+    expect(m.get(7)).toBe(3); // Bondhusvatnet travelled on day 17
+  });
+
+  it("maps a multi-night stay to its arrival day and a later stop to its own day", () => {
+    const multi: RouteDetail = {
+      ...route,
+      nodes: [stay(1, 1, "Oslo", "2026-07-14", "2026-07-17", 3), stop(2, 2, "Drammen")],
+      legs: [],
+    };
+    const m = dayIndexByNode(multi);
+    expect(m.get(1)).toBe(0); // arrival day, not one of the later nights
+    expect(m.get(2)).toBe(3); // departure/travel day 17 -> fourth group
   });
 });

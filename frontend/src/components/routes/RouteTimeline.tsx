@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { RouteDetail, RouteNode, RouteNodeCreate, RouteNodeKind } from "../../types/api";
-import { ghostButtonStyle, theme } from "../../theme";
+import { ghostButtonStyle, ROUTE_PASSED_COLOR, routeDayColor, theme } from "../../theme";
 import { useAddNode, useUpdateNode } from "../../queries/hooks";
 import LegRow from "./LegRow";
 import RouteNodeRow from "./RouteNodeRow";
@@ -8,7 +8,7 @@ import RouteAttachments from "./RouteAttachments";
 import AddPlaceModal from "./AddPlaceModal";
 import { DndContext, MouseSensor, TouchSensor, KeyboardSensor, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { groupNodesByDay, placeInDay, dayOffsetForDrop, dropIntoDay } from "../../lib/routeDays";
+import { groupNodesByDay, placeInDay, dayOffsetForDrop, dropIntoDay, stayCovering } from "../../lib/routeDays";
 import { sortableCollision } from "../../lib/routeCollision";
 import { formatDayLabel } from "../../lib/formatDayLabel";
 import DayHeader from "./DayHeader";
@@ -219,6 +219,7 @@ export default function RouteTimeline({ route, canEdit, onHoverNode, onInteracti
           {dayGroups.map((group, gi) => {
             const expanded = isExpanded(group.dayKey);
             const isPast = isDayPassed(group.dayKey, today);
+            const cover = stayCovering(route.nodes, group.dayKey);
             return (
               <div key={group.dayKey} data-testid="day-card" style={dayCardStyle}>
                 <DayHeader
@@ -231,11 +232,17 @@ export default function RouteTimeline({ route, canEdit, onHoverNode, onInteracti
                   stopCount={group.nodes.length}
                   onToggle={() => toggleDay(group.dayKey)}
                   onNavigate={() => navigateDay(gi)}
+                  color={isPast ? ROUTE_PASSED_COLOR : routeDayColor(gi)}
                 />
                 {expanded && gi === 0 && startSlot && <div style={{ marginTop: 8 }}>{startSlot}</div>}
+                {expanded && cover && (
+                  <p data-testid="stay-cover" style={{ margin: "8px 0 0", fontSize: 12.5, color: theme.color.textSecondary }}>
+                    Staying at <strong style={{ fontWeight: 700, color: theme.color.textBody }}>{cover.node.name}</strong> (night {cover.night} of {cover.nights})
+                  </p>
+                )}
                 {group.nodes.length === 0 && expanded && (
                   <EmptyDayDropZone id={`day:${gi}`} expanded={expanded}>
-                    <p style={{ margin: 0, fontSize: 12.5, color: theme.color.textPlaceholder }}>No stops yet.</p>
+                    {!cover && <p style={{ margin: 0, fontSize: 12.5, color: theme.color.textPlaceholder }}>No stops yet.</p>}
                   </EmptyDayDropZone>
                 )}
                 {expanded && group.nodes.map((n) => {
