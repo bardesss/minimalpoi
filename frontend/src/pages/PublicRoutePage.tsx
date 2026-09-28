@@ -7,6 +7,7 @@ import type { RouteDetail } from "../types/api";
 import RouteMap from "../components/routes/RouteMap";
 import RouteTimeline from "../components/routes/RouteTimeline";
 import { theme } from "../theme";
+import { formatDateRange } from "../lib/formatDate";
 import { AuthCard, AuthField } from "../components/AuthCard";
 
 /** Adapts a `PublicRouteView` into the `RouteDetail` shape `RouteTimeline`
@@ -130,7 +131,7 @@ export default function PublicRoutePage() {
         </p>
         <h1 style={{ margin: "2px 0 0", fontSize: 18, fontWeight: 800, color: theme.color.textPrimary }}>{route.name}</h1>
         <p style={{ margin: "2px 0 0", fontSize: 12.5, color: theme.color.textSecondary }}>
-          {route.start_date}{route.end_date ? ` → ${route.end_date}` : ""}
+          {formatDateRange(route.start_date, route.end_date ?? route.scheduled_end_date)}
         </p>
       </header>
 

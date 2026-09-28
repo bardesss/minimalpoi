@@ -6,6 +6,7 @@ import { useDeleteNode, useUpdateNode } from "../../queries/hooks";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Bookmark } from "lucide-react";
+import { formatDateRange } from "../../lib/formatDate";
 
 function iconBtnStyle(size: number): CSSProperties {
   return {
@@ -165,8 +166,8 @@ function RouteNodeRow({
         {isStay && (
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4, flexWrap: "wrap" }}>
             {node.arrive_date && node.depart_date && (
-              <span style={{ fontFamily: theme.font.mono, fontSize: 11.5, color: theme.color.textCoord }}>
-                {node.arrive_date} → {node.depart_date}
+              <span style={{ fontFamily: theme.font.ui, fontSize: 11.5, color: theme.color.textCoord }}>
+                {formatDateRange(node.arrive_date, node.depart_date)}
               </span>
             )}
             <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: theme.color.textSecondary }}>
