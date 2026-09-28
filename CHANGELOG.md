@@ -1,5 +1,27 @@
 # Changelog
 
+## [4.4.0](https://github.com/bardesss/minimalpoi/compare/v4.3.0...v4.4.0) (2026-09-28)
+
+
+### Features
+
+* **ui:** add a cards/list density preference and clearer map-view labels ([dfdfae8](https://github.com/bardesss/minimalpoi/commit/dfdfae8a6570f98099319080e6e5a0641c82b938))
+* **ui:** add a compact list layout and slim photo-less cards ([06eb3c0](https://github.com/bardesss/minimalpoi/commit/06eb3c03e7ba640dfaa0aced36e69059237a785c))
+* **ui:** denser list and sheet: avatar menu, list layout, sheet fling ([7898f75](https://github.com/bardesss/minimalpoi/commit/7898f7577e433e6891a664a19924c4a499931b68))
+* **ui:** let a quick flick move the sheet one snap ([666de18](https://github.com/bardesss/minimalpoi/commit/666de18dfa8d82ad1b27b63e9eeed0bd021dd818))
+* **ui:** move account and settings into an avatar menu and slim the headers ([0acd6cb](https://github.com/bardesss/minimalpoi/commit/0acd6cbcaabc9b72e7c00a43b41698e6b7f5ba24))
+* **ui:** show the legend only when the sidebar is collapsed and keep the add button clear ([51e7e89](https://github.com/bardesss/minimalpoi/commit/51e7e891fbd28fc10ac045cf6d7db749a88163e5))
+
+
+### Bug Fixes
+
+* **ui:** close menus on outside taps inside transformed containers ([61739d2](https://github.com/bardesss/minimalpoi/commit/61739d2fca34b4e0f829fd43812c44482b0736c3))
+* **ui:** close menus on outside taps inside transformed containers ([903f366](https://github.com/bardesss/minimalpoi/commit/903f3666bce03b56fbd1a69cdfcf161e03fd2370))
+* **ui:** keep the photo-less card icon clear of the visited badge ([2b53600](https://github.com/bardesss/minimalpoi/commit/2b536006274554a441a2b84f1fe9afc47c2eea2b))
+* **ui:** keep the sheet handle's account menu usable and accessible ([6d9d4c3](https://github.com/bardesss/minimalpoi/commit/6d9d4c34ca8501534a7f6b89a3a84e94d73c5e4f))
+* **ui:** let a long fast swipe reach the far snap and ignore stale flicks ([1991e8d](https://github.com/bardesss/minimalpoi/commit/1991e8dde22098dcf262b640abcf0264f3c7a74c))
+* **ui:** tighten the mobile list spacing so five places fit at half height ([22b66a1](https://github.com/bardesss/minimalpoi/commit/22b66a12d72b33b2ffe2a9cec72639d70db40b47))
+
 ## [4.3.0](https://github.com/bardesss/minimalpoi/compare/v4.2.0...v4.3.0) (2026-09-27)
 
 
