@@ -4,6 +4,7 @@ import { ApiError } from "../api/client";
 import { ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, textareaStyle, theme, fieldLabelStyle } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 import { useDialog } from "../lib/useDialog";
+import { roundCoord } from "../lib/geo";
 import PhoneInput from "./PhoneInput";
 import TagInput from "./TagInput";
 import { ImagePicker } from "./poiForm/ImagePicker";
@@ -68,6 +69,7 @@ export default function PoiFormModal({
   onUploadImage,
   getMapCenter,
   tagSuggestions = [],
+  onLocated,
 }: {
   mode: "add" | "edit";
   initial: PoiFormInitial | null;
@@ -83,6 +85,7 @@ export default function PoiFormModal({
   onPickPlace?: (placeId: string) => Promise<PoiDraft>;
   onUploadImage?: (file: File) => Promise<{ url: string }>;
   getMapCenter?: () => { lng: number; lat: number } | null;
+  onLocated?: (c: { lat: number; lng: number }) => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [categoryId, setCategoryId] = useState<string>(initial?.category_id != null ? String(initial.category_id) : "");
@@ -106,6 +109,10 @@ export default function PoiFormModal({
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
+  const canLocate = typeof navigator !== "undefined" && "geolocation" in navigator && window.isSecureContext !== false;
 
   // Mobile "pick on map" (add mode only): collapses the sheet to a peek so
   // the already-pannable map behind it is visible, under a fixed crosshair.
@@ -131,8 +138,8 @@ export default function PoiFormModal({
   // Click-to-place / map-center updates flow in via `coords` (add mode only).
   useEffect(() => {
     if (mode === "add" && coords) {
-      setLat(String(coords.lat));
-      setLng(String(coords.lng));
+      setLat(String(roundCoord(coords.lat)));
+      setLng(String(roundCoord(coords.lng)));
     }
   }, [coords, mode]);
 
@@ -147,8 +154,8 @@ export default function PoiFormModal({
     if (draft.address != null) setAddress(draft.address);
     if (draft.city != null) setCity(draft.city);
     if (draft.country_code != null) setCountryCode(draft.country_code);
-    if (draft.lat != null) setLat(String(draft.lat));
-    if (draft.lng != null) setLng(String(draft.lng));
+    if (draft.lat != null) setLat(String(roundCoord(draft.lat)));
+    if (draft.lng != null) setLng(String(roundCoord(draft.lng)));
     if (draft.phone != null) setPhone(draft.phone);
     if (draft.website != null) setWebsite(draft.website);
     if (draft.description != null) setNotes(draft.description);
@@ -213,14 +220,41 @@ export default function PoiFormModal({
   function confirmPick() {
     const c = getMapCenter?.();
     if (c) {
-      setLat(String(c.lat));
-      setLng(String(c.lng));
+      setLat(String(roundCoord(c.lat)));
+      setLng(String(roundCoord(c.lng)));
     }
     setPicking(false);
   }
 
   function cancelPick() {
     setPicking(false);
+  }
+
+  function useMyLocation() {
+    setLocating(true);
+    setLocateError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const rLat = roundCoord(pos.coords.latitude);
+        const rLng = roundCoord(pos.coords.longitude);
+        setLat(String(rLat));
+        setLng(String(rLng));
+        setLocateError(null);
+        setLocating(false);
+        onLocated?.({ lat: rLat, lng: rLng });
+      },
+      (err) => {
+        setLocating(false);
+        setLocateError(
+          err.code === 1
+            ? "Location permission was denied."
+            : err.code === 3
+            ? "Finding your location timed out."
+            : "Couldn't find your location.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    );
   }
 
   return (
@@ -285,42 +319,83 @@ export default function PoiFormModal({
             {caption("address")}
           </div>
 
-          <div style={{ display: "flex", gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <label style={fieldLabelStyle} htmlFor="poi-lat">Latitude</label>
-              <input
-                id="poi-lat"
-                style={monoInputStyle}
-                value={lat}
-                onChange={(e) => {
-                  setSaveError(null);
-                  const pair = parseCoordPair(e.target.value);
-                  if (pair) {
-                    setLat(String(pair.lat));
-                    setLng(String(pair.lng));
-                  } else {
-                    setLat(e.target.value);
-                  }
-                }}
-                onBlur={maybeCheckDuplicate}
-                placeholder="52.3676"
-              />
-              {caption("lat")}
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={fieldLabelStyle} htmlFor="poi-lng">Longitude</label>
-              <input id="poi-lng" style={monoInputStyle} value={lng} onChange={(e) => { setSaveError(null); setLng(e.target.value); }} onBlur={maybeCheckDuplicate} placeholder="4.9041" />
-              {caption("lng")}
-            </div>
-          </div>
-          {isAdd && isMobile && (
-            <button ref={pickOnMapRef} type="button" onClick={() => setPicking(true)} style={{ ...ghostButtonStyle, alignSelf: "flex-start", minHeight: 44 }}>Pick on map</button>
-          )}
-          <p style={{ margin: "-6px 0 0", fontSize: 11.5, color: theme.color.textPlaceholder }}>
-            {isAdd && isMobile
-              ? "Or tap Pick on map to set the location by panning the map."
-              : "Click anywhere on the map to drop the coordinates here."}
-          </p>
+          {(() => {
+            const coordFields = (
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={fieldLabelStyle} htmlFor="poi-lat">Latitude</label>
+                  <input
+                    id="poi-lat"
+                    style={monoInputStyle}
+                    value={lat}
+                    onChange={(e) => {
+                      setSaveError(null);
+                      const pair = parseCoordPair(e.target.value);
+                      if (pair) {
+                        setLat(String(pair.lat));
+                        setLng(String(pair.lng));
+                      } else {
+                        setLat(e.target.value);
+                      }
+                    }}
+                    onBlur={maybeCheckDuplicate}
+                    placeholder="52.3676"
+                  />
+                  {caption("lat")}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={fieldLabelStyle} htmlFor="poi-lng">Longitude</label>
+                  <input id="poi-lng" style={monoInputStyle} value={lng} onChange={(e) => { setSaveError(null); setLng(e.target.value); }} onBlur={maybeCheckDuplicate} placeholder="4.9041" />
+                  {caption("lng")}
+                </div>
+              </div>
+            );
+            const locateButton = canLocate && (
+              <button type="button" onClick={useMyLocation} disabled={locating} style={{ ...ghostButtonStyle, alignSelf: "flex-start", minHeight: isMobile ? 44 : undefined }}>
+                {locating ? "Locating…" : "Use my location"}
+              </button>
+            );
+            const locateStatus = locateError && (
+              <p role="status" style={{ margin: 0, fontSize: 11.5, color: theme.color.dangerText }}>{locateError}</p>
+            );
+            if (isMobile) {
+              const hasCoords = lat !== "" && lng !== "";
+              const latNum = Number(lat);
+              const lngNum = Number(lng);
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <span style={{ fontFamily: theme.font.mono, fontSize: 13, color: theme.color.textCoord }}>
+                    {hasCoords && Number.isFinite(latNum) && Number.isFinite(lngNum)
+                      ? `${latNum.toFixed(5)}, ${lngNum.toFixed(5)}`
+                      : "No location yet"}
+                  </span>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {locateButton}
+                    {isAdd && (
+                      <button ref={pickOnMapRef} type="button" onClick={() => setPicking(true)} style={{ ...ghostButtonStyle, alignSelf: "flex-start", minHeight: 44 }}>Pick on map</button>
+                    )}
+                  </div>
+                  {locateStatus}
+                  <details>
+                    <summary style={{ fontSize: 12, fontWeight: 700, color: theme.color.textBody, cursor: "pointer" }}>Edit coordinates</summary>
+                    <div style={{ marginTop: 10 }}>{coordFields}</div>
+                  </details>
+                </div>
+              );
+            }
+            return (
+              <>
+                {coordFields}
+                <p style={{ margin: "-6px 0 0", fontSize: 11.5, color: theme.color.textPlaceholder }}>
+                  Click anywhere on the map to drop the coordinates here.
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {locateButton}
+                  {locateStatus}
+                </div>
+              </>
+            );
+          })()}
 
           <div>
             <label style={fieldLabelStyle} htmlFor="poi-phone">Phone</label>
