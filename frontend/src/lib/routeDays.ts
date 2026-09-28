@@ -27,6 +27,20 @@ export function daysBetween(a: string, b: string): number {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi));
 
+export interface StayCover { node: RouteNode; night: number; nights: number }
+
+/** The stay covering `dayKey` as a later night (after its arrive day, before its
+ * depart/travel day) — so a quiet middle day can say where you're sleeping. */
+export function stayCovering(nodes: RouteNode[], dayKey: string): StayCover | null {
+  for (const n of nodes) {
+    if (n.kind !== "stay" || !n.arrive_date || !n.depart_date) continue;
+    if (n.arrive_date < dayKey && dayKey < n.depart_date) {
+      return { node: n, night: daysBetween(n.arrive_date, dayKey) + 1, nights: daysBetween(n.arrive_date, n.depart_date) };
+    }
+  }
+  return null;
+}
+
 /**
  * Group itinerary nodes by calendar day. A stay emits a day-group for EVERY day
  * in its arrive→depart span (including empty middle days, so they can receive

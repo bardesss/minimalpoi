@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, daysBetween, groupNodesByDay, placeInDay, dayOffsetForDrop, dropIntoDay } from "./routeDays";
+import { addDays, daysBetween, groupNodesByDay, placeInDay, dayOffsetForDrop, dropIntoDay, stayCovering } from "./routeDays";
 import type { RouteDetail, RouteLeg, RouteNode } from "../types/api";
 
 function stay(id: number, position: number, name: string, arrive: string, depart: string, nights: number): RouteNode {
@@ -155,6 +155,23 @@ describe("dayOffsetForDrop", () => {
   it("computes the target day's offset when dropping onto a node in another day", () => {
     // drag S1 (arrival) to just after S2 (departure day, key 2026-07-16) at position 3.5
     expect(dayOffsetForDrop(multi, groups, 3, 3.5, 2)).toBe(2); // depart day = offset 2
+  });
+});
+
+describe("stayCovering", () => {
+  const nodes = [stay(1, 1, "Café de Jaren", "2026-10-09", "2026-10-12", 3), stop(2, 2, "Rijksmuseum")];
+  it("returns the stay and night number for a middle night", () => {
+    expect(stayCovering(nodes, "2026-10-10")).toEqual({ node: nodes[0], night: 2, nights: 3 });
+    expect(stayCovering(nodes, "2026-10-11")).toEqual({ node: nodes[0], night: 3, nights: 3 });
+  });
+  it("is null on the arrive day, the depart day and outside the stay", () => {
+    expect(stayCovering(nodes, "2026-10-09")).toBeNull();
+    expect(stayCovering(nodes, "2026-10-12")).toBeNull();
+    expect(stayCovering(nodes, "2026-10-20")).toBeNull();
+  });
+  it("ignores stays without dates", () => {
+    const undated = { ...nodes[0], arrive_date: null, depart_date: null };
+    expect(stayCovering([undated], "2026-10-10")).toBeNull();
   });
 });
 
