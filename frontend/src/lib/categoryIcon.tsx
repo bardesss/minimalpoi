@@ -47,7 +47,7 @@ function toPascal(name: string): string {
 }
 
 let allIconsCache: Record<string, LucideIcon> | null = null;
-let allIconsPromise: Promise<Record<string, LucideIcon>> | null = null;
+let allIconsPromise: Promise<Record<string, LucideIcon> | null> | null = null;
 const listeners = new Set<() => void>();
 
 // Import the icon-index module directly, rather than `import("lucide-react")`.
@@ -61,15 +61,29 @@ const listeners = new Set<() => void>();
 // become a genuinely separate, lazily-loaded chunk. lucide-react ships no
 // "exports" map, so the deep import resolves; see src/types/lucide-icons.d.ts
 // for why it's typed loosely and cast at the call site.
-function loadAllIcons(): Promise<Record<string, LucideIcon>> {
+function loadAllIcons(): Promise<Record<string, LucideIcon> | null> {
   if (!allIconsPromise) {
-    allIconsPromise = import("lucide-react/dist/esm/icons/index.mjs").then((m) => {
-      allIconsCache = m as unknown as Record<string, LucideIcon>;
-      listeners.forEach((listener) => listener());
-      return allIconsCache;
-    });
+    allIconsPromise = import("lucide-react/dist/esm/icons/index.mjs")
+      .then((m) => {
+        allIconsCache = m as unknown as Record<string, LucideIcon>;
+        listeners.forEach((listener) => listener());
+        return allIconsCache;
+      })
+      .catch(() => {
+        // A failed chunk load (offline, or a stale hash after a deploy) keeps
+        // the MapPin fallback; forget the promise so a later mount retries.
+        allIconsPromise = null;
+        return null;
+      });
   }
   return allIconsPromise;
+}
+
+// Own-property lookup only: category icon names are free-form strings shared
+// across users, so "constructor", "__proto__", "toString"… must not resolve to
+// Object.prototype members and get rendered as a component.
+function lookup(icons: Record<string, LucideIcon> | null, name: string): LucideIcon | undefined {
+  return icons && Object.prototype.hasOwnProperty.call(icons, name) ? icons[name] : undefined;
 }
 
 function subscribe(listener: () => void) {
@@ -83,8 +97,8 @@ function getSnapshot() {
 
 export function CategoryIcon({ name, size = 14, color }: { name: string | null } & Pick<LucideProps, "size" | "color">) {
   const allIcons = useSyncExternalStore(subscribe, getSnapshot);
-  const curated = name ? CATEGORY_ICONS[name] : undefined;
-  const lazy = !curated && name ? allIcons?.[toPascal(name)] : undefined;
+  const curated = name ? lookup(CATEGORY_ICONS, name) : undefined;
+  const lazy = !curated && name ? lookup(allIcons, toPascal(name)) : undefined;
 
   useEffect(() => {
     if (!curated && name) {
