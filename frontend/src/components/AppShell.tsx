@@ -70,6 +70,7 @@ export default function AppShell() {
   const [formState, setFormState] = useState<{ mode: "add" | "edit"; initial: PoiFormInitial | null } | null>(null);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [addCoords, setAddCoords] = useState<{ lng: number; lat: number } | null>(null);
+  const [draftPin, setDraftPin] = useState<{ lng: number; lat: number } | null>(null);
   const [duplicateId, setDuplicateId] = useState<number | null>(null);
   const pendingSearchFocusRef = useRef(false);
 
@@ -156,7 +157,10 @@ export default function AppShell() {
     () => (poisQuery.data ?? []).find((p) => p.id === selectedId) ?? null,
     [poisQuery.data, selectedId],
   );
-  const addMode = formState?.mode === "add";
+  // Map clicks place the pin whenever the desktop form is open (add or edit);
+  // on mobile the form has its own coordinate fields, so the map stays in
+  // plain browse mode.
+  const pickMode = formState != null && (formState.mode === "add" || !isMobile);
 
   async function onLogout() {
     await signOut();
@@ -242,6 +246,7 @@ export default function AppShell() {
 
   function openEdit(poi: Poi) {
     setDuplicateId(null);
+    setAddCoords(null);
     setFormState({
       mode: "edit",
       initial: { name: poi.name, address: poi.address, city: poi.city, country_code: poi.country_code, lat: poi.lat, lng: poi.lng, category_id: poi.category_id, tags: poi.tags, notes: poi.notes, phone: poi.phone, email: poi.email, website: poi.website, image_url: poi.image_url },
@@ -251,6 +256,7 @@ export default function AppShell() {
   function closeForm() {
     setFormState(null);
     setAddCoords(null);
+    setDraftPin(null);
     setDuplicateId(null);
   }
 
@@ -335,12 +341,14 @@ export default function AppShell() {
           selectedId={selectedId}
           onSelect={selectPoi}
           onMapClick={(lng, lat) => setAddCoords({ lng, lat })}
-          addMode={addMode}
+          addMode={pickMode}
           visitedPoiIds={myVisitedPoiIds}
           mapRef={mapRef}
           onMoveEnd={handleMoveEnd}
           onUserLocate={(c) => setMapCenter(c)}
           highlightId={isMobile ? null : hoverId}
+          draftPin={!isMobile && formState ? draftPin : null}
+          onDraftPinMove={(c) => setAddCoords(c)}
         />
       )}
       {!isMobile && sidebarCollapsed && <Legend categories={categories} counts={counts} uncategorizedCount={hasUncategorized ? counts[UNCATEGORIZED_ID] ?? 0 : 0} />}
@@ -368,6 +376,8 @@ export default function AppShell() {
           onPickPlace={(placeId) => placeDraft.mutateAsync(placeId)}
           onUploadImage={(file) => uploadImage.mutateAsync(file)}
           onLocated={(c) => mapRef.current?.flyTo({ center: [c.lng, c.lat], zoom: Math.max(mapRef.current.getZoom(), 15), duration: 600 })}
+          onCoordsChange={(c) => setDraftPin(c ? { lng: c.lng, lat: c.lat } : null)}
+          coversMap={sidebarCollapsed}
         />
       )}
       {settingsModalOpen && <SettingsModal onClose={() => setSettingsModalOpen(false)} />}

@@ -13,7 +13,21 @@ import AppShell from "./AppShell";
 
 const mapPropsSpy = vi.fn();
 const mapHighlightSpy = vi.fn();
-vi.mock("./MapView", () => ({ default: (props: { pois: { id: number }[]; highlightId?: number | null }) => { mapPropsSpy(props.pois); mapHighlightSpy(props.highlightId ?? null); return null; } }));
+const mapViewPropsSpy = vi.fn();
+vi.mock("./MapView", () => ({
+  default: (props: {
+    pois: { id: number }[];
+    highlightId?: number | null;
+    addMode: boolean;
+    draftPin?: { lng: number; lat: number } | null;
+    onDraftPinMove?: (c: { lng: number; lat: number }) => void;
+  }) => {
+    mapPropsSpy(props.pois);
+    mapHighlightSpy(props.highlightId ?? null);
+    mapViewPropsSpy(props);
+    return null;
+  },
+}));
 
 describe("AppShell", () => {
   it("loads POIs into the sidebar list", async () => {
@@ -202,6 +216,78 @@ describe("AppShell detail placement", () => {
     mapHighlightSpy.mockClear();
     act(() => { card.focus(); });
     expect(mapHighlightSpy).not.toHaveBeenCalledWith(1);
+  });
+});
+
+describe("AppShell draft pin", () => {
+  afterEach(() => {
+    mapViewPropsSpy.mockClear();
+  });
+
+  it("follows typed lat/lng while adding a place on desktop", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    await user.click(screen.getByRole("button", { name: /add place/i })); // FAB
+    await user.type(screen.getByLabelText(/latitude/i), "52.4");
+    await user.type(screen.getByLabelText(/longitude/i), "4.95");
+    await waitFor(() => {
+      const last = mapViewPropsSpy.mock.calls[mapViewPropsSpy.mock.calls.length - 1][0];
+      expect(last.draftPin).toEqual({ lat: 52.4, lng: 4.95 });
+    });
+  });
+
+  it("updates the form latitude when the map reports a dragged draft pin", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    await user.click(screen.getByRole("button", { name: /add place/i })); // FAB
+    const last = mapViewPropsSpy.mock.calls[mapViewPropsSpy.mock.calls.length - 1][0] as {
+      onDraftPinMove?: (c: { lng: number; lat: number }) => void;
+    };
+    act(() => {
+      last.onDraftPinMove?.({ lng: 4.95, lat: 52.4 });
+    });
+    await waitFor(() => {
+      expect(screen.getByLabelText(/latitude/i)).toHaveValue("52.4");
+    });
+  });
+
+  it("clears the draft pin when the form is closed", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    await user.click(screen.getByRole("button", { name: /add place/i })); // FAB
+    await user.type(screen.getByLabelText(/latitude/i), "52.4");
+    await user.type(screen.getByLabelText(/longitude/i), "4.95");
+    await waitFor(() => {
+      const last = mapViewPropsSpy.mock.calls[mapViewPropsSpy.mock.calls.length - 1][0];
+      expect(last.draftPin).toEqual({ lat: 52.4, lng: 4.95 });
+    });
+    await user.click(screen.getByRole("button", { name: /close/i }));
+    await waitFor(() => {
+      const last = mapViewPropsSpy.mock.calls[mapViewPropsSpy.mock.calls.length - 1][0];
+      expect(last.draftPin).toBeNull();
+    });
+  });
+
+  it("never shows a draft pin on mobile", async () => {
+    const restore = stubMediaQueries((q) => q === "(max-width: 768px)");
+    try {
+      const user = userEvent.setup();
+      renderWithProviders(<AppShell />);
+      await screen.findByText("Café Modern");
+      await user.click(screen.getByRole("button", { name: /add place/i })); // FAB
+      await user.type(screen.getByLabelText(/latitude/i), "52.4");
+      await user.type(screen.getByLabelText(/longitude/i), "4.95");
+      await waitFor(() => {
+        expect(screen.getByLabelText(/latitude/i)).toHaveValue("52.4");
+      });
+      const last = mapViewPropsSpy.mock.calls[mapViewPropsSpy.mock.calls.length - 1][0];
+      expect(last.draftPin).toBeNull();
+    } finally {
+      restore();
+    }
   });
 });
 
