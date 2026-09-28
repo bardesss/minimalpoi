@@ -8,9 +8,10 @@ import AppShell from "./components/AppShell";
 import LoginPage from "./pages/LoginPage";
 import SetupPage from "./pages/SetupPage";
 import { MapInsetsProvider } from "./map/useMapInsets";
+import { loadRoutesPage } from "./pages/loadRoutesPage";
 
 const PublicRoutePage = lazy(() => import("./pages/PublicRoutePage"));
-const RoutesPage = lazy(() => import("./pages/RoutesPage"));
+const RoutesPage = lazy(loadRoutesPage);
 
 export default function App() {
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
