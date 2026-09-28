@@ -3,9 +3,10 @@ import type { PlaceSearchResult, PoiDraft } from "../../types/api";
 import { ghostButtonStyle, inputStyle, theme, fieldLabelStyle } from "../../theme";
 
 
-// The Google Places search sub-flow. Owns the query text, in-flight flag,
-// error and result list, so searching and browsing results doesn't re-render
-// the main form. Picking a result hands the resolved draft up via onApplyDraft.
+// The provider-neutral place search sub-flow (Google Places or OpenStreetMap).
+// Owns the query text, in-flight flag, error and result list, so searching and
+// browsing results doesn't re-render the main form. Picking a result hands the
+// resolved draft up via onApplyDraft.
 export function PlaceSearchSection({
   onSearchPlaces,
   onPickPlace,
@@ -30,7 +31,7 @@ export function PlaceSearchSection({
       setResults(found);
       if (found.length === 0) setSearchError("No matching places found.");
     } catch {
-      setSearchError("Search failed — add a Google API key in Settings, or fill the form manually.");
+      setSearchError("Search failed — try again, or fill the form manually.");
     } finally {
       setSearching(false);
     }
@@ -43,7 +44,7 @@ export function PlaceSearchSection({
     setSearchText("");
     try {
       const draft = await onPickPlace(result.place_id);
-      onApplyDraft(draft, "Google Places");
+      onApplyDraft(draft, result.source === "osm" ? "OpenStreetMap" : "Google Places");
     } catch {
       setSearchError("Couldn't load that place — try another or fill the form manually.");
     }
@@ -61,7 +62,8 @@ export function PlaceSearchSection({
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runSearch(); } }}
-          placeholder="Search Google Places by name"
+          placeholder="Search places by name"
+          enterKeyHint="search"
         />
         <button type="button" onClick={runSearch} disabled={searching} style={{ ...ghostButtonStyle, whiteSpace: "nowrap" }}>{searching ? "Searching…" : "Search"}</button>
       </div>
@@ -81,6 +83,9 @@ export function PlaceSearchSection({
             </li>
           ))}
         </ul>
+      )}
+      {results.some((r) => r.source === "osm") && (
+        <div style={{ fontSize: 11, color: theme.color.textPlaceholder }}>Results from OpenStreetMap</div>
       )}
     </div>
   );

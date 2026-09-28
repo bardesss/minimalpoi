@@ -45,7 +45,7 @@ export default function SearchPlacePanel({ onPick }: { onPick: (sel: PlaceSelect
       setResults(found);
       if (found.length === 0) setGError("No matching places found.");
     } catch {
-      setGError("Search failed — add a Google API key in Settings, or fill the form manually.");
+      setGError("Search failed — try again, or fill the form manually.");
     } finally {
       setBusy(false);
     }
@@ -108,12 +108,13 @@ export default function SearchPlacePanel({ onPick }: { onPick: (sel: PlaceSelect
         <>
           <div style={{ display: "flex", gap: 8 }}>
             <input
-              aria-label="Search Google"
-              placeholder="Search Google Places…"
+              aria-label="Search places"
+              placeholder="Search places…"
               style={inputStyle}
               value={gQuery}
               onChange={(e) => setGQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runSearch(); } }}
+              enterKeyHint="search"
             />
             <button type="button" style={{ ...ghostButtonStyle, whiteSpace: "nowrap" }} onClick={runSearch} disabled={busy}>{busy ? "Searching…" : "Search"}</button>
           </div>
@@ -126,6 +127,9 @@ export default function SearchPlacePanel({ onPick }: { onPick: (sel: PlaceSelect
                 </button>
               ))}
             </div>
+          )}
+          {results.some((r) => r.source === "osm") && (
+            <div style={{ fontSize: 11, color: theme.color.textPlaceholder }}>Results from OpenStreetMap</div>
           )}
         </>
       )}
