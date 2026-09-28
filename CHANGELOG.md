@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.5.0](https://github.com/bardesss/minimalpoi/compare/v4.4.0...v4.5.0) (2026-09-28)
+
+
+### Features
+
+* **routes:** readable dates, one Share menu, a colour per day and 'Staying at' nights ([c798609](https://github.com/bardesss/minimalpoi/commit/c798609cc77bb57091e50276351ea0d380af640e))
+
 ## [4.4.0](https://github.com/bardesss/minimalpoi/compare/v4.3.0...v4.4.0) (2026-09-28)
 
 
