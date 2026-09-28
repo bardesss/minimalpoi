@@ -1,3 +1,9 @@
+/** Rounds a coordinate to 6 decimal places (~0.11 m) — enough precision for
+ * any POI, and tidier than the raw float a click or GPS fix produces. */
+export function roundCoord(n: number): number {
+  return Math.round(n * 1e6) / 1e6;
+}
+
 /** Great-circle distance in km (haversine). Accurate enough for ordering and
  * nearest-neighbour heuristics; not for precise mileage. */
 export function distanceKm(aLat: number, aLng: number, bLat: number, bLng: number): number {

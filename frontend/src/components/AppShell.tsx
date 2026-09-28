@@ -367,6 +367,7 @@ export default function AppShell() {
           onSearchPlaces={(q) => searchPlaces.mutateAsync(q)}
           onPickPlace={(placeId) => placeDraft.mutateAsync(placeId)}
           onUploadImage={(file) => uploadImage.mutateAsync(file)}
+          onLocated={(c) => mapRef.current?.flyTo({ center: [c.lng, c.lat], zoom: Math.max(mapRef.current.getZoom(), 15), duration: 600 })}
         />
       )}
       {settingsModalOpen && <SettingsModal onClose={() => setSettingsModalOpen(false)} />}
