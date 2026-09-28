@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
@@ -22,8 +22,9 @@ import DetailSheet from "./detail/DetailSheet";
 import SidebarDetail from "./detail/SidebarDetail";
 import AddFab from "./AddFab";
 import PoiFormModal, { type PoiFormInitial } from "./PoiFormModal";
-import SettingsModal from "./SettingsModal";
 import AppLayout from "./AppLayout";
+
+const SettingsModal = lazy(() => import("./SettingsModal"));
 
 export default function AppShell() {
   const { user, signOut } = useAuth();
@@ -394,7 +395,11 @@ export default function AppShell() {
           coversMap={sidebarCollapsed}
         />
       )}
-      {settingsModalOpen && <SettingsModal onClose={() => setSettingsModalOpen(false)} />}
+      {settingsModalOpen && (
+        <Suspense fallback={null}>
+          <SettingsModal onClose={() => setSettingsModalOpen(false)} />
+        </Suspense>
+      )}
     </>
   );
 
