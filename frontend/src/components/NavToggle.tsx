@@ -1,7 +1,27 @@
-import type { CSSProperties } from "react";
-import { NavLink } from "react-router-dom";
+import { useEffect, type CSSProperties } from "react";
+import { NavLink, useMatch } from "react-router-dom";
 import { MapPin, Route } from "lucide-react";
+import { loadRoutesPage } from "../pages/loadRoutesPage";
 import { theme } from "../theme";
+
+function prefetchRoutes() {
+  // Best effort: a failed prefetch just means the route loads on click.
+  loadRoutesPage().catch(() => {});
+}
+
+/** Warm the lazy routes chunk once the browser is idle, so the first switch
+ * to Routes renders straight away instead of flashing the full-screen loader. */
+function usePrefetchRoutesWhenIdle(skip: boolean) {
+  useEffect(() => {
+    if (skip) return;
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(prefetchRoutes, { timeout: 5000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(prefetchRoutes, 2000);
+    return () => window.clearTimeout(id);
+  }, [skip]);
+}
 
 const seg = (active: boolean): CSSProperties => ({
   display: "inline-flex",
@@ -25,6 +45,8 @@ const seg = (active: boolean): CSSProperties => ({
  * truth, so the highlight and aria-current cannot desync.
  */
 export default function NavToggle() {
+  const onRoutes = useMatch("/routes/*") != null;
+  usePrefetchRoutesWhenIdle(onRoutes);
   return (
     <nav
       aria-label="Sections"
@@ -40,7 +62,14 @@ export default function NavToggle() {
       <NavLink to="/" end aria-label="Map" title="Map" style={({ isActive }) => seg(isActive)}>
         <MapPin size={16} aria-hidden />
       </NavLink>
-      <NavLink to="/routes" aria-label="Routes" title="Routes" style={({ isActive }) => seg(isActive)}>
+      <NavLink
+        to="/routes"
+        aria-label="Routes"
+        title="Routes"
+        onPointerEnter={prefetchRoutes}
+        onFocus={prefetchRoutes}
+        style={({ isActive }) => seg(isActive)}
+      >
         <Route size={16} aria-hidden />
       </NavLink>
     </nav>
