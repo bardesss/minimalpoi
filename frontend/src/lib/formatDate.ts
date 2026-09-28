@@ -13,8 +13,20 @@ function defaultLocale(): string | undefined {
   return typeof navigator === "undefined" ? undefined : navigator.language;
 }
 
+/** A formatter for `locale`, falling back to the runtime default when the tag
+ * is malformed (Intl throws RangeError) so a bad navigator/locale value can't
+ * crash the page. */
+function formatter(locale: string | undefined): Intl.DateTimeFormat {
+  try {
+    return new Intl.DateTimeFormat(locale, OPTIONS);
+  } catch (e) {
+    if (e instanceof RangeError) return new Intl.DateTimeFormat(undefined, OPTIONS);
+    throw e;
+  }
+}
+
 export function formatDate(iso: string, locale: string | undefined = defaultLocale()): string {
-  return new Intl.DateTimeFormat(locale, OPTIONS).format(toDate(iso));
+  return formatter(locale).format(toDate(iso));
 }
 
 /** A date range with shared month/year collapsed the way the locale does it
@@ -22,5 +34,5 @@ export function formatDate(iso: string, locale: string | undefined = defaultLoca
 export function formatDateRange(start: string, end: string | null | undefined, locale: string | undefined = defaultLocale()): string {
   if (!end) return `From ${formatDate(start, locale)}`;
   if (end === start) return formatDate(start, locale);
-  return new Intl.DateTimeFormat(locale, OPTIONS).formatRange(toDate(start), toDate(end));
+  return formatter(locale).formatRange(toDate(start), toDate(end));
 }
