@@ -17,6 +17,17 @@ describe("formatDate", () => {
   });
 });
 
+describe("formatDate locale guard", () => {
+  it("falls back to the runtime locale for an invalid locale tag", () => {
+    expect(() => formatDate("2026-10-09", "not a locale!!")).not.toThrow();
+    expect(formatDate("2026-10-09", "not a locale!!")).toContain("2026");
+  });
+
+  it("falls back for a range too", () => {
+    expect(formatDateRange("2026-10-09", "2026-10-11", "not a locale!!")).toContain("2026");
+  });
+});
+
 describe("formatDateRange", () => {
   it("collapses a shared month and year", () => {
     expect(norm(formatDateRange("2026-10-09", "2026-10-11", "en-GB"))).toMatch(/^Fri,? 9( Oct)? . Sun,? 11 Oct 2026$/);
