@@ -262,12 +262,12 @@ describe("PoiFormModal enrich", () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: "Taco Lindo West", city: "Haarlem", country_code: "NL" }));
   });
 
-  it("shows a hint when search fails (e.g. no Google key)", async () => {
+  it("shows a hint when search fails", async () => {
     const onSearchPlaces = vi.fn().mockRejectedValue(new Error("400"));
     render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} onSearchPlaces={onSearchPlaces} onPickPlace={vi.fn()} />);
     await userEvent.type(screen.getByLabelText(/search places/i), "taco");
     await userEvent.click(screen.getByRole("button", { name: /^search$/i }));
-    await screen.findByText(/google api key in settings/i);
+    await screen.findByText(/search failed — try again, or fill the form manually/i);
   });
 
   it("edit mode pre-fills the existing image and preserves it on save", async () => {
