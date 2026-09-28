@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { getSetupStatus } from "./api/auth";
 import { useAuth } from "./auth/AuthContext";
@@ -6,10 +6,11 @@ import RequireAuth from "./auth/RequireAuth";
 import AppLoading from "./components/AppLoading";
 import AppShell from "./components/AppShell";
 import LoginPage from "./pages/LoginPage";
-import PublicRoutePage from "./pages/PublicRoutePage";
-import RoutesPage from "./pages/RoutesPage";
 import SetupPage from "./pages/SetupPage";
 import { MapInsetsProvider } from "./map/useMapInsets";
+
+const PublicRoutePage = lazy(() => import("./pages/PublicRoutePage"));
+const RoutesPage = lazy(() => import("./pages/RoutesPage"));
 
 export default function App() {
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
@@ -48,7 +49,14 @@ export default function App() {
       <Routes>
         <Route path="/setup" element={<SetupPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/s/:token" element={<PublicRoutePage />} />
+        <Route
+          path="/s/:token"
+          element={
+            <Suspense fallback={<AppLoading />}>
+              <PublicRoutePage />
+            </Suspense>
+          }
+        />
         <Route
           path="/"
           element={
@@ -61,7 +69,9 @@ export default function App() {
           path="/routes"
           element={
             <RequireAuth>
-              <RoutesPage />
+              <Suspense fallback={<AppLoading />}>
+                <RoutesPage />
+              </Suspense>
             </RequireAuth>
           }
         />
@@ -69,7 +79,9 @@ export default function App() {
           path="/routes/:id"
           element={
             <RequireAuth>
-              <RoutesPage />
+              <Suspense fallback={<AppLoading />}>
+                <RoutesPage />
+              </Suspense>
             </RequireAuth>
           }
         />

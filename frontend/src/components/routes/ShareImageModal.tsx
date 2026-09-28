@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import type { MapSettings, RouteDetail } from "../../types/api";
 import { ghostButtonStyle, primaryButtonStyle, theme, toggleChipStyle } from "../../theme";
 import { SHARE_FORMATS, shareFormat, type ShareFormat, type ShareVariant } from "../../lib/share/shareFormats";
-import { renderShareImage } from "../../lib/share/shareRender";
 import { shareFilename, sharePdfFilename } from "../../lib/share/shareFilename";
-import { renderSharePdf } from "../../lib/share/sharePdf";
 import { triggerDownload } from "../../lib/download";
 import ModalShell from "./ModalShell";
 
@@ -33,7 +31,8 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
     setBusy(true);
     setError(null);
     const imgFormat = shareFormat(format === "pdf" ? "landscape" : format);
-    renderShareImage({ route, settings, format: imgFormat, variant })
+    import("../../lib/share/shareRender")
+      .then(({ renderShareImage }) => renderShareImage({ route, settings, format: imgFormat, variant }))
       .then((b) => {
         if (cancelled) return;
         setBlob(b);
@@ -50,6 +49,7 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
     if (format === "pdf") {
       setPdfBusy(true); setError(null);
       try {
+        const { renderSharePdf } = await import("../../lib/share/sharePdf");
         const pdf = await renderSharePdf({ route, settings, variant });
         triggerDownload(pdf, sharePdfFilename(route.name));
       } catch { setError("Couldn't render the PDF. Try again."); }
@@ -62,6 +62,7 @@ export default function ShareImageModal({ route, settings, onClose }: { route: R
     if (format === "pdf") {
       setPdfBusy(true); setError(null);
       try {
+        const { renderSharePdf } = await import("../../lib/share/sharePdf");
         const pdf = await renderSharePdf({ route, settings, variant });
         const file = new File([pdf], sharePdfFilename(route.name), { type: "application/pdf" });
         if (navigator.canShare?.({ files: [file] })) {
