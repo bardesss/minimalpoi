@@ -11,6 +11,10 @@ import { formatDateRange } from "../lib/formatDate";
 import { dayIndexByNode } from "../lib/routeDays";
 import { AuthCard, AuthField } from "../components/AuthCard";
 
+// The public view never tracks passed stops; a module-level constant so
+// RouteMap gets the same Set identity every render instead of a fresh one.
+const NO_PASSED: Set<number> = new Set();
+
 /** Adapts a `PublicRouteView` into the `RouteDetail` shape `RouteTimeline`
  * expects. Includes every field it actually reads (nodes, legs, round_trip,
  * start_date, attachments — see `groupNodesByDay`); the unread `RouteSummary`
@@ -154,7 +158,7 @@ export default function PublicRoutePage() {
             settings={{ ...route.map, routes_enabled: true }}
             canAdd={false}
             onAddNode={() => {}}
-            passedNodeIds={new Set()}
+            passedNodeIds={NO_PASSED}
             dayIndexByNode={dayIdx}
             highlightNodeId={null}
             poiById={{}}

@@ -9,7 +9,7 @@ function toDate(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
-function defaultLocale(): string | undefined {
+export function defaultLocale(): string | undefined {
   return typeof navigator === "undefined" ? undefined : navigator.language;
 }
 

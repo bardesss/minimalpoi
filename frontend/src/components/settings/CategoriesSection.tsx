@@ -1,16 +1,11 @@
 import { useState } from "react";
 import { useCategories, useCreateCategory, useDeleteCategory, useUpdateCategory } from "../../queries/hooks";
 import { useToast } from "../Toast";
-import { CategoryIcon } from "../../lib/categoryIcon";
+import { CATEGORY_ICONS, CategoryIcon } from "../../lib/categoryIcon";
 import type { Category } from "../../types/api";
 import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme, fieldLabelStyle } from "../../theme";
 
-const ICONS = [
-  "utensils", "coffee", "beer", "wine", "bed", "tree-pine", "mountain", "camera",
-  "landmark", "store", "shopping-cart", "fuel", "parking-circle", "bike",
-  "train-front", "plane", "ship", "music", "film", "dumbbell", "heart", "star",
-  "flag", "map-pin",
-];
+const ICONS = Object.keys(CATEGORY_ICONS);
 
 interface Draft { id: number | null; name: string; color: string; icon: string | null; }
 const EMPTY: Draft = { id: null, name: "", color: theme.color.primary, icon: null };

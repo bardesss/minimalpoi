@@ -11,5 +11,14 @@ export default defineConfig({
       "/images": { target: "http://127.0.0.1:8000", changeOrigin: true },
     },
   },
-  build: { outDir: "dist" },
+  build: {
+    outDir: "dist",
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [{ name: "maplibre", test: /node_modules[\\/]maplibre-gl/ }],
+        },
+      },
+    },
+  },
 });

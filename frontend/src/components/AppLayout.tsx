@@ -41,9 +41,7 @@ export default function AppLayout(props: AppLayoutProps) {
   const isMobile = useIsMobile();
   // Give the POI grid's 3rd column (see PoiList) room on very wide screens.
   const sidebarWidth = useSidebarWidth();
-  // Icon-only on both: in the mobile handle row the labeled variant is wider
-  // than the space beside the centred grip and taller than the 44px row.
-  const nav = props.routesEnabled ? <NavToggle variant="icon" /> : null;
+  const nav = props.routesEnabled ? <NavToggle /> : null;
   const account = <AccountMenu {...props.account} />;
 
   if (isMobile) {
