@@ -6,6 +6,8 @@ import type { Category, PoiDraft } from "../types/api";
 import { ApiError } from "../api/client";
 import PoiFormModal, { parseCoord, parseCoordPair } from "./PoiFormModal";
 import { splitTags } from "../lib/tags";
+import { MapInsetsProvider, useMapInsetsReader } from "../map/useMapInsets";
+import type { Insets } from "../map/mapInsets";
 
 describe("parseCoord", () => {
   it("parses a plain number", () => {
@@ -538,5 +540,98 @@ describe("PoiFormModal mobile location section", () => {
     } finally {
       restore();
     }
+  });
+});
+
+const editInitial = { name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null, image_url: null };
+
+describe("PoiFormModal docked desktop form (Task 2)", () => {
+  it("renders the desktop add form docked to the sidebar column with no backdrop", () => {
+    render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    const dialog = screen.getByRole("dialog");
+    const ancestor = dialog.parentElement as HTMLElement;
+    expect(ancestor.style.left).toBe("0px");
+    expect(ancestor.style.width).toBe("480px");
+    // No element anywhere carries the dark, semi-transparent backdrop fill.
+    expect(document.querySelector('[style*="rgba(26,24,22"]')).toBeNull();
+  });
+
+  it("keeps the desktop edit form non-modal and outside-click does not close it", async () => {
+    const onClose = vi.fn();
+    render(<PoiFormModal mode="edit" initial={editInitial} categories={cats} coords={null} onSubmit={() => {}} onClose={onClose} onCheckDuplicate={() => {}} duplicateId={null} />);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).not.toHaveAttribute("aria-modal", "true");
+    // Click the fixed positioning wrapper outside the dialog panel itself.
+    await userEvent.click(dialog.parentElement as HTMLElement);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("is still a true modal on mobile edit", () => {
+    const restore = mockMobileMatchMedia();
+    try {
+      render(<PoiFormModal mode="edit" initial={editInitial} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+      expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true");
+    } finally {
+      restore();
+    }
+  });
+
+  it("clicking the backdrop closes the mobile edit modal", async () => {
+    const restore = mockMobileMatchMedia();
+    const onClose = vi.fn();
+    try {
+      render(<PoiFormModal mode="edit" initial={editInitial} categories={cats} coords={null} onSubmit={() => {}} onClose={onClose} onCheckDuplicate={() => {}} duplicateId={null} />);
+      const dialog = screen.getByRole("dialog");
+      await userEvent.click(dialog.parentElement as HTMLElement);
+      expect(onClose).toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+  });
+
+  it("calls onCoordsChange with the initial valid coords, then null after an invalid latitude", async () => {
+    const onCoordsChange = vi.fn();
+    render(<PoiFormModal mode="add" initial={null} categories={cats} coords={{ lng: 4.9, lat: 52.37 }} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} onCoordsChange={onCoordsChange} />);
+    expect(onCoordsChange).toHaveBeenCalledWith({ lat: 52.37, lng: 4.9 });
+    onCoordsChange.mockClear();
+    fireEvent.change(screen.getByLabelText(/latitude/i), { target: { value: "abc" } });
+    expect(onCoordsChange).toHaveBeenCalledWith(null);
+  });
+
+  it("updates the latitude field (rounded) when a new coords prop arrives in desktop edit mode", () => {
+    const { rerender } = render(<PoiFormModal mode="edit" initial={editInitial} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    expect(screen.getByLabelText(/latitude/i)).toHaveValue("1");
+    rerender(<PoiFormModal mode="edit" initial={editInitial} categories={cats} coords={{ lng: 4.9041234, lat: 52.3676543 }} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    expect(screen.getByLabelText(/latitude/i)).toHaveValue("52.367654");
+  });
+
+  it("registers a left map inset equal to the sidebar width when coversMap is set", () => {
+    const out: { get?: () => Insets } = {};
+    function Probe() { out.get = useMapInsetsReader(); return null; }
+    render(
+      <MapInsetsProvider>
+        <Probe />
+        <PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} coversMap />
+      </MapInsetsProvider>,
+    );
+    expect(out.get!().left).toBe(480);
+  });
+
+  it("registers no map inset when coversMap is not set", () => {
+    const out: { get?: () => Insets } = {};
+    function Probe() { out.get = useMapInsetsReader(); return null; }
+    render(
+      <MapInsetsProvider>
+        <Probe />
+        <PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />
+      </MapInsetsProvider>,
+    );
+    expect(out.get!().left).toBe(0);
+  });
+
+  it("shows the drag-the-pin hint on desktop instead of the old click-anywhere hint", () => {
+    render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    expect(screen.getByText(/click the map or drag the pin to set the location/i)).toBeInTheDocument();
+    expect(screen.queryByText(/click anywhere on the map/i)).not.toBeInTheDocument();
   });
 });
