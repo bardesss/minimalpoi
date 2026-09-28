@@ -50,10 +50,21 @@ let allIconsCache: Record<string, LucideIcon> | null = null;
 let allIconsPromise: Promise<Record<string, LucideIcon>> | null = null;
 const listeners = new Set<() => void>();
 
+// Import the icon-index module directly, rather than `import("lucide-react")`.
+// lucide-react's main barrel (lucide-react.mjs) is also statically imported
+// elsewhere in the app for unrelated single icons (nav, search, filters), so
+// a dynamic import() of that same specifier can't be split into its own
+// chunk — the bundler has to keep it resident wherever it's already required
+// synchronously. The barrel re-exports this icon-index module verbatim
+// (`import * as index from './icons/index.mjs'; export { index as icons }`),
+// and nothing else in the app imports this deep path statically, so it can
+// become a genuinely separate, lazily-loaded chunk. lucide-react ships no
+// "exports" map, so the deep import resolves; see src/types/lucide-icons.d.ts
+// for why it's typed loosely and cast at the call site.
 function loadAllIcons(): Promise<Record<string, LucideIcon>> {
   if (!allIconsPromise) {
-    allIconsPromise = import("lucide-react").then((m) => {
-      allIconsCache = m.icons as unknown as Record<string, LucideIcon>;
+    allIconsPromise = import("lucide-react/dist/esm/icons/index.mjs").then((m) => {
+      allIconsCache = m as unknown as Record<string, LucideIcon>;
       listeners.forEach((listener) => listener());
       return allIconsCache;
     });
