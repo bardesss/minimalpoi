@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { RouteDetail, RouteNode, RouteNodeCreate, RouteNodeKind } from "../../types/api";
-import { ghostButtonStyle, routeDayColor, theme } from "../../theme";
+import { ghostButtonStyle, ROUTE_PASSED_COLOR, routeDayColor, theme } from "../../theme";
 import { useAddNode, useUpdateNode } from "../../queries/hooks";
 import LegRow from "./LegRow";
 import RouteNodeRow from "./RouteNodeRow";
@@ -232,7 +232,7 @@ export default function RouteTimeline({ route, canEdit, onHoverNode, onInteracti
                   stopCount={group.nodes.length}
                   onToggle={() => toggleDay(group.dayKey)}
                   onNavigate={() => navigateDay(gi)}
-                  color={routeDayColor(gi)}
+                  color={isPast ? ROUTE_PASSED_COLOR : routeDayColor(gi)}
                 />
                 {expanded && gi === 0 && startSlot && <div style={{ marginTop: 8 }}>{startSlot}</div>}
                 {expanded && cover && (
