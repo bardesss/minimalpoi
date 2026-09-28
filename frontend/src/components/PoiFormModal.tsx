@@ -109,10 +109,23 @@ export default function PoiFormModal({
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Controls the mobile "Edit coordinates" disclosure so a coordinate-related
+  // save error is visible instead of hidden behind the closed <details>.
+  const [coordsOpen, setCoordsOpen] = useState(false);
 
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
   const canLocate = typeof navigator !== "undefined" && "geolocation" in navigator && window.isSecureContext !== false;
+
+  // Guards the geolocation callbacks (which can resolve after the form has
+  // unmounted) against updating state or calling onLocated post-unmount.
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Mobile "pick on map" (add mode only): collapses the sheet to a peek so
   // the already-pannable map behind it is visible, under a fixed crosshair.
@@ -179,10 +192,12 @@ export default function PoiFormModal({
     }
     if (latNum === null || lngNum === null) {
       setSaveError("Enter valid coordinates, e.g. 52.3676, 4.9041.");
+      setCoordsOpen(true);
       return;
     }
     if (latNum < -90 || latNum > 90 || lngNum < -180 || lngNum > 180) {
       setSaveError("Coordinates are out of range (latitude ±90, longitude ±180).");
+      setCoordsOpen(true);
       return;
     }
     const payload: PoiCreate = {
@@ -211,19 +226,29 @@ export default function PoiFormModal({
     }
   }
 
-  function maybeCheckDuplicate() {
-    if (mode === "add" && name.trim() && lat !== "" && lng !== "") {
-      onCheckDuplicate({ name: name.trim(), lat: Number(lat), lng: Number(lng) });
-    }
+  // `lat`/`lng` state hasn't updated yet right after a caller sets it (e.g.
+  // just before this runs), so an explicit `{ lat, lng }` lets locate/pick
+  // check duplicates against the new coordinates instead of the stale ones.
+  function maybeCheckDuplicate(explicit?: { lat: number; lng: number }) {
+    if (mode !== "add" || !name.trim()) return;
+    const latNum = explicit ? explicit.lat : lat !== "" ? Number(lat) : null;
+    const lngNum = explicit ? explicit.lng : lng !== "" ? Number(lng) : null;
+    if (latNum === null || lngNum === null) return;
+    onCheckDuplicate({ name: name.trim(), lat: latNum, lng: lngNum });
   }
 
   function confirmPick() {
     const c = getMapCenter?.();
     if (c) {
-      setLat(String(roundCoord(c.lat)));
-      setLng(String(roundCoord(c.lng)));
+      const rLat = roundCoord(c.lat);
+      const rLng = roundCoord(c.lng);
+      setLat(String(rLat));
+      setLng(String(rLng));
+      setPicking(false);
+      maybeCheckDuplicate({ lat: rLat, lng: rLng });
+    } else {
+      setPicking(false);
     }
-    setPicking(false);
   }
 
   function cancelPick() {
@@ -235,6 +260,7 @@ export default function PoiFormModal({
     setLocateError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (!mountedRef.current) return;
         const rLat = roundCoord(pos.coords.latitude);
         const rLng = roundCoord(pos.coords.longitude);
         setLat(String(rLat));
@@ -242,8 +268,10 @@ export default function PoiFormModal({
         setLocateError(null);
         setLocating(false);
         onLocated?.({ lat: rLat, lng: rLng });
+        maybeCheckDuplicate({ lat: rLat, lng: rLng });
       },
       (err) => {
+        if (!mountedRef.current) return;
         setLocating(false);
         setLocateError(
           err.code === 1
@@ -295,7 +323,7 @@ export default function PoiFormModal({
 
           <div>
             <label style={fieldLabelStyle} htmlFor="poi-name">Name</label>
-            <input id="poi-name" style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} onBlur={maybeCheckDuplicate} placeholder="e.g. Café Modern" />
+            <input id="poi-name" style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} onBlur={() => maybeCheckDuplicate()} placeholder="e.g. Café Modern" />
             {caption("name")}
           </div>
 
@@ -338,19 +366,19 @@ export default function PoiFormModal({
                         setLat(e.target.value);
                       }
                     }}
-                    onBlur={maybeCheckDuplicate}
+                    onBlur={() => maybeCheckDuplicate()}
                     placeholder="52.3676"
                   />
                   {caption("lat")}
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={fieldLabelStyle} htmlFor="poi-lng">Longitude</label>
-                  <input id="poi-lng" style={monoInputStyle} value={lng} onChange={(e) => { setSaveError(null); setLng(e.target.value); }} onBlur={maybeCheckDuplicate} placeholder="4.9041" />
+                  <input id="poi-lng" style={monoInputStyle} value={lng} onChange={(e) => { setSaveError(null); setLng(e.target.value); }} onBlur={() => maybeCheckDuplicate()} placeholder="4.9041" />
                   {caption("lng")}
                 </div>
               </div>
             );
-            const locateButton = canLocate && (
+            const locateButton = isAdd && canLocate && (
               <button type="button" onClick={useMyLocation} disabled={locating} style={{ ...ghostButtonStyle, alignSelf: "flex-start", minHeight: isMobile ? 44 : undefined }}>
                 {locating ? "Locating…" : "Use my location"}
               </button>
@@ -376,7 +404,7 @@ export default function PoiFormModal({
                     )}
                   </div>
                   {locateStatus}
-                  <details>
+                  <details open={coordsOpen} onToggle={(e) => setCoordsOpen(e.currentTarget.open)}>
                     <summary style={{ fontSize: 12, fontWeight: 700, color: theme.color.textBody, cursor: "pointer" }}>Edit coordinates</summary>
                     <div style={{ marginTop: 10 }}>{coordFields}</div>
                   </details>

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import SearchPlacePanel from "./SearchPlacePanel";
+import { ApiError } from "../../../api/client";
 
 const searchMut = { mutateAsync: vi.fn() };
 const draftMut = { mutateAsync: vi.fn() };
@@ -58,5 +59,14 @@ describe("SearchPlacePanel", () => {
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent("Search failed — try again, or fill the form manually.");
     expect(status.textContent).not.toMatch(/google api key/i);
+  });
+
+  it("shows the backend's detail message when search fails with a 400 ApiError", async () => {
+    searchMut.mutateAsync.mockRejectedValue(new ApiError(400, "Stored Google API key can't be decrypted"));
+    const onPick = vi.fn();
+    render(<SearchPlacePanel onPick={onPick} />);
+    fireEvent.change(screen.getByLabelText("Search places"), { target: { value: "eiffel" } });
+    fireEvent.click(screen.getByRole("button", { name: /^search$/i }));
+    expect(await screen.findByText(/stored google api key can't be decrypted/i)).toBeInTheDocument();
   });
 });

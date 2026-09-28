@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { PlaceSearchResult, PoiDraft } from "../../types/api";
+import { ApiError } from "../../api/client";
 import { ghostButtonStyle, inputStyle, theme, fieldLabelStyle } from "../../theme";
 
 
@@ -30,8 +31,10 @@ export function PlaceSearchSection({
       const found = await onSearchPlaces(searchText.trim());
       setResults(found);
       if (found.length === 0) setSearchError("No matching places found.");
-    } catch {
-      setSearchError("Search failed — try again, or fill the form manually.");
+    } catch (err) {
+      setSearchError(
+        err instanceof ApiError && err.status === 400 ? err.message : "Search failed — try again, or fill the form manually.",
+      );
     } finally {
       setSearching(false);
     }

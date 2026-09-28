@@ -31,7 +31,7 @@ describe("ImagePicker", () => {
   it("uploads through the regular file input", async () => {
     const onUploadImage = vi.fn().mockResolvedValue({ url: "/images/up.webp" });
     render(<ImagePicker imageUrl={null} onImageUrl={vi.fn()} onUploadImage={onUploadImage} />);
-    await userEvent.upload(screen.getByLabelText(/choose image/i), new File(["x"], "p.png", { type: "image/png" }));
+    await userEvent.upload(screen.getByLabelText(/add photo/i), new File(["x"], "p.png", { type: "image/png" }));
     expect(onUploadImage).toHaveBeenCalled();
   });
 
@@ -44,7 +44,7 @@ describe("ImagePicker", () => {
 
   it("visually hides the native inputs but keeps them focusable", () => {
     render(<ImagePicker imageUrl={null} onImageUrl={vi.fn()} onUploadImage={vi.fn()} mobile />);
-    const fileInput = screen.getByLabelText(/choose image/i);
+    const fileInput = screen.getByLabelText(/add photo/i);
     // jsdom normalizes the computed `overflow: hidden` to `clip`; the source style is unaffected.
     expect(fileInput).toHaveStyle({ position: "absolute", width: "1px", height: "1px", opacity: "0" });
     expect(["hidden", "clip"]).toContain(fileInput.style.overflow);
