@@ -1,3 +1,4 @@
+import mimetypes
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -15,6 +16,12 @@ from .ratelimit import limiter
 from .routing.events import RouteEventHub
 from .routers import auth, backup, categories, comments, enrich, images, me, places, pois, public, routes, settings, tags, teams, users, version, visits
 from .routers import api_tokens as api_tokens_module
+
+
+# Python's stdlib mimetypes db doesn't reliably know `.webmanifest` on every
+# platform (notably some Linux distros), which would otherwise serve the web
+# app manifest as application/octet-stream and break installability.
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 
 def spa_dist_dir() -> Path:
