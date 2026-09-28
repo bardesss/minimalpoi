@@ -50,6 +50,8 @@ export function EnrichSection({
             or it would submit the form instead of running enrichment. */}
         <input
           id="poi-enrich-url"
+          type="url"
+          inputMode="url"
           style={inputStyle}
           value={enrichUrlText}
           onChange={(e) => setEnrichUrlText(e.target.value)}

@@ -275,7 +275,7 @@ export default function PoiFormModal({
           <button type="button" aria-label="Close" onClick={onClose} style={{ width: isMobile ? 44 : 30, height: isMobile ? 44 : 30, fontSize: isMobile ? 20 : 14, borderRadius: theme.radius.icon, border: "none", background: "#f5f4f2", color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
+        <form noValidate onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <div style={{ padding: "0 24px 8px", display: "flex", flexDirection: "column", gap: 14 }}>
           {isAdd && onSearchPlaces && (
             <PlaceSearchSection onSearchPlaces={onSearchPlaces} onPickPlace={onPickPlace} onApplyDraft={applyDraft} />
@@ -285,7 +285,7 @@ export default function PoiFormModal({
             <EnrichSection onEnrich={onEnrich} onApplyDraft={applyDraft} filledCount={filledCount} enrichHost={enrichHost} />
           )}
 
-          <ImagePicker imageUrl={imageUrl} onImageUrl={setImageUrl} onUploadImage={onUploadImage} />
+          <ImagePicker imageUrl={imageUrl} onImageUrl={setImageUrl} onUploadImage={onUploadImage} mobile={isMobile} />
 
           {duplicateId != null && (
             <div role="status" style={{ padding: "10px 12px", borderRadius: theme.radius.input, background: theme.color.tintBg, border: `1px solid ${theme.color.tintBorder}`, color: theme.color.deepIndigoText, fontSize: 12.5 }}>
@@ -299,7 +299,7 @@ export default function PoiFormModal({
             {caption("name")}
           </div>
 
-          <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <label style={fieldLabelStyle} htmlFor="poi-category">Category</label>
               <select id="poi-category" style={inputStyle} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
@@ -410,7 +410,7 @@ export default function PoiFormModal({
 
           <div>
             <label style={fieldLabelStyle} htmlFor="poi-website">Website</label>
-            <input id="poi-website" style={inputStyle} value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" />
+            <input id="poi-website" type="url" inputMode="url" style={inputStyle} value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" />
             {caption("website")}
           </div>
 
