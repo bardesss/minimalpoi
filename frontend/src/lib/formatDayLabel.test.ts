@@ -24,4 +24,12 @@ describe("formatDayLabel", () => {
     // "juli" (it's the same as the full month name), unlike the other months.
     expect(formatDayLabel("2026-07-16", "de-DE")).toBe("DO 16 JULI");
   });
+
+  it("falls back to the runtime default locale for a malformed tag instead of throwing", () => {
+    expect(() => formatDayLabel("2026-07-16", "en_US@x")).not.toThrow();
+    // (Passing `undefined` explicitly would pick navigator.language via the
+    // default parameter, so compare against the runtime's own default locale.)
+    const runtimeDefault = new Intl.DateTimeFormat().resolvedOptions().locale;
+    expect(formatDayLabel("2026-07-16", "en_US@x")).toBe(formatDayLabel("2026-07-16", runtimeDefault));
+  });
 });
