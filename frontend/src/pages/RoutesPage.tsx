@@ -10,13 +10,15 @@ import { computeInsertPosition } from "../map/insertPosition";
 import AppLayout from "../components/AppLayout";
 import RouteTimeline from "../components/routes/RouteTimeline";
 import RouteMap from "../components/routes/RouteMap";
-import ExportMenu from "../components/routes/ExportMenu";
+import MenuButton, { type MenuItem } from "../components/MenuButton";
 import SettingsModal from "../components/SettingsModal";
 import ShareImageModal from "../components/routes/ShareImageModal";
 import ShareLinkModal from "../components/routes/ShareLinkModal";
 import RouteFormModal from "../components/routes/RouteFormModal";
 import { formatTravel } from "../lib/formatTravel";
+import { formatDate, formatDateRange } from "../lib/formatDate";
 import { passedNodeIds, todayIso } from "../lib/dayState";
+import { dayIndexByNode as computeDayIndexByNode } from "../lib/routeDays";
 import { exportRoute, type RouteExportFormat } from "../api/routes";
 import { triggerDownload } from "../lib/download";
 import { useRouteEvents } from "../queries/useRouteEvents";
@@ -83,6 +85,10 @@ export default function RoutesPage() {
     () => (detail ? passedNodeIds(detail, todayIso()) : new Set<number>()),
     [detail],
   );
+  const dayIndexByNode = useMemo(
+    () => (detail ? computeDayIndexByNode(detail) : new Map<number, number>()),
+    [detail],
+  );
   const canAddFromMap = selectedId != null && canEdit;
   const addFromMap = (poiId: number, kind: RouteNodeKind) => {
     const poi = (poisQuery.data ?? []).find((p) => p.id === poiId);
@@ -101,6 +107,16 @@ export default function RoutesPage() {
     if (!detail) return;
     triggerDownload(await exportRoute(detail.id, format), `${detail.name}.${format}`);
   }
+
+  const shareItems: MenuItem[] = detail
+    ? [
+        { key: "geojson", label: "Export GeoJSON", onSelect: () => onExport("geojson") },
+        { key: "gpx", label: "Export GPX", onSelect: () => onExport("gpx") },
+        { key: "kml", label: "Export KML", onSelect: () => onExport("kml") },
+        ...(detail.nodes.length > 0 ? [{ key: "image", label: "Share image", onSelect: () => setShareOpen(true) }] : []),
+        ...(canEdit ? [{ key: "link", label: "Public link", onSelect: () => setShareLinkOpen(true) }] : []),
+      ]
+    : [];
 
   async function onDeleteRoute() {
     if (!detail) return;
@@ -127,7 +143,7 @@ export default function RoutesPage() {
               >
                 <div style={{ fontFamily: theme.font.ui, fontWeight: 700, fontSize: 14, color: theme.color.textPrimary }}>{r.name}</div>
                 <div style={{ fontSize: 12, color: theme.color.textSecondary, marginTop: 2 }}>
-                  {r.start_date} → {r.end_date ?? r.scheduled_end_date} · {r.node_count} stops · by {r.owner_username}{r.team_name ? ` · ${r.team_name}` : ""}
+                  {formatDateRange(r.start_date, r.end_date ?? r.scheduled_end_date)} · {r.node_count} stops · by {r.owner_username}{r.team_name ? ` · ${r.team_name}` : ""}
                 </div>
               </button>
             ))}
@@ -144,41 +160,26 @@ export default function RoutesPage() {
           {routeQuery.isLoading && <p style={{ fontSize: 13, color: theme.color.textPlaceholder }}>Loading…</p>}
           {detail && (
             <>
-              <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "flex-start", justifyContent: "space-between", gap: isMobile ? 10 : 8 }}>
-                <div style={{ minWidth: 0 }}>
-                  <h2 style={{ margin: "0 0 4px", fontFamily: theme.font.ui, fontWeight: 800, fontSize: 17, color: theme.color.textPrimary }}>{detail.name}</h2>
-                  <p style={{ margin: isMobile ? 0 : "0 0 12px", fontSize: 12.5, color: theme.color.textSecondary }}>
-                    {detail.start_date} → {detail.end_date ?? detail.scheduled_end_date}
-                    {detail.end_date && detail.end_date !== detail.scheduled_end_date && (
-                      <span style={{ color: theme.color.textPlaceholder }}> · scheduled: {detail.scheduled_end_date}</span>
-                    )}
-                    {detail.team_name && <span style={{ color: theme.color.textPlaceholder }}> · team: {detail.team_name}</span>}
-                    {detail.total_distance_m > 0 && <> · {formatTravel(detail.total_distance_m, detail.total_duration_s)}</>}
-                  </p>
-                </div>
-                <div style={{ display: "flex", gap: 8, flex: "none", flexWrap: "wrap", justifyContent: isMobile ? "flex-start" : "flex-end", marginBottom: isMobile ? 4 : 0 }}>
-                  {canEdit && <button type="button" className="hover-btn" style={{ ...ghostButtonStyle, padding: isMobile ? "11px 14px" : "6px 12px" }} onClick={() => setEditingRoute(true)}>Edit</button>}
-                  <ExportMenu onExport={onExport} />
-                  <button
-                    type="button"
-                    className="hover-btn"
-                    style={{ ...ghostButtonStyle, padding: isMobile ? "11px 14px" : "6px 12px", whiteSpace: "nowrap" }}
-                    onClick={() => setShareOpen(true)}
-                    disabled={detail.nodes.length === 0}
-                  >
-                    Share image
-                  </button>
-                  {canEdit && (
-                    <button
-                      type="button"
-                      className="hover-btn"
-                      style={{ ...ghostButtonStyle, padding: isMobile ? "11px 14px" : "6px 12px", whiteSpace: "nowrap" }}
-                      onClick={() => setShareLinkOpen(true)}
-                    >
-                      Public link
-                    </button>
+              <div data-testid="route-title-block" style={{ minWidth: 0 }}>
+                <h2 style={{ margin: "0 0 4px", fontFamily: theme.font.ui, fontWeight: 800, fontSize: 17, color: theme.color.textPrimary }}>{detail.name}</h2>
+                <p style={{ margin: "0 0 10px", fontSize: 12.5, color: theme.color.textSecondary }}>
+                  {formatDateRange(detail.start_date, detail.end_date ?? detail.scheduled_end_date)}
+                  {detail.end_date && detail.end_date !== detail.scheduled_end_date && (
+                    <span style={{ color: theme.color.textPlaceholder }}> · scheduled: {formatDate(detail.scheduled_end_date)}</span>
                   )}
-                </div>
+                  {detail.team_name && <span style={{ color: theme.color.textPlaceholder }}> · team: {detail.team_name}</span>}
+                  {detail.total_distance_m > 0 && <> · {formatTravel(detail.total_distance_m, detail.total_duration_s)}</>}
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                {canEdit && <button type="button" className="hover-btn" style={{ ...ghostButtonStyle, padding: isMobile ? "11px 14px" : "6px 12px" }} onClick={() => setEditingRoute(true)}>Edit</button>}
+                <MenuButton
+                  label="Share ▾"
+                  menuLabel="Share route"
+                  align="left"
+                  triggerStyle={{ ...ghostButtonStyle, padding: isMobile ? "11px 14px" : "6px 12px", whiteSpace: "nowrap" }}
+                  items={shareItems}
+                />
               </div>
               <RouteTimeline route={detail} canEdit={canEdit} onHoverNode={setHoverNodeId} onInteractingChange={setTimelineBusy} />
               {canEdit && (
@@ -214,6 +215,7 @@ export default function RoutesPage() {
           <RouteMap
             nodes={detail?.nodes ?? []}
             legs={detail?.legs ?? []}
+            dayIndexByNode={dayIndexByNode}
             pois={nearbyPois}
             categories={categoriesQuery.data ?? []}
             settings={settingsQuery.data}

@@ -5,6 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import RouteTimeline, { computeDropPosition } from "./RouteTimeline";
 import { groupNodesByDay, dayOffsetForDrop } from "../../lib/routeDays";
 import type { RouteDetail, RouteNode } from "../../types/api";
+import { ROUTE_PASSED_COLOR } from "../../theme";
+
+// jsdom normalises inline colours to rgb(); compare in that form.
+const hexToRgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
 
 const add = vi.fn();
 const update = vi.fn();
@@ -165,6 +169,14 @@ describe("RouteTimeline collapse", () => {
     expect(screen.getByText("FutureTown")).toBeInTheDocument();     // 2026-07-14 ≥ today → expanded
   });
 
+  it("greys a passed day's colour dot to match the map", () => {
+    render(<RouteTimeline route={pastFuture} canEdit={false} />);
+    const dots = screen.getAllByTestId("day-color");
+    const grey = hexToRgb(ROUTE_PASSED_COLOR);
+    expect(dots[0].style.background).toBe(grey);                    // 2026-06-20: passed
+    expect(dots[dots.length - 1].style.background).not.toBe(grey);  // 2026-07-15: upcoming
+  });
+
   it("expands a collapsed past day when its header is clicked", async () => {
     render(<RouteTimeline route={pastFuture} canEdit={false} />);
     // Only a collapsed day shows the "· N stops" suffix, so this name is unique.
@@ -210,6 +222,31 @@ describe("RouteTimeline empty day", () => {
     render(<RouteTimeline route={multiNight} canEdit={false} />);
     // Hotel X spans 14->16, so days 15 (middle) and 16 (departure) are empty.
     expect(screen.getAllByText("No stops yet.").length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("RouteTimeline stay-cover line", () => {
+  function stayNode(id: number, name: string, arrive: string, depart: string, nights: number): RouteNode {
+    return { id, kind: "stay", position: id, nights, notes: null, poi_id: null, name, lat: 0, lng: 0, arrive_date: arrive, depart_date: depart, inbound_distance_m: null, inbound_duration_s: null, role: null };
+  }
+
+  const twoNightStay: RouteDetail = {
+    ...route,
+    start_date: "2026-10-09",
+    nodes: [stayNode(1, "Café de Jaren", "2026-10-09", "2026-10-11", 2)],
+    legs: [],
+  };
+
+  it("shows a 'Staying at' line with the night number on a later night, but not on the arrival day", () => {
+    render(<RouteTimeline route={twoNightStay} canEdit />);
+    const cards = screen.getAllByTestId("day-card");
+    // The line is split across a <strong> tag for the stay name, so match on the
+    // card's own text content rather than getByText (which only matches a single
+    // element's direct text nodes).
+    expect(within(cards[1]).getByTestId("stay-cover").textContent).toBe("Staying at Café de Jaren (night 2 of 2)");
+    expect(within(cards[1]).queryByText("No stops yet.")).not.toBeInTheDocument();
+    expect(within(cards[0]).queryByText(/staying at/i)).not.toBeInTheDocument();
+    expect(within(cards[0]).queryByTestId("stay-cover")).not.toBeInTheDocument();
   });
 });
 

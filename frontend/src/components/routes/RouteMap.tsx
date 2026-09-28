@@ -7,14 +7,17 @@ import { MAP_FONT, resolveMapStyle } from "../../map/style";
 import { routeLine } from "../../map/routeLine";
 import { toFeatureCollection } from "../../map/featureCollection";
 import { categoryColorExpression } from "../../map/colorExpression";
+import { DAY_COLOR_EXPRESSION } from "../../map/dayColor";
 import { routeSignature } from "../../lib/routeSignature";
 import { useIsMobile } from "../../lib/useMediaQuery";
 import { buildPoiMiniCard } from "../PoiMiniCard";
-import { theme } from "../../theme";
+import { ROUTE_PASSED_COLOR, theme } from "../../theme";
 import { useApplyMapInsets } from "../../map/useMapInsets";
 
-const LINE_COLOR = "#4f46e5";
-const PASSED_COLOR = "#a8a39b"; // muted grey — de-emphasises days already travelled
+const PASSED_COLOR = ROUTE_PASSED_COLOR; // de-emphasises days already travelled
+// Stable default so the redraw effect's deps don't churn when the caller omits
+// the prop (a fresh `new Map()` literal would be a new identity every render).
+const EMPTY_DAY_INDEX = new Map<number, number>();
 
 function fitToNodes(map: MlMap, nodes: RouteNode[]) {
   if (nodes.length === 0) return;
@@ -71,20 +74,21 @@ function addRouteLayers(map: MlMap) {
     source: "route-line",
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
-      "line-color": ["case", ["get", "passed"], PASSED_COLOR, LINE_COLOR],
+      "line-color": ["case", ["get", "passed"], PASSED_COLOR, DAY_COLOR_EXPRESSION as never],
       "line-width": 3,
       "line-opacity": ["case", ["get", "passed"], 0.35, 0.85],
     },
   });
-  // Stays get a filled indigo dot; stops a hollow one, both numbered by order.
+  // Stays get a filled dot; stops a hollow one, both numbered by order, both
+  // coloured by the day they belong to.
   map.addLayer({
     id: "route-points",
     type: "circle",
     source: "route-points",
     paint: {
       "circle-radius": 12,
-      "circle-color": ["case", ["get", "passed"], PASSED_COLOR, ["==", ["get", "kind"], "stay"], LINE_COLOR, "#ffffff"],
-      "circle-stroke-color": ["case", ["get", "passed"], PASSED_COLOR, LINE_COLOR],
+      "circle-color": ["case", ["get", "passed"], PASSED_COLOR, ["==", ["get", "kind"], "stay"], DAY_COLOR_EXPRESSION as never, "#ffffff"],
+      "circle-stroke-color": ["case", ["get", "passed"], PASSED_COLOR, DAY_COLOR_EXPRESSION as never],
       "circle-stroke-width": 2,
       "circle-opacity": ["case", ["get", "passed"], 0.55, 1],
       "circle-stroke-opacity": ["case", ["get", "passed"], 0.55, 1],
@@ -101,7 +105,7 @@ function addRouteLayers(map: MlMap) {
       "text-size": 12,
     },
     paint: {
-      "text-color": ["case", ["get", "passed"], "#ffffff", ["==", ["get", "kind"], "stay"], "#ffffff", LINE_COLOR],
+      "text-color": ["case", ["get", "passed"], "#ffffff", ["==", ["get", "kind"], "stay"], "#ffffff", DAY_COLOR_EXPRESSION as never],
       "text-opacity": ["case", ["get", "passed"], 0.75, 1],
     },
   });
@@ -119,7 +123,7 @@ function addRouteLayers(map: MlMap) {
   });
 }
 
-export default function RouteMap({ nodes, legs, pois, categories, settings, canAdd, onAddNode, passedNodeIds, highlightNodeId, poiById, onOpenPoi }: {
+export default function RouteMap({ nodes, legs, pois, categories, settings, canAdd, onAddNode, passedNodeIds, highlightNodeId, poiById, onOpenPoi, dayIndexByNode = EMPTY_DAY_INDEX }: {
   nodes: RouteNode[];
   legs: RouteLeg[];
   pois: Poi[];
@@ -131,6 +135,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   highlightNodeId: number | null;
   poiById: Record<number, Poi>;
   onOpenPoi: (poiId: number) => void;
+  dayIndexByNode?: Map<number, number>;
 }) {
   const isMobile = useIsMobile();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -152,6 +157,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   const isMobileRef = useRef(isMobile);
   const poiByIdRef = useRef(poiById);
   const onOpenPoiRef = useRef(onOpenPoi);
+  const dayIndexByNodeRef = useRef(dayIndexByNode);
   // The itinerary-hover mini card (Task 4): a single reused popup instance,
   // shown/hidden as highlightNodeId changes.
   const hoverCardRef = useRef<maplibregl.Popup | null>(null);
@@ -174,6 +180,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
   isMobileRef.current = isMobile;
   poiByIdRef.current = poiById;
   onOpenPoiRef.current = onOpenPoi;
+  dayIndexByNodeRef.current = dayIndexByNode;
 
   // Plain category color for a POI (the mini card applies its own tint).
   const categoryColorFor = (poi: Poi) =>
@@ -208,7 +215,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
       });
       addPoiLayers(map, categoryColorExpression(categoriesRef.current));
 
-      const { line, points } = routeLine(nodesRef.current, legsRef.current, passedRef.current);
+      const { line, points } = routeLine(nodesRef.current, legsRef.current, passedRef.current, dayIndexByNodeRef.current);
       map.addSource("route-line", { type: "geojson", data: line });
       map.addSource("route-points", { type: "geojson", data: points });
       addRouteLayers(map);
@@ -349,7 +356,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
     const lineSrc = map.getSource("route-line") as GeoJSONSource | undefined;
     const pointSrc = map.getSource("route-points") as GeoJSONSource | undefined;
     if (!lineSrc || !pointSrc) return;
-    const { line, points } = routeLine(nodes, legs, passedNodeIds);
+    const { line, points } = routeLine(nodes, legs, passedNodeIds, dayIndexByNode);
     lineSrc.setData(line);
     pointSrc.setData(points);
     const sig = routeSignature(nodes);
@@ -357,7 +364,7 @@ export default function RouteMap({ nodes, legs, pois, categories, settings, canA
       fitToNodes(map, nodes);
       lastFitSigRef.current = sig;
     }
-  }, [nodes, legs, passedNodeIds]);
+  }, [nodes, legs, passedNodeIds, dayIndexByNode]);
 
   // Update the nearby-POI dots when the filtered set changes.
   useEffect(() => {

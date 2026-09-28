@@ -159,6 +159,17 @@ export function toggleChipStyle(active: boolean): CSSProperties {
   };
 }
 
+/** Per-day route colours, cycled by day index. Each clears 4.5:1 on white (the
+ * map's 12px sequence labels are drawn in the day colour on white circles) and
+ * so also on the lighter basemap; indigo first so day 1 matches the brand. */
+export const routeDayColors = ["#4f46e5", "#e11d48", "#0f766e", "#b45309", "#7c3aed", "#0369a1"] as const;
+export function routeDayColor(dayIndex: number): string {
+  return routeDayColors[((dayIndex % routeDayColors.length) + routeDayColors.length) % routeDayColors.length];
+}
+
+/** Muted grey for days already travelled, shared by the map and the day cards. */
+export const ROUTE_PASSED_COLOR = "#a8a39b";
+
 /** A left-aligned row button for pickable search/saved results. */
 export const resultButtonStyle: CSSProperties = {
   textAlign: "left",

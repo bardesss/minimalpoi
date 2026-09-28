@@ -36,9 +36,9 @@ export default function FilterPopover({
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
-  // Move focus into the panel whenever it opens (mirrors ExportMenu's focus
+  // Move focus into the panel whenever it opens (mirrors MenuButton's focus
   // handling), so Escape (handled on the panel) actually receives the key.
-  // Unlike ExportMenu's roving-tabindex menu, this panel holds three
+  // Unlike MenuButton's roving-tabindex menu, this panel holds three
   // independently-tabbable native controls (Visited select, Sort select, Map
   // view buttons) — Tab must traverse between them without closing the panel.
   useEffect(() => {

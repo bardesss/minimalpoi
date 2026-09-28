@@ -68,4 +68,28 @@ describe("routeLine", () => {
     expect(p[3].role).toBe("end");
     expect(p[3].seq).toBeUndefined();
   });
+
+  it("tags points and segments with their day index", () => {
+    const mkNode = (id: number, lat: number, lng: number) =>
+      ({ id, kind: "stop", role: null, position: id, nights: null, notes: null, poi_id: null,
+        name: `n${id}`, lat, lng, arrive_date: null, depart_date: null,
+        inbound_distance_m: null, inbound_duration_s: null }) as any;
+    const nodes = [mkNode(1, 0, 0), mkNode(2, 1, 1), mkNode(3, 2, 2)];
+    const days = new Map([[1, 0], [2, 0], [3, 1]]);
+    const { line, points } = routeLine(nodes, [], new Set(), days);
+    expect(points.features.map((f) => f.properties!.day)).toEqual([0, 0, 1]);
+    // segment 1→2 drives into node 2 (day 0), 2→3 into node 3 (day 1)
+    expect(line.features.map((f) => f.properties!.day)).toEqual([0, 1]);
+  });
+
+  it("defaults the day to 0 when no day map is given", () => {
+    const mkNode = (id: number, lat: number, lng: number) =>
+      ({ id, kind: "stop", role: null, position: id, nights: null, notes: null, poi_id: null,
+        name: `n${id}`, lat, lng, arrive_date: null, depart_date: null,
+        inbound_distance_m: null, inbound_duration_s: null }) as any;
+    const nodes = [mkNode(1, 0, 0), mkNode(2, 1, 1)];
+    const { line, points } = routeLine(nodes);
+    expect(points.features.every((f) => f.properties!.day === 0)).toBe(true);
+    expect(line.features[0].properties!.day).toBe(0);
+  });
 });
