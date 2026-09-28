@@ -1,5 +1,32 @@
 # Changelog
 
+## [4.7.0](https://github.com/bardesss/minimalpoi/compare/v4.6.0...v4.7.0) (2026-09-28)
+
+
+### Features
+
+* **share:** draw the share image in per-day colours ([58ed516](https://github.com/bardesss/minimalpoi/commit/58ed5166ede9684256a35836de83b10184353d47))
+* web app manifest, install icons and theme colour ([142a588](https://github.com/bardesss/minimalpoi/commit/142a5880b1df39d75315f94213febca68aa906fe))
+
+
+### Bug Fixes
+
+* PDF day labels in any language, and prefetch the routes page ([1db54c6](https://github.com/bardesss/minimalpoi/commit/1db54c673c6406523589c89f06ad7fc1d6414dce))
+* recover from stale lazy chunks after a deploy ([d4c766f](https://github.com/bardesss/minimalpoi/commit/d4c766f422e3d01349d246b18b27c6f899e754f6))
+* **routes:** day labels follow the user's language ([1390281](https://github.com/bardesss/minimalpoi/commit/13902815acea03a4f711f932aff1143b35f53ab8))
+* **share:** fall back to English day labels the PDF font can't draw ([ddd5d0c](https://github.com/bardesss/minimalpoi/commit/ddd5d0c2a2a371807b6d35b4fc6a08a199e8f56c))
+* **ui:** fall back to the default locale for malformed day-label tags ([be951a6](https://github.com/bardesss/minimalpoi/commit/be951a641018bae52ab9e6e3f4c0f2bd545f2de3))
+* **ui:** harden lazy category icons and flags ([2398e46](https://github.com/bardesss/minimalpoi/commit/2398e466b6e74dd23048c1d90f05a429f6e92ffd))
+
+
+### Performance Improvements
+
+* lazy-load routes, settings and exports, split maplibre into a vendor chunk ([16433aa](https://github.com/bardesss/minimalpoi/commit/16433aad7921dca2fc91caa33d7858838771f927))
+* split the initial bundle, add a web app manifest, and close sweep follow-ups ([4b01e12](https://github.com/bardesss/minimalpoi/commit/4b01e120823f936e65aed29ed76ebdb4e8e150e9))
+* **ui:** load the full icon set and country flags only when needed ([79720bb](https://github.com/bardesss/minimalpoi/commit/79720bb1977fd36c327814cf0a51899bfda21c1a))
+* **ui:** prefetch the routes page so the first switch doesn't flash the loader ([e00e802](https://github.com/bardesss/minimalpoi/commit/e00e802eb8d8ba612b6682a2e9cd7cf53888b305))
+* **ui:** split the lazy icon set off the entry chunk for real ([1430886](https://github.com/bardesss/minimalpoi/commit/1430886c5fc7846f5cfffbfcd368bc06d2a0978b))
+
 ## [4.6.0](https://github.com/bardesss/minimalpoi/compare/v4.5.0...v4.6.0) (2026-09-28)
 
 
