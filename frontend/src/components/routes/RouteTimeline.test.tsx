@@ -5,6 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import RouteTimeline, { computeDropPosition } from "./RouteTimeline";
 import { groupNodesByDay, dayOffsetForDrop } from "../../lib/routeDays";
 import type { RouteDetail, RouteNode } from "../../types/api";
+import { ROUTE_PASSED_COLOR } from "../../theme";
+
+// jsdom normalises inline colours to rgb(); compare in that form.
+const hexToRgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
 
 const add = vi.fn();
 const update = vi.fn();
@@ -163,6 +167,14 @@ describe("RouteTimeline collapse", () => {
     render(<RouteTimeline route={pastFuture} canEdit={false} />);
     expect(screen.queryByText("PastTown")).not.toBeInTheDocument(); // 2026-06-20 < today → collapsed
     expect(screen.getByText("FutureTown")).toBeInTheDocument();     // 2026-07-14 ≥ today → expanded
+  });
+
+  it("greys a passed day's colour dot to match the map", () => {
+    render(<RouteTimeline route={pastFuture} canEdit={false} />);
+    const dots = screen.getAllByTestId("day-color");
+    const grey = hexToRgb(ROUTE_PASSED_COLOR);
+    expect(dots[0].style.background).toBe(grey);                    // 2026-06-20: passed
+    expect(dots[dots.length - 1].style.background).not.toBe(grey);  // 2026-07-15: upcoming
   });
 
   it("expands a collapsed past day when its header is clicked", async () => {

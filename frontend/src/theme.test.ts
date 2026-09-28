@@ -56,6 +56,10 @@ describe("routeDayColor", () => {
 });
 
 describe("contrast", () => {
+  it("every route day colour meets WCAG AA on white (12px seq labels)", () => {
+    for (const c of routeDayColors) expect(contrastOnWhite(c), c).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("hint/coordinate text meets WCAG AA on white", () => {
     expect(contrastOnWhite(theme.color.textPlaceholder)).toBeGreaterThanOrEqual(4.5);
     expect(contrastOnWhite(theme.color.textCoord)).toBeGreaterThanOrEqual(4.5);
