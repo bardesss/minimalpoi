@@ -66,18 +66,23 @@ async def nominatim_search(query: str, base_url: str, client: httpx.AsyncClient 
             await client.aclose()
     out: list[dict] = []
     for item in data if isinstance(data, list) else []:
+        if not isinstance(item, dict):
+            continue
         try:
             prefix = _OSM_TYPES[item["osm_type"]]
-            display = item.get("display_name") or ""
+            display_raw = item.get("display_name")
+            display = display_raw if isinstance(display_raw, str) else ""
+            name_raw = item.get("name")
+            name = str(name_raw) if isinstance(name_raw, str) else None
             out.append({
                 "place_id": f"osm:{prefix}{int(item['osm_id'])}",
-                "name": item.get("name") or display.split(",")[0].strip(),
+                "name": name or display.split(",")[0].strip(),
                 "address": display or None,
                 "lat": float(item["lat"]),
                 "lng": float(item["lon"]),
                 "source": "osm",
             })
-        except (KeyError, TypeError, ValueError):
+        except (KeyError, TypeError, ValueError, AttributeError):
             continue
     return out
 
@@ -100,14 +105,21 @@ async def nominatim_lookup(osm_id: str, base_url: str, client: httpx.AsyncClient
     if not isinstance(data, list) or not data:
         return None
     item = data[0]
+    if not isinstance(item, dict):
+        return None
     try:
         lat, lng = float(item["lat"]), float(item["lon"])
-    except (KeyError, TypeError, ValueError):
+    except (KeyError, TypeError, ValueError, AttributeError):
         return None
-    address = item.get("address") or {}
-    display = item.get("display_name") or None
+    address = item.get("address")
+    if not isinstance(address, dict):
+        address = {}
+    display_raw = item.get("display_name")
+    display = display_raw if isinstance(display_raw, str) else None
+    name_raw = item.get("name")
+    name = str(name_raw) if isinstance(name_raw, str) else None
     draft = POIDraft(
-        name=item.get("name") or (display.split(",")[0].strip() if display else None),
+        name=name or (display.split(",")[0].strip() if display else None),
         address=display,
         city=_city(address),
         country_code=(address.get("country_code") or "").upper() or None,

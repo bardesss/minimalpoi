@@ -76,3 +76,33 @@ async def test_nominatim_lookup_builds_draft():
 async def test_nominatim_lookup_empty_is_none():
     client = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=[])))
     assert await geocode.nominatim_lookup("N1", "https://nominatim.example", client=client) is None
+
+
+@pytest.mark.anyio
+async def test_nominatim_search_skips_non_dict_items():
+    # A malformed upstream response (e.g. a bare string in the results list) must
+    # not blow up the whole search — just skip that item.
+    def handler(request):
+        return httpx.Response(200, json=[
+            "not-a-dict",
+            {"osm_type": "node", "osm_id": 123, "lat": "52.36", "lon": "4.8852", "name": "Rijksmuseum",
+             "display_name": "Rijksmuseum, Museumstraat 1, Amsterdam, Nederland", "address": {"city": "Amsterdam"}},
+        ])
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    out = await geocode.nominatim_search("rijksmuseum", "https://nominatim.example", client=client)
+    assert out == [
+        {"place_id": "osm:N123", "name": "Rijksmuseum", "address": "Rijksmuseum, Museumstraat 1, Amsterdam, Nederland", "lat": 52.36, "lng": 4.8852, "source": "osm"},
+    ]
+
+
+@pytest.mark.anyio
+async def test_nominatim_lookup_tolerates_malformed_address():
+    # A non-dict "address" field must not raise; city just comes back None.
+    def handler(request):
+        return httpx.Response(200, json=[{"osm_type": "node", "osm_id": 123, "lat": "52.36", "lon": "4.8852",
+            "name": "Rijksmuseum", "display_name": "Rijksmuseum, Amsterdam, Nederland", "address": "oops"}])
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    d = await geocode.nominatim_lookup("N123", "https://nominatim.example", client=client)
+    assert d is not None
+    assert d.name == "Rijksmuseum"
+    assert d.city is None
