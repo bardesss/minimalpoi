@@ -1,6 +1,7 @@
 import httpx
 import pytest
 
+from app.enrich import geocode
 from app.enrich.geocode import nominatim_geocode
 
 
@@ -27,3 +28,51 @@ async def test_geocode_empty_returns_none():
     out = await nominatim_geocode("nowhere", "https://nominatim.openstreetmap.org", client=client)
     await client.aclose()
     assert out is None
+
+
+@pytest.mark.anyio
+async def test_nominatim_search_maps_results():
+    def handler(request):
+        assert request.url.path.endswith("/search")
+        assert request.url.params["format"] == "jsonv2"
+        assert request.url.params["addressdetails"] == "1"
+        return httpx.Response(200, json=[
+            {"osm_type": "node", "osm_id": 123, "lat": "52.36", "lon": "4.8852", "name": "Rijksmuseum",
+             "display_name": "Rijksmuseum, Museumstraat 1, Amsterdam, Nederland",
+             "address": {"city": "Amsterdam", "country_code": "nl"}},
+            {"osm_type": "way", "osm_id": 45, "lat": "52.37", "lon": "4.9", "name": "",
+             "display_name": "Dam, Amsterdam, Nederland", "address": {}},
+        ])
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    out = await geocode.nominatim_search("rijksmuseum", "https://nominatim.example", client=client)
+    assert out == [
+        {"place_id": "osm:N123", "name": "Rijksmuseum", "address": "Rijksmuseum, Museumstraat 1, Amsterdam, Nederland", "lat": 52.36, "lng": 4.8852, "source": "osm"},
+        {"place_id": "osm:W45", "name": "Dam", "address": "Dam, Amsterdam, Nederland", "lat": 52.37, "lng": 4.9, "source": "osm"},
+    ]
+
+
+@pytest.mark.anyio
+async def test_nominatim_search_errors_return_empty():
+    client = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(500)))
+    assert await geocode.nominatim_search("x", "https://nominatim.example", client=client) == []
+
+
+@pytest.mark.anyio
+async def test_nominatim_lookup_builds_draft():
+    def handler(request):
+        assert request.url.path.endswith("/lookup")
+        assert request.url.params["osm_ids"] == "N123"
+        return httpx.Response(200, json=[{"osm_type": "node", "osm_id": 123, "lat": "52.36", "lon": "4.8852", "name": "Rijksmuseum",
+            "display_name": "Rijksmuseum, Museumstraat 1, Amsterdam, Nederland", "address": {"town": "Amsterdam", "country_code": "nl"}}])
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    d = await geocode.nominatim_lookup("N123", "https://nominatim.example", client=client)
+    assert d is not None
+    assert (d.name, d.city, d.country_code, d.lat, d.lng) == ("Rijksmuseum", "Amsterdam", "NL", 52.36, 4.8852)
+    assert d.address == "Rijksmuseum, Museumstraat 1, Amsterdam, Nederland"
+    assert d.field_sources["name"] == "osm"
+
+
+@pytest.mark.anyio
+async def test_nominatim_lookup_empty_is_none():
+    client = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=[])))
+    assert await geocode.nominatim_lookup("N1", "https://nominatim.example", client=client) is None

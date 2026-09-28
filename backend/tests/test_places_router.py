@@ -9,10 +9,50 @@ def test_places_search_requires_auth(client):
     assert client.get("/api/places/search", params={"q": "taco"}).status_code == 401
 
 
-def test_places_search_needs_google_key(client):
+def test_places_search_falls_back_to_nominatim_without_a_key(client, monkeypatch):
     _login_admin(client)
-    # No key configured yet → 400 with a helpful detail.
+
+    async def fake_search(query, base_url, client=None, limit=8):
+        assert query == "taco"
+        return [{"place_id": "osm:N1", "name": "Taco", "address": "A St", "lat": 52.0, "lng": 4.0, "source": "osm"}]
+
+    monkeypatch.setattr("app.routers.places.nominatim_search", fake_search)
     resp = client.get("/api/places/search", params={"q": "taco"})
+    assert resp.status_code == 200
+    assert resp.json() == [{"place_id": "osm:N1", "name": "Taco", "address": "A St", "lat": 52.0, "lng": 4.0, "source": "osm"}]
+
+
+def test_places_osm_draft_needs_no_key(client, monkeypatch):
+    _login_admin(client)
+
+    async def fake_lookup(osm_id, base_url, client=None):
+        assert osm_id == "N1"
+        return POIDraft(name="Taco", lat=52.0, lng=4.0, field_sources={"name": "osm"})
+
+    monkeypatch.setattr("app.routers.places.nominatim_lookup", fake_lookup)
+    resp = client.get("/api/places/osm:N1")
+    assert resp.status_code == 200 and resp.json()["name"] == "Taco"
+
+
+def test_places_osm_draft_rejects_malformed_ids(client):
+    _login_admin(client)
+    assert client.get("/api/places/osm:X1").status_code == 422
+    assert client.get("/api/places/osm:N").status_code == 422
+
+
+def test_places_osm_draft_404_when_not_found(client, monkeypatch):
+    _login_admin(client)
+
+    async def fake_lookup(osm_id, base_url, client=None):
+        return None
+
+    monkeypatch.setattr("app.routers.places.nominatim_lookup", fake_lookup)
+    assert client.get("/api/places/osm:N999").status_code == 404
+
+
+def test_places_google_draft_still_needs_key(client):
+    _login_admin(client)
+    resp = client.get("/api/places/PID1")
     assert resp.status_code == 400
     assert "Google API key" in resp.json()["detail"]
 
@@ -28,7 +68,7 @@ def test_places_search_returns_candidates(client, monkeypatch):
     monkeypatch.setattr("app.routers.places.gmaps.place_search", fake_search)
     resp = client.get("/api/places/search", params={"q": "taco"})
     assert resp.status_code == 200
-    assert resp.json() == [{"place_id": "PID1", "name": "Taco Lindo", "address": "A St, Amsterdam", "lat": None, "lng": None}]
+    assert resp.json() == [{"place_id": "PID1", "name": "Taco Lindo", "address": "A St, Amsterdam", "lat": None, "lng": None, "source": "google"}]
 
 
 def test_places_draft_returns_poidraft(client, monkeypatch):
