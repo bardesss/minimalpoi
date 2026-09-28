@@ -52,6 +52,7 @@ limiter = Limiter(key_func=get_remote_address)
 LOGIN_LIMIT = "5/minute;50/hour"   # brute-force / credential stuffing
 SETUP_LIMIT = "10/minute"          # first-run probes
 GOOGLE_LIMIT = "30/minute"         # paid Places API — denial-of-wallet
+NOMINATIM_LIMIT = "1/second"       # public Nominatim usage policy: max 1 req/s
 ENRICH_LIMIT = "20/minute"         # outbound fetch amplification
 UPLOAD_LIMIT = "60/minute"         # disk exhaustion
 IMPORT_LIMIT = "10/minute"         # bulk CPU/disk

@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import AfterValidator, StringConstraints
 from sqlmodel import Field, SQLModel
@@ -260,6 +260,7 @@ class PlaceSearchResult(SQLModel):
     address: str | None = None
     lat: float | None = None
     lng: float | None = None
+    source: Literal["google", "osm"] = "google"
 
 
 class POIDraft(SQLModel):
