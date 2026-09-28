@@ -88,8 +88,14 @@ if (_dist / "index.html").exists():
         # Serve real files that sit at the dist root (favicon.svg, robots.txt,
         # …) directly; everything else falls through to the SPA entry point so
         # client-side routes still resolve on a hard refresh.
+        #
+        # index.html names the current build's hashed chunks, so it is sent
+        # `no-cache` (always revalidated): a cached copy would keep asking for
+        # chunks a new deploy removed. Hashed assets and other root files keep
+        # their default caching.
+        index = _dist / "index.html"
         if full_path:
             candidate = (_dist / full_path).resolve()
-            if _dist.resolve() in candidate.parents and candidate.is_file():
+            if _dist.resolve() in candidate.parents and candidate.is_file() and candidate != index.resolve():
                 return FileResponse(str(candidate))
-        return FileResponse(str(_dist / "index.html"))
+        return FileResponse(str(index), headers={"Cache-Control": "no-cache"})
