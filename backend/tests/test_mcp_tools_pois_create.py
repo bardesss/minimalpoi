@@ -33,12 +33,33 @@ async def test_create_poi_and_duplicate(client):
 
 
 @pytest.mark.anyio
-async def test_search_places_without_key_errors_cleanly(client):
+async def test_search_places_without_key_uses_openstreetmap(client, monkeypatch):
     auth = _auth(client)
     from app.mcp_tools_pois import _search_places
-    with pytest.raises(ValueError) as e:
-        await _search_places(auth, "blue bottle")
-    assert "Google API key not configured" in str(e.value)
+
+    calls = []
+
+    async def fake_search(query, base_url, client=None, limit=8):
+        calls.append(query)
+        return [{"place_id": "osm:N1", "name": "Blue Bottle", "address": "A St", "lat": 52.0, "lng": 4.0, "source": "osm"}]
+
+    monkeypatch.setattr("app.routers.places.nominatim_search", fake_search)
+    result = await _search_places(auth, "blue bottle")
+    assert result == [{"place_id": "osm:N1", "name": "Blue Bottle", "address": "A St", "lat": 52.0, "lng": 4.0, "source": "osm"}]
+    assert calls == ["blue bottle"]
+
+
+@pytest.mark.anyio
+async def test_get_place_draft_osm_without_key(client, monkeypatch):
+    auth = _auth(client)
+    from app.mcp_tools_pois import _get_place_draft
+
+    async def fake_lookup(osm_id, base_url, client=None):
+        return POIDraft(name="Blue Bottle", lat=52.0, lng=4.0)
+
+    monkeypatch.setattr("app.routers.places.nominatim_lookup", fake_lookup)
+    draft = await _get_place_draft(auth, "osm:N1")
+    assert draft["name"] == "Blue Bottle"
 
 
 def _stub_enrich(monkeypatch, draft: POIDraft):

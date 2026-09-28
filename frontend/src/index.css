@@ -91,3 +91,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 
 .hover-row { transition: background .12s ease; }
 .hover-row:hover { background: #f4f5ff !important; }
+
+/* Visually-hidden file inputs (ImagePicker) still take keyboard focus; show
+   the ring on the styled <label> button that follows each one in the DOM. */
+.photo-file-input:focus-visible + label { outline: 2px solid #4f46e5; outline-offset: 2px; }

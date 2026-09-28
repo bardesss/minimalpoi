@@ -263,7 +263,7 @@ export default function AppShell() {
     const created = await createPoi.mutateAsync(payload);
     closeForm();
     setSelectedId(created.id);
-    mapRef.current?.flyTo({ center: [created.lng, created.lat], zoom: 15, duration: 600 });
+    setFlyRequest((r) => ({ id: created.id, seq: (r?.seq ?? 0) + 1, center: [created.lng, created.lat] }));
   }
 
   async function runDuplicateCheck(body: { name: string; lat: number; lng: number }) {
@@ -367,6 +367,7 @@ export default function AppShell() {
           onSearchPlaces={(q) => searchPlaces.mutateAsync(q)}
           onPickPlace={(placeId) => placeDraft.mutateAsync(placeId)}
           onUploadImage={(file) => uploadImage.mutateAsync(file)}
+          onLocated={(c) => mapRef.current?.flyTo({ center: [c.lng, c.lat], zoom: Math.max(mapRef.current.getZoom(), 15), duration: 600 })}
         />
       )}
       {settingsModalOpen && <SettingsModal onClose={() => setSettingsModalOpen(false)} />}

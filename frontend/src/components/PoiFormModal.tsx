@@ -4,6 +4,7 @@ import { ApiError } from "../api/client";
 import { ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, textareaStyle, theme, fieldLabelStyle } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 import { useDialog } from "../lib/useDialog";
+import { roundCoord } from "../lib/geo";
 import PhoneInput from "./PhoneInput";
 import TagInput from "./TagInput";
 import { ImagePicker } from "./poiForm/ImagePicker";
@@ -68,6 +69,7 @@ export default function PoiFormModal({
   onUploadImage,
   getMapCenter,
   tagSuggestions = [],
+  onLocated,
 }: {
   mode: "add" | "edit";
   initial: PoiFormInitial | null;
@@ -83,6 +85,7 @@ export default function PoiFormModal({
   onPickPlace?: (placeId: string) => Promise<PoiDraft>;
   onUploadImage?: (file: File) => Promise<{ url: string }>;
   getMapCenter?: () => { lng: number; lat: number } | null;
+  onLocated?: (c: { lat: number; lng: number }) => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [categoryId, setCategoryId] = useState<string>(initial?.category_id != null ? String(initial.category_id) : "");
@@ -106,6 +109,23 @@ export default function PoiFormModal({
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Controls the mobile "Edit coordinates" disclosure so a coordinate-related
+  // save error is visible instead of hidden behind the closed <details>.
+  const [coordsOpen, setCoordsOpen] = useState(false);
+
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
+  const canLocate = typeof navigator !== "undefined" && "geolocation" in navigator && window.isSecureContext !== false;
+
+  // Guards the geolocation callbacks (which can resolve after the form has
+  // unmounted) against updating state or calling onLocated post-unmount.
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Mobile "pick on map" (add mode only): collapses the sheet to a peek so
   // the already-pannable map behind it is visible, under a fixed crosshair.
@@ -131,8 +151,8 @@ export default function PoiFormModal({
   // Click-to-place / map-center updates flow in via `coords` (add mode only).
   useEffect(() => {
     if (mode === "add" && coords) {
-      setLat(String(coords.lat));
-      setLng(String(coords.lng));
+      setLat(String(roundCoord(coords.lat)));
+      setLng(String(roundCoord(coords.lng)));
     }
   }, [coords, mode]);
 
@@ -147,8 +167,8 @@ export default function PoiFormModal({
     if (draft.address != null) setAddress(draft.address);
     if (draft.city != null) setCity(draft.city);
     if (draft.country_code != null) setCountryCode(draft.country_code);
-    if (draft.lat != null) setLat(String(draft.lat));
-    if (draft.lng != null) setLng(String(draft.lng));
+    if (draft.lat != null) setLat(String(roundCoord(draft.lat)));
+    if (draft.lng != null) setLng(String(roundCoord(draft.lng)));
     if (draft.phone != null) setPhone(draft.phone);
     if (draft.website != null) setWebsite(draft.website);
     if (draft.description != null) setNotes(draft.description);
@@ -172,10 +192,12 @@ export default function PoiFormModal({
     }
     if (latNum === null || lngNum === null) {
       setSaveError("Enter valid coordinates, e.g. 52.3676, 4.9041.");
+      setCoordsOpen(true);
       return;
     }
     if (latNum < -90 || latNum > 90 || lngNum < -180 || lngNum > 180) {
       setSaveError("Coordinates are out of range (latitude ±90, longitude ±180).");
+      setCoordsOpen(true);
       return;
     }
     const payload: PoiCreate = {
@@ -204,23 +226,63 @@ export default function PoiFormModal({
     }
   }
 
-  function maybeCheckDuplicate() {
-    if (mode === "add" && name.trim() && lat !== "" && lng !== "") {
-      onCheckDuplicate({ name: name.trim(), lat: Number(lat), lng: Number(lng) });
-    }
+  // `lat`/`lng` state hasn't updated yet right after a caller sets it (e.g.
+  // just before this runs), so an explicit `{ lat, lng }` lets locate/pick
+  // check duplicates against the new coordinates instead of the stale ones.
+  function maybeCheckDuplicate(explicit?: { lat: number; lng: number }) {
+    if (mode !== "add" || !name.trim()) return;
+    const latNum = explicit ? explicit.lat : lat !== "" ? Number(lat) : null;
+    const lngNum = explicit ? explicit.lng : lng !== "" ? Number(lng) : null;
+    if (latNum === null || lngNum === null) return;
+    onCheckDuplicate({ name: name.trim(), lat: latNum, lng: lngNum });
   }
 
   function confirmPick() {
     const c = getMapCenter?.();
     if (c) {
-      setLat(String(c.lat));
-      setLng(String(c.lng));
+      const rLat = roundCoord(c.lat);
+      const rLng = roundCoord(c.lng);
+      setLat(String(rLat));
+      setLng(String(rLng));
+      setPicking(false);
+      maybeCheckDuplicate({ lat: rLat, lng: rLng });
+    } else {
+      setPicking(false);
     }
-    setPicking(false);
   }
 
   function cancelPick() {
     setPicking(false);
+  }
+
+  function useMyLocation() {
+    setLocating(true);
+    setLocateError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (!mountedRef.current) return;
+        const rLat = roundCoord(pos.coords.latitude);
+        const rLng = roundCoord(pos.coords.longitude);
+        setLat(String(rLat));
+        setLng(String(rLng));
+        setLocateError(null);
+        setLocating(false);
+        onLocated?.({ lat: rLat, lng: rLng });
+        maybeCheckDuplicate({ lat: rLat, lng: rLng });
+      },
+      (err) => {
+        if (!mountedRef.current) return;
+        setLocating(false);
+        setLocateError(
+          err.code === 1
+            ? "Location permission was denied."
+            : err.code === 3
+            ? "Finding your location timed out."
+            : "Couldn't find your location.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    );
   }
 
   return (
@@ -241,7 +303,7 @@ export default function PoiFormModal({
           <button type="button" aria-label="Close" onClick={onClose} style={{ width: isMobile ? 44 : 30, height: isMobile ? 44 : 30, fontSize: isMobile ? 20 : 14, borderRadius: theme.radius.icon, border: "none", background: "#f5f4f2", color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
+        <form noValidate onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <div style={{ padding: "0 24px 8px", display: "flex", flexDirection: "column", gap: 14 }}>
           {isAdd && onSearchPlaces && (
             <PlaceSearchSection onSearchPlaces={onSearchPlaces} onPickPlace={onPickPlace} onApplyDraft={applyDraft} />
@@ -251,7 +313,7 @@ export default function PoiFormModal({
             <EnrichSection onEnrich={onEnrich} onApplyDraft={applyDraft} filledCount={filledCount} enrichHost={enrichHost} />
           )}
 
-          <ImagePicker imageUrl={imageUrl} onImageUrl={setImageUrl} onUploadImage={onUploadImage} />
+          <ImagePicker imageUrl={imageUrl} onImageUrl={setImageUrl} onUploadImage={onUploadImage} mobile={isMobile} />
 
           {duplicateId != null && (
             <div role="status" style={{ padding: "10px 12px", borderRadius: theme.radius.input, background: theme.color.tintBg, border: `1px solid ${theme.color.tintBorder}`, color: theme.color.deepIndigoText, fontSize: 12.5 }}>
@@ -261,11 +323,11 @@ export default function PoiFormModal({
 
           <div>
             <label style={fieldLabelStyle} htmlFor="poi-name">Name</label>
-            <input id="poi-name" style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} onBlur={maybeCheckDuplicate} placeholder="e.g. Café Modern" />
+            <input id="poi-name" style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} onBlur={() => maybeCheckDuplicate()} placeholder="e.g. Café Modern" />
             {caption("name")}
           </div>
 
-          <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <label style={fieldLabelStyle} htmlFor="poi-category">Category</label>
               <select id="poi-category" style={inputStyle} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
@@ -285,42 +347,83 @@ export default function PoiFormModal({
             {caption("address")}
           </div>
 
-          <div style={{ display: "flex", gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <label style={fieldLabelStyle} htmlFor="poi-lat">Latitude</label>
-              <input
-                id="poi-lat"
-                style={monoInputStyle}
-                value={lat}
-                onChange={(e) => {
-                  setSaveError(null);
-                  const pair = parseCoordPair(e.target.value);
-                  if (pair) {
-                    setLat(String(pair.lat));
-                    setLng(String(pair.lng));
-                  } else {
-                    setLat(e.target.value);
-                  }
-                }}
-                onBlur={maybeCheckDuplicate}
-                placeholder="52.3676"
-              />
-              {caption("lat")}
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={fieldLabelStyle} htmlFor="poi-lng">Longitude</label>
-              <input id="poi-lng" style={monoInputStyle} value={lng} onChange={(e) => { setSaveError(null); setLng(e.target.value); }} onBlur={maybeCheckDuplicate} placeholder="4.9041" />
-              {caption("lng")}
-            </div>
-          </div>
-          {isAdd && isMobile && (
-            <button ref={pickOnMapRef} type="button" onClick={() => setPicking(true)} style={{ ...ghostButtonStyle, alignSelf: "flex-start", minHeight: 44 }}>Pick on map</button>
-          )}
-          <p style={{ margin: "-6px 0 0", fontSize: 11.5, color: theme.color.textPlaceholder }}>
-            {isAdd && isMobile
-              ? "Or tap Pick on map to set the location by panning the map."
-              : "Click anywhere on the map to drop the coordinates here."}
-          </p>
+          {(() => {
+            const coordFields = (
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={fieldLabelStyle} htmlFor="poi-lat">Latitude</label>
+                  <input
+                    id="poi-lat"
+                    style={monoInputStyle}
+                    value={lat}
+                    onChange={(e) => {
+                      setSaveError(null);
+                      const pair = parseCoordPair(e.target.value);
+                      if (pair) {
+                        setLat(String(pair.lat));
+                        setLng(String(pair.lng));
+                      } else {
+                        setLat(e.target.value);
+                      }
+                    }}
+                    onBlur={() => maybeCheckDuplicate()}
+                    placeholder="52.3676"
+                  />
+                  {caption("lat")}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={fieldLabelStyle} htmlFor="poi-lng">Longitude</label>
+                  <input id="poi-lng" style={monoInputStyle} value={lng} onChange={(e) => { setSaveError(null); setLng(e.target.value); }} onBlur={() => maybeCheckDuplicate()} placeholder="4.9041" />
+                  {caption("lng")}
+                </div>
+              </div>
+            );
+            const locateButton = isAdd && canLocate && (
+              <button type="button" onClick={useMyLocation} disabled={locating} style={{ ...ghostButtonStyle, alignSelf: "flex-start", minHeight: isMobile ? 44 : undefined }}>
+                {locating ? "Locating…" : "Use my location"}
+              </button>
+            );
+            const locateStatus = locateError && (
+              <p role="status" style={{ margin: 0, fontSize: 11.5, color: theme.color.dangerText }}>{locateError}</p>
+            );
+            if (isMobile) {
+              const hasCoords = lat !== "" && lng !== "";
+              const latNum = Number(lat);
+              const lngNum = Number(lng);
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <span style={{ fontFamily: theme.font.mono, fontSize: 13, color: theme.color.textCoord }}>
+                    {hasCoords && Number.isFinite(latNum) && Number.isFinite(lngNum)
+                      ? `${latNum.toFixed(5)}, ${lngNum.toFixed(5)}`
+                      : "No location yet"}
+                  </span>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {locateButton}
+                    {isAdd && (
+                      <button ref={pickOnMapRef} type="button" onClick={() => setPicking(true)} style={{ ...ghostButtonStyle, alignSelf: "flex-start", minHeight: 44 }}>Pick on map</button>
+                    )}
+                  </div>
+                  {locateStatus}
+                  <details open={coordsOpen} onToggle={(e) => setCoordsOpen(e.currentTarget.open)}>
+                    <summary style={{ fontSize: 12, fontWeight: 700, color: theme.color.textBody, cursor: "pointer" }}>Edit coordinates</summary>
+                    <div style={{ marginTop: 10 }}>{coordFields}</div>
+                  </details>
+                </div>
+              );
+            }
+            return (
+              <>
+                {coordFields}
+                <p style={{ margin: "-6px 0 0", fontSize: 11.5, color: theme.color.textPlaceholder }}>
+                  Click anywhere on the map to drop the coordinates here.
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {locateButton}
+                  {locateStatus}
+                </div>
+              </>
+            );
+          })()}
 
           <div>
             <label style={fieldLabelStyle} htmlFor="poi-phone">Phone</label>
@@ -335,7 +438,7 @@ export default function PoiFormModal({
 
           <div>
             <label style={fieldLabelStyle} htmlFor="poi-website">Website</label>
-            <input id="poi-website" style={inputStyle} value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" />
+            <input id="poi-website" type="url" inputMode="url" style={inputStyle} value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" />
             {caption("website")}
           </div>
 

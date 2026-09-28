@@ -8,14 +8,21 @@ import { ghostButtonStyle, theme, fieldLabelStyle } from "../../theme";
 // so a failed or in-flight upload doesn't re-render the rest of the form; the
 // resulting image URL lives in the parent, because both submit() and the
 // enrich/place-search drafts write it.
+// Visually hides a native file input while keeping it focusable/keyboard-reachable
+// (screen readers and Tab still land on it; only sighted mouse users see the
+// styled <label> button instead).
+const hiddenInputStyle = { position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" } as const;
+
 export function ImagePicker({
   imageUrl,
   onImageUrl,
   onUploadImage,
+  mobile,
 }: {
   imageUrl: string | null;
   onImageUrl: (url: string | null) => void;
   onUploadImage?: (file: File) => Promise<{ url: string }>;
+  mobile?: boolean;
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -45,7 +52,20 @@ export function ImagePicker({
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         {onUploadImage && (
-          <input id="poi-image" type="file" accept="image/*" aria-label="Choose image" onChange={onPickFile} style={{ fontSize: 12 }} />
+          <>
+            <input id="poi-image" type="file" accept="image/*" onChange={onPickFile} style={hiddenInputStyle} className="photo-file-input" />
+            <label htmlFor="poi-image" className="hover-btn" style={{ ...ghostButtonStyle, padding: "8px 14px" }}>
+              {imageUrl ? "Change photo" : "Add photo"}
+            </label>
+            {mobile && (
+              <>
+                <input id="poi-image-camera" type="file" accept="image/*" capture="environment" onChange={onPickFile} style={hiddenInputStyle} className="photo-file-input" />
+                <label htmlFor="poi-image-camera" className="hover-btn" style={{ ...ghostButtonStyle, padding: "8px 14px" }}>
+                  Take photo
+                </label>
+              </>
+            )}
+          </>
         )}
         {imageUrl && (
           <button type="button" onClick={() => onImageUrl(null)} style={{ ...ghostButtonStyle, padding: "6px 12px" }}>Remove image</button>

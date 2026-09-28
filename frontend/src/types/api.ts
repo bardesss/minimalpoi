@@ -89,6 +89,7 @@ export interface PlaceSearchResult {
   address: string | null;
   lat: number | null;
   lng: number | null;
+  source?: "google" | "osm";
 }
 
 export interface PoiDraft {
