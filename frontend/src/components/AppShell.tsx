@@ -263,7 +263,7 @@ export default function AppShell() {
     const created = await createPoi.mutateAsync(payload);
     closeForm();
     setSelectedId(created.id);
-    mapRef.current?.flyTo({ center: [created.lng, created.lat], zoom: 15, duration: 600 });
+    setFlyRequest((r) => ({ id: created.id, seq: (r?.seq ?? 0) + 1, center: [created.lng, created.lat] }));
   }
 
   async function runDuplicateCheck(body: { name: string; lat: number; lng: number }) {

@@ -62,4 +62,19 @@ describe("useFlyToSelection", () => {
     render(<MapInsetsProvider><Host map={map} request={{ id: 99, seq: 1 }} /></MapInsetsProvider>);
     expect(map.flyTo).not.toHaveBeenCalled();
   });
+
+  it("flies to the given center when the id isn't in the list yet", () => {
+    const map = makeMap();
+    render(
+      <MapInsetsProvider>
+        <Host map={map} request={{ id: 99, seq: 1, center: [4.9, 52.37] }} />
+      </MapInsetsProvider>,
+    );
+    expect(map.flyTo).toHaveBeenCalledWith({
+      center: [4.9, 52.37],
+      zoom: 14,
+      duration: 600,
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
+    });
+  });
 });
