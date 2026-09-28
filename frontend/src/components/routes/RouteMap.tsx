@@ -7,15 +7,14 @@ import { MAP_FONT, resolveMapStyle } from "../../map/style";
 import { routeLine } from "../../map/routeLine";
 import { toFeatureCollection } from "../../map/featureCollection";
 import { categoryColorExpression } from "../../map/colorExpression";
+import { DAY_COLOR_EXPRESSION } from "../../map/dayColor";
 import { routeSignature } from "../../lib/routeSignature";
 import { useIsMobile } from "../../lib/useMediaQuery";
 import { buildPoiMiniCard } from "../PoiMiniCard";
-import { ROUTE_PASSED_COLOR, routeDayColors, theme } from "../../theme";
+import { ROUTE_PASSED_COLOR, theme } from "../../theme";
 import { useApplyMapInsets } from "../../map/useMapInsets";
 
 const PASSED_COLOR = ROUTE_PASSED_COLOR; // de-emphasises days already travelled
-// Cycled-by-day colour expression, shared by the line/point paint properties below.
-const DAY_COLOR_EXPRESSION = ["at", ["%", ["get", "day"], routeDayColors.length], ["literal", [...routeDayColors]]] as const;
 // Stable default so the redraw effect's deps don't churn when the caller omits
 // the prop (a fresh `new Map()` literal would be a new identity every render).
 const EMPTY_DAY_INDEX = new Map<number, number>();
