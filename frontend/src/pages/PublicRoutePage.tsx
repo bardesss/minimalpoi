@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getPublicRoute, unlockPublicRoute, type PublicRouteView } from "../api/public";
@@ -8,6 +8,7 @@ import RouteMap from "../components/routes/RouteMap";
 import RouteTimeline from "../components/routes/RouteTimeline";
 import { theme } from "../theme";
 import { formatDateRange } from "../lib/formatDate";
+import { dayIndexByNode } from "../lib/routeDays";
 import { AuthCard, AuthField } from "../components/AuthCard";
 
 /** Adapts a `PublicRouteView` into the `RouteDetail` shape `RouteTimeline`
@@ -98,6 +99,11 @@ export default function PublicRoutePage() {
     queryFn: () => getPublicRoute(token),
     retry: false,
   });
+  // Same per-day colouring as the itinerary beside the map (hooks run before
+  // the early returns below).
+  const openView = data && !data.locked ? data.route : null;
+  const detail = useMemo(() => (openView ? routeDetailFromPublic(openView) : null), [openView]);
+  const dayIdx = useMemo(() => (detail ? dayIndexByNode(detail) : new Map<number, number>()), [detail]);
 
   if (isLoading) {
     return <CenteredMessage>Loading shared route…</CenteredMessage>;
@@ -149,13 +155,14 @@ export default function PublicRoutePage() {
             canAdd={false}
             onAddNode={() => {}}
             passedNodeIds={new Set()}
+            dayIndexByNode={dayIdx}
             highlightNodeId={null}
             poiById={{}}
             onOpenPoi={() => {}}
           />
         </div>
         <div style={{ width: 380, flex: "none", overflowY: "auto", padding: 16, borderLeft: `1px solid ${theme.color.borderSubtle}`, background: theme.color.surface0 }}>
-          <RouteTimeline route={routeDetailFromPublic(route)} canEdit={false} />
+          <RouteTimeline route={detail ?? routeDetailFromPublic(route)} canEdit={false} />
         </div>
       </div>
 

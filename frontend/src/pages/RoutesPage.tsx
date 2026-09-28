@@ -18,7 +18,7 @@ import RouteFormModal from "../components/routes/RouteFormModal";
 import { formatTravel } from "../lib/formatTravel";
 import { formatDate, formatDateRange } from "../lib/formatDate";
 import { passedNodeIds, todayIso } from "../lib/dayState";
-import { groupNodesByDay } from "../lib/routeDays";
+import { dayIndexByNode as computeDayIndexByNode } from "../lib/routeDays";
 import { exportRoute, type RouteExportFormat } from "../api/routes";
 import { triggerDownload } from "../lib/download";
 import { useRouteEvents } from "../queries/useRouteEvents";
@@ -85,14 +85,10 @@ export default function RoutesPage() {
     () => (detail ? passedNodeIds(detail, todayIso()) : new Set<number>()),
     [detail],
   );
-  // Maps each node to the index of the day group it first appears in, so the
-  // map can colour points/segments the same as the itinerary's day cards. A
-  // multi-day stay appears in several groups; its first group wins.
-  const dayIndexByNode = useMemo(() => {
-    const m = new Map<number, number>();
-    if (detail) groupNodesByDay(detail).forEach((g, i) => g.nodes.forEach((n) => { if (!m.has(n.id)) m.set(n.id, i); }));
-    return m;
-  }, [detail]);
+  const dayIndexByNode = useMemo(
+    () => (detail ? computeDayIndexByNode(detail) : new Map<number, number>()),
+    [detail],
+  );
   const canAddFromMap = selectedId != null && canEdit;
   const addFromMap = (poiId: number, kind: RouteNodeKind) => {
     const poi = (poisQuery.data ?? []).find((p) => p.id === poiId);
