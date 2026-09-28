@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { useIsMobile, useMediaQuery } from "../lib/useMediaQuery";
+import { useIsMobile } from "../lib/useMediaQuery";
+import { useSidebarWidth } from "../lib/layout";
 import { theme } from "../theme";
 import SidebarHeader from "./Sidebar/SidebarHeader";
 import AccountMenu from "./AccountMenu";
@@ -39,7 +40,7 @@ function CountBadge({ n }: { n: number }) {
 export default function AppLayout(props: AppLayoutProps) {
   const isMobile = useIsMobile();
   // Give the POI grid's 3rd column (see PoiList) room on very wide screens.
-  const wide = useMediaQuery("(min-width: 1600px)");
+  const sidebarWidth = useSidebarWidth();
   // Icon-only on both: in the mobile handle row the labeled variant is wider
   // than the space beside the centred grip and taller than the 44px row.
   const nav = props.routesEnabled ? <NavToggle variant="icon" /> : null;
@@ -72,7 +73,7 @@ export default function AppLayout(props: AppLayoutProps) {
     <div style={{ display: "flex", height: "100dvh", width: "100vw", background: theme.color.pageBg }}>
       <aside
         style={{
-          width: props.collapsed ? 0 : wide ? 640 : 480,
+          width: props.collapsed ? 0 : sidebarWidth,
           flex: "none",
           borderRight: props.collapsed ? "none" : `1px solid ${theme.color.borderCard}`,
           background: "#fff",

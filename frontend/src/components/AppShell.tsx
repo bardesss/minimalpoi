@@ -67,9 +67,14 @@ export default function AppShell() {
   const [mapCenter, setMapCenter] = useState<{ lng: number; lat: number } | null>(null);
   const sortModeRef = useRef(sortMode);
   sortModeRef.current = sortMode;
-  const [formState, setFormState] = useState<{ mode: "add" | "edit"; initial: PoiFormInitial | null } | null>(null);
+  // An edit carries its target id: the form is non-modal on desktop, so the
+  // selection can change underneath it and must not decide what gets saved.
+  const [formState, setFormState] = useState<
+    { mode: "add"; initial: null } | { mode: "edit"; id: number; initial: PoiFormInitial } | null
+  >(null);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [addCoords, setAddCoords] = useState<{ lng: number; lat: number } | null>(null);
+  const [draftPin, setDraftPin] = useState<{ lng: number; lat: number } | null>(null);
   const [duplicateId, setDuplicateId] = useState<number | null>(null);
   const pendingSearchFocusRef = useRef(false);
 
@@ -81,6 +86,9 @@ export default function AppShell() {
   // the search input. On mobile the sidebar/search box is always mounted
   // inside the bottom sheet, so no expand step is needed there.
   useSearchHotkey(() => {
+    // The docked desktop form covers the sidebar; leave it (and the place
+    // it's editing) alone.
+    if (!isMobile && formState) return;
     if (detailInSidebar) {
       // Close it and focus search once the list is back (effect below).
       setSelectedId(null);
@@ -156,7 +164,10 @@ export default function AppShell() {
     () => (poisQuery.data ?? []).find((p) => p.id === selectedId) ?? null,
     [poisQuery.data, selectedId],
   );
-  const addMode = formState?.mode === "add";
+  // Map clicks place the pin whenever the desktop form is open (add or edit);
+  // on mobile the form has its own coordinate fields, so the map stays in
+  // plain browse mode.
+  const pickMode = formState != null && (formState.mode === "add" || !isMobile);
 
   async function onLogout() {
     await signOut();
@@ -242,8 +253,10 @@ export default function AppShell() {
 
   function openEdit(poi: Poi) {
     setDuplicateId(null);
+    setAddCoords(null);
     setFormState({
       mode: "edit",
+      id: poi.id,
       initial: { name: poi.name, address: poi.address, city: poi.city, country_code: poi.country_code, lat: poi.lat, lng: poi.lng, category_id: poi.category_id, tags: poi.tags, notes: poi.notes, phone: poi.phone, email: poi.email, website: poi.website, image_url: poi.image_url },
     });
   }
@@ -251,12 +264,13 @@ export default function AppShell() {
   function closeForm() {
     setFormState(null);
     setAddCoords(null);
+    setDraftPin(null);
     setDuplicateId(null);
   }
 
   async function submitForm(payload: PoiCreate) {
-    if (formState?.mode === "edit" && selectedId != null) {
-      await updatePoi.mutateAsync({ id: selectedId, body: payload });
+    if (formState?.mode === "edit") {
+      await updatePoi.mutateAsync({ id: formState.id, body: payload });
       closeForm();
       return;
     }
@@ -309,8 +323,12 @@ export default function AppShell() {
 
   // Where the selected place's detail goes: a sheet on phones, inside the
   // sidebar on narrow desktops (unless it's collapsed), else the overlay panel.
+  // None while the desktop form is open: it's docked over that same area.
   const detailMode: "sheet" | "sidebar" | "panel" | null =
-    !selectedPoi ? null : isMobile ? "sheet" : isNarrow && !sidebarCollapsed ? "sidebar" : "panel";
+    !selectedPoi ? null
+    : isMobile ? "sheet"
+    : formState ? null
+    : isNarrow && !sidebarCollapsed ? "sidebar" : "panel";
   const detailProps = selectedPoi
     ? {
         poi: selectedPoi,
@@ -335,19 +353,23 @@ export default function AppShell() {
           selectedId={selectedId}
           onSelect={selectPoi}
           onMapClick={(lng, lat) => setAddCoords({ lng, lat })}
-          addMode={addMode}
+          addMode={pickMode}
           visitedPoiIds={myVisitedPoiIds}
           mapRef={mapRef}
           onMoveEnd={handleMoveEnd}
           onUserLocate={(c) => setMapCenter(c)}
           highlightId={isMobile ? null : hoverId}
+          draftPin={!isMobile && formState ? draftPin : null}
+          onDraftPinMove={(c) => setAddCoords(c)}
         />
       )}
       {!isMobile && sidebarCollapsed && <Legend categories={categories} counts={counts} uncategorizedCount={hasUncategorized ? counts[UNCATEGORIZED_ID] ?? 0 : 0} />}
       {detailProps && detailMode === "panel" && <DetailPanel {...detailProps} />}
-      {!(detailMode === "sheet" || detailMode === "panel") && <AddFab onClick={openAdd} mobile={isMobile} />}
+      {!formState && !(detailMode === "sheet" || detailMode === "panel") && <AddFab onClick={openAdd} mobile={isMobile} />}
       {formState && (
         <PoiFormModal
+          // Remount on a new target so no stale fields carry over.
+          key={formState.mode === "edit" ? `edit:${formState.id}` : "add"}
           mode={formState.mode}
           initial={formState.initial}
           categories={categories}
@@ -368,6 +390,8 @@ export default function AppShell() {
           onPickPlace={(placeId) => placeDraft.mutateAsync(placeId)}
           onUploadImage={(file) => uploadImage.mutateAsync(file)}
           onLocated={(c) => mapRef.current?.flyTo({ center: [c.lng, c.lat], zoom: Math.max(mapRef.current.getZoom(), 15), duration: 600 })}
+          onCoordsChange={(c) => setDraftPin(c ? { lng: c.lng, lat: c.lat } : null)}
+          coversMap={sidebarCollapsed}
         />
       )}
       {settingsModalOpen && <SettingsModal onClose={() => setSettingsModalOpen(false)} />}

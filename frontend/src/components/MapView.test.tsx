@@ -7,6 +7,7 @@ import MapView from "./MapView";
 import { buildPoiMiniCard } from "./PoiMiniCard";
 import type { Category, MapSettings, Poi } from "../types/api";
 import { MapInsetsProvider, useMapInset } from "../map/useMapInsets";
+import { theme } from "../theme";
 
 // Mock the mini-card builder so we can count how often the (expensive) DOM
 // build runs. Returns a real element so setDOMContent still receives a node,
@@ -19,7 +20,7 @@ vi.mock("./PoiMiniCard", () => ({
 // only reference variables created via vi.hoisted (also hoisted). Declaring the
 // mock objects as plain consts here would throw "Cannot access before
 // initialization" when the factory runs.
-const { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock, geolocateHandlers } = vi.hoisted(() => {
+const { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock, MarkerMock, markerHandlers, markerInstances, geolocateHandlers } = vi.hoisted(() => {
   const handlers: Record<string, (e?: unknown) => void> = {};
   const geolocateHandlers: Record<string, (e: unknown) => void> = {};
   // Model MapLibre faithfully: the "pois" source does not exist until the
@@ -78,7 +79,27 @@ const { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock, 
     };
     return popup;
   });
-  return { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock, geolocateHandlers };
+  // Chainable Marker mock: captures per-instance `on` handlers (dragend) and
+  // records every constructed marker so tests can assert construction count
+  // and that a rerender reuses the same instance.
+  // A regular function (not an arrow) so `new maplibregl.Marker()` can
+  // construct it — see the MapMock comment above for why.
+  const markerHandlers: Record<string, (e?: unknown) => void> = {};
+  const markerInstances: unknown[] = [];
+  const MarkerMock = vi.fn(function (this: unknown, _opts?: unknown) {
+    const el = document.createElement("div");
+    const marker = {
+      setLngLat: vi.fn(() => marker),
+      addTo: vi.fn(() => marker),
+      remove: vi.fn(() => marker),
+      on: vi.fn((evt: string, fn: (e?: unknown) => void) => { markerHandlers[evt] = fn; }),
+      getLngLat: vi.fn(() => ({ lng: 4.9, lat: 52.37 })),
+      getElement: vi.fn(() => el),
+    };
+    markerInstances.push(marker);
+    return marker;
+  });
+  return { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock, MarkerMock, markerHandlers, markerInstances, geolocateHandlers };
 });
 
 // jsdom has no ResizeObserver; MapView installs one to call map.resize().
@@ -93,6 +114,7 @@ vi.mock("maplibre-gl", () => ({
   NavigationControl: vi.fn(),
   GeolocateControl: GeolocateControlMock,
   Popup: PopupMock,
+  Marker: MarkerMock,
 }));
 
 const settings: MapSettings = { map_tile_url: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json", default_map_center_lat: 52.3676, default_map_center_lng: 4.9041, default_map_zoom: 11, routes_enabled: false };
@@ -103,9 +125,12 @@ beforeEach(() => {
   MapMock.mockClear();
   GeolocateControlMock.mockClear();
   PopupMock.mockClear();
+  MarkerMock.mockClear();
+  markerInstances.length = 0;
   state.sourceAdded = false;
   Object.values(mapInstance).forEach((m) => typeof m === "function" && (m as ReturnType<typeof vi.fn>).mockClear?.());
   for (const k of Object.keys(geolocateHandlers)) delete geolocateHandlers[k];
+  for (const k of Object.keys(markerHandlers)) delete markerHandlers[k];
 });
 
 describe("MapView", () => {
@@ -195,6 +220,23 @@ describe("MapView", () => {
     expect(PopupMock.mock.results[0].value.remove).toHaveBeenCalled();
   });
 
+  it("does not select a poi when a marker is clicked while placing a pin (addMode)", () => {
+    const onSelect = vi.fn();
+    const onMapClick = vi.fn();
+    const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+    const { rerender } = render(<MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={onSelect} onMapClick={onMapClick} addMode={true} visitedPoiIds={new Set()} mapRef={mapRef} />);
+    handlers.load();
+    handlers["click:unclustered"]?.({ features: [{ properties: { id: 1 } }] } as never);
+    handlers["click:"]?.({ lngLat: { lng: 4.9, lat: 52.37 } } as never);
+    expect(onSelect).not.toHaveBeenCalled();
+    // The general map click still places the pin.
+    expect(onMapClick).toHaveBeenCalledWith(4.9, 52.37);
+    // Leaving pick mode restores marker selection.
+    rerender(<MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={onSelect} onMapClick={onMapClick} addMode={false} visitedPoiIds={new Set()} mapRef={mapRef} />);
+    handlers["click:unclustered"]?.({ features: [{ properties: { id: 1 } }] } as never);
+    expect(onSelect).toHaveBeenCalledWith(1);
+  });
+
   it("pads the camera by the insets registered in the provider", async () => {
     function Sheet() { useMapInset("sheet", { bottom: 400 }); return null; }
     const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
@@ -217,5 +259,49 @@ describe("MapView", () => {
     expect(mapInstance.addLayer).toHaveBeenCalledWith(expect.objectContaining({ id: "poi-hover" }));
     rerender(<MapView pois={pois} categories={categories} settings={settings} selectedId={null} onSelect={() => {}} onMapClick={() => {}} addMode={false} visitedPoiIds={new Set()} mapRef={mapRef} highlightId={1} />);
     expect(mapInstance.setFilter).toHaveBeenCalledWith("poi-hover", ["==", ["get", "id"], 1]);
+  });
+
+  describe("draft pin", () => {
+    function baseProps(mapRef: { current: MlMap | null }) {
+      return { pois, categories, settings, selectedId: null, onSelect: () => {}, onMapClick: () => {}, addMode: false, visitedPoiIds: new Set<number>(), mapRef };
+    }
+
+    it("constructs a draggable marker and adds it to the map", () => {
+      const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+      render(<MapView {...baseProps(mapRef)} draftPin={{ lng: 4.9, lat: 52.37 }} />);
+      expect(MarkerMock).toHaveBeenCalledTimes(1);
+      expect(MarkerMock).toHaveBeenCalledWith(expect.objectContaining({ draggable: true, color: theme.color.primary }));
+      const marker = markerInstances[0] as { setLngLat: ReturnType<typeof vi.fn>; addTo: ReturnType<typeof vi.fn>; getElement: () => HTMLElement };
+      expect(marker.setLngLat).toHaveBeenCalledWith([4.9, 52.37]);
+      expect(marker.addTo).toHaveBeenCalledWith(mapInstance);
+      const el = marker.getElement();
+      expect(el.getAttribute("aria-label")).toBe("Place location (drag to move)");
+    });
+
+    it("moves the same marker on a coordinate change instead of constructing a new one", () => {
+      const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+      const { rerender } = render(<MapView {...baseProps(mapRef)} draftPin={{ lng: 4.9, lat: 52.37 }} />);
+      expect(MarkerMock).toHaveBeenCalledTimes(1);
+      rerender(<MapView {...baseProps(mapRef)} draftPin={{ lng: 5.0, lat: 52.4 }} />);
+      expect(MarkerMock).toHaveBeenCalledTimes(1);
+      const marker = markerInstances[0] as { setLngLat: ReturnType<typeof vi.fn> };
+      expect(marker.setLngLat).toHaveBeenLastCalledWith([5.0, 52.4]);
+    });
+
+    it("removes the marker when draftPin becomes null", () => {
+      const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+      const { rerender } = render(<MapView {...baseProps(mapRef)} draftPin={{ lng: 4.9, lat: 52.37 }} />);
+      const marker = markerInstances[0] as { remove: ReturnType<typeof vi.fn> };
+      rerender(<MapView {...baseProps(mapRef)} draftPin={null} />);
+      expect(marker.remove).toHaveBeenCalled();
+    });
+
+    it("reports the dragged-to coordinates via onDraftPinMove", () => {
+      const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+      const onDraftPinMove = vi.fn();
+      render(<MapView {...baseProps(mapRef)} draftPin={{ lng: 4.9, lat: 52.37 }} onDraftPinMove={onDraftPinMove} />);
+      markerHandlers.dragend?.();
+      expect(onDraftPinMove).toHaveBeenCalledWith({ lng: 4.9, lat: 52.37 });
+    });
   });
 });

@@ -13,7 +13,21 @@ import AppShell from "./AppShell";
 
 const mapPropsSpy = vi.fn();
 const mapHighlightSpy = vi.fn();
-vi.mock("./MapView", () => ({ default: (props: { pois: { id: number }[]; highlightId?: number | null }) => { mapPropsSpy(props.pois); mapHighlightSpy(props.highlightId ?? null); return null; } }));
+const mapViewPropsSpy = vi.fn();
+vi.mock("./MapView", () => ({
+  default: (props: {
+    pois: { id: number }[];
+    highlightId?: number | null;
+    addMode: boolean;
+    draftPin?: { lng: number; lat: number } | null;
+    onDraftPinMove?: (c: { lng: number; lat: number }) => void;
+  }) => {
+    mapPropsSpy(props.pois);
+    mapHighlightSpy(props.highlightId ?? null);
+    mapViewPropsSpy(props);
+    return null;
+  },
+}));
 
 describe("AppShell", () => {
   it("loads POIs into the sidebar list", async () => {
@@ -202,6 +216,169 @@ describe("AppShell detail placement", () => {
     mapHighlightSpy.mockClear();
     act(() => { card.focus(); });
     expect(mapHighlightSpy).not.toHaveBeenCalledWith(1);
+  });
+});
+
+describe("AppShell draft pin", () => {
+  afterEach(() => {
+    mapViewPropsSpy.mockClear();
+  });
+
+  it("follows typed lat/lng while adding a place on desktop", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    await user.click(screen.getByRole("button", { name: /add place/i })); // FAB
+    await user.type(screen.getByLabelText(/latitude/i), "52.4");
+    await user.type(screen.getByLabelText(/longitude/i), "4.95");
+    await waitFor(() => {
+      const last = mapViewPropsSpy.mock.calls[mapViewPropsSpy.mock.calls.length - 1][0];
+      expect(last.draftPin).toEqual({ lat: 52.4, lng: 4.95 });
+    });
+  });
+
+  it("updates the form latitude when the map reports a dragged draft pin", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    await user.click(screen.getByRole("button", { name: /add place/i })); // FAB
+    const last = mapViewPropsSpy.mock.calls[mapViewPropsSpy.mock.calls.length - 1][0] as {
+      onDraftPinMove?: (c: { lng: number; lat: number }) => void;
+    };
+    act(() => {
+      last.onDraftPinMove?.({ lng: 4.95, lat: 52.4 });
+    });
+    await waitFor(() => {
+      expect(screen.getByLabelText(/latitude/i)).toHaveValue("52.4");
+    });
+  });
+
+  it("clears the draft pin when the form is closed", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    await user.click(screen.getByRole("button", { name: /add place/i })); // FAB
+    await user.type(screen.getByLabelText(/latitude/i), "52.4");
+    await user.type(screen.getByLabelText(/longitude/i), "4.95");
+    await waitFor(() => {
+      const last = mapViewPropsSpy.mock.calls[mapViewPropsSpy.mock.calls.length - 1][0];
+      expect(last.draftPin).toEqual({ lat: 52.4, lng: 4.95 });
+    });
+    await user.click(screen.getByRole("button", { name: /close/i }));
+    await waitFor(() => {
+      const last = mapViewPropsSpy.mock.calls[mapViewPropsSpy.mock.calls.length - 1][0];
+      expect(last.draftPin).toBeNull();
+    });
+  });
+
+  it("never shows a draft pin on mobile", async () => {
+    const restore = stubMediaQueries((q) => q === "(max-width: 768px)");
+    try {
+      const user = userEvent.setup();
+      renderWithProviders(<AppShell />);
+      await screen.findByText("Café Modern");
+      await user.click(screen.getByRole("button", { name: /add place/i })); // FAB
+      await user.type(screen.getByLabelText(/latitude/i), "52.4");
+      await user.type(screen.getByLabelText(/longitude/i), "4.95");
+      await waitFor(() => {
+        expect(screen.getByLabelText(/latitude/i)).toHaveValue("52.4");
+      });
+      const last = mapViewPropsSpy.mock.calls[mapViewPropsSpy.mock.calls.length - 1][0];
+      expect(last.draftPin).toBeNull();
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe("AppShell docked edit form (desktop)", () => {
+  let restore: (() => void) | null = null;
+  afterEach(() => { restore?.(); restore = null; mapViewPropsSpy.mockClear(); });
+
+  // Records every PATCH/POST to /api/pois so a test can prove which place a
+  // save hit (and that it didn't create a copy).
+  function recordWrites() {
+    const writes: string[] = [];
+    server.use(
+      http.patch("/api/pois/:id", async ({ params, request }) => {
+        writes.push(`PATCH ${params.id as string}`);
+        const body = (await request.json()) as { name?: string };
+        const base = samplePois.find((p) => p.id === Number(params.id)) ?? samplePois[0];
+        return HttpResponse.json({ ...base, ...body });
+      }),
+      http.post("/api/pois", async ({ request }) => {
+        writes.push("POST");
+        const body = (await request.json()) as { name: string };
+        return HttpResponse.json({ ...samplePois[0], id: 99, name: body.name }, { status: 201 });
+      }),
+    );
+    return writes;
+  }
+
+  function lastMapProps() {
+    return mapViewPropsSpy.mock.calls[mapViewPropsSpy.mock.calls.length - 1][0] as {
+      onSelect: (id: number) => void;
+      addMode: boolean;
+    };
+  }
+
+  it("saves the edited place even if another place gets selected mid-edit", async () => {
+    const writes = recordWrites();
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    await user.click(await screen.findByRole("button", { name: /edit place/i }));
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue("Café Modern");
+    // Selection changes underneath the open form (e.g. a list/map selection).
+    act(() => { lastMapProps().onSelect(2); });
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    await waitFor(() => expect(writes).toEqual(["PATCH 1"]));
+  });
+
+  it("hides the detail panel while the desktop form is open", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    expect(await screen.findByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /edit place/i }));
+    expect(screen.getByRole("heading", { name: /edit place/i })).toBeInTheDocument();
+    // Only the docked form remains: no overlay detail (and so no second left
+    // map inset stacked on top of the form's).
+    expect(screen.queryByRole("heading", { name: "Café Modern" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /edit place/i })).not.toBeInTheDocument();
+  });
+
+  it("narrow desktop: the search hotkey neither closes the form nor retargets the save", async () => {
+    restore = stubMediaQueries((q) => q === "(min-width: 769px) and (max-width: 1279px)");
+    const writes = recordWrites();
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    await screen.findByRole("button", { name: /back to list/i });
+    await user.click(screen.getByRole("button", { name: /edit place/i }));
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true, cancelable: true }));
+    });
+    expect(screen.getByRole("heading", { name: /edit place/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    await waitFor(() => expect(writes).toEqual(["PATCH 1"]));
+  });
+
+  it("narrow desktop: hides the add button while editing", async () => {
+    restore = stubMediaQueries((q) => q === "(min-width: 769px) and (max-width: 1279px)");
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    await screen.findByRole("button", { name: /back to list/i });
+    await user.click(screen.getByRole("button", { name: /edit place/i }));
+    expect(screen.getByRole("heading", { name: /edit place/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /add place/i })).not.toBeInTheDocument();
+  });
+
+  it("hides the add button while adding (only the form's submit remains)", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    await user.click(screen.getByRole("button", { name: /add place/i })); // FAB
+    const matches = screen.getAllByRole("button", { name: /add place/i });
+    expect(matches).toHaveLength(1);
+    expect(matches[0]).toHaveAttribute("type", "submit");
   });
 });
 
