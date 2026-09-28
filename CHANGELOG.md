@@ -1,5 +1,29 @@
 # Changelog
 
+## [4.6.0](https://github.com/bardesss/minimalpoi/compare/v4.5.0...v4.6.0) (2026-09-28)
+
+
+### Features
+
+* **map:** add a draggable draft pin and a shared sidebar width ([61e4916](https://github.com/bardesss/minimalpoi/commit/61e4916cf01cd3f93fd25849e0fc688855bc0642))
+* **places:** search OpenStreetMap when no Google key is configured ([0adffbe](https://github.com/bardesss/minimalpoi/commit/0adffbea17f2b16a93991ef58f3580378cc98b80))
+* **places:** search OpenStreetMap without a Google key; add-place location, inputs and one-move fly ([5a90c88](https://github.com/bardesss/minimalpoi/commit/5a90c88d19eab7c68beac9b4262ae68ef6ddc8bd))
+* **ui:** add "Use my location" and round coordinates when adding a place ([e4a5b9a](https://github.com/bardesss/minimalpoi/commit/e4a5b9a88ba7660064e7191a878d180f7d207d27))
+* **ui:** dock the place form over the sidebar on desktop, non-modal ([947c929](https://github.com/bardesss/minimalpoi/commit/947c9293c4d81870bcb36fd5d638641a8d04288d))
+* **ui:** docked desktop place form with a draggable draft pin ([bdf99db](https://github.com/bardesss/minimalpoi/commit/bdf99db47acb3a73e00a50525419d7db9d3c8ef9))
+* **ui:** make place search provider-neutral and credit OpenStreetMap results ([be8276d](https://github.com/bardesss/minimalpoi/commit/be8276d5c692c9a93a0c614ccc61a151e9982269))
+* **ui:** show a draggable pin for the place being added or edited ([4d562d8](https://github.com/bardesss/minimalpoi/commit/4d562d839c47001860f4caf0c8b24405a747ec89))
+* **ui:** styled photo and camera buttons, stacked fields and URL keyboards in the add form ([579b135](https://github.com/bardesss/minimalpoi/commit/579b1358af3fb3915828e8de1b37458636910e76))
+
+
+### Bug Fixes
+
+* **map:** fly to a newly added place in one move ([22d8ef4](https://github.com/bardesss/minimalpoi/commit/22d8ef4fa547ce59214fc60df170aa2a6a56d847))
+* **places:** rate-limit OpenStreetMap lookups and harden Nominatim parsing ([423afc0](https://github.com/bardesss/minimalpoi/commit/423afc063f1380414eab55d2c42ebfa418911869))
+* **ui:** add-only "Use my location", visible coordinate errors and clearer place-search errors ([2a18095](https://github.com/bardesss/minimalpoi/commit/2a18095ff22a360852a68bc454bb63b958ac92c9))
+* **ui:** keep the docked edit form bound to the place it opened for ([8fa983f](https://github.com/bardesss/minimalpoi/commit/8fa983f4abdbbbb473c4b324121b33645674f2b1))
+* **ui:** stop onCoordsChange effect looping on a fresh callback identity ([02fdd60](https://github.com/bardesss/minimalpoi/commit/02fdd60cdabde7f94439911620aa86079aa3e178))
+
 ## [4.5.0](https://github.com/bardesss/minimalpoi/compare/v4.4.0...v4.5.0) (2026-09-28)
 
 
