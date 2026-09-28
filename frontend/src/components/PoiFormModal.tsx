@@ -171,16 +171,24 @@ export default function PoiFormModal({
     }
   }, [coords, mode, isMobile]);
 
+  // Latest-callback ref (as MapView does for its map-instance callbacks) so
+  // the effect below depends only on [lat, lng]. AppShell (Task 3) passes an
+  // inline arrow that sets state with a fresh object on every call; if that
+  // callback were itself a dependency, each render would hand the effect a
+  // new function identity, re-firing it, calling setState again, and looping.
+  const onCoordsChangeRef = useRef(onCoordsChange);
+  onCoordsChangeRef.current = onCoordsChange;
+
   // Reports the currently-parsed, in-range coordinates (or null) so a parent
   // can mirror them onto a draggable map pin. Not called on unmount — the
   // parent clears its own pin when it closes the form.
   useEffect(() => {
-    if (!onCoordsChange) return;
+    if (!onCoordsChangeRef.current) return;
     const latNum = parseCoord(lat);
     const lngNum = parseCoord(lng);
     const valid = latNum !== null && lngNum !== null && latNum >= -90 && latNum <= 90 && lngNum >= -180 && lngNum <= 180;
-    onCoordsChange(valid ? { lat: latNum, lng: lngNum } : null);
-  }, [lat, lng, onCoordsChange]);
+    onCoordsChangeRef.current(valid ? { lat: latNum, lng: lngNum } : null);
+  }, [lat, lng]);
 
   // Desktop: docked, non-modal — the map behind it stays interactive, so no
   // backdrop-close and no focus trap. Mobile: add is a non-modal click-through

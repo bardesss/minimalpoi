@@ -1,4 +1,5 @@
 // frontend/src/components/PoiFormModal.test.tsx
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -596,6 +597,40 @@ describe("PoiFormModal docked desktop form (Task 2)", () => {
     onCoordsChange.mockClear();
     fireEvent.change(screen.getByLabelText(/latitude/i), { target: { value: "abc" } });
     expect(onCoordsChange).toHaveBeenCalledWith(null);
+  });
+
+  // Regression: AppShell (Task 3) passes an inline `onCoordsChange` arrow
+  // that calls setState with a brand-new object every time. If the effect
+  // that calls onCoordsChange depended on the callback's identity (instead
+  // of only [lat, lng]), that state update would trigger a parent re-render
+  // that hands the form a new callback identity, re-firing the effect, and
+  // so on forever ("Maximum update depth exceeded"). This wrapper mimics
+  // that shape and asserts the loop doesn't happen.
+  it("does not loop when onCoordsChange is a fresh function identity that triggers a parent re-render", () => {
+    const received: Array<{ lat: number; lng: number } | null> = [];
+    function Wrapper() {
+      const [, setPin] = useState<{ lat: number; lng: number } | null>(null);
+      return (
+        <PoiFormModal
+          mode="add"
+          initial={null}
+          categories={cats}
+          coords={{ lng: 4.9, lat: 52.37 }}
+          onSubmit={() => {}}
+          onClose={() => {}}
+          onCheckDuplicate={() => {}}
+          duplicateId={null}
+          onCoordsChange={(c) => {
+            received.push(c);
+            setPin(c ? { ...c } : null);
+          }}
+        />
+      );
+    }
+    expect(() => render(<Wrapper />)).not.toThrow();
+    // One call from the initial mount; no runaway re-render loop behind it.
+    expect(received.length).toBe(1);
+    expect(received[0]).toEqual({ lat: 52.37, lng: 4.9 });
   });
 
   it("updates the latitude field (rounded) when a new coords prop arrives in desktop edit mode", () => {
