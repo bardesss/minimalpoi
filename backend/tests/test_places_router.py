@@ -1,8 +1,23 @@
+from sqlmodel import Session
+
 from app.schemas import POIDraft
 
 
 def _login_admin(client):
     client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
+
+
+def _corrupt_google_key(client):
+    """Store a Google key that can't be decrypted (e.g. the secret key
+    changed since it was written), the way test_correctness.py does."""
+    from app import db
+    from app.models import get_or_create_settings
+
+    with Session(db.engine) as s:
+        settings = get_or_create_settings(s)
+        settings.google_api_key_enc = "garbage-not-fernet"
+        s.add(settings)
+        s.commit()
 
 
 def test_places_search_requires_auth(client):
@@ -72,6 +87,32 @@ def test_places_search_returns_candidates(client, monkeypatch):
     resp = client.get("/api/places/search", params={"q": "taco"})
     assert resp.status_code == 200
     assert resp.json() == [{"place_id": "PID1", "name": "Taco Lindo", "address": "A St, Amsterdam", "lat": None, "lng": None, "source": "google"}]
+
+
+def test_places_search_returns_400_with_detail_when_key_cannot_be_decrypted(client, monkeypatch):
+    _login_admin(client)
+    _corrupt_google_key(client)
+
+    async def fake_search(query, base_url, client=None, limit=8):
+        raise AssertionError("must not fall back to Nominatim over the network")
+
+    monkeypatch.setattr("app.routers.places.nominatim_search", fake_search)
+    resp = client.get("/api/places/search", params={"q": "taco"})
+    assert resp.status_code == 400
+    assert "can't be decrypted" in resp.json()["detail"]
+
+
+def test_places_google_draft_returns_400_with_detail_when_key_cannot_be_decrypted(client, monkeypatch):
+    _login_admin(client)
+    _corrupt_google_key(client)
+
+    async def fake_lookup(osm_id, base_url, client=None):
+        raise AssertionError("must not fall back to Nominatim over the network")
+
+    monkeypatch.setattr("app.routers.places.nominatim_lookup", fake_lookup)
+    resp = client.get("/api/places/PID1")
+    assert resp.status_code == 400
+    assert "can't be decrypted" in resp.json()["detail"]
 
 
 def test_places_draft_returns_poidraft(client, monkeypatch):
