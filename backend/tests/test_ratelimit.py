@@ -110,6 +110,23 @@ def test_anonymous_requests_are_still_keyed_by_ip():
     assert user_or_ip(_request(client=("203.0.113.9", 5))) == "203.0.113.9"
 
 
+def test_places_search_is_rate_limited_to_one_per_second(rl_client, monkeypatch):
+    # NOMINATIM_LIMIT (1/second) applies to /api/places/search regardless of
+    # whether the Google or OSM branch is taken — here there's no Google key
+    # configured, so it falls through to nominatim_search, which we stub out.
+    rl_client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
+
+    async def fake_search(query, base_url, client=None, limit=8):
+        return []
+
+    monkeypatch.setattr("app.routers.places.nominatim_search", fake_search)
+
+    first = rl_client.get("/api/places/search", params={"q": "taco"})
+    assert first.status_code == 200
+    second = rl_client.get("/api/places/search", params={"q": "taco"})
+    assert second.status_code == 429
+
+
 def test_cookie_sessions_are_still_keyed_by_username(data_dir):
     # data_dir: create_access_token reads the secret key from the data directory.
     from app.ratelimit import user_or_ip
