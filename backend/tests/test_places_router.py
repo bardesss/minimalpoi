@@ -38,6 +38,9 @@ def test_places_osm_draft_rejects_malformed_ids(client):
     _login_admin(client)
     assert client.get("/api/places/osm:X1").status_code == 422
     assert client.get("/api/places/osm:N").status_code == 422
+    # Trailing newline (URL-encoded so it survives as part of the path) must be
+    # rejected too — .fullmatch (not .match) plus re.ASCII closes this off.
+    assert client.get("/api/places/osm:N1%0A").status_code == 422
 
 
 def test_places_osm_draft_404_when_not_found(client, monkeypatch):

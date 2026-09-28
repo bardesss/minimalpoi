@@ -13,7 +13,7 @@ from ..schemas import PlaceSearchResult, POIDraft
 
 router = APIRouter(prefix="/api/places", tags=["places"])
 
-_OSM_ID = re.compile(r"^osm:([NWR]\d+)$")
+_OSM_ID = re.compile(r"osm:([NWR][0-9]+)", re.ASCII)
 _DEFAULT_NOMINATIM = "https://nominatim.openstreetmap.org"
 
 
@@ -40,7 +40,7 @@ def _require_key(session) -> str:
 
 @router.get("/search", response_model=list[PlaceSearchResult])
 @limiter.limit(GOOGLE_LIMIT, key_func=user_or_ip)
-@limiter.limit(NOMINATIM_LIMIT, key_func=user_or_ip)
+@limiter.limit(NOMINATIM_LIMIT, key_func=user_or_ip)  # 1/s also applies to Google searches — both are button-triggered
 async def search_places(request: Request, session: SessionDep, _: CurrentUser, q: str = Query(min_length=1)) -> list[dict]:
     if _has_google_key(session):
         return await gmaps.place_search(q, _require_key(session))
@@ -49,9 +49,10 @@ async def search_places(request: Request, session: SessionDep, _: CurrentUser, q
 
 @router.get("/{place_id}", response_model=POIDraft)
 @limiter.limit(GOOGLE_LIMIT, key_func=user_or_ip)
+@limiter.limit(NOMINATIM_LIMIT, key_func=user_or_ip)
 async def place_draft(request: Request, place_id: str, session: SessionDep, _: CurrentUser) -> POIDraft:
     if place_id.startswith("osm:"):
-        m = _OSM_ID.match(place_id)
+        m = _OSM_ID.fullmatch(place_id)
         if not m:
             raise HTTPException(status_code=422, detail="Malformed OpenStreetMap place id")
         draft = await nominatim_lookup(m.group(1), _nominatim_base(session))
