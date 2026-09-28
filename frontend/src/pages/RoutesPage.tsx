@@ -176,6 +176,7 @@ export default function RoutesPage() {
                 <MenuButton
                   label="Share ▾"
                   menuLabel="Share route"
+                  align="left"
                   triggerStyle={{ ...ghostButtonStyle, padding: isMobile ? "11px 14px" : "6px 12px", whiteSpace: "nowrap" }}
                   items={shareItems}
                 />
