@@ -338,6 +338,33 @@ describe("PoiFormModal enrich", () => {
   });
 });
 
+describe("PoiFormModal inputs (Task 4)", () => {
+  it("gives the website field a url keyboard", () => {
+    render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    expect(screen.getByLabelText(/^website$/i)).toHaveAttribute("type", "url");
+    expect(screen.getByLabelText(/^website$/i)).toHaveAttribute("inputmode", "url");
+  });
+
+  it("stacks the Category/Tags row on mobile", () => {
+    const restore = mockMobileMatchMedia();
+    try {
+      render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+      const categoryLabel = screen.getByText("Category");
+      const wrapper = categoryLabel.closest("div")?.parentElement;
+      expect(wrapper).toHaveStyle({ flexDirection: "column" });
+    } finally {
+      restore();
+    }
+  });
+
+  it("does not stack the Category/Tags row on desktop", () => {
+    render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+    const categoryLabel = screen.getByText("Category");
+    const wrapper = categoryLabel.closest("div")?.parentElement;
+    expect(wrapper).toHaveStyle({ flexDirection: "row" });
+  });
+});
+
 // Stubs navigator.geolocation for the "Use my location" tests below. Returns
 // a restore function; jsdom has no real geolocation implementation.
 function mockGeolocation(impl: {
