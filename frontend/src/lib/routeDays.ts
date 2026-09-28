@@ -102,6 +102,15 @@ export function groupNodesByDay(route: RouteDetail): DayGroup[] {
   return order;
 }
 
+/** Each node's day-group index, so the map can colour points/segments the same
+ * as the itinerary's day cards. A multi-day stay appears in several groups; its
+ * first (arrival-day) group wins. */
+export function dayIndexByNode(route: RouteDetail): Map<number, number> {
+  const m = new Map<number, number>();
+  groupNodesByDay(route).forEach((g, i) => g.nodes.forEach((n) => { if (!m.has(n.id)) m.set(n.id, i); }));
+  return m;
+}
+
 /** Base stay (arrival date + span in days) governing list position `pos`,
  * ignoring the node with id `ignoreId`. Walks position order up to `pos`. */
 function baseStayAt(route: RouteDetail, pos: number, ignoreId: number): { arrive: string; span: number } {
