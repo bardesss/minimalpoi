@@ -160,8 +160,10 @@ export function toggleChipStyle(active: boolean): CSSProperties {
 }
 
 /** Per-day route colours, cycled by day index. Each clears 4.5:1 on white (the
- * map's 12px sequence labels are drawn in the day colour on white circles) and
- * so also on the lighter basemap; indigo first so day 1 matches the brand. */
+ * map's 12px sequence labels are drawn in the day colour on white circles). On
+ * the darker basemap, rose and amber drop to about 4.1–4.4:1 — still clear of
+ * the 3:1 minimum for graphics (route lines/pins), just not the 4.5:1 text
+ * threshold. Indigo first so day 1 matches the brand. */
 export const routeDayColors = ["#4f46e5", "#e11d48", "#0f766e", "#b45309", "#7c3aed", "#0369a1"] as const;
 export function routeDayColor(dayIndex: number): string {
   return routeDayColors[((dayIndex % routeDayColors.length) + routeDayColors.length) % routeDayColors.length];

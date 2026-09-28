@@ -18,6 +18,11 @@ import App from "./App";
 import { AuthProvider } from "./auth/AuthContext";
 import { ToastProvider } from "./components/Toast";
 import { makeQueryClient } from "./queries/queryClient";
+import { installChunkReload } from "./lib/chunkReload";
+
+// After a deploy, an already-open tab's lazy chunks 404; reload once to pick
+// up the new build instead of rendering a blank app.
+installChunkReload(window);
 
 const queryClient = makeQueryClient();
 

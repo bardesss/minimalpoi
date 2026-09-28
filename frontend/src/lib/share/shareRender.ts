@@ -4,12 +4,20 @@ import type { Map as MlMap, LngLatBoundsLike } from "maplibre-gl";
 import type { MapSettings, RouteDetail } from "../../types/api";
 import { resolveMapStyle } from "../../map/style";
 import { routeLine } from "../../map/routeLine";
+import { dayIndexByNode } from "../routeDays";
 import { shareStats } from "./shareStats";
 import { shareLayout } from "./shareLayout";
 import type { ShareFormatSpec, ShareVariant } from "./shareFormats";
-import { theme } from "../../theme";
+import { routeDayColor, theme } from "../../theme";
 
-const LINE_COLOR = "#4f46e5";
+/** A route-line segment or point feature's day index (from `routeLine`'s
+ * `day` property), defaulting to 0 — matching `routeLine`'s own default so an
+ * undated route (no `dayIndexByNode` entries) draws everything in day 0's
+ * colour. */
+export function segmentDay(properties: GeoJSON.GeoJsonProperties): number {
+  const day = properties?.day;
+  return typeof day === "number" ? day : 0;
+}
 
 export interface ShareRenderOptions {
   route: RouteDetail;
@@ -115,14 +123,18 @@ export async function renderShareImage(opts: ShareRenderOptions): Promise<Blob> 
     }
     const L = shareLayout(format);
 
-    // 2. Route line (road geometry when present, else straight segments).
-    const { line, points } = routeLine(route.nodes, route.legs);
+    // 2. Route line (road geometry when present, else straight segments),
+    // each segment stroked in its day's colour — same day→node assignment
+    // RouteMap uses (routeDays.ts dayIndexByNode), so the share image and the
+    // live map never disagree on which day a leg belongs to. An undated route
+    // has every node on day 0, i.e. indigo throughout.
+    const { line, points } = routeLine(route.nodes, route.legs, undefined, dayIndexByNode(route));
     ctx.lineWidth = Math.round(format.width * 0.006);
-    ctx.strokeStyle = LINE_COLOR;
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     for (const seg of line.features) {
       const coords = seg.geometry.coordinates as [number, number][];
+      ctx.strokeStyle = routeDayColor(segmentDay(seg.properties));
       ctx.beginPath();
       coords.forEach(([lng, lat], i) => {
         const p = map.project([lng, lat]);
@@ -140,14 +152,15 @@ export async function renderShareImage(opts: ShareRenderOptions): Promise<Blob> 
       const p = map.project([lng, lat]);
       const props = f.properties as { seq?: number; role?: string; kind?: string };
       const isStay = props.kind === "stay";
+      const dayColor = routeDayColor(segmentDay(props));
       ctx.beginPath();
       ctx.arc(p.x, p.y, pinR, 0, Math.PI * 2);
-      ctx.fillStyle = props.role || isStay ? LINE_COLOR : "#ffffff";
+      ctx.fillStyle = props.role || isStay ? dayColor : "#ffffff";
       ctx.fill();
       ctx.lineWidth = Math.round(pinR * 0.28);
-      ctx.strokeStyle = LINE_COLOR;
+      ctx.strokeStyle = dayColor;
       ctx.stroke();
-      ctx.fillStyle = props.role || isStay ? "#ffffff" : LINE_COLOR;
+      ctx.fillStyle = props.role || isStay ? "#ffffff" : dayColor;
       ctx.font = `700 ${Math.round(pinR * 1.1)}px system-ui, sans-serif`;
       ctx.fillText(props.role === "start" ? "▶" : props.role === "end" ? "■" : String(props.seq ?? ""), p.x, p.y);
     }

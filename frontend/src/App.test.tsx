@@ -2,13 +2,15 @@ import { expect, test, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 
 vi.mock("./components/MapView", () => ({ default: () => null }));
+vi.mock("./components/routes/RouteMap", () => ({ default: () => null }));
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
-import { server } from "./test/msw";
+import { server, sampleSettings } from "./test/msw";
 import App from "./App";
 import { AuthProvider } from "./auth/AuthContext";
+import { ToastProvider } from "./components/Toast";
 
 function renderApp(initialPath = "/") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -16,7 +18,9 @@ function renderApp(initialPath = "/") {
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[initialPath]}>
         <AuthProvider>
-          <App />
+          <ToastProvider>
+            <App />
+          </ToastProvider>
         </AuthProvider>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -26,6 +30,15 @@ function renderApp(initialPath = "/") {
 test("shows the app shell for an authenticated user", async () => {
   renderApp("/");
   expect(await screen.findByText("Café Modern")).toBeInTheDocument();
+});
+
+test("/routes shows the routes page through the lazy boundary", async () => {
+  server.use(
+    http.get("/api/settings/map", () => HttpResponse.json({ ...sampleSettings, routes_enabled: true })),
+    http.get("/api/routes", () => HttpResponse.json([])),
+  );
+  renderApp("/routes");
+  expect(await screen.findByText(/no routes yet/i, {}, { timeout: 5000 })).toBeInTheDocument();
 });
 
 test("redirects to setup on first run", async () => {

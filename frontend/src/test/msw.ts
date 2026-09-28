@@ -13,7 +13,7 @@ const adminUser: UserRead = {
 
 export const sampleCategories: Category[] = [
   { id: 1, name: "Restaurants", color: "#E1574C", icon: "utensils", created_by: 1 },
-  { id: 2, name: "Nature", color: "#2F9E63", icon: "trees", created_by: 1 },
+  { id: 2, name: "Nature", color: "#2F9E63", icon: "tree-pine", created_by: 1 },
 ];
 
 export const samplePois: Poi[] = [
