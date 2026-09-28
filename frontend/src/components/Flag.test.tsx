@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
 import Flag from "./Flag";
 
 describe("Flag", () => {
@@ -26,5 +26,34 @@ describe("Flag", () => {
     // give the lazy flag set a chance to load; an invalid code should still render nothing.
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(container.querySelector("svg")).toBeNull();
+  });
+
+  it("swallows a failed flag-set load and retries it on a later mount", async () => {
+    // First load fails (e.g. a stale chunk 404 after a deploy), later ones succeed.
+    let loads = 0;
+    vi.doMock("country-flag-icons/react/3x2", async () => {
+      loads += 1;
+      if (loads === 1) throw new Error("chunk failed to load");
+      return { NL: () => <svg data-testid="nl-flag" /> };
+    });
+    try {
+      vi.resetModules();
+      const { default: FreshFlag } = await import("./Flag");
+      const first = render(<FreshFlag code="nl" />);
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(loads).toBe(1);
+      expect(first.container.querySelector("svg")).toBeNull();
+      first.unmount();
+
+      const second = render(<FreshFlag code="nl" />);
+      await waitFor(() => {
+        expect(second.getByTestId("nl-flag")).toBeInTheDocument();
+      });
+      expect(loads).toBe(2);
+    } finally {
+      vi.doUnmock("country-flag-icons/react/3x2");
+    }
   });
 });

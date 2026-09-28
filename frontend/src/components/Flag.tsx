@@ -12,16 +12,23 @@ import { hasFlag } from "country-flag-icons";
 type FlagComponent = (props: { title?: string; style?: CSSProperties }) => ReactElement;
 
 let flagsCache: Record<string, FlagComponent> | null = null;
-let flagsPromise: Promise<Record<string, FlagComponent>> | null = null;
+let flagsPromise: Promise<Record<string, FlagComponent> | null> | null = null;
 const listeners = new Set<() => void>();
 
-function loadFlags(): Promise<Record<string, FlagComponent>> {
+function loadFlags(): Promise<Record<string, FlagComponent> | null> {
   if (!flagsPromise) {
-    flagsPromise = import("country-flag-icons/react/3x2").then((m) => {
-      flagsCache = m as unknown as Record<string, FlagComponent>;
-      listeners.forEach((listener) => listener());
-      return flagsCache;
-    });
+    flagsPromise = import("country-flag-icons/react/3x2")
+      .then((m) => {
+        flagsCache = m as unknown as Record<string, FlagComponent>;
+        listeners.forEach((listener) => listener());
+        return flagsCache;
+      })
+      .catch(() => {
+        // A failed chunk load (offline, or a stale hash after a deploy) keeps
+        // the placeholder; forget the promise so a later mount retries.
+        flagsPromise = null;
+        return null;
+      });
   }
   return flagsPromise;
 }
