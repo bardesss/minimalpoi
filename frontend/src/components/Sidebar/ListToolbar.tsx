@@ -1,6 +1,7 @@
 import { theme } from "../../theme";
 import type { MapViewMode } from "../../lib/mapViewPref";
 import type { SortMode } from "../../lib/sortPref";
+import type { ListDensity } from "../../lib/listDensityPref";
 import type { VisitedFilter } from "../../types/api";
 import FilterControls from "./FilterControls";
 
@@ -16,6 +17,8 @@ export default function ListToolbar({
   onSortChange,
   viewMode,
   onViewModeChange,
+  density,
+  onDensityChange,
   count,
 }: {
   visited: VisitedFilter;
@@ -24,6 +27,8 @@ export default function ListToolbar({
   onSortChange: (mode: SortMode) => void;
   viewMode: MapViewMode;
   onViewModeChange: (mode: MapViewMode) => void;
+  density: ListDensity;
+  onDensityChange: (d: ListDensity) => void;
   count?: number;
 }) {
   return (
@@ -36,6 +41,8 @@ export default function ListToolbar({
           onSortChange={onSortChange}
           viewMode={viewMode}
           onViewModeChange={onViewModeChange}
+          density={density}
+          onDensityChange={onDensityChange}
         />
       </div>
       {count != null && (

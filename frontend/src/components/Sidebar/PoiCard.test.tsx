@@ -65,4 +65,19 @@ describe("PoiCard", () => {
     fireEvent.blur(card);
     expect(onHover.mock.calls).toEqual([[poi.id], [null], [poi.id], [null]]);
   });
+
+  it("uses a slim 44px icon band when there is no photo, 78px with one", () => {
+    const { rerender } = render(<PoiCard poi={{ ...poi, image_url: null }} category={undefined} selected={false} onSelect={() => {}} />);
+    expect(screen.getByTestId("card-band").style.height).toBe("44px");
+    rerender(<PoiCard poi={{ ...poi, image_url: "https://img.example/a.jpg" }} category={undefined} selected={false} onSelect={() => {}} />);
+    expect(screen.getByTestId("card-band").style.height).toBe("78px");
+  });
+
+  it("keeps the photo-less category icon clear of the visited badge", () => {
+    render(<PoiCard poi={{ ...poi, image_url: null, avg_rating: 3.5, rating_count: 2 }} category={cat} selected={false} onSelect={() => {}} visited />);
+    const icon = screen.getByTestId("card-icon");
+    expect(icon.style.left).toBe("34px");
+    expect(icon.style.right).toBe("");
+    expect(screen.getByLabelText(/average rating 3.5/i).style.right).toBe("8px");
+  });
 });

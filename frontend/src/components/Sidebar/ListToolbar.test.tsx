@@ -10,6 +10,8 @@ const baseProps = {
   onSortChange: noop,
   viewMode: "fit" as const,
   onViewModeChange: noop,
+  density: "cards" as const,
+  onDensityChange: noop,
 };
 
 describe("ListToolbar", () => {

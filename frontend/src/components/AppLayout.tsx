@@ -2,10 +2,9 @@ import type { ReactNode } from "react";
 import { useIsMobile, useMediaQuery } from "../lib/useMediaQuery";
 import { theme } from "../theme";
 import SidebarHeader from "./Sidebar/SidebarHeader";
-import AccountFooter from "./Sidebar/AccountFooter";
+import AccountMenu from "./AccountMenu";
 import BottomSheet from "./BottomSheet";
 import NavToggle from "./NavToggle";
-import BrandLogo from "./BrandLogo";
 
 export interface AppLayoutProps {
   routesEnabled: boolean;
@@ -41,9 +40,10 @@ export default function AppLayout(props: AppLayoutProps) {
   const isMobile = useIsMobile();
   // Give the POI grid's 3rd column (see PoiList) room on very wide screens.
   const wide = useMediaQuery("(min-width: 1600px)");
-  const navDesktop = props.routesEnabled ? <NavToggle variant="icon" /> : null;
-  const navMobile = props.routesEnabled ? <NavToggle variant="labeled" /> : null;
-  const footer = <AccountFooter {...props.account} />;
+  // Icon-only on both: in the mobile handle row the labeled variant is wider
+  // than the space beside the centred grip and taller than the 44px row.
+  const nav = props.routesEnabled ? <NavToggle variant="icon" /> : null;
+  const account = <AccountMenu {...props.account} />;
 
   if (isMobile) {
     return (
@@ -52,16 +52,16 @@ export default function AppLayout(props: AppLayoutProps) {
         <BottomSheet
           label={props.sheetLabel}
           initial="half"
-          headerRight={props.sheetCount != null ? <CountBadge n={props.sheetCount} /> : undefined}
+          headerLeft={nav ?? undefined}
+          headerRight={
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+              {props.sheetCount != null && <CountBadge n={props.sheetCount} />}
+              {account}
+            </span>
+          }
           hidden={props.detail != null}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 16px 2px" }}>
-            <BrandLogo size={24} />
-            <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-.02em", color: theme.color.textPrimary }}>MinimalPOI</span>
-            {navMobile && <div style={{ marginLeft: "auto" }}>{navMobile}</div>}
-          </div>
           {props.sidebar}
-          {footer}
         </BottomSheet>
         {props.detail}
       </div>
@@ -91,9 +91,8 @@ export default function AppLayout(props: AppLayoutProps) {
               aria-hidden={props.detail != null || undefined}
               style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", visibility: props.detail != null ? "hidden" : undefined }}
             >
-              <SidebarHeader onCollapse={props.onCollapse} nav={navDesktop} />
+              <SidebarHeader onCollapse={props.onCollapse} nav={nav} account={account} />
               {props.sidebar}
-              {footer}
             </div>
             {props.detail != null && (
               <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>{props.detail}</div>

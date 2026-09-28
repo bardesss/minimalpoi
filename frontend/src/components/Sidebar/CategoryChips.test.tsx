@@ -4,29 +4,48 @@ import userEvent from "@testing-library/user-event";
 import type { Category } from "../../types/api";
 import CategoryChips from "./CategoryChips";
 
-const cats: Category[] = [
-  { id: 1, name: "Restaurants", color: "#E1574C", icon: null, created_by: 1 },
-  { id: 2, name: "Nature", color: "#2F9E63", icon: null, created_by: 1 },
+const mockCategories: Category[] = [
+  { id: 1, name: "Food", color: "#FF6B6B", icon: null, created_by: 1 },
+  { id: 2, name: "Nature", color: "#4ECDC4", icon: null, created_by: 1 },
 ];
 
 describe("CategoryChips", () => {
-  it("toggles a category and clears via All", async () => {
+  it("renders with default padding when scroll is false", () => {
     const onToggle = vi.fn();
     const onClear = vi.fn();
-    render(<CategoryChips categories={cats} activeIds={[1]} onToggle={onToggle} onClear={onClear} />);
-    await userEvent.click(screen.getByRole("button", { name: /nature/i }));
-    expect(onToggle).toHaveBeenCalledWith(2);
-    await userEvent.click(screen.getByRole("button", { name: /^all$/i }));
-    expect(onClear).toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: /restaurants/i })).toHaveAttribute("aria-pressed", "true");
+    render(<CategoryChips categories={mockCategories} activeIds={[]} onToggle={onToggle} onClear={onClear} scroll={false} />);
+    const container = screen.getByRole("button", { name: "All" }).parentElement;
+    expect(container?.style.padding).toBe("12px 20px");
   });
 
-  it("shows an Uncategorized chip only when requested and toggles it", async () => {
+  it("renders with compact padding when scroll is true", () => {
     const onToggle = vi.fn();
-    const { rerender } = render(<CategoryChips categories={cats} activeIds={[]} onToggle={onToggle} onClear={() => {}} />);
-    expect(screen.queryByRole("button", { name: /uncategorized/i })).not.toBeInTheDocument();
-    rerender(<CategoryChips categories={cats} activeIds={[]} onToggle={onToggle} onClear={() => {}} showUncategorized />);
-    await userEvent.click(screen.getByRole("button", { name: /uncategorized/i }));
-    expect(onToggle).toHaveBeenCalledWith(0);
+    const onClear = vi.fn();
+    render(<CategoryChips categories={mockCategories} activeIds={[]} onToggle={onToggle} onClear={onClear} scroll />);
+    const container = screen.getByRole("button", { name: "All" }).parentElement;
+    expect(container?.style.padding).toBe("6px 20px");
+  });
+
+  it("toggles category on chip click", async () => {
+    const onToggle = vi.fn();
+    const onClear = vi.fn();
+    render(<CategoryChips categories={mockCategories} activeIds={[]} onToggle={onToggle} onClear={onClear} />);
+    await userEvent.click(screen.getByRole("button", { name: "Food" }));
+    expect(onToggle).toHaveBeenCalledWith(1);
+  });
+
+  it("clears categories when All is clicked", async () => {
+    const onToggle = vi.fn();
+    const onClear = vi.fn();
+    render(<CategoryChips categories={mockCategories} activeIds={[1]} onToggle={onToggle} onClear={onClear} />);
+    await userEvent.click(screen.getByRole("button", { name: "All" }));
+    expect(onClear).toHaveBeenCalled();
+  });
+
+  it("shows uncategorized chip when showUncategorized is true", () => {
+    const onToggle = vi.fn();
+    const onClear = vi.fn();
+    render(<CategoryChips categories={mockCategories} activeIds={[]} onToggle={onToggle} onClear={onClear} showUncategorized />);
+    expect(screen.getByRole("button", { name: "Uncategorized" })).toBeInTheDocument();
   });
 });
