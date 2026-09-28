@@ -32,7 +32,7 @@ interface Props {
   onDraftPinMove?: (c: { lng: number; lat: number }) => void;
 }
 
-const DRAFT_PIN_LABEL = "New place location (drag to move)";
+const DRAFT_PIN_LABEL = "Place location (drag to move)";
 
 const VISITED_RING_COLOR = "#4f46e5";
 
@@ -162,7 +162,10 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
 
     map.on("click", "unclustered", (e) => {
       const f = e.features?.[0];
-      if (f) onSelectRef.current(Number((f.properties as { id: number }).id));
+      // While a place's pin is being placed, a marker click must not change
+      // the selection underneath the open form; the general map click below
+      // still moves the pin.
+      if (f && !addModeRef.current) onSelectRef.current(Number((f.properties as { id: number }).id));
       hoveredId = null;
       hoverPopup.remove();
     });

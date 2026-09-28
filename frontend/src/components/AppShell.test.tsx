@@ -291,6 +291,97 @@ describe("AppShell draft pin", () => {
   });
 });
 
+describe("AppShell docked edit form (desktop)", () => {
+  let restore: (() => void) | null = null;
+  afterEach(() => { restore?.(); restore = null; mapViewPropsSpy.mockClear(); });
+
+  // Records every PATCH/POST to /api/pois so a test can prove which place a
+  // save hit (and that it didn't create a copy).
+  function recordWrites() {
+    const writes: string[] = [];
+    server.use(
+      http.patch("/api/pois/:id", async ({ params, request }) => {
+        writes.push(`PATCH ${params.id as string}`);
+        const body = (await request.json()) as { name?: string };
+        const base = samplePois.find((p) => p.id === Number(params.id)) ?? samplePois[0];
+        return HttpResponse.json({ ...base, ...body });
+      }),
+      http.post("/api/pois", async ({ request }) => {
+        writes.push("POST");
+        const body = (await request.json()) as { name: string };
+        return HttpResponse.json({ ...samplePois[0], id: 99, name: body.name }, { status: 201 });
+      }),
+    );
+    return writes;
+  }
+
+  function lastMapProps() {
+    return mapViewPropsSpy.mock.calls[mapViewPropsSpy.mock.calls.length - 1][0] as {
+      onSelect: (id: number) => void;
+      addMode: boolean;
+    };
+  }
+
+  it("saves the edited place even if another place gets selected mid-edit", async () => {
+    const writes = recordWrites();
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    await user.click(await screen.findByRole("button", { name: /edit place/i }));
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue("Café Modern");
+    // Selection changes underneath the open form (e.g. a list/map selection).
+    act(() => { lastMapProps().onSelect(2); });
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    await waitFor(() => expect(writes).toEqual(["PATCH 1"]));
+  });
+
+  it("hides the detail panel while the desktop form is open", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    expect(await screen.findByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /edit place/i }));
+    expect(screen.getByRole("heading", { name: /edit place/i })).toBeInTheDocument();
+    // Only the docked form remains: no overlay detail (and so no second left
+    // map inset stacked on top of the form's).
+    expect(screen.queryByRole("heading", { name: "Café Modern" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /edit place/i })).not.toBeInTheDocument();
+  });
+
+  it("narrow desktop: the search hotkey neither closes the form nor retargets the save", async () => {
+    restore = stubMediaQueries((q) => q === "(min-width: 769px) and (max-width: 1279px)");
+    const writes = recordWrites();
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    await screen.findByRole("button", { name: /back to list/i });
+    await user.click(screen.getByRole("button", { name: /edit place/i }));
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true, cancelable: true }));
+    });
+    expect(screen.getByRole("heading", { name: /edit place/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    await waitFor(() => expect(writes).toEqual(["PATCH 1"]));
+  });
+
+  it("narrow desktop: hides the add button while editing", async () => {
+    restore = stubMediaQueries((q) => q === "(min-width: 769px) and (max-width: 1279px)");
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    await screen.findByRole("button", { name: /back to list/i });
+    await user.click(screen.getByRole("button", { name: /edit place/i }));
+    expect(screen.getByRole("heading", { name: /edit place/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /add place/i })).not.toBeInTheDocument();
+  });
+
+  it("hides the add button while adding (only the form's submit remains)", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    await user.click(screen.getByRole("button", { name: /add place/i })); // FAB
+    const matches = screen.getAllByRole("button", { name: /add place/i });
+    expect(matches).toHaveLength(1);
+    expect(matches[0]).toHaveAttribute("type", "submit");
+  });
+});
+
 describe("AppShell Slice C", () => {
   let restore: (() => void) | null = null;
   afterEach(() => { restore?.(); restore = null; });
