@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { PlaceSearchResult, PoiCreate, PoiDraft } from "../../../types/api";
 import type { PlaceSelection } from "./placeSelection";
+import { ApiError } from "../../../api/client";
 import { ghostButtonStyle, inputStyle, primaryButtonStyle, resultButtonStyle, theme } from "../../../theme";
 import { useCreatePoi, usePlaceDraft, useSearchPlaces } from "../../../queries/hooks";
 
@@ -44,8 +45,10 @@ export default function SearchPlacePanel({ onPick }: { onPick: (sel: PlaceSelect
       const found = await searchPlaces.mutateAsync(gQuery.trim());
       setResults(found);
       if (found.length === 0) setGError("No matching places found.");
-    } catch {
-      setGError("Search failed — try again, or fill the form manually.");
+    } catch (err) {
+      setGError(
+        err instanceof ApiError && err.status === 400 ? err.message : "Search failed — try again, or fill the form manually.",
+      );
     } finally {
       setBusy(false);
     }

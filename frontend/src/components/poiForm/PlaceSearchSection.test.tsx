@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { PlaceSearchSection } from "./PlaceSearchSection";
+import { ApiError } from "../../api/client";
 
 describe("PlaceSearchSection", () => {
   it("uses a provider-neutral placeholder and enterKeyHint", () => {
@@ -58,5 +59,13 @@ describe("PlaceSearchSection", () => {
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent("Search failed — try again, or fill the form manually.");
     expect(status.textContent).not.toMatch(/google api key/i);
+  });
+
+  it("shows the backend's detail message when search fails with a 400 ApiError", async () => {
+    const onSearchPlaces = vi.fn().mockRejectedValue(new ApiError(400, "Stored Google API key can't be decrypted"));
+    render(<PlaceSearchSection onSearchPlaces={onSearchPlaces} onApplyDraft={vi.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText("Search places by name"), { target: { value: "cafe" } });
+    fireEvent.click(screen.getByRole("button", { name: /^search$/i }));
+    expect(await screen.findByText(/stored google api key can't be decrypted/i)).toBeInTheDocument();
   });
 });

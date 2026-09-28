@@ -53,13 +53,13 @@ export function ImagePicker({
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         {onUploadImage && (
           <>
-            <input id="poi-image" type="file" accept="image/*" aria-label="Choose image" onChange={onPickFile} style={hiddenInputStyle} className="photo-file-input" />
+            <input id="poi-image" type="file" accept="image/*" onChange={onPickFile} style={hiddenInputStyle} className="photo-file-input" />
             <label htmlFor="poi-image" className="hover-btn" style={{ ...ghostButtonStyle, padding: "8px 14px" }}>
               {imageUrl ? "Change photo" : "Add photo"}
             </label>
             {mobile && (
               <>
-                <input id="poi-image-camera" type="file" accept="image/*" capture="environment" aria-label="Take photo" onChange={onPickFile} style={hiddenInputStyle} className="photo-file-input" />
+                <input id="poi-image-camera" type="file" accept="image/*" capture="environment" onChange={onPickFile} style={hiddenInputStyle} className="photo-file-input" />
                 <label htmlFor="poi-image-camera" className="hover-btn" style={{ ...ghostButtonStyle, padding: "8px 14px" }}>
                   Take photo
                 </label>

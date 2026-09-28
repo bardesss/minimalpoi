@@ -296,7 +296,7 @@ describe("PoiFormModal enrich", () => {
       <PoiFormModal mode="add" initial={null} categories={cats} coords={{ lng: 4.9, lat: 52.37 }} onSubmit={onSubmit} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} onUploadImage={onUploadImage} />,
     );
     await userEvent.type(screen.getByLabelText(/^name$/i), "Pic Spot");
-    await userEvent.upload(screen.getByLabelText(/choose image/i), new File(["x"], "p.png", { type: "image/png" }));
+    await userEvent.upload(screen.getByLabelText(/add photo/i), new File(["x"], "p.png", { type: "image/png" }));
     expect(onUploadImage).toHaveBeenCalled();
     await screen.findByLabelText(/image preview/i);
     await userEvent.click(screen.getByRole("button", { name: /add place/i }));
@@ -328,7 +328,7 @@ describe("PoiFormModal enrich", () => {
     render(
       <PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} onUploadImage={onUploadImage} />,
     );
-    await userEvent.upload(screen.getByLabelText(/choose image/i), new File(["x"], "big.png", { type: "image/png" }));
+    await userEvent.upload(screen.getByLabelText(/add photo/i), new File(["x"], "big.png", { type: "image/png" }));
     await screen.findByText(/image too large/i);
   });
 
@@ -414,6 +414,97 @@ describe("PoiFormModal use my location", () => {
       render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
       await userEvent.click(screen.getByRole("button", { name: /use my location/i }));
       expect(await screen.findByText(/location permission was denied/i)).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe("PoiFormModal use my location is add-only", () => {
+  it("shows Use my location in add mode", () => {
+    const restoreGeo = mockGeolocation({ getCurrentPosition: () => {} });
+    try {
+      render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+      expect(screen.getByRole("button", { name: /use my location/i })).toBeInTheDocument();
+    } finally {
+      restoreGeo();
+    }
+  });
+
+  it("hides Use my location in edit mode on desktop", () => {
+    const restoreGeo = mockGeolocation({ getCurrentPosition: () => {} });
+    try {
+      render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null, image_url: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+      expect(screen.queryByRole("button", { name: /use my location/i })).not.toBeInTheDocument();
+    } finally {
+      restoreGeo();
+    }
+  });
+
+  it("hides Use my location in edit mode on mobile, but keeps the summary and Edit coordinates disclosure", () => {
+    const restore = mockMobileMatchMedia();
+    const restoreGeo = mockGeolocation({ getCurrentPosition: () => {} });
+    try {
+      render(<PoiFormModal mode="edit" initial={{ name: "X", lat: 1, lng: 2, address: null, city: null, country_code: null, category_id: 1, tags: [], notes: null, phone: null, email: null, website: null, image_url: null }} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+      expect(screen.queryByRole("button", { name: /use my location/i })).not.toBeInTheDocument();
+      expect(screen.getByText("1.00000, 2.00000")).toBeInTheDocument();
+      expect(screen.getByText(/edit coordinates/i)).toBeInTheDocument();
+    } finally {
+      restore();
+      restoreGeo();
+    }
+  });
+});
+
+type GeoSuccessCb = (pos: { coords: { latitude: number; longitude: number } }) => void;
+
+describe("PoiFormModal unmount guard", () => {
+  it("does not call onLocated after the form unmounts", async () => {
+    const onLocated = vi.fn();
+    const captured: { ok: GeoSuccessCb | null } = { ok: null };
+    const restore = mockGeolocation({
+      getCurrentPosition: (ok) => {
+        captured.ok = ok;
+      },
+    });
+    try {
+      const { unmount } = render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} onLocated={onLocated} />);
+      await userEvent.click(screen.getByRole("button", { name: /use my location/i }));
+      unmount();
+      captured.ok?.({ coords: { latitude: 52.1, longitude: 4.7 } });
+      expect(onLocated).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe("PoiFormModal coordinate errors and duplicate checks", () => {
+  it("opens the Edit coordinates disclosure on mobile when submit reports an invalid coordinate", async () => {
+    const restore = mockMobileMatchMedia();
+    try {
+      render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={() => {}} duplicateId={null} />);
+      await userEvent.type(screen.getByLabelText(/^name$/i), "Bad Coords");
+      const details = screen.getByText(/edit coordinates/i).closest("details");
+      expect(details).not.toHaveAttribute("open");
+      await userEvent.click(screen.getByRole("button", { name: /add place/i }));
+      await screen.findByText(/enter valid coordinates/i);
+      expect(details).toHaveAttribute("open");
+    } finally {
+      restore();
+    }
+  });
+
+  it("runs the duplicate check with the located coordinates after Use my location", async () => {
+    const onCheckDuplicate = vi.fn();
+    const restore = mockGeolocation({
+      getCurrentPosition: (ok) => ok({ coords: { latitude: 52.1234567, longitude: 4.7654321 } }),
+    });
+    try {
+      render(<PoiFormModal mode="add" initial={null} categories={cats} coords={null} onSubmit={() => {}} onClose={() => {}} onCheckDuplicate={onCheckDuplicate} duplicateId={null} />);
+      await userEvent.type(screen.getByLabelText(/^name$/i), "Located Spot");
+      await userEvent.click(screen.getByRole("button", { name: /use my location/i }));
+      expect(onCheckDuplicate).toHaveBeenCalledWith({ name: "Located Spot", lat: 52.123457, lng: 4.765432 });
     } finally {
       restore();
     }
