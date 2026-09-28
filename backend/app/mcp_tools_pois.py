@@ -189,14 +189,17 @@ async def enrich_from_url(url: str, ctx: Context) -> dict:
 
 @mcp.tool()
 async def search_places(query: str, ctx: Context) -> list[dict]:
-    """Search Google Places by name. Requires a configured Google API key."""
+    """Search for places by name. Uses Google Places when a Google API key is
+    configured, otherwise falls back to OpenStreetMap (Nominatim) — no key needed.
+    Each result carries a source field ("google" or "osm")."""
     return await _search_places(_bearer(ctx), query)
 
 
 @mcp.tool()
 async def get_place_draft(place_id: str, ctx: Context) -> dict:
-    """Fetch full Google Places details for a place_id (from search_places) as a draft.
-    Requires a configured Google API key."""
+    """Fetch full place details for a place_id (from search_places) as a draft.
+    Accepts either a Google place_id (requires a configured Google API key) or an
+    "osm:..." id from an OpenStreetMap search result (no key needed)."""
     return await _get_place_draft(_bearer(ctx), place_id)
 
 
