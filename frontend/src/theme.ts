@@ -159,6 +159,13 @@ export function toggleChipStyle(active: boolean): CSSProperties {
   };
 }
 
+/** Per-day route colours, cycled by day index. Chosen for contrast on the light
+ * basemap and distinct from each other; indigo first so day 1 matches the brand. */
+export const routeDayColors = ["#4f46e5", "#e11d48", "#0d9488", "#d97706", "#7c3aed", "#0284c7"] as const;
+export function routeDayColor(dayIndex: number): string {
+  return routeDayColors[((dayIndex % routeDayColors.length) + routeDayColors.length) % routeDayColors.length];
+}
+
 /** A left-aligned row button for pickable search/saved results. */
 export const resultButtonStyle: CSSProperties = {
   textAlign: "left",

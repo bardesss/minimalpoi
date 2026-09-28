@@ -35,6 +35,17 @@ describe("DayHeader", () => {
     expect(onToggle).not.toHaveBeenCalled();
   });
 
+  it("shows a color dot when color is given", () => {
+    render(<DayHeader {...base} collapsed={false} onToggle={() => {}} onNavigate={() => {}} color="#e11d48" />);
+    const dot = screen.getByTestId("day-color");
+    expect(dot.style.background).toBe("rgb(225, 29, 72)");
+  });
+
+  it("omits the color dot when color is not given", () => {
+    render(<DayHeader {...base} collapsed={false} onToggle={() => {}} onNavigate={() => {}} />);
+    expect(screen.queryByTestId("day-color")).not.toBeInTheDocument();
+  });
+
   it("gives the Navigate button a ≥44px touch target on mobile", () => {
     const original = window.matchMedia;
     window.matchMedia = ((q: string) => ({

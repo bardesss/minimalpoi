@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { RouteDetail, RouteNode, RouteNodeCreate, RouteNodeKind } from "../../types/api";
-import { ghostButtonStyle, theme } from "../../theme";
+import { ghostButtonStyle, routeDayColor, theme } from "../../theme";
 import { useAddNode, useUpdateNode } from "../../queries/hooks";
 import LegRow from "./LegRow";
 import RouteNodeRow from "./RouteNodeRow";
@@ -231,6 +231,7 @@ export default function RouteTimeline({ route, canEdit, onHoverNode, onInteracti
                   stopCount={group.nodes.length}
                   onToggle={() => toggleDay(group.dayKey)}
                   onNavigate={() => navigateDay(gi)}
+                  color={routeDayColor(gi)}
                 />
                 {expanded && gi === 0 && startSlot && <div style={{ marginTop: 8 }}>{startSlot}</div>}
                 {group.nodes.length === 0 && expanded && (

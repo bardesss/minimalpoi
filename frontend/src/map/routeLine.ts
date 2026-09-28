@@ -1,13 +1,19 @@
 import type { RouteLeg, RouteNode } from "../types/api";
 import { decodePolyline } from "./polyline";
 
-export function routeLine(nodes: RouteNode[], legs: RouteLeg[] = [], passedNodeIds: Set<number> = new Set()) {
+export function routeLine(
+  nodes: RouteNode[],
+  legs: RouteLeg[] = [],
+  passedNodeIds: Set<number> = new Set(),
+  dayIndexByNode: Map<number, number> = new Map(),
+) {
   let seq = 0;
   const points: GeoJSON.FeatureCollection = {
     type: "FeatureCollection",
     features: nodes.map((n, order) => {
       const properties: Record<string, unknown> = {
         order, kind: n.kind, name: n.name, id: n.id, passed: passedNodeIds.has(n.id),
+        day: dayIndexByNode.get(n.id) ?? 0,
       };
       // Role nodes (start/end) get a glyph; every other node gets the next
       // sequence number. This counter is the numbering the itinerary mirrors.
@@ -37,7 +43,7 @@ export function routeLine(nodes: RouteNode[], legs: RouteLeg[] = [], passedNodeI
     segments.push({
       type: "Feature",
       geometry: { type: "LineString", coordinates },
-      properties: { passed: passedNodeIds.has(b.id) },
+      properties: { passed: passedNodeIds.has(b.id), day: dayIndexByNode.get(b.id) ?? 0 },
     });
   }
 
