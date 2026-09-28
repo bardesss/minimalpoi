@@ -38,11 +38,25 @@ export default function MenuButton({
   const [activeIndex, setActiveIndex] = useState(0);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   // Move DOM focus to the active item whenever the menu is open (roving focus).
   useEffect(() => {
     if (open) itemRefs.current[activeIndex]?.focus();
   }, [open, activeIndex]);
+
+  // Close on any press outside the trigger + menu. The backdrop below can't do
+  // this alone: inside a transformed ancestor (the mobile bottom sheet) its
+  // `position: fixed` is scoped to that ancestor, so a tap on the map would
+  // miss it. Capture phase, so handlers that stop propagation can't swallow it.
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: PointerEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [open]);
 
   function openAt(index: number) {
     setActiveIndex(index);
@@ -90,7 +104,7 @@ export default function MenuButton({
   }
 
   return (
-    <div style={{ position: "relative" }}>
+    <div ref={rootRef} style={{ position: "relative" }}>
       <button
         ref={triggerRef}
         type="button"

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import MenuButton from "./MenuButton";
 
@@ -38,5 +38,29 @@ describe("MenuButton", () => {
     // Visual only: the menu's aria-label carries the same information.
     expect(screen.getByText("amy").closest('[aria-hidden="true"]')).not.toBeNull();
     expect(screen.getAllByRole("menuitem")).toHaveLength(1);
+  });
+  it("closes on a press outside it, even inside a transformed container", async () => {
+    render(
+      <div style={{ transform: "translateY(10px)" }}>
+        <MenuButton label="⋯" ariaLabel="More" menuLabel="M" items={[{ key: "a", label: "A", onSelect: () => {} }]} />
+      </div>,
+    );
+    const trigger = screen.getByRole("button", { name: "More" });
+    await userEvent.click(trigger);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    // An outside press dismisses without pulling focus back to the trigger.
+    expect(trigger).not.toHaveFocus();
+  });
+
+  it("stays open for presses inside the trigger or the menu", async () => {
+    const onSelect = vi.fn();
+    render(<MenuButton label="⋯" ariaLabel="More" menuLabel="M" items={[{ key: "a", label: "A", onSelect }]} />);
+    await userEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.pointerDown(screen.getByRole("menuitem", { name: "A" }));
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("menuitem", { name: "A" }));
+    expect(onSelect).toHaveBeenCalledOnce();
   });
 });
