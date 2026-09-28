@@ -213,6 +213,31 @@ describe("RouteTimeline empty day", () => {
   });
 });
 
+describe("RouteTimeline stay-cover line", () => {
+  function stayNode(id: number, name: string, arrive: string, depart: string, nights: number): RouteNode {
+    return { id, kind: "stay", position: id, nights, notes: null, poi_id: null, name, lat: 0, lng: 0, arrive_date: arrive, depart_date: depart, inbound_distance_m: null, inbound_duration_s: null, role: null };
+  }
+
+  const twoNightStay: RouteDetail = {
+    ...route,
+    start_date: "2026-10-09",
+    nodes: [stayNode(1, "Café de Jaren", "2026-10-09", "2026-10-11", 2)],
+    legs: [],
+  };
+
+  it("shows a 'Staying at' line with the night number on a later night, but not on the arrival day", () => {
+    render(<RouteTimeline route={twoNightStay} canEdit />);
+    const cards = screen.getAllByTestId("day-card");
+    // The line is split across a <strong> tag for the stay name, so match on the
+    // card's own text content rather than getByText (which only matches a single
+    // element's direct text nodes).
+    expect(within(cards[1]).getByTestId("stay-cover").textContent).toBe("Staying at Café de Jaren (night 2 of 2)");
+    expect(within(cards[1]).queryByText("No stops yet.")).not.toBeInTheDocument();
+    expect(within(cards[0]).queryByText(/staying at/i)).not.toBeInTheDocument();
+    expect(within(cards[0]).queryByTestId("stay-cover")).not.toBeInTheDocument();
+  });
+});
+
 describe("RouteTimeline navigate", () => {
   const twoDay: RouteDetail = {
     ...route,
