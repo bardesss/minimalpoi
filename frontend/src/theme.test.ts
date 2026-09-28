@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { theme, tintFromColor, inputStyle, monoInputStyle, textareaStyle, ghostButtonStyle, fieldLabelStyle, toggleChipStyle, resultButtonStyle } from "./theme";
+import { theme, tintFromColor, inputStyle, monoInputStyle, textareaStyle, ghostButtonStyle, fieldLabelStyle, toggleChipStyle, resultButtonStyle, routeDayColors, routeDayColor } from "./theme";
 
 describe("theme", () => {
   it("exposes the brand indigo", () => {
@@ -43,6 +43,17 @@ function contrastOnWhite(hex: string): number {
   const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
   return 1.05 / (L + 0.05); // (white 1.0 + .05) / (fg L + .05)
 }
+
+describe("routeDayColor", () => {
+  it("cycles through the 6 route day colours", () => {
+    expect(routeDayColor(0)).toBe(routeDayColors[0]);
+    expect(routeDayColor(7)).toBe(routeDayColors[1]);
+  });
+
+  it("has six distinct colours", () => {
+    expect(new Set(routeDayColors).size).toBe(6);
+  });
+});
 
 describe("contrast", () => {
   it("hint/coordinate text meets WCAG AA on white", () => {
