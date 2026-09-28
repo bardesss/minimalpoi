@@ -21,6 +21,7 @@ export default function MenuButton({
   items,
   triggerStyle,
   placement = "below",
+  heading,
 }: {
   label: ReactNode;
   ariaLabel?: string;
@@ -28,6 +29,9 @@ export default function MenuButton({
   items: MenuItem[];
   triggerStyle?: CSSProperties;
   placement?: "below" | "above";
+  /** Rendered at the top of the open menu, not a menuitem, not focusable.
+   * Visual only (aria-hidden): put anything a screen reader needs in `menuLabel`. */
+  heading?: ReactNode;
 }) {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
@@ -122,6 +126,9 @@ export default function MenuButton({
               overflow: "hidden",
             }}
           >
+            {heading != null && (
+              <div aria-hidden style={{ padding: "10px 12px 8px", borderBottom: `1px solid ${theme.color.borderSubtle}` }}>{heading}</div>
+            )}
             {items.map((item, i) => (
               <button
                 key={item.key}

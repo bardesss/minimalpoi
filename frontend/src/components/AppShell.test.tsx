@@ -204,3 +204,23 @@ describe("AppShell detail placement", () => {
     expect(mapHighlightSpy).not.toHaveBeenCalledWith(1);
   });
 });
+
+describe("AppShell Slice C", () => {
+  let restore: (() => void) | null = null;
+  afterEach(() => { restore?.(); restore = null; });
+
+  it("shows the category legend only while the sidebar is collapsed (desktop)", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    expect(screen.queryByText(/^categories$/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /collapse panel/i }));
+    expect(await screen.findByText(/^categories$/i)).toBeInTheDocument();
+  });
+
+  it("hides the add button while the overlay detail is open (desktop)", async () => {
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    await screen.findByRole("button", { name: /edit place/i });
+    expect(screen.queryByRole("button", { name: /add place/i })).not.toBeInTheDocument();
+  });
+});

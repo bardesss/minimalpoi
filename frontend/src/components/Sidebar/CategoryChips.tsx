@@ -23,7 +23,7 @@ export default function CategoryChips({
     ? ({ flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch" } as const)
     : ({ flexWrap: "wrap" } as const);
   return (
-    <div className={scroll ? "no-scrollbar" : undefined} style={{ display: "flex", gap: 7, padding: "12px 20px", ...layout }}>
+    <div className={scroll ? "no-scrollbar" : undefined} style={{ display: "flex", gap: 7, padding: scroll ? "6px 20px" : "12px 20px", ...layout }}>
       <button type="button" onClick={onClear} style={chip(activeIds.length === 0, theme.color.primary, scroll)}>All</button>
       {categories.map((c) => {
         const active = activeIds.includes(c.id);

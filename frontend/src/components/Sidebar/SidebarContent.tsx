@@ -1,6 +1,7 @@
 import type { Category, Poi, VisitedFilter } from "../../types/api";
 import type { MapViewMode } from "../../lib/mapViewPref";
 import type { SortMode } from "../../lib/sortPref";
+import type { ListDensity } from "../../lib/listDensityPref";
 import CategoryChips from "./CategoryChips";
 import FilterPopover from "./FilterPopover";
 import ListToolbar from "./ListToolbar";
@@ -30,6 +31,8 @@ export interface SidebarContentProps {
   onViewModeChange: (mode: MapViewMode) => void;
   sortMode: SortMode;
   onSortChange: (mode: SortMode) => void;
+  density: ListDensity;
+  onDensityChange: (d: ListDensity) => void;
   /** Mobile: chips scroll horizontally and the filters tuck beside the search box. */
   mobile?: boolean;
   onHover?: (id: number | null) => void;
@@ -44,12 +47,15 @@ export default function SidebarContent(props: SidebarContentProps) {
     onSortChange: props.onSortChange,
     viewMode: props.viewMode,
     onViewModeChange: props.onViewModeChange,
+    density: props.density,
+    onDensityChange: props.onDensityChange,
   };
   return (
     <>
       <SearchBox
         value={props.search}
         onChange={props.onSearch}
+        compact={props.mobile}
         // Mobile tucks the filters trigger beside search so it doesn't cost a row;
         // desktop shows the filters inline in their own bar below the chips.
         trailing={props.mobile ? <FilterPopover {...filterProps} mobile /> : undefined}
@@ -64,6 +70,7 @@ export default function SidebarContent(props: SidebarContentProps) {
       />
       {!props.mobile && <ListToolbar {...filterProps} count={props.pois.length} />}
       <PoiList
+        key={props.density}
         pois={props.pois}
         categoriesById={props.categoriesById}
         myVisitedPoiIds={props.myVisitedPoiIds}
@@ -73,6 +80,7 @@ export default function SidebarContent(props: SidebarContentProps) {
         isError={props.isError}
         onRetry={props.onRetry}
         onHover={props.onHover}
+        density={props.density}
       />
     </>
   );

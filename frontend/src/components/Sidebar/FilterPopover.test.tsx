@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FilterPopover from "./FilterPopover";
 
-const base = { visited: "any" as const, onVisitedChange: () => {}, sortMode: "recent" as const, onSortChange: () => {}, viewMode: "fit" as const, onViewModeChange: () => {} };
+const base = { visited: "any" as const, onVisitedChange: () => {}, sortMode: "recent" as const, onSortChange: () => {}, viewMode: "fit" as const, onViewModeChange: () => {}, density: "cards" as const, onDensityChange: () => {} };
 
 describe("FilterPopover", () => {
   it("opens the popover and exposes the three controls", async () => {

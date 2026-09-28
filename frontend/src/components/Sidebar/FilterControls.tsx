@@ -2,11 +2,17 @@ import { Eye, ArrowUpDown } from "lucide-react";
 import { theme } from "../../theme";
 import type { MapViewMode } from "../../lib/mapViewPref";
 import type { SortMode } from "../../lib/sortPref";
+import type { ListDensity } from "../../lib/listDensityPref";
 import type { VisitedFilter } from "../../types/api";
 
-const VIEW_MODES: { mode: MapViewMode; label: string }[] = [
-  { mode: "fit", label: "Fit" },
-  { mode: "center", label: "Center" },
+const VIEW_MODES: { mode: MapViewMode; label: string; title: string }[] = [
+  { mode: "fit", label: "Auto-fit", title: "Frame the map on the current results" },
+  { mode: "center", label: "Fixed view", title: "Keep the map where you leave it" },
+];
+
+const DENSITIES: { value: ListDensity; label: string }[] = [
+  { value: "cards", label: "Cards" },
+  { value: "list", label: "List" },
 ];
 
 const SORTS: { mode: SortMode; label: string }[] = [
@@ -49,6 +55,8 @@ interface FilterControlsProps {
   onSortChange: (mode: SortMode) => void;
   viewMode: MapViewMode;
   onViewModeChange: (mode: MapViewMode) => void;
+  density: ListDensity;
+  onDensityChange: (d: ListDensity) => void;
   /** Coarse pointer: enlarge the pills to a ≥44px tap target. */
   mobile?: boolean;
 }
@@ -65,6 +73,8 @@ export default function FilterControls({
   onSortChange,
   viewMode,
   onViewModeChange,
+  density,
+  onDensityChange,
   mobile = false,
 }: FilterControlsProps) {
   const wrap = mobile ? { ...wrapStyle, padding: "2px 7px", minHeight: 44 } : wrapStyle;
@@ -97,7 +107,7 @@ export default function FilterControls({
         </select>
       </span>
       <span role="group" aria-label="Map view" style={{ display: "inline-flex", borderRadius: theme.radius.pill, border: `1px solid ${theme.color.borderSubtle}`, overflow: "hidden" }}>
-        {VIEW_MODES.map(({ mode, label }) => {
+        {VIEW_MODES.map(({ mode, label, title }) => {
           const viewActive = viewMode === mode;
           return (
             <button
@@ -105,7 +115,24 @@ export default function FilterControls({
               type="button"
               aria-pressed={viewActive}
               onClick={() => onViewModeChange(mode)}
+              title={title}
               style={{ border: "none", cursor: "pointer", fontFamily: theme.font.ui, fontSize: 11.5, fontWeight: 700, padding: mobile ? "9px 14px" : "4px 11px", background: viewActive ? theme.color.primary : "transparent", color: viewActive ? "#fff" : theme.color.textMuted }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </span>
+      <span role="group" aria-label="List layout" style={{ display: "inline-flex", borderRadius: theme.radius.pill, border: `1px solid ${theme.color.borderSubtle}`, overflow: "hidden" }}>
+        {DENSITIES.map(({ value, label }) => {
+          const active = density === value;
+          return (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onDensityChange(value)}
+              style={{ border: "none", cursor: "pointer", fontFamily: theme.font.ui, fontSize: 11.5, fontWeight: 700, padding: mobile ? "9px 14px" : "4px 11px", background: active ? theme.color.primary : "transparent", color: active ? "#fff" : theme.color.textMuted }}
             >
               {label}
             </button>

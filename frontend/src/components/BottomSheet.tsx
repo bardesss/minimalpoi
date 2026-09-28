@@ -1,8 +1,17 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, PointerEvent, ReactNode } from "react";
 import { theme } from "../theme";
 import { useSheetDrag } from "./useSheetDrag";
 import type { Snap } from "./useSheetDrag";
 import { useMapInset } from "../map/useMapInsets";
+
+// Header slots are centred by stretching them over the row, not with a
+// transform: a transform would make each slot a stacking context and the
+// containing block of a fixed menu backdrop inside it.
+const slot: CSSProperties = { position: "absolute", top: 0, bottom: 0, display: "flex", alignItems: "center" };
+
+// Presses inside a slot (a menu backdrop, padding, a count badge) never start a
+// drag or a tap-to-cycle; only the row around the grip does.
+const stopDrag = (e: PointerEvent) => e.stopPropagation();
 
 /**
  * Map-first bottom sheet. The map stays fully interactive above it; only the
@@ -13,6 +22,7 @@ export default function BottomSheet({
   children,
   initial = "half",
   label,
+  headerLeft,
   headerRight,
   insetKey = "bottom-sheet",
   hidden = false,
@@ -21,6 +31,7 @@ export default function BottomSheet({
   children: ReactNode;
   initial?: Snap;
   label?: string;
+  headerLeft?: ReactNode;
   headerRight?: ReactNode;
   /** Map-inset registry key; a second sheet needs its own. */
   insetKey?: string;
@@ -71,12 +82,17 @@ export default function BottomSheet({
         pointerEvents: hidden ? "none" : undefined,
       }}
     >
+      {/* The row is the drag surface but carries no role: separator children are
+          presentational, which would hide the nav/account controls in the slots
+          from assistive tech. Only the grip is the labelled separator. */}
       <div
         {...handlers}
-        role="separator"
-        aria-label={handleLabel}
+        data-testid="sheet-handle"
         style={{
           position: "relative",
+          // Own stacking layer above the content, so a menu opened from a slot
+          // paints over the search box / list rows below.
+          zIndex: 1,
           flex: "none",
           minHeight: 44,
           display: "flex",
@@ -88,11 +104,12 @@ export default function BottomSheet({
           WebkitUserSelect: "none",
         }}
       >
-        <div style={{ width: 40, height: 5, borderRadius: 999, background: theme.color.borderStd }} />
+        {headerLeft && (
+          <span onPointerDown={stopDrag} style={{ ...slot, left: 16 }}>{headerLeft}</span>
+        )}
+        <div role="separator" aria-label={handleLabel} style={{ width: 40, height: 5, borderRadius: 999, background: theme.color.borderStd }} />
         {headerRight && (
-          <span style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)" }}>
-            {headerRight}
-          </span>
+          <span onPointerDown={stopDrag} style={{ ...slot, right: 16 }}>{headerRight}</span>
         )}
       </div>
       <div style={{ height: contentHeight, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>{children}</div>

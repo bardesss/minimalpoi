@@ -1,13 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import AppLayout from "./AppLayout";
+import { stubMediaQueries } from "../test/utils";
 
-// useIsMobile is forced false (desktop layout); useMediaQuery defers to
-// window.matchMedia so individual tests can override it (e.g. the
-// very-wide-viewport breakpoint) the same way other suites stub matchMedia.
+// useIsMobile and useMediaQuery both defer to window.matchMedia, so
+// individual tests can override it (e.g. the very-wide-viewport breakpoint
+// or the mobile breakpoint) the same way other suites stub matchMedia. The
+// global jsdom stub answers false for every query (desktop layout).
 vi.mock("../lib/useMediaQuery", () => ({
-  useIsMobile: () => false,
+  useIsMobile: () =>
+    typeof window.matchMedia === "function" ? window.matchMedia("(max-width: 768px)").matches : false,
   useMediaQuery: (query: string) =>
     typeof window.matchMedia === "function" ? window.matchMedia(query).matches : false,
 }));
@@ -47,12 +50,40 @@ function renderLayout(over: Partial<React.ComponentProps<typeof AppLayout>> = {}
 }
 
 describe("AppLayout", () => {
-  it("renders sidebar, main, nav toggle and account footer", () => {
+  let restore: (() => void) | null = null;
+  afterEach(() => {
+    restore?.();
+    restore = null;
+  });
+
+  it("renders sidebar, main, nav toggle and the account menu", () => {
     renderLayout();
     expect(screen.getByText("SIDEBAR")).toBeInTheDocument();
     expect(screen.getByText("MAIN")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Routes" })).toBeInTheDocument();
-    expect(screen.getByText("amy")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Account (amy)" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /log out/i })).not.toBeInTheDocument();
+  });
+
+  it("mobile: nav and account live in the sheet's handle row (no brand row, no footer)", () => {
+    restore = stubMediaQueries((q) => q === "(max-width: 768px)");
+    renderLayout();
+    const handle = screen.getByTestId("sheet-handle");
+    expect(within(handle).getByRole("separator", { name: /drag to resize list/i })).toBeInTheDocument();
+    expect(within(handle).getByRole("button", { name: "Account (amy)" })).toBeInTheDocument();
+    expect(within(handle).getByRole("link", { name: "Routes" })).toBeInTheDocument();
+    expect(screen.queryByText("MinimalPOI")).not.toBeInTheDocument();
+  });
+
+  it("mobile: the handle row uses the compact icon nav so it clears the grip", () => {
+    restore = stubMediaQueries((q) => q === "(max-width: 768px)");
+    renderLayout();
+    const handle = screen.getByTestId("sheet-handle");
+    for (const name of ["Map", "Routes"]) {
+      const link = within(handle).getByRole("link", { name });
+      expect(link).toHaveAttribute("title", name);
+      expect(link.textContent).toBe("");
+    }
   });
 
   it("hides the nav toggle when routes are disabled", () => {
