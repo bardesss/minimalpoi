@@ -74,6 +74,34 @@ describe("useSheetDrag", () => {
     expect(result.current.restTranslate).toBeCloseTo(startRest);
   });
 
+  it("a long fast swipe that already passed the flung snap keeps the further one (nearest wins)", () => {
+    const now = vi.spyOn(performance, "now");
+    const { result } = renderHook(() => useSheetDrag("peek"));
+    now.mockReturnValue(1000);
+    act(() => result.current.handlers.onPointerDown(ev(700)));
+    now.mockReturnValue(1050);
+    // 650px up in 50ms: far enough to clamp the drag at "full" already, and
+    // fast enough that flingSnap("peek", …) only reaches "half" — the nearest
+    // snap (full) is further than the flung one, so it must win.
+    act(() => result.current.handlers.onPointerMove(ev(50)));
+    act(() => result.current.handlers.onPointerUp());
+    expect(result.current.restTranslate).toBeCloseTo(window.innerHeight * 0.1);
+  });
+
+  it("a slow long drag settles on the nearest snap, not one step from the start", () => {
+    const now = vi.spyOn(performance, "now");
+    const { result } = renderHook(() => useSheetDrag("full"));
+    now.mockReturnValue(1000);
+    act(() => result.current.handlers.onPointerDown(ev(100)));
+    now.mockReturnValue(1800);
+    // A single slow move (800ms) lands the drag right at "peek"; the release
+    // window (80ms) only sees this one sample, so velocity is 0 and no fling
+    // applies — it must settle on the nearest snap (peek), two away from full.
+    act(() => result.current.handlers.onPointerMove(ev(100 + window.innerHeight * 0.62)));
+    act(() => result.current.handlers.onPointerUp());
+    expect(result.current.restTranslate).toBeCloseTo(window.innerHeight * 0.72);
+  });
+
   it("ignores pointer-downs on controls inside the handle", () => {
     const { result } = renderHook(() => useSheetDrag("half"));
     const startRest = result.current.restTranslate;
