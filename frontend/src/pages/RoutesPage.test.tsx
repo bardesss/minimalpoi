@@ -14,6 +14,8 @@ const detail: RouteDetail = {
   created_by: 1, owner_username: "admin", team_id: 9, team_name: "Ghosts", round_trip: false, can_edit: true,
   nodes: [], legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
 };
+const nonEditorDetail: RouteDetail = { ...detail, can_edit: false };
+const routeState: { detail: RouteDetail } = { detail };
 
 vi.mock("../components/routes/RouteMap", () => ({
   default: (props: Record<string, unknown>) => {
@@ -30,7 +32,7 @@ vi.mock("../components/routes/ShareImageModal", () => ({
 
 vi.mock("../queries/hooks", () => ({
   useRoutes: () => ({ data: [{ id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-20", scheduled_end_date: "2026-07-16", node_count: 0, created_by: 1, owner_username: "admin", team_id: 3, team_name: "Crew" }], isLoading: false }),
-  useRoute: () => ({ data: detail, isLoading: false }),
+  useRoute: () => ({ data: routeState.detail, isLoading: false }),
   useSettings: () => ({ data: { map_tile_url: "", default_map_center_lat: 52, default_map_center_lng: 4, default_map_zoom: 11, routes_enabled: true } }),
   useTeams: () => ({ data: [{ id: 3, name: "Crew", created_by: 1, member_ids: [1] }] }),
   useCreateRoutePlan: () => ({ mutateAsync: createPlanAsync, isPending: false }),
@@ -56,6 +58,7 @@ vi.mock("../auth/AuthContext", () => ({
 vi.mock("../queries/useRouteEvents", () => ({ useRouteEvents: () => {} }));
 
 beforeEach(() => {
+  routeState.detail = detail;
   createPlanAsync.mockClear();
   deleteAsync.mockClear();
 });
@@ -199,13 +202,25 @@ describe("RoutesPage", () => {
   });
 
   it("offers Public link to editors only", async () => {
-    // detail.can_edit is true in this file's only useRoute mock; there is no non-editor
-    // variant to render, so this test covers the editor case only.
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
     await userEvent.click(await screen.findByRole("button", { name: /share/i }));
     const menu = screen.getByRole("menu", { name: /share route/i });
     expect(within(menu).getByRole("menuitem", { name: /public link/i })).toBeInTheDocument();
+  });
+
+  it("hides Public link and Edit from non-editors, and opens Share rightward", async () => {
+    routeState.detail = nonEditorDetail;
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /share/i }));
+    expect(screen.queryByRole("button", { name: /^edit$/i })).not.toBeInTheDocument();
+    const menu = screen.getByRole("menu", { name: /share route/i });
+    expect(within(menu).queryByRole("menuitem", { name: /public link/i })).not.toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: /export gpx/i })).toBeInTheDocument();
+    // With no Edit button before it the trigger sits at the sidebar's left
+    // edge, so the menu must hang from its left edge to stay visible.
+    expect(menu.style.left).toBe("0px");
   });
 
   it("leaves Share image out of the menu for a route with no stops", async () => {

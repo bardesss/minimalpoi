@@ -22,6 +22,7 @@ export default function MenuButton({
   triggerStyle,
   placement = "below",
   heading,
+  align = "right",
 }: {
   label: ReactNode;
   ariaLabel?: string;
@@ -32,6 +33,9 @@ export default function MenuButton({
   /** Rendered at the top of the open menu, not a menuitem, not focusable.
    * Visual only (aria-hidden): put anything a screen reader needs in `menuLabel`. */
   heading?: ReactNode;
+  /** Which trigger edge the menu hangs from: "right" grows leftward (default),
+   * "left" grows rightward — for a trigger near the left edge of a clipping box. */
+  align?: "left" | "right";
 }) {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
@@ -127,7 +131,7 @@ export default function MenuButton({
             onKeyDown={onMenuKeyDown}
             style={{
               position: "absolute",
-              right: 0,
+              ...(align === "left" ? { left: 0 } : { right: 0 }),
               ...(placement === "above" ? { bottom: "calc(100% + 4px)" } : { top: "calc(100% + 4px)" }),
               zIndex: 11,
               background: "#fff",
