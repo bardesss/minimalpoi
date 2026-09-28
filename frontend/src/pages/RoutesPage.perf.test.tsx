@@ -76,8 +76,9 @@ describe("RoutesPage nearbyPois identity", () => {
     expect(first.map((p) => p.id)).toEqual([200]); // 100 is on the route
 
     // Any unrelated state change re-renders RoutesPage. Opening the share-image
-    // modal is a clean trigger that doesn't touch pois or nodes.
-    fireEvent.click(screen.getByRole("button", { name: /share image/i }));
+    // modal (now via the Share menu) is a clean trigger that doesn't touch pois or nodes.
+    fireEvent.click(screen.getByRole("button", { name: /share/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /share image/i }));
 
     const second = ((globalThis as Record<string, unknown>).__routeMapProps as { pois: Poi[] }).pois;
     expect(second).toBe(first); // memoized — same array, so RouteMap's [pois] effect won't refire

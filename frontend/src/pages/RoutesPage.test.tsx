@@ -178,10 +178,42 @@ describe("RoutesPage", () => {
     expect(await screen.findAllByText(/Ghosts/)).not.toHaveLength(0);
   });
 
-  it("shows a Share image button, disabled for a node-less route", async () => {
+  it("puts the title on its own full-width row above the actions", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
-    expect(await screen.findByRole("button", { name: /share image/i })).toBeDisabled();
+    const title = await screen.findByRole("heading", { name: "NL trip" });
+    const share = screen.getByRole("button", { name: /share/i });
+    // The title block is not a flex sibling of the actions any more: the actions come after it in its own row.
+    expect(title.closest("[data-testid=route-title-block]")).not.toBeNull();
+    expect(share.closest("[data-testid=route-title-block]")).toBeNull();
+  });
+
+  it("groups export and sharing in one Share menu", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /share/i }));
+    const menu = screen.getByRole("menu", { name: /share route/i });
+    for (const name of [/export geojson/i, /export gpx/i, /export kml/i]) {
+      expect(within(menu).getByRole("menuitem", { name })).toBeInTheDocument();
+    }
+  });
+
+  it("offers Public link to editors only", async () => {
+    // detail.can_edit is true in this file's only useRoute mock; there is no non-editor
+    // variant to render, so this test covers the editor case only.
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /share/i }));
+    const menu = screen.getByRole("menu", { name: /share route/i });
+    expect(within(menu).getByRole("menuitem", { name: /public link/i })).toBeInTheDocument();
+  });
+
+  it("leaves Share image out of the menu for a route with no stops", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /share/i }));
+    const menu = screen.getByRole("menu", { name: /share route/i });
+    expect(within(menu).queryByRole("menuitem", { name: /share image/i })).not.toBeInTheDocument();
   });
 
   it("edit route modal offers the caller's teams to reassign", async () => {
