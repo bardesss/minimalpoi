@@ -3,7 +3,9 @@ import type { Category, PlaceSearchResult, PoiCreate, PoiDraft, TagInfo } from "
 import { ApiError } from "../api/client";
 import { ghostButtonStyle, inputStyle, monoInputStyle, primaryButtonStyle, textareaStyle, theme, fieldLabelStyle } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
+import { useSidebarWidth } from "../lib/layout";
 import { useDialog } from "../lib/useDialog";
+import { useMapInset } from "../map/useMapInsets";
 import { roundCoord } from "../lib/geo";
 import PhoneInput from "./PhoneInput";
 import TagInput from "./TagInput";
@@ -70,6 +72,8 @@ export default function PoiFormModal({
   getMapCenter,
   tagSuggestions = [],
   onLocated,
+  onCoordsChange,
+  coversMap,
 }: {
   mode: "add" | "edit";
   initial: PoiFormInitial | null;
@@ -86,6 +90,10 @@ export default function PoiFormModal({
   onUploadImage?: (file: File) => Promise<{ url: string }>;
   getMapCenter?: () => { lng: number; lat: number } | null;
   onLocated?: (c: { lat: number; lng: number }) => void;
+  /** Valid parsed coordinates, or null, every time the lat/lng fields change. */
+  onCoordsChange?: (c: { lat: number; lng: number } | null) => void;
+  /** Desktop only: the sidebar is collapsed, so the docked panel sits over the map. */
+  coversMap?: boolean;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [categoryId, setCategoryId] = useState<string>(initial?.category_id != null ? String(initial.category_id) : "");
@@ -148,19 +156,49 @@ export default function PoiFormModal({
     wasPickingRef.current = picking;
   }, [picking]);
 
-  // Click-to-place / map-center updates flow in via `coords` (add mode only).
+  const isAdd = mode === "add";
+  const isMobile = useIsMobile();
+  const sidebarWidth = useSidebarWidth();
+
+  // Click-to-place / map-center updates flow in via `coords`: always in add
+  // mode, and on desktop (where the docked form sits over the interactive
+  // map) in edit mode too. Mobile edit stays a modal sheet with no map
+  // interaction behind it, so it doesn't pick up `coords`.
   useEffect(() => {
-    if (mode === "add" && coords) {
+    if (coords && (mode === "add" || !isMobile)) {
       setLat(String(roundCoord(coords.lat)));
       setLng(String(roundCoord(coords.lng)));
     }
-  }, [coords, mode]);
+  }, [coords, mode, isMobile]);
 
-  const isAdd = mode === "add";
-  const isMobile = useIsMobile();
-  // Add mode is a non-modal click-through overlay (so the map stays clickable
-  // behind it) — no backdrop-close, no focus trap. Edit mode is a true modal.
-  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop: !isAdd, trapFocus: !isAdd });
+  // Latest-callback ref (as MapView does for its map-instance callbacks) so
+  // the effect below depends only on [lat, lng]. AppShell (Task 3) passes an
+  // inline arrow that sets state with a fresh object on every call; if that
+  // callback were itself a dependency, each render would hand the effect a
+  // new function identity, re-firing it, calling setState again, and looping.
+  const onCoordsChangeRef = useRef(onCoordsChange);
+  onCoordsChangeRef.current = onCoordsChange;
+
+  // Reports the currently-parsed, in-range coordinates (or null) so a parent
+  // can mirror them onto a draggable map pin. Not called on unmount — the
+  // parent clears its own pin when it closes the form.
+  useEffect(() => {
+    if (!onCoordsChangeRef.current) return;
+    const latNum = parseCoord(lat);
+    const lngNum = parseCoord(lng);
+    const valid = latNum !== null && lngNum !== null && latNum >= -90 && latNum <= 90 && lngNum >= -180 && lngNum <= 180;
+    onCoordsChangeRef.current(valid ? { lat: latNum, lng: lngNum } : null);
+  }, [lat, lng]);
+
+  // Desktop: docked, non-modal — the map behind it stays interactive, so no
+  // backdrop-close and no focus trap. Mobile: add is a non-modal click-through
+  // sheet (pick-on-map); edit is a true modal sheet with a backdrop.
+  const modal = isMobile && !isAdd;
+  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop: modal, trapFocus: modal });
+  // On desktop the docked panel covers the map's left edge only when the
+  // sidebar it replaces is collapsed (`coversMap`); otherwise it sits beside
+  // the sidebar and the map needs no extra inset.
+  useMapInset("poi-form", !isMobile && coversMap ? { left: sidebarWidth } : null);
 
   function applyDraft(draft: PoiDraft, source: string | null) {
     if (draft.name != null) setName(draft.name);
@@ -286,8 +324,29 @@ export default function PoiFormModal({
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: isAdd ? "transparent" : "rgba(26,24,22,.42)", backdropFilter: isAdd ? "none" : "blur(2px)", pointerEvents: isAdd ? "none" : "auto", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", animation: "fadeIn .16s ease" }} onClick={onBackdropClick}>
-      <div ref={dialogRef} role="dialog" aria-modal={isAdd ? false : true} {...(picking ? { "aria-label": "Pick a location on the map" } : { "aria-labelledby": "poi-form-title" })} className="poi-scroll" style={{ width: isMobile ? "100%" : 540, maxWidth: "100%", maxHeight: picking ? "none" : isMobile ? "92vh" : "90vh", overflowY: picking ? "visible" : "auto", background: "#fff", borderRadius: isMobile ? "18px 18px 0 0" : theme.radius.modal, paddingBottom: isMobile ? "env(safe-area-inset-bottom)" : undefined, boxShadow: theme.shadow.modal, animation: isMobile ? "sheetUp .26s cubic-bezier(.32,.72,0,1)" : "popIn .2s ease", pointerEvents: "auto" }}>
+    <div
+      style={
+        isMobile
+          ? { position: "fixed", inset: 0, zIndex: 2000, background: isAdd ? "transparent" : "rgba(26,24,22,.42)", backdropFilter: isAdd ? "none" : "blur(2px)", pointerEvents: isAdd ? "none" : "auto", display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn .16s ease" }
+          // Desktop: docked to the sidebar column, not a full-screen overlay —
+          // the rest of the page (map included) stays interactive around it.
+          : { position: "fixed", top: 0, left: 0, bottom: 0, width: sidebarWidth, zIndex: 1500 }
+      }
+      onClick={onBackdropClick}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal={modal}
+        {...(picking ? { "aria-label": "Pick a location on the map" } : { "aria-labelledby": "poi-form-title" })}
+        className="poi-scroll"
+        style={
+          isMobile
+            ? { width: "100%", maxWidth: "100%", maxHeight: picking ? "none" : "92vh", overflowY: picking ? "visible" : "auto", background: "#fff", borderRadius: "18px 18px 0 0", paddingBottom: "env(safe-area-inset-bottom)", boxShadow: theme.shadow.modal, animation: "sheetUp .26s cubic-bezier(.32,.72,0,1)", pointerEvents: "auto" }
+            // Desktop: fills the docked column and scrolls internally.
+            : { width: "100%", height: "100%", background: "#fff", borderRight: `1px solid ${theme.color.borderCard}`, boxShadow: theme.shadow.detail, overflowY: "auto", pointerEvents: "auto" }
+        }
+      >
         {picking ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "18px 24px" }}>
             <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: theme.color.textBody }}>Pan the map so the crosshair marks the spot.</p>
@@ -415,7 +474,7 @@ export default function PoiFormModal({
               <>
                 {coordFields}
                 <p style={{ margin: "-6px 0 0", fontSize: 11.5, color: theme.color.textPlaceholder }}>
-                  Click anywhere on the map to drop the coordinates here.
+                  Click the map or drag the pin to set the location.
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {locateButton}

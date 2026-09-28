@@ -26,7 +26,13 @@ interface Props {
   onUserLocate?: (center: { lng: number; lat: number }) => void;
   /** Pin to ring while its list card is hovered/focused. */
   highlightId?: number | null;
+  /** Draggable pin shown while adding/editing a place; null hides it. */
+  draftPin?: { lng: number; lat: number } | null;
+  /** Fires with the new coordinates when the draft pin is dragged. */
+  onDraftPinMove?: (c: { lng: number; lat: number }) => void;
 }
+
+const DRAFT_PIN_LABEL = "Place location (drag to move)";
 
 const VISITED_RING_COLOR = "#4f46e5";
 
@@ -83,7 +89,7 @@ function addPoiLayers(map: MlMap, color: ReturnType<typeof categoryColorExpressi
   });
 }
 
-export default function MapView({ pois, categories, settings, selectedId, onSelect, onMapClick, addMode, visitedPoiIds, mapRef, onMoveEnd, onUserLocate, highlightId = null }: Props) {
+export default function MapView({ pois, categories, settings, selectedId, onSelect, onMapClick, addMode, visitedPoiIds, mapRef, onMoveEnd, onUserLocate, highlightId = null, draftPin = null, onDraftPinMove }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Keep latest callbacks/flags in refs so the load handler closure stays current.
   const onSelectRef = useRef(onSelect);
@@ -92,6 +98,8 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
   const visitedRef = useRef(visitedPoiIds);
   const onMoveEndRef = useRef(onMoveEnd);
   const onUserLocateRef = useRef(onUserLocate);
+  const onDraftPinMoveRef = useRef(onDraftPinMove);
+  const draftMarkerRef = useRef<InstanceType<typeof maplibregl.Marker> | null>(null);
   // pois/categories/selectedId arrive asynchronously (queries) and may land
   // before OR after the map's "load" event. The load handler must read their
   // latest values via refs — otherwise a source created after the data has
@@ -106,6 +114,7 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
   visitedRef.current = visitedPoiIds;
   onMoveEndRef.current = onMoveEnd;
   onUserLocateRef.current = onUserLocate;
+  onDraftPinMoveRef.current = onDraftPinMove;
   poisRef.current = pois;
   categoriesRef.current = categories;
   selectedIdRef.current = selectedId;
@@ -153,7 +162,10 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
 
     map.on("click", "unclustered", (e) => {
       const f = e.features?.[0];
-      if (f) onSelectRef.current(Number((f.properties as { id: number }).id));
+      // While a place's pin is being placed, a marker click must not change
+      // the selection underneath the open form; the general map click below
+      // still moves the pin.
+      if (f && !addModeRef.current) onSelectRef.current(Number((f.properties as { id: number }).id));
       hoveredId = null;
       hoverPopup.remove();
     });
@@ -210,6 +222,41 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Draggable pin shown while adding/editing a place. Runs after the init
+  // effect above, which is when `mapRef.current` first becomes available.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!draftPin) {
+      draftMarkerRef.current?.remove();
+      draftMarkerRef.current = null;
+      return;
+    }
+    if (!draftMarkerRef.current) {
+      const marker = new maplibregl.Marker({ draggable: true, color: theme.color.primary });
+      marker.setLngLat([draftPin.lng, draftPin.lat]).addTo(map);
+      marker.getElement().setAttribute("aria-label", DRAFT_PIN_LABEL);
+      marker.on("dragend", () => {
+        const { lng, lat } = marker.getLngLat();
+        onDraftPinMoveRef.current?.({ lng, lat });
+      });
+      draftMarkerRef.current = marker;
+    } else {
+      draftMarkerRef.current.setLngLat([draftPin.lng, draftPin.lat]);
+    }
+    // Keyed on the coordinates (not the `draftPin` object) so a new object
+    // with the same lng/lat doesn't move the marker unnecessarily.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftPin?.lng, draftPin?.lat, mapRef]);
+
+  // Remove the draft marker on unmount.
+  useEffect(() => {
+    return () => {
+      draftMarkerRef.current?.remove();
+      draftMarkerRef.current = null;
+    };
   }, []);
 
   // Centre the camera on the part of the map not covered by the sheet/panel.
