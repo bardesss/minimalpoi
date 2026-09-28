@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { sharePdfModel } from "./sharePdfModel";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { isWinAnsi, sharePdfModel } from "./sharePdfModel";
 import type { RouteDetail } from "../../types/api";
 
 function route(over: Partial<RouteDetail> = {}): RouteDetail {
@@ -67,5 +67,37 @@ describe("sharePdfModel", () => {
     const m = sharePdfModel(route({ nodes: [] }));
     expect(m.days).toEqual([]);
     expect(m.startBookend).toBeNull();
+  });
+
+  describe("day labels", () => {
+    afterEach(() => vi.restoreAllMocks());
+    const labelIn = (lang: string) => {
+      vi.spyOn(navigator, "language", "get").mockReturnValue(lang);
+      return sharePdfModel(route({ nodes: [node({ id: 1, name: "A", day_offset: 0 })] })).days[0].label;
+    };
+
+    it("keeps the user's language when the PDF font can draw it", () => {
+      expect(labelIn("nl-NL")).toBe("DI 14 JUL");
+    });
+
+    it("falls back to English when the localized label has characters the PDF font lacks", () => {
+      // Polish "WT 14 LIP" is fine, but October's "PAŹ" isn't in WinAnsi.
+      vi.spyOn(navigator, "language", "get").mockReturnValue("pl-PL");
+      const m = sharePdfModel(route({ start_date: "2026-10-14", nodes: [node({ id: 1, name: "A", day_offset: 0 })] }));
+      expect(m.days[0].label).toBe("WED 14 OCT");
+      expect(labelIn("ru-RU")).toBe("TUE 14 JUL");
+    });
+  });
+});
+
+describe("isWinAnsi", () => {
+  it("accepts Latin-1 and the Windows-1252 extras", () => {
+    expect(isWinAnsi("MÄR ÉTÉ ñ")).toBe(true);
+    expect(isWinAnsi("Š Ž € – “ ”")).toBe(true);
+  });
+  it("rejects characters outside Windows-1252", () => {
+    expect(isWinAnsi("ŚR")).toBe(false);
+    expect(isWinAnsi("ВТ")).toBe(false);
+    expect(isWinAnsi(String.fromCharCode(0x81))).toBe(false); // C1 control, unmapped in Windows-1252
   });
 });

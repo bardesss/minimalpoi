@@ -15,6 +15,27 @@ export interface SharePdfModel {
   days: SharePdfDay[];
 }
 
+// Windows-1252 characters outside Latin-1 (its 0x80-0x9F block), which the
+// PDF's built-in Helvetica can draw.
+const WINANSI_EXTRAS = new Set("€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ");
+
+/** True when jsPDF's built-in (WinAnsi-encoded) fonts can draw every character. */
+export function isWinAnsi(s: string): boolean {
+  for (const ch of s) {
+    const code = ch.codePointAt(0)!;
+    if (code <= 0x7f || (code >= 0xa0 && code <= 0xff) || WINANSI_EXTRAS.has(ch)) continue;
+    return false;
+  }
+  return true;
+}
+
+/** The day label in the user's language, or English when that language needs
+ * glyphs the PDF font lacks (e.g. Polish "ŚR", Cyrillic). */
+function pdfDayLabel(dayKey: string): string {
+  const label = formatDayLabel(dayKey);
+  return isWinAnsi(label) ? label : formatDayLabel(dayKey, "en-GB");
+}
+
 export function sharePdfModel(route: RouteDetail): SharePdfModel {
   const middle = route.nodes.filter((n) => n.role == null);
   const startNode = route.nodes.find((n) => n.role === "start") ?? null;
@@ -38,7 +59,7 @@ export function sharePdfModel(route: RouteDetail): SharePdfModel {
   };
 
   const days: SharePdfDay[] = groupNodesByDay({ ...route, nodes: middle }).map((g) => ({
-    label: formatDayLabel(g.dayKey),
+    label: pdfDayLabel(g.dayKey),
     drivingTotal: g.driving_distance_m > 0 ? formatTravel(g.driving_distance_m, g.driving_duration_s) : null,
     rows: g.nodes.map(toRow),
   }));
