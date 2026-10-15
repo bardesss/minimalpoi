@@ -3,7 +3,7 @@ import type { MapSettings, RouteDetail } from "../../types/api";
 
 // A 1x1 transparent PNG (RGBA) so jsPDF.addImage has real bytes to embed.
 // Decoded via atob (not fetch("data:...")): the test setup's MSW server runs
-// with onUnhandledRequest: "error" and its network interceptor mis-parses
+// with onUnhandledFrame: "error" and its network interceptor mis-parses
 // data: URLs (misreads them as "GET nullimage/png;base64,..."), throwing
 // before renderSharePdf ever runs. Building the Blob directly from the
 // base64 bytes avoids the network layer entirely.
