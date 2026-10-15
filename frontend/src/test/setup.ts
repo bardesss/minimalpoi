@@ -47,6 +47,6 @@ if (typeof window !== "undefined" && typeof window.matchMedia === "undefined") {
     }) as unknown as MediaQueryList;
 }
 
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
