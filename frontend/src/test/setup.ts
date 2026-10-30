@@ -18,8 +18,8 @@ if (typeof window !== "undefined" && typeof Element.prototype.scrollIntoView ===
   Element.prototype.scrollIntoView = () => {};
 }
 
-// jsdom never performs real layout, so every element's offsetWidth/offsetHeight
-// is 0. @tanstack/react-virtual (used by the POI sidebar list) reads these to
+// jsdom never performs real layout, so every element's offset*/client* sizes
+// are 0. @tanstack/react-virtual (used by the POI sidebar list) reads these to
 // size its scroll container; a 0-height container makes it compute an empty
 // visible range (renders nothing), which would break any test that expects to
 // find a POI card. Stub non-zero values so the virtualizer always has a
@@ -28,6 +28,8 @@ if (typeof window !== "undefined" && typeof Element.prototype.scrollIntoView ===
 if (typeof window !== "undefined") {
   Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, value: 600 });
   Object.defineProperty(HTMLElement.prototype, "offsetWidth", { configurable: true, value: 400 });
+  Object.defineProperty(Element.prototype, "clientHeight", { configurable: true, value: 600 });
+  Object.defineProperty(Element.prototype, "clientWidth", { configurable: true, value: 400 });
 }
 
 // jsdom does not implement matchMedia; stub it so useMediaQuery resolves to the
