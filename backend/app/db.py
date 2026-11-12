@@ -290,6 +290,36 @@ def _drop_removed_trip_columns(engine) -> None:
             logger.warning("Could not drop the syncstatus enum type: %s", exc)
 
 
+def reset_pg_sequences(engine) -> None:
+    """After inserting explicit ids, advance each single-integer-PK sequence past
+    MAX(id) so the next ORM insert doesn't collide. Postgres-only (a no-op on
+    SQLite, whose rowid allocation already follows MAX(id)); composite or
+    non-integer PKs (e.g. teammember) are skipped."""
+    if engine.dialect.name != "postgresql":
+        return
+    with engine.begin() as conn:
+        for table in SQLModel.metadata.sorted_tables:
+            pks = list(table.primary_key.columns)
+            if len(pks) != 1:
+                continue
+            pk = pks[0]
+            if not str(pk.type).upper().startswith(("INT", "BIGINT", "SMALLINT")):
+                continue
+            # Quote the identifiers in the inline subquery: a table name that is a
+            # Postgres reserved word (e.g. "user") would otherwise be read as the
+            # keyword rather than the table. pg_get_serial_sequence takes the names
+            # as plain text params, so those stay unquoted.
+            col_q = '"' + pk.name + '"'
+            tbl_q = '"' + table.name + '"'
+            conn.execute(text(
+                "SELECT setval("
+                "  pg_get_serial_sequence(:tbl, :col),"
+                "  COALESCE((SELECT MAX(" + col_q + ") FROM " + tbl_q + "), 1),"
+                "  (SELECT MAX(" + col_q + ") FROM " + tbl_q + ") IS NOT NULL"
+                ")"
+            ), {"tbl": table.name, "col": pk.name})
+
+
 def init_db() -> None:
     if engine is None:
         reset_engine()

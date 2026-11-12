@@ -122,7 +122,9 @@ export default function DataSection() {
           <div>
             <div style={rowLabel}>Restore from backup</div>
             <p style={rowHint}>
-              Replaces everything from a backup archive. Only works on a <strong>fresh instance</strong> (no places yet).
+              Replaces everything from a backup archive, including routes and their attachments and share links.
+              Only works on a <strong>fresh instance</strong> (no data and no other users yet).
+              All existing API tokens are revoked; create new ones after restoring.
               Type <code>RESTORE</code> to confirm.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, maxWidth: 360 }}>

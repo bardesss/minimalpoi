@@ -54,6 +54,13 @@ describe("DataSection", () => {
     await waitFor(() => expect(click).toHaveBeenCalledOnce());
   });
 
+  it("restore copy says routes are included and API tokens are revoked", async () => {
+    renderWithProviders(<DataSection />);
+    const hint = (await screen.findByText(/replaces everything from a backup archive/i)).closest("p");
+    expect(hint).toHaveTextContent(/routes/i);
+    expect(hint).toHaveTextContent(/api tokens are revoked/i);
+  });
+
   it("restores a backup after a typed confirmation", async () => {
     let posted = false;
     server.use(http.post("/api/restore", () => { posted = true; return HttpResponse.json({ restored: { pois: 2, categories: 1 } }); }));
