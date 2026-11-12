@@ -73,7 +73,7 @@ jobs:
       # Postgres instance. Widening this job to the whole suite is a separate
       # follow-up (FK-satisfying fixtures + universal per-test isolation).
       - name: Run dialect + delete-flow tests against Postgres
-        run: uv run --frozen python -m pytest -v tests/test_db_engine.py tests/test_migrate_sqlite_to_postgres.py tests/test_fk_ondelete.py tests/test_postgres_delete_flows.py tests/test_db_migrate.py::test_init_db_purges_the_trip_sync_schema tests/test_db_migrate.py::test_trip_purge_is_a_no_op_on_a_clean_database
+        run: uv run --frozen python -m pytest -v tests/test_db_engine.py tests/test_migrate_sqlite_to_postgres.py tests/test_fk_ondelete.py tests/test_postgres_delete_flows.py tests/test_backup_postgres.py tests/test_db_migrate.py::test_init_db_purges_the_trip_sync_schema tests/test_db_migrate.py::test_trip_purge_is_a_no_op_on_a_clean_database
   frontend-tests:
     runs-on: ubuntu-latest
     defaults:

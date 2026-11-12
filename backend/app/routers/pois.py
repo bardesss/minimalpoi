@@ -9,6 +9,7 @@ from ..deps import CurrentUser, SessionDep, require_owner_or_admin
 from ..enrich.images import localize
 from ..ratelimit import IMPORT_LIMIT, WRITE_LIMIT, limiter, user_or_ip
 from ..models import POI, Category, Comment, Visit, utcnow
+from ..patching import apply_patch, required_fields
 from ..phone import to_e164
 from ..portability import parse_csv, parse_geojson, pois_to_geojson
 from ..schemas import (
@@ -182,8 +183,7 @@ async def update_poi(poi_id: int, body: POIUpdate, session: SessionDep, user: Cu
         data["image_url"] = await localize(data["image_url"])
     if "phone" in data:
         data["phone"] = to_e164(data["phone"])
-    for key, value in data.items():
-        setattr(poi, key, value)
+    apply_patch(poi, data, non_nullable=required_fields(POI))
     poi.updated_at = utcnow()
     session.add(poi)
     session.commit()

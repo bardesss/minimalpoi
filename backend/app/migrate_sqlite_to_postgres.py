@@ -9,12 +9,12 @@ import os
 import sys
 from pathlib import Path
 
-from sqlalchemy import func, inspect, select, text
+from sqlalchemy import func, inspect, select
 from sqlmodel import SQLModel, create_engine
 
 from . import models  # noqa: F401 — importing registers every table on SQLModel.metadata
 from .config import get_data_dir
-from .db import _add_missing_columns, _engine_config
+from .db import _add_missing_columns, _engine_config, reset_pg_sequences
 
 logger = logging.getLogger(__name__)
 
@@ -44,33 +44,6 @@ def _require_empty_target(target_engine) -> None:
                     f"Target is not empty (table '{table.name}' has {count} rows). "
                     "Refusing to migrate into a populated database — start from a fresh Postgres."
                 )
-
-
-def _reset_sequences(target_engine) -> None:
-    """After inserting explicit ids, advance each single-integer-PK sequence past
-    MAX(id) so the next ORM insert doesn't collide. Postgres-only; composite or
-    non-integer PKs (e.g. teammember) are skipped."""
-    with target_engine.begin() as conn:
-        for table in SQLModel.metadata.sorted_tables:
-            pks = list(table.primary_key.columns)
-            if len(pks) != 1:
-                continue
-            pk = pks[0]
-            if not str(pk.type).upper().startswith(("INT", "BIGINT", "SMALLINT")):
-                continue
-            # Quote the identifiers in the inline subquery: a table name that is a
-            # Postgres reserved word (e.g. "user") would otherwise be read as the
-            # keyword rather than the table. pg_get_serial_sequence takes the names
-            # as plain text params, so those stay unquoted.
-            col_q = '"' + pk.name + '"'
-            tbl_q = '"' + table.name + '"'
-            conn.execute(text(
-                "SELECT setval("
-                "  pg_get_serial_sequence(:tbl, :col),"
-                "  COALESCE((SELECT MAX(" + col_q + ") FROM " + tbl_q + "), 1),"
-                "  (SELECT MAX(" + col_q + ") FROM " + tbl_q + ") IS NOT NULL"
-                ")"
-            ), {"tbl": table.name, "col": pk.name})
 
 
 def _present_ids(rows_by_table: dict[str, list[dict]]) -> dict[str, set]:
@@ -203,7 +176,7 @@ def migrate(source_engine, target_engine) -> dict[str, int]:
             if rows:
                 dst.execute(table.insert(), rows)
             counts[table.name] = len(rows)
-    _reset_sequences(target_engine)
+    reset_pg_sequences(target_engine)
     return counts
 
 

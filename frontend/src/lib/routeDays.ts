@@ -134,13 +134,15 @@ function baseStayAt(route: RouteDetail, pos: number, ignoreId: number): { arrive
  * Position and offset are derived together so they can never disagree. */
 export function placeInDay(route: RouteDetail, groups: DayGroup[], groupIndex: number): { position: number; day_offset: number } {
   const target = groups[groupIndex];
-  const nodes = route.nodes;
+  // Pinned start/end nodes carry a meaningless `position`, so only the middle
+  // (role-less) nodes take part in the scan (mirrors computeInsertPosition).
+  const nodes = route.nodes.filter((n) => n.role == null).sort((a, b) => a.position - b.position);
 
-  // Anchor: last node (list order) on the target day or the nearest earlier day.
+  // Anchor: last middle node (list order) on the target day or the nearest earlier day.
   let anchor: RouteNode | null = null;
   for (let k = groupIndex; k >= 0; k--) {
-    const g = groups[k];
-    if (g.nodes.length) { anchor = g.nodes[g.nodes.length - 1]; break; }
+    const ns = groups[k].nodes.filter((n) => n.role == null);
+    if (ns.length) { anchor = ns[ns.length - 1]; break; }
   }
 
   let position: number;
@@ -163,13 +165,14 @@ export function placeInDay(route: RouteDetail, groups: DayGroup[], groupIndex: n
  * empty day, which has no sortable row of its own to anchor against. */
 export function dropIntoDay(route: RouteDetail, groups: DayGroup[], groupIndex: number, draggedId: number): { position: number; day_offset: number } {
   const target = groups[groupIndex];
-  const ordered = [...route.nodes].filter((n) => n.id !== draggedId).sort((a, b) => a.position - b.position);
+  // Only middle (role-less) nodes: pinned start/end positions are meaningless.
+  const ordered = route.nodes.filter((n) => n.id !== draggedId && n.role == null).sort((a, b) => a.position - b.position);
 
   // Anchor: last node (excluding the dragged one) on the target day or the
   // nearest earlier day.
   let anchor: RouteNode | null = null;
   for (let k = groupIndex; k >= 0; k--) {
-    const ns = groups[k].nodes.filter((n) => n.id !== draggedId);
+    const ns = groups[k].nodes.filter((n) => n.id !== draggedId && n.role == null);
     if (ns.length) { anchor = ns[ns.length - 1]; break; }
   }
 

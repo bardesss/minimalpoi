@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from ..crypto import encrypt
 from ..deps import AdminUser, CurrentUser, SessionDep
 from ..models import Settings, get_or_create_settings
+from ..patching import apply_patch, required_fields
 from ..schemas import MapSettingsRead, SettingsRead, SettingsUpdate
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -50,8 +51,7 @@ def update_settings(body: SettingsUpdate, session: SessionDep, _: AdminUser) -> 
         if plain_field in data:
             value = data.pop(plain_field)
             setattr(s, enc_field, encrypt(value) if value else None)
-    for key, value in data.items():
-        setattr(s, key, value)
+    apply_patch(s, data, non_nullable=required_fields(Settings))
     session.add(s)
     session.commit()
     session.refresh(s)

@@ -270,3 +270,185 @@ def test_restore_accepts_naive_timestamps_as_utc(data_dir):
         poi = session.exec(select(POI)).first()
         assert poi.created_at == datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
     db.reset_engine()
+
+
+# ---- v2: routes, tokens, emptiness ----
+
+PDF = b"%PDF-1.4\n%backup test\n"
+
+
+def _enable_routes(client):
+    assert client.patch("/api/settings", json={"routes_enabled": True}).status_code == 200
+
+
+def _v1_users():
+    # created_at well in the past so any "issued before account creation"
+    # token check keeps the test client's login cookie valid after restore.
+    return [{"id": 1, "username": "admin", "password_hash": "h", "role": "admin",
+             "preferred_team_id": None, "disabled": False, "token_version": 0,
+             "created_at": "2020-01-01T00:00:00+00:00"}]
+
+
+def _zip(data: dict, extra: dict[str, bytes] | None = None) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("backup.json", json.dumps(data))
+        for name, payload in (extra or {}).items():
+            z.writestr(name, payload)
+    return buf.getvalue()
+
+
+def test_backup_round_trip_includes_routes(client):
+    from sqlmodel import SQLModel
+    from app import attachments, db
+    from app.models import Route, RouteAttachment, RouteNode, RouteShare
+
+    _setup_admin(client)
+    _enable_routes(client)
+    rid = client.post("/api/routes", json={"name": "NL", "start_date": "2026-07-14"}).json()["id"]
+    for name, lat in (("Utrecht", 52.09), ("Amsterdam", 52.37)):
+        assert client.post(f"/api/routes/{rid}/nodes",
+                           json={"kind": "stop", "name": name, "lat": lat, "lng": 5.0}).status_code == 201
+    share_token = client.put(f"/api/routes/{rid}/share", json={}).json()["token"]
+    up = client.post(f"/api/routes/{rid}/attachments",
+                     files={"file": ("hotel.pdf", io.BytesIO(PDF), "application/pdf")})
+    assert up.status_code == 201
+    with _session() as s:
+        before_nodes = sorted((n.name, n.position) for n in s.exec(select(RouteNode)).all())
+        stored = s.exec(select(RouteAttachment)).one().stored_filename
+
+    res = client.get("/api/backup")
+    assert res.status_code == 200
+    raw = res.content
+    with zipfile.ZipFile(io.BytesIO(raw)) as z:
+        assert json.loads(z.read("backup.json"))["version"] == 2
+        assert f"route_attachments/{stored}" in z.namelist()
+
+    # Wipe: fresh schema, attachment file gone, bootstrap a new admin.
+    SQLModel.metadata.drop_all(db.engine)
+    db.init_db()
+    (attachments.attachments_dir() / stored).unlink()
+    client.cookies.clear()
+    _setup_admin(client)
+
+    res = client.post("/api/restore", files={"file": ("b.zip", raw, "application/zip")})
+    assert res.status_code == 200, res.text
+    assert res.json()["restored"]["routes"] == 1
+
+    with _session() as s:
+        assert s.get(Route, rid).name == "NL"
+        assert sorted((n.name, n.position) for n in s.exec(select(RouteNode)).all()) == before_nodes
+        assert s.exec(select(RouteShare)).one().token == share_token
+        assert s.exec(select(RouteAttachment)).one().stored_filename == stored
+    path = attachments.attachments_dir() / stored
+    assert path.is_file() and path.read_bytes() == PDF
+
+
+def test_is_empty_false_with_only_a_route(client):
+    from app import backup
+
+    _setup_admin(client)
+    _enable_routes(client)
+    assert client.post("/api/routes", json={"name": "NL", "start_date": "2026-07-14"}).status_code == 201
+    with _session() as s:
+        assert backup.is_empty(s) is False
+
+
+def test_is_empty_false_with_api_token(client):
+    from app import backup
+
+    _setup_admin(client)
+    with _session() as s:
+        assert backup.is_empty(s) is True  # bootstrap admin alone is still "empty"
+    assert client.post("/api/tokens", json={"name": "ci"}).status_code == 201
+    with _session() as s:
+        assert backup.is_empty(s) is False
+
+
+def test_is_empty_false_with_a_second_user(client):
+    from app import backup
+
+    _setup_admin(client)
+    assert client.post("/api/users", json={"username": "bob", "password": "pw123456"}).status_code == 201
+    with _session() as s:
+        assert backup.is_empty(s) is False
+
+
+def test_restore_api_returns_409_when_only_a_route_exists(client):
+    _setup_admin(client)
+    _enable_routes(client)
+    client.post("/api/routes", json={"name": "NL", "start_date": "2026-07-14"})
+    res = client.post("/api/restore", files={"file": ("b.zip", b"x", "application/zip")})
+    assert res.status_code == 409
+
+
+def test_restore_revokes_api_tokens(client):
+    from app import backup
+
+    _setup_admin(client)
+    token = client.post("/api/tokens", json={"name": "ci"}).json()["token"]
+    bearer = {"Authorization": f"Bearer {token}"}
+    assert client.get("/api/categories", headers=bearer).status_code == 200
+
+    # The restored user 1 has the same id and token_version as the token's
+    # owner, so only an explicit revocation keeps the old token out.
+    data = {"version": 2, "users": _v1_users(), "settings": None}
+    with _session() as s:
+        backup.restore_from_archive(s, _zip(data))
+    assert client.get("/api/categories", headers=bearer).status_code == 401
+
+
+def test_restore_v1_archive_still_works(client):
+    from app import backup
+
+    _setup_admin(client)
+    _enable_routes(client)
+    assert client.post("/api/routes", json={"name": "Old", "start_date": "2026-07-14"}).status_code == 201
+
+    data = {
+        "version": 1,
+        "users": _v1_users(),
+        "teams": [], "team_members": [],
+        "categories": [{"id": 3, "name": "Parks", "color": "#2F9E63", "icon": None, "created_by": 1,
+                        "created_at": "2026-06-29T00:00:00+00:00"}],
+        "pois": [], "visits": [], "comments": [],
+        "settings": {"id": 1, "routes_enabled": True},
+    }
+    with _session() as s:
+        summary = backup.restore_from_archive(s, _zip(data))
+    assert summary["categories"] == 1
+    res = client.get("/api/routes")
+    assert res.status_code == 200
+    assert res.json() == []
+
+
+def test_restore_skips_unsafe_attachment_members(data_dir):
+    from app import attachments, backup, db
+
+    db.reset_engine()
+    db.init_db()
+    data = {
+        "version": 2,
+        "users": _v1_users(),
+        "routes": [{"id": 1, "name": "NL", "start_date": "2026-07-14", "created_by": 1}],
+        "route_attachments": [
+            {"id": 1, "route_id": 1, "filename": "a.pdf", "stored_filename": "good.pdf",
+             "content_type": "application/pdf", "size": len(PDF), "uploaded_by": 1},
+            {"id": 2, "route_id": 1, "filename": "b.pdf", "stored_filename": "fake.pdf",
+             "content_type": "application/pdf", "size": 5, "uploaded_by": 1},
+        ],
+    }
+    raw = _zip(data, {
+        "route_attachments/good.pdf": PDF,
+        "route_attachments/fake.pdf": b"<html>nope</html>",       # fails sniff
+        "route_attachments/orphan.pdf": PDF,                        # no matching row
+        "route_attachments/../../evil.pdf": PDF,                    # path trick, flattened -> no row
+    })
+    with _session() as s:
+        backup.restore_from_archive(s, raw)
+    d = attachments.attachments_dir()
+    assert (d / "good.pdf").read_bytes() == PDF
+    assert not (d / "fake.pdf").exists()
+    assert not (d / "orphan.pdf").exists()
+    assert not (d / "evil.pdf").exists()
+    assert not (d.parent / "evil.pdf").exists()
