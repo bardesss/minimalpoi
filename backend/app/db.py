@@ -220,6 +220,42 @@ def _retire_sync_account(engine) -> None:
         logger.info("Retired the %s account left by TRIP sync", _REMOVED_SYNC_USERNAME)
 
 
+def _lowercase_usernames(engine) -> None:
+    """One-off, idempotent: usernames are matched case-insensitively, so store
+    them lower-cased. Users whose lower-cased name would collide with another
+    account are left unchanged (and logged) rather than merged or renamed.
+    System accounts are skipped."""
+    from sqlmodel import Session, select
+
+    from .models import SYSTEM_USERNAMES, User
+
+    # The table may not exist yet if create_all ran before the models were
+    # imported (init_db is called again once the app has loaded them).
+    if not inspect(engine).has_table(User.__tablename__):
+        return
+    with Session(engine) as session:
+        users = session.exec(select(User)).all()
+        taken = {u.username for u in users}
+        changed = False
+        for user in users:
+            lowered = user.username.strip().lower()
+            if user.username in SYSTEM_USERNAMES or lowered == user.username:
+                continue
+            if lowered in taken or any(
+                o is not user and o.username.strip().lower() == lowered for o in users
+            ):
+                logger.warning("Username %r collides with another account after lower-casing; left unchanged",
+                               user.username)
+                continue
+            taken.discard(user.username)
+            taken.add(lowered)
+            user.username = lowered
+            session.add(user)
+            changed = True
+        if changed:
+            session.commit()
+
+
 def _drop_removed_trip_columns(engine) -> None:
     """One-time, idempotent purge of the TRIP sync schema.
 
@@ -327,6 +363,7 @@ def init_db() -> None:
     _add_missing_columns(engine)
     _add_missing_indexes(engine)
     _drop_removed_trip_columns(engine)
+    _lowercase_usernames(engine)
     _purge_orphan_route_attachments()
 
 

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from ..deps import AdminUser, SessionDep
@@ -25,8 +26,16 @@ from ..security import hash_password
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
-def _admin_count(session: Session) -> int:
-    return session.exec(select(func.count()).select_from(User).where(User.role == Role.ADMIN)).one()
+def _active_admin_count(session: Session, exclude_id: int | None = None) -> int:
+    """Admins who can actually sign in: not disabled, not system accounts."""
+    stmt = (
+        select(func.count())
+        .select_from(User)
+        .where(User.role == Role.ADMIN, User.disabled == False, User.username.not_in(SYSTEM_USERNAMES))  # noqa: E712
+    )
+    if exclude_id is not None:
+        stmt = stmt.where(User.id != exclude_id)
+    return session.exec(stmt).one()
 
 
 def _guard_system(user: User) -> None:
@@ -54,7 +63,11 @@ def create_user(body: UserCreate, session: SessionDep, _: AdminUser) -> User:
         role=body.role,
     )
     session.add(user)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Username taken")
     session.refresh(user)
     return user
 
@@ -65,10 +78,10 @@ def update_user(user_id: int, body: UserUpdate, session: SessionDep, _: AdminUse
     if not user:
         raise HTTPException(status_code=404, detail="Not found")
     _guard_system(user)
-    if user.role == Role.ADMIN and _admin_count(session) <= 1:
+    if user.role == Role.ADMIN and not user.disabled:
         demoting = body.role is not None and body.role != Role.ADMIN
         disabling = body.disabled is True
-        if demoting or disabling:
+        if (demoting or disabling) and _active_admin_count(session, exclude_id=user.id) == 0:
             raise HTTPException(status_code=400, detail="Cannot remove the last admin")
     # A password or role change must revoke previously issued tokens.
     if body.password is not None:
@@ -94,7 +107,7 @@ def delete_user(user_id: int, session: SessionDep, _: AdminUser) -> Response:
     if not user:
         raise HTTPException(status_code=404, detail="Not found")
     _guard_system(user)
-    if user.role == Role.ADMIN and _admin_count(session) <= 1:
+    if user.role == Role.ADMIN and not user.disabled and _active_admin_count(session, exclude_id=user.id) == 0:
         raise HTTPException(status_code=400, detail="Cannot delete the last admin")
 
     # Reassign the departing user's created content to the sentinel instead

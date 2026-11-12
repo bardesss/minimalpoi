@@ -51,3 +51,11 @@ def test_login_rejects_disabled_user(client):
         session.commit()
     client.post("/api/auth/logout")
     assert client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"}).status_code == 401
+
+
+def test_login_is_case_insensitive(client):
+    client.post("/api/auth/setup", json={"username": "Admin", "password": "pw123456"})
+    client.post("/api/auth/logout")
+    r = client.post("/api/auth/login", json={"username": "  ADMIN ", "password": "pw123456"})
+    assert r.status_code == 200
+    assert r.json()["username"] == "admin"

@@ -1,4 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, Response, status
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep, require_team_member, user_from_access_token
@@ -42,7 +44,7 @@ def _set_auth_cookie(response: Response, request: Request, user: User, session: 
 
 
 def _any_user_exists(session: SessionDep) -> bool:
-    return session.exec(select(User.id)).first() is not None
+    return session.exec(select(User.id).where(User.username.not_in(SYSTEM_USERNAMES))).first() is not None
 
 
 @router.get("/setup-status", response_model=SetupStatus)
@@ -64,7 +66,20 @@ def setup(request: Request, creds: Signup, session: SessionDep, response: Respon
         role=Role.ADMIN,
     )
     session.add(user)
-    session.commit()
+    try:
+        session.flush()
+        # Re-check inside the transaction: two concurrent setups can both pass
+        # the pre-check above, so only the first one to get here may commit.
+        count = session.exec(
+            select(func.count()).select_from(User).where(User.username.not_in(SYSTEM_USERNAMES))
+        ).one()
+        if count > 1:
+            session.rollback()
+            raise HTTPException(status_code=409, detail="Setup already completed")
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Setup already completed")
     session.refresh(user)
     _set_auth_cookie(response, request, user, session)
     return user
