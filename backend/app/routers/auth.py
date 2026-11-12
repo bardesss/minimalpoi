@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, Response, status
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 
@@ -13,6 +13,7 @@ from ..security import create_access_token, hash_password, verify_password, veri
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 COOKIE_NAME = "access_token"
+_SETUP_LOCK_KEY = 7_340_501  # arbitrary fixed advisory-lock id for first-run setup
 
 
 def _is_https(request: Request) -> bool:
@@ -56,6 +57,10 @@ def setup_status(request: Request, session: SessionDep) -> SetupStatus:
 @router.post("/setup", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit(SETUP_LIMIT)
 def setup(request: Request, creds: Signup, session: SessionDep, response: Response) -> User:
+    if session.get_bind().dialect.name == "postgresql":
+        # READ COMMITTED lets two concurrent setups each see only their own
+        # uncommitted row; serialise them. The lock is released at commit/rollback.
+        session.execute(text("SELECT pg_advisory_xact_lock(:k)").bindparams(k=_SETUP_LOCK_KEY))
     if _any_user_exists(session):
         raise HTTPException(status_code=409, detail="Setup already completed")
     if creds.username.lower() in {u.lower() for u in SYSTEM_USERNAMES}:

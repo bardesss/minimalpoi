@@ -17,8 +17,13 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, password_hash: str) -> bool:
+    raw = password.encode("utf-8")
+    if len(raw) > 72:
+        # bcrypt rejects >72 bytes (ValueError on newer versions); nothing that
+        # long can match a stored hash. Still spend the bcrypt time.
+        return verify_password_dummy()
     try:
-        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+        return bcrypt.checkpw(raw, password_hash.encode("utf-8"))
     except ValueError:
         return False
 
