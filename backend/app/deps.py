@@ -74,6 +74,28 @@ def get_current_user(
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
+def get_cookie_user(
+    session: SessionDep,
+    access_token: Annotated[str | None, Cookie()] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> User:
+    """Like get_current_user, but only for the browser login cookie. A request
+    carrying a Bearer header is refused outright, so a leaked API token can't
+    manage (e.g. mint) tokens."""
+    if authorization and authorization.lower().startswith("bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="API tokens cannot manage API tokens",
+        )
+    user = user_from_access_token(session, access_token) if access_token else None
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    return user
+
+
+CookieUser = Annotated[User, Depends(get_cookie_user)]
+
+
 def require_admin(user: CurrentUser) -> User:
     if user.role != Role.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")

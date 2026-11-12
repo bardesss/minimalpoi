@@ -1,23 +1,35 @@
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
+from sqlalchemy import func
 from sqlmodel import select
 
 from ..apitokens import generate_api_token
-from ..deps import CurrentUser, SessionDep
+from ..deps import CookieUser, SessionDep
 from ..models import ApiToken
+from ..ratelimit import limiter, user_or_ip
 from ..schemas import ApiTokenCreate, ApiTokenCreated, ApiTokenRead
 
 router = APIRouter(prefix="/api/tokens", tags=["tokens"])
 
+MAX_TOKENS_PER_USER = 10
+
 
 @router.get("", response_model=list[ApiTokenRead])
-def list_tokens(session: SessionDep, user: CurrentUser) -> list[ApiToken]:
+def list_tokens(session: SessionDep, user: CookieUser) -> list[ApiToken]:
     return session.exec(
         select(ApiToken).where(ApiToken.user_id == user.id).order_by(ApiToken.created_at.desc())
     ).all()
 
 
 @router.post("", response_model=ApiTokenCreated, status_code=status.HTTP_201_CREATED)
-def create_token(body: ApiTokenCreate, session: SessionDep, user: CurrentUser) -> ApiTokenCreated:
+@limiter.limit("10/hour", key_func=user_or_ip)
+def create_token(
+    request: Request, body: ApiTokenCreate, session: SessionDep, user: CookieUser
+) -> ApiTokenCreated:
+    count = session.exec(
+        select(func.count()).select_from(ApiToken).where(ApiToken.user_id == user.id)
+    ).one()
+    if count >= MAX_TOKENS_PER_USER:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Token limit reached")
     full, prefix, token_hash = generate_api_token()
     row = ApiToken(user_id=user.id, name=body.name, token_hash=token_hash,
                    prefix=prefix, token_version=user.token_version)
@@ -29,7 +41,7 @@ def create_token(body: ApiTokenCreate, session: SessionDep, user: CurrentUser) -
 
 
 @router.delete("/{token_id}", status_code=status.HTTP_204_NO_CONTENT)
-def revoke_token(token_id: int, session: SessionDep, user: CurrentUser) -> Response:
+def revoke_token(token_id: int, session: SessionDep, user: CookieUser) -> Response:
     row = session.get(ApiToken, token_id)
     if row is None or row.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token not found")

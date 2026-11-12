@@ -24,7 +24,9 @@ def user_or_ip(request: Request) -> str:
     is a blocking SQLite read and this function runs synchronously on the event
     loop (mcp_auth.BearerAuthMiddleware offloads that same read to a threadpool
     for exactly this reason). Buckets are therefore per token rather than per
-    user, and the raw secret never enters the limiter's store.
+    user, and the raw secret never enters the limiter's store. Rotating tokens
+    would multiply every limit, so api_tokens.MAX_TOKENS_PER_USER (10) and the
+    hourly cap on minting bound that multiplier to 10x.
     """
     authorization = request.headers.get("authorization", "")
     if authorization.lower().startswith("bearer "):

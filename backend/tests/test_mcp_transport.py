@@ -47,3 +47,23 @@ def test_gate_validates_without_writing_last_used(client):
     with Session(db.engine) as s:
         row = s.exec(select(ApiToken).where(ApiToken.token_hash == hash_api_token(token))).first()
         assert row is not None and row.last_used_at is None
+
+
+def test_mcp_non_utf8_header_is_401_not_500():
+    # Drive the ASGI middleware directly so raw non-UTF-8 header bytes reach it
+    # unmodified (HTTP headers are latin-1; a strict utf-8 decode raised -> 500).
+    import asyncio
+    from app.mcp_auth import BearerAuthMiddleware
+
+    sent = []
+
+    async def inner(scope, receive, send):  # must never be reached
+        raise AssertionError("request should have been rejected")
+
+    async def send(message):
+        sent.append(message)
+
+    headers = [(b"authorization", b"Bearer " + bytes([0xFF, 0xFE])), (b"x-" + bytes([0xE9]), b"1")]
+    scope = {"type": "http", "headers": headers}
+    asyncio.run(BearerAuthMiddleware(inner)(scope, None, send))
+    assert sent[0]["status"] == 401

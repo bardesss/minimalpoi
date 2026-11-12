@@ -44,3 +44,44 @@ def test_cannot_touch_another_users_token(client):
         s.commit()
     client.post("/api/auth/login", json={"username": "mallory", "password": "password123"})
     assert client.delete(f"/api/tokens/{tid}").status_code == 404
+
+
+def test_token_cap_returns_409(client):
+    _signup(client)
+    for i in range(10):
+        assert client.post("/api/tokens", json={"name": f"t{i}"}).status_code == 201
+    r = client.post("/api/tokens", json={"name": "eleventh"})
+    assert r.status_code == 409
+    assert r.json()["detail"] == "Token limit reached"
+    assert len(client.get("/api/tokens").json()) == 10
+
+
+def test_bearer_cannot_create_tokens_403(client):
+    _signup(client)
+    token = client.post("/api/tokens", json={"name": "leaky"}).json()["token"]
+    h = {"Authorization": f"Bearer {token}"}
+    assert client.post("/api/tokens", json={"name": "x"}, headers=h).status_code == 403
+    assert client.get("/api/tokens", headers=h).status_code == 403
+    tid = client.get("/api/tokens").json()[0]["id"]
+    assert client.delete(f"/api/tokens/{tid}", headers=h).status_code == 403
+    # cookie auth still works and the token was not revoked
+    assert len(client.get("/api/tokens").json()) == 1
+
+
+def test_token_minting_is_rate_limited(client):
+    from app.main import app
+    _signup(client)
+    app.state.limiter.reset()
+    app.state.limiter.enabled = True
+    try:
+        codes = []
+        for i in range(11):
+            r = client.post("/api/tokens", json={"name": f"t{i}"})
+            codes.append(r.status_code)
+            if r.status_code == 201:
+                client.delete(f"/api/tokens/{r.json()['id']}")
+        assert codes[:10] == [201] * 10
+        assert codes[10] == 429
+    finally:
+        app.state.limiter.enabled = False
+        app.state.limiter.reset()
