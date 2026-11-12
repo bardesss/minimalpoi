@@ -3,6 +3,7 @@ from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep, require_owner_or_admin
 from ..models import POI, Category
+from ..patching import apply_patch, required_fields
 from ..schemas import CategoryCreate, CategoryRead, CategoryUpdate
 
 router = APIRouter(prefix="/api/categories", tags=["categories"])
@@ -36,8 +37,7 @@ def update_category(
         raise HTTPException(status_code=404, detail="Not found")
     require_owner_or_admin(cat.created_by, user)
     data = body.model_dump(exclude_unset=True)
-    for key, value in data.items():
-        setattr(cat, key, value)
+    apply_patch(cat, data, non_nullable=required_fields(Category))
     session.add(cat)
     session.commit()
     session.refresh(cat)

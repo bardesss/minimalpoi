@@ -25,6 +25,7 @@ from ..models import (
     get_or_create_settings,
     utcnow,
 )
+from ..patching import apply_patch, required_fields
 from ..ratelimit import GOOGLE_LIMIT, UPLOAD_LIMIT, WRITE_LIMIT, limiter, user_or_ip
 from ..routes_export import route_to_geojson, route_to_gpx, route_to_kml
 from ..routing.events import RouteEventHub, route_hub
@@ -308,8 +309,7 @@ async def update_route(route_id: int, request: Request, body: RouteUpdate, sessi
             raise HTTPException(status_code=403, detail="Only the owner or an admin can change the team")
         if data["team_id"] is not None:
             _assert_can_assign_team(session, data["team_id"], user)
-    for k, v in data.items():
-        setattr(route, k, v)
+    apply_patch(route, data, non_nullable=required_fields(Route))
     route.updated_at = utcnow()
     session.add(route)
     session.commit()
@@ -487,8 +487,7 @@ async def update_node(route_id: int, node_id: int, request: Request, body: Route
         node.poi_id, node.name, node.lat, node.lng = poi_id, name, lat, lng
         for k in location_keys:
             data.pop(k, None)
-    for k, v in data.items():
-        setattr(node, k, v)
+    apply_patch(node, data, non_nullable=required_fields(RouteNode))
     session.add(node)
     session.commit()
     _sync_round_trip(session, route)  # relocating the start re-mirrors the end
