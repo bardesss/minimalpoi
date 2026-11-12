@@ -103,6 +103,7 @@ def _repair_orphans(rows_by_table: dict[str, list[dict]]) -> dict[str, int]:
             "preferred_team_id": None,
             "disabled": True,
             "token_version": 0,
+            "session_version": 0,
             "created_at": models.utcnow(),
         })
         present_ids.setdefault("user", set()).add(new_id)

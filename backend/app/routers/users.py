@@ -77,6 +77,9 @@ def update_user(user_id: int, body: UserUpdate, session: SessionDep, _: AdminUse
     if body.role is not None and body.role != user.role:
         user.role = body.role
         user.token_version += 1
+    # Disabling revokes too, so re-enabling never resurrects an old session.
+    if body.disabled is True and not user.disabled:
+        user.token_version += 1
     if body.disabled is not None:
         user.disabled = body.disabled
     session.add(user)

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlmodel import select
 
-from ..deps import CurrentUser, SessionDep, require_team_member
+from ..deps import CurrentUser, SessionDep, require_team_member, user_from_access_token
 from ..models import SYSTEM_USERNAMES, Role, User, get_or_create_settings
 from ..ratelimit import LOGIN_LIMIT, SETUP_LIMIT, limiter
 from ..schemas import Credentials, PreferredTeamUpdate, SetupStatus, Signup, StatusResponse, UserRead
@@ -32,7 +32,7 @@ def _set_auth_cookie(response: Response, request: Request, user: User, session: 
     # forced a re-login on every reopen, especially on mobile).
     response.set_cookie(
         COOKIE_NAME,
-        create_access_token(user.username, user.token_version),
+        create_access_token(user),
         max_age=get_session_lifetime_days() * 24 * 60 * 60,
         httponly=True,
         samesite="lax",
@@ -85,6 +85,16 @@ def login(request: Request, creds: Credentials, session: SessionDep, response: R
 
 @router.post("/logout", response_model=StatusResponse)
 def logout(request: Request, session: SessionDep, response: Response) -> dict:
+    # Revoke server-side, not just in this browser: bumping session_version
+    # invalidates every login cookie this user holds (all devices). API tokens
+    # don't carry it and stay valid. An absent or already-invalid cookie just
+    # gets cleared.
+    token = request.cookies.get(COOKIE_NAME)
+    user = user_from_access_token(session, token) if token else None
+    if user is not None:
+        user.session_version += 1
+        session.add(user)
+        session.commit()
     response.delete_cookie(COOKIE_NAME, path="/", samesite="lax", secure=_cookie_secure(request, session))
     return {"status": "ok"}
 

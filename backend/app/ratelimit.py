@@ -37,6 +37,8 @@ def user_or_ip(request: Request) -> str:
         from .security import decode_access_token
 
         payload = decode_access_token(token)
+        # `sub` is the user id. Only the signature is checked here; a revoked
+        # cookie still gets its own bucket, and get_current_user 401s it.
         if payload and payload.get("sub"):
             return f"user:{payload['sub']}"
     return get_remote_address(request)
