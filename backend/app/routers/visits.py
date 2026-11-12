@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlmodel import select
 
-from ..deps import CurrentUser, SessionDep, require_team_member
+from ..deps import CurrentUser, SessionDep, is_team_member, require_team_member
 from ..models import POI, Visit
 from ..ratelimit import WRITE_LIMIT, limiter, user_or_ip
 from ..schemas import VisitRead, VisitUpsert
@@ -23,8 +23,14 @@ def upsert_visit(poi_id: int, request: Request, body: VisitUpsert, session: Sess
     fields = body.model_dump(exclude_unset=True)
     visit = _existing(session, poi_id, user.id)
     if visit is None:
-        team_id = fields.get("team_id", user.preferred_team_id)
-        require_team_member(session, team_id, user.id)
+        if "team_id" in fields:
+            team_id = fields["team_id"]
+            require_team_member(session, team_id, user.id)
+        else:
+            # A stale preferred team (left/deleted) falls back to no team.
+            team_id = user.preferred_team_id
+            if team_id is not None and not is_team_member(session, team_id, user.id):
+                team_id = None
         visit = Visit(
             poi_id=poi_id,
             user_id=user.id,

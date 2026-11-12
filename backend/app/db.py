@@ -256,6 +256,30 @@ def _lowercase_usernames(engine) -> None:
             session.commit()
 
 
+def _repair_dangling_refs(engine) -> None:
+    """One-off, idempotent: null references left pointing at deleted POIs/teams
+    (SQLite runs with foreign keys off, and reuses rowids, so a stale id would
+    silently attach to a brand-new row)."""
+    from sqlalchemy import text
+
+    insp = inspect(engine)
+    stmts = (
+        ("routenode", "poi_id", "poi"),
+        ("visit", "team_id", "team"),
+        ("user", "preferred_team_id", "team"),
+    )
+    with engine.begin() as conn:
+        for table, col, target in stmts:
+            if not (insp.has_table(table) and insp.has_table(target)):
+                continue
+            if col not in {c["name"] for c in insp.get_columns(table)}:
+                continue
+            conn.execute(text(
+                f'UPDATE "{table}" SET {col} = NULL '
+                f'WHERE {col} IS NOT NULL AND {col} NOT IN (SELECT id FROM "{target}")'
+            ))
+
+
 def _drop_removed_trip_columns(engine) -> None:
     """One-time, idempotent purge of the TRIP sync schema.
 
@@ -364,6 +388,7 @@ def init_db() -> None:
     _add_missing_indexes(engine)
     _drop_removed_trip_columns(engine)
     _lowercase_usernames(engine)
+    _repair_dangling_refs(engine)
     _purge_orphan_route_attachments()
 
 

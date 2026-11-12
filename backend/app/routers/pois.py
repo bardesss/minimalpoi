@@ -8,7 +8,7 @@ from ..dedup import find_duplicate
 from ..deps import CurrentUser, SessionDep, require_owner_or_admin
 from ..enrich.images import localize
 from ..ratelimit import IMPORT_LIMIT, WRITE_LIMIT, limiter, user_or_ip
-from ..models import POI, Category, Comment, Visit, utcnow
+from ..models import POI, Category, Comment, RouteNode, Visit, utcnow
 from ..patching import apply_patch, required_fields
 from ..phone import to_e164
 from ..portability import parse_csv, parse_geojson, pois_to_geojson
@@ -200,6 +200,11 @@ def delete_poi(poi_id: int, session: SessionDep, user: CurrentUser) -> Response:
     for model in (Visit, Comment):
         for row in session.exec(select(model).where(model.poi_id == poi_id)).all():
             session.delete(row)
+    # Route nodes keep their name/lat/lng snapshot but must not keep pointing
+    # at a POI id that SQLite may hand out again.
+    for node in session.exec(select(RouteNode).where(RouteNode.poi_id == poi_id)).all():
+        node.poi_id = None
+        session.add(node)
     session.delete(poi)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
