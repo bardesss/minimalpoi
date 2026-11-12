@@ -137,6 +137,33 @@ describe("placeInDay", () => {
   it("targets the arrival day with offset 0", () => {
     expect(placeInDay(multi, groups, 0).day_offset).toBe(0);
   });
+
+  const pinned = (nodes: RouteNode[]): RouteDetail => ({
+    id: 6, name: "R", start_date: "2026-07-14", end_date: null, scheduled_end_date: "2026-07-14",
+    node_count: nodes.length, created_by: 1, owner_username: "a", team_id: null, team_name: null, round_trip: false, can_edit: true,
+    nodes, legs: [], attachments: [], total_distance_m: 0, total_duration_s: 0,
+  } as RouteDetail);
+
+  it("appends after the last middle stop when start/end share position 1", () => {
+    const r = pinned([
+      { ...stop(1, 1, "Start"), role: "start" },
+      stop(2, 1, "A"),
+      stop(3, 2, "B"),
+      { ...stop(4, 1, "End"), role: "end" },
+    ]);
+    const g = groupNodesByDay(r);
+    expect(placeInDay(r, g, g.length - 1).position).toBeGreaterThan(2);
+  });
+
+  it("with one middle stop returns a position strictly greater than it", () => {
+    const r = pinned([
+      { ...stop(1, 1, "Start"), role: "start" },
+      stop(2, 1, "A"),
+      { ...stop(3, 1, "End"), role: "end" },
+    ]);
+    const g = groupNodesByDay(r);
+    expect(placeInDay(r, g, g.length - 1).position).toBeGreaterThan(1);
+  });
 });
 
 describe("dayOffsetForDrop", () => {
@@ -200,6 +227,23 @@ describe("dropIntoDay", () => {
     const { day_offset, position } = dropIntoDay(multi, groups, 2, 2);
     expect(day_offset).toBe(2);              // departure day
     expect(position).toBe(4);                // after S2 (pos 3)
+  });
+
+  it("ignores role nodes when picking next", () => {
+    const r: RouteDetail = {
+      ...multi,
+      nodes: [
+        { ...stop(10, 1, "Start"), role: "start" },
+        stop(2, 1, "A"),
+        stop(3, 2, "B"),
+        stop(4, 3, "C"),
+        { ...stop(11, 1, "End"), role: "end" },
+      ],
+    };
+    const g = groupNodesByDay(r);
+    // Drag C onto the last day: anchor B (pos 2); next must be none, not the end node (pos 1).
+    const { position } = dropIntoDay(r, g, g.length - 1, 4);
+    expect(position).toBeGreaterThan(2);
   });
 });
 
