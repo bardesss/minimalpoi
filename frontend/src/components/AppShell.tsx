@@ -248,7 +248,12 @@ export default function AppShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered, mapViewMode]);
 
+  // Bumped on every check and whenever a form opens/closes, so a response from
+  // an earlier check (or a closed form) can never set the banner.
+  const dupSeqRef = useRef(0);
+
   function openAdd() {
+    ++dupSeqRef.current;
     const c = mapRef.current?.getCenter();
     setDuplicateId(null);
     setAddCoords(c ? { lng: c.lng, lat: c.lat } : null);
@@ -256,6 +261,7 @@ export default function AppShell() {
   }
 
   function openEdit(poi: Poi) {
+    ++dupSeqRef.current;
     setDuplicateId(null);
     setAddCoords(null);
     setFormState({
@@ -266,6 +272,7 @@ export default function AppShell() {
   }
 
   function closeForm() {
+    ++dupSeqRef.current;
     setFormState(null);
     setAddCoords(null);
     setDraftPin(null);
@@ -285,7 +292,6 @@ export default function AppShell() {
   }
 
   // Only the latest check may set the banner; an older, slower response is dropped.
-  const dupSeqRef = useRef(0);
   async function runDuplicateCheck(body: { name: string; lat: number; lng: number; source_url?: string | null }) {
     const seq = ++dupSeqRef.current;
     try {

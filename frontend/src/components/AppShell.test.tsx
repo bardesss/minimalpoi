@@ -426,8 +426,7 @@ describe("AppShell Slice C", () => {
 });
 
 describe("AppShell duplicate check (Task 20)", () => {
-  it("stale duplicate response ignored", async () => {
-    const user = userEvent.setup();
+  function deferredDuplicateHandler() {
     const resolvers: Array<(id: number | null) => void> = [];
     server.use(
       http.post("/api/pois/check-duplicate", () =>
@@ -436,18 +435,48 @@ describe("AppShell duplicate check (Task 20)", () => {
         }),
       ),
     );
+    return resolvers;
+  }
+  const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 150)); });
+
+  it("stale duplicate response ignored", async () => {
+    const user = userEvent.setup();
+    const resolvers = deferredDuplicateHandler();
     renderWithProviders(<AppShell />);
     await screen.findByText("Café Modern");
     await user.click(screen.getByRole("button", { name: /add place/i }));
     await user.type(screen.getByLabelText(/latitude/i), "52.37");
     await user.type(screen.getByLabelText(/longitude/i), "4.9");
     await user.type(screen.getByLabelText(/^name$/i), "Dup");
-    await user.tab(); // check 1 (slow)
+    await user.tab(); // check 1 (older)
     await user.click(screen.getByLabelText(/^name$/i));
     await user.tab(); // check 2 (newer)
     await waitFor(() => expect(resolvers.length).toBe(2));
-    await act(async () => { resolvers[1](null); });
-    await act(async () => { resolvers[0](5); }); // stale answer arrives last
+    await act(async () => { resolvers[1](7); }); // newer: duplicate found
+    expect(await screen.findByText(/possible duplicate/i)).toBeInTheDocument();
+    await act(async () => { resolvers[0](null); }); // stale "no duplicate" arrives last
+    await settle();
+    expect(screen.getByText(/possible duplicate/i)).toBeInTheDocument();
+  });
+
+  it("a check from a closed form does not show on the next form", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const resolvers = deferredDuplicateHandler();
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    await user.click(screen.getByRole("button", { name: /add place/i }));
+    await user.type(screen.getByLabelText(/latitude/i), "52.37");
+    await user.type(screen.getByLabelText(/longitude/i), "4.9");
+    await user.type(screen.getByLabelText(/^name$/i), "Dup");
+    await user.tab();
+    await waitFor(() => expect(resolvers.length).toBe(1));
+    await user.click(screen.getByRole("button", { name: /^close$/i }));
+    await user.click(screen.getByRole("button", { name: /add place/i }));
+    await screen.findByLabelText(/^name$/i);
+    await act(async () => { resolvers[0](5); });
+    await settle();
     expect(screen.queryByText(/possible duplicate/i)).not.toBeInTheDocument();
+    vi.restoreAllMocks();
   });
 });

@@ -1,7 +1,7 @@
 // frontend/src/components/PoiFormModal.test.tsx
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Category, PoiDraft } from "../types/api";
 import { ApiError } from "../api/client";
@@ -759,7 +759,7 @@ describe("PoiFormModal correctness (Task 20)", () => {
     expect(screen.getByRole("button", { name: /add place/i })).toBeDisabled();
     resolveUpload({ url: "/images/up.webp" });
     await screen.findByLabelText(/image preview/i);
-    expect(screen.getByRole("button", { name: /add place/i })).toBeEnabled();
+    await waitFor(() => expect(screen.getByRole("button", { name: /add place/i })).toBeEnabled());
   });
 
   it("duplicate check parses comma decimals", async () => {

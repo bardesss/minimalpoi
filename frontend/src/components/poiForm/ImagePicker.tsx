@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 import { ApiError } from "../../api/client";
 import { safeImageCss } from "../../lib/safeUrl";
 import { ghostButtonStyle, theme, fieldLabelStyle } from "../../theme";
@@ -28,11 +28,6 @@ export function ImagePicker({
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const onUploadingChangeRef = useRef(onUploadingChange);
-  onUploadingChangeRef.current = onUploadingChange;
-  useEffect(() => {
-    onUploadingChangeRef.current?.(uploading);
-  }, [uploading]);
   const safeImage = safeImageCss(imageUrl);
 
   async function onPickFile(e: ChangeEvent<HTMLInputElement>) {
@@ -40,6 +35,7 @@ export function ImagePicker({
     e.target.value = ""; // allow re-picking the same file later
     if (!file || !onUploadImage) return;
     setUploading(true);
+    onUploadingChange?.(true);
     setUploadError(null);
     try {
       const { url } = await onUploadImage(file);
@@ -48,6 +44,7 @@ export function ImagePicker({
       setUploadError(err instanceof ApiError ? err.message : "Upload failed — try a different image.");
     } finally {
       setUploading(false);
+      onUploadingChange?.(false);
     }
   }
 
