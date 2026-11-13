@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException, Request, Response, status
+from sqlalchemy import func, text
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 
-from ..deps import CurrentUser, SessionDep, require_team_member
+from ..deps import CurrentUser, SessionDep, require_team_member, user_from_access_token
 from ..models import SYSTEM_USERNAMES, Role, User, get_or_create_settings
 from ..ratelimit import LOGIN_LIMIT, SETUP_LIMIT, limiter
 from ..schemas import Credentials, PreferredTeamUpdate, SetupStatus, Signup, StatusResponse, UserRead
@@ -11,6 +13,7 @@ from ..security import create_access_token, hash_password, verify_password, veri
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 COOKIE_NAME = "access_token"
+_SETUP_LOCK_KEY = 7_340_501  # arbitrary fixed advisory-lock id for first-run setup
 
 
 def _is_https(request: Request) -> bool:
@@ -32,7 +35,7 @@ def _set_auth_cookie(response: Response, request: Request, user: User, session: 
     # forced a re-login on every reopen, especially on mobile).
     response.set_cookie(
         COOKIE_NAME,
-        create_access_token(user.username, user.token_version),
+        create_access_token(user),
         max_age=get_session_lifetime_days() * 24 * 60 * 60,
         httponly=True,
         samesite="lax",
@@ -42,7 +45,7 @@ def _set_auth_cookie(response: Response, request: Request, user: User, session: 
 
 
 def _any_user_exists(session: SessionDep) -> bool:
-    return session.exec(select(User.id)).first() is not None
+    return session.exec(select(User.id).where(User.username.not_in(SYSTEM_USERNAMES))).first() is not None
 
 
 @router.get("/setup-status", response_model=SetupStatus)
@@ -54,6 +57,10 @@ def setup_status(request: Request, session: SessionDep) -> SetupStatus:
 @router.post("/setup", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit(SETUP_LIMIT)
 def setup(request: Request, creds: Signup, session: SessionDep, response: Response) -> User:
+    if session.get_bind().dialect.name == "postgresql":
+        # READ COMMITTED lets two concurrent setups each see only their own
+        # uncommitted row; serialise them. The lock is released at commit/rollback.
+        session.execute(text("SELECT pg_advisory_xact_lock(:k)").bindparams(k=_SETUP_LOCK_KEY))
     if _any_user_exists(session):
         raise HTTPException(status_code=409, detail="Setup already completed")
     if creds.username.lower() in {u.lower() for u in SYSTEM_USERNAMES}:
@@ -64,7 +71,20 @@ def setup(request: Request, creds: Signup, session: SessionDep, response: Respon
         role=Role.ADMIN,
     )
     session.add(user)
-    session.commit()
+    try:
+        session.flush()
+        # Re-check inside the transaction: two concurrent setups can both pass
+        # the pre-check above, so only the first one to get here may commit.
+        count = session.exec(
+            select(func.count()).select_from(User).where(User.username.not_in(SYSTEM_USERNAMES))
+        ).one()
+        if count > 1:
+            session.rollback()
+            raise HTTPException(status_code=409, detail="Setup already completed")
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Setup already completed")
     session.refresh(user)
     _set_auth_cookie(response, request, user, session)
     return user
@@ -85,6 +105,16 @@ def login(request: Request, creds: Credentials, session: SessionDep, response: R
 
 @router.post("/logout", response_model=StatusResponse)
 def logout(request: Request, session: SessionDep, response: Response) -> dict:
+    # Revoke server-side, not just in this browser: bumping session_version
+    # invalidates every login cookie this user holds (all devices). API tokens
+    # don't carry it and stay valid. An absent or already-invalid cookie just
+    # gets cleared.
+    token = request.cookies.get(COOKIE_NAME)
+    user = user_from_access_token(session, token) if token else None
+    if user is not None:
+        user.session_version += 1
+        session.add(user)
+        session.commit()
     response.delete_cookie(COOKIE_NAME, path="/", samesite="lax", secure=_cookie_secure(request, session))
     return {"status": "ok"}
 

@@ -127,10 +127,11 @@ def test_places_search_is_rate_limited_to_one_per_second(rl_client, monkeypatch)
     assert second.status_code == 429
 
 
-def test_cookie_sessions_are_still_keyed_by_username(data_dir):
+def test_cookie_sessions_are_keyed_by_user_id(data_dir):
     # data_dir: create_access_token reads the secret key from the data directory.
+    from app.models import User
     from app.ratelimit import user_or_ip
     from app.security import create_access_token
 
-    token = create_access_token("alice", 0)
-    assert user_or_ip(_request(cookies={"access_token": token})) == "user:alice"
+    token = create_access_token(User(id=42, username="alice", password_hash="!"))
+    assert user_or_ip(_request(cookies={"access_token": token})) == "user:42"

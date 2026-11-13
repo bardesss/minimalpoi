@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, StringConstraints
+from pydantic import AfterValidator, StringConstraints, field_validator
 from sqlmodel import Field, SQLModel
 
 from .models import LegSource, NodeRole, Role, RouteNodeKind, as_utc
@@ -29,7 +29,21 @@ class RestoreResult(SQLModel):
 # strength) and a 72-char ceiling so bcrypt's 72-byte truncation can't silently
 # drop characters. These apply when *setting* credentials, not when logging in.
 Username = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
-Password = Annotated[str, StringConstraints(min_length=8, max_length=72)]
+def _check_password_bytes(v: str) -> str:
+    # bcrypt hashes at most 72 *bytes*; multibyte characters can exceed that
+    # while still passing the 72-character ceiling.
+    if len(v.encode()) > 72:
+        raise ValueError("Password is too long (max 72 bytes)")
+    return v
+
+
+Password = Annotated[
+    str, StringConstraints(min_length=8, max_length=72), AfterValidator(_check_password_bytes)
+]
+
+
+def normalize_username(v: str) -> str:
+    return v.strip().lower()
 
 
 class SetupStatus(SQLModel):
@@ -41,10 +55,20 @@ class Credentials(SQLModel):
     username: str
     password: str
 
+    @field_validator("username")
+    @classmethod
+    def _normalize_username(cls, v: str) -> str:
+        return normalize_username(v)
+
 
 class Signup(SQLModel):
     username: Username
     password: Password
+
+    @field_validator("username")
+    @classmethod
+    def _normalize_username(cls, v: str) -> str:
+        return normalize_username(v)
 
 
 class UserRead(SQLModel):
@@ -60,6 +84,11 @@ class UserCreate(SQLModel):
     username: Username
     password: Password
     role: Role = Role.MEMBER
+
+    @field_validator("username")
+    @classmethod
+    def _normalize_username(cls, v: str) -> str:
+        return normalize_username(v)
 
 
 class UserUpdate(SQLModel):
@@ -353,6 +382,23 @@ class RouteNodeRead(SQLModel):
     inbound_duration_s: int | None = None
 
 
+class PublicRouteNode(SQLModel):
+    """RouteNodeRead minus notes and poi_id, which share-link viewers must not see."""
+    id: int
+    kind: RouteNodeKind
+    role: NodeRole | None = None
+    position: float
+    nights: int | None
+    name: str
+    lat: float
+    lng: float
+    day_offset: int | None = None
+    arrive_date: date | None = None
+    depart_date: date | None = None
+    inbound_distance_m: int | None = None
+    inbound_duration_s: int | None = None
+
+
 class RouteLegRead(SQLModel):
     from_node_id: int
     to_node_id: int
@@ -428,7 +474,7 @@ class PublicRouteView(SQLModel):
     round_trip: bool = False
     scheduled_end_date: date
     node_count: int
-    nodes: list[RouteNodeRead] = []
+    nodes: list[PublicRouteNode] = []
     legs: list[RouteLegRead] = []
     total_distance_m: int = 0
     total_duration_s: int = 0

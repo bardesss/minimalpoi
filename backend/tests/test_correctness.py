@@ -35,17 +35,21 @@ def test_migration_shim_adds_not_null_column_with_default(data_dir):
     db.init_db()
     with db.engine.begin() as conn:
         conn.execute(text(
-            'INSERT INTO "user" (username, password_hash, role, disabled, token_version, created_at) '
-            "VALUES ('u', 'h', 'member', 0, 0, '2026-01-01T00:00:00')"
+            'INSERT INTO "user" (username, password_hash, role, disabled, token_version, '
+            "session_version, created_at) "
+            "VALUES ('u', 'h', 'member', 0, 0, 0, '2026-01-01T00:00:00')"
         ))
         conn.execute(text('ALTER TABLE "user" DROP COLUMN token_version'))
-    assert "token_version" not in {c["name"] for c in inspect(db.engine).get_columns("user")}
+        conn.execute(text('ALTER TABLE "user" DROP COLUMN session_version'))
+    cols = {c["name"] for c in inspect(db.engine).get_columns("user")}
+    assert "token_version" not in cols and "session_version" not in cols
 
     db._add_missing_columns(db.engine)
 
-    assert "token_version" in {c["name"] for c in inspect(db.engine).get_columns("user")}
+    cols = {c["name"] for c in inspect(db.engine).get_columns("user")}
+    assert "token_version" in cols and "session_version" in cols
     with db.engine.begin() as conn:
-        assert conn.execute(text('SELECT token_version FROM "user"')).scalar() == 0
+        assert conn.execute(text('SELECT token_version, session_version FROM "user"')).one() == (0, 0)
 
 
 # ── crypto: undecryptable ciphertext surfaces a clear error, not a 500 ────────

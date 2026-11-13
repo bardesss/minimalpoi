@@ -24,7 +24,7 @@ from ..deps import SessionDep
 from ..models import Route, RouteShare, as_utc, get_or_create_settings, utcnow
 from ..ratelimit import LOGIN_LIMIT, PUBLIC_LIMIT, limiter
 from ..routing.service import derive, legs_for, ordered_nodes
-from ..schemas import PublicMapSettings, PublicRouteResponse, PublicRouteView, RouteLegRead, RouteNodeRead, UnlockBody
+from ..schemas import PublicMapSettings, PublicRouteResponse, PublicRouteView, RouteLegRead, PublicRouteNode, UnlockBody
 from ..security import verify_password, verify_password_dummy
 from .auth import _cookie_secure
 
@@ -78,9 +78,9 @@ def _view(session, route: Route) -> PublicRouteView:
     d = derive(nodes, legs, route.start_date)
     s = get_or_create_settings(session)
     node_reads = [
-        RouteNodeRead(
+        PublicRouteNode(
             id=n.id, kind=n.kind, role=n.role, position=n.position, nights=n.nights,
-            notes=n.notes, poi_id=n.poi_id, name=n.name, lat=n.lat, lng=n.lng,
+            name=n.name, lat=n.lat, lng=n.lng,
             day_offset=n.day_offset, **d["stays"].get(n.id, {}),
         )
         for n in nodes

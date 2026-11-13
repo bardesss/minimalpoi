@@ -70,6 +70,7 @@ Drop a pin or paste a link to auto-fill the details, rate the spots you've been,
 
 ### 🔒 Security & self-hosting
 - **Hardened by default** — per-action rate limiting, an encrypted-at-rest Google API key, auto-`Secure` login cookies over HTTPS, and a non-root, health-checked container.
+- **Sessions you can end** — logging out ends that user's session on **all of their devices**, not just the current browser (API tokens for MCP clients stay valid). Disabling a user, or changing their password or role, signs them out everywhere and revokes their API tokens.
 - **Update notifications** — checks GitHub releases and tells you when a newer version is out.
 - **Simple to run** — ships as a single multi-arch **Linux** image (`linux/amd64` + `linux/arm64`, so it runs on x86 servers and ARM boards / Apple Silicon alike), stores everything in SQLite on one volume, and needs **no external services**.
 
@@ -301,6 +302,13 @@ In every case:
 - **Single worker**: live route collaboration still requires the app to run
   as a single process — see [Live route collaboration](#live-route-collaboration)
   below; a reverse proxy in front doesn't change that.
+
+### Public route share links
+
+A route's share link (`/s/<token>`) shows viewers the route name, dates, stops, legs and
+totals. Per-stop notes and linked place ids are not included. The map needs your tile
+server, so the configured map tile URL, **including any API key embedded in it**, is
+visible to anyone with the link. Use a tile key that is restricted by referrer or domain.
 
 ### Live route collaboration
 

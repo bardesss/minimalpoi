@@ -1,3 +1,4 @@
+from datetime import timezone
 from typing import Annotated
 
 from fastapi import Cookie, Depends, Header, HTTPException, status
@@ -9,13 +10,44 @@ from .models import Role, TeamMember, User
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
+def user_from_access_token(session: Session, token: str) -> User | None:
+    """Resolve a login-cookie JWT to its active user, or None if it must be
+    rejected. The single source of truth for cookie authentication.
+
+    Rejects: a bad signature or expired token; a non-integer `sub` (including
+    legacy username-based tokens); a missing or disabled user; a `tv` or `sv`
+    that no longer matches (password/role change, disable, logout); and a
+    token issued before the account was created (SQLite can reuse a deleted
+    user's id). `iat` and `created_at` are both floored to whole seconds so a
+    token minted in the account's creation second stays valid.
+    """
+    from .security import decode_access_token
+
+    payload = decode_access_token(token)
+    if not payload:
+        return None
+    sub = payload.get("sub")
+    iat = payload.get("iat")
+    if not (isinstance(sub, str) and sub.isascii() and sub.isdigit()) or not isinstance(iat, int):
+        return None
+    user = session.get(User, int(sub))
+    if user is None or user.disabled:
+        return None
+    if payload.get("tv") != user.token_version or payload.get("sv") != user.session_version:
+        return None
+    created_at = user.created_at
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    if iat < int(created_at.timestamp()):
+        return None
+    return user
+
+
 def get_current_user(
     session: SessionDep,
     access_token: Annotated[str | None, Cookie()] = None,
     authorization: Annotated[str | None, Header()] = None,
 ) -> User:
-    from .security import decode_access_token
-
     credentials_error = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
     )
@@ -33,19 +65,35 @@ def get_current_user(
 
     if not access_token:
         raise credentials_error
-    payload = decode_access_token(access_token)
-    if not payload or not payload.get("sub"):
-        raise credentials_error
-    user = session.exec(select(User).where(User.username == payload["sub"])).first()
-    if not user or user.disabled:
-        raise credentials_error
-    # Reject tokens minted before the user's last password/role change.
-    if payload.get("tv", 0) != user.token_version:
+    user = user_from_access_token(session, access_token)
+    if user is None:
         raise credentials_error
     return user
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def get_cookie_user(
+    session: SessionDep,
+    access_token: Annotated[str | None, Cookie()] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> User:
+    """Like get_current_user, but only for the browser login cookie. A request
+    carrying a Bearer header is refused outright, so a leaked API token can't
+    manage (e.g. mint) tokens."""
+    if authorization and authorization.lower().startswith("bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="API tokens cannot manage API tokens",
+        )
+    user = user_from_access_token(session, access_token) if access_token else None
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    return user
+
+
+CookieUser = Annotated[User, Depends(get_cookie_user)]
 
 
 def require_admin(user: CurrentUser) -> User:

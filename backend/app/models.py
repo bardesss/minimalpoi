@@ -36,6 +36,9 @@ class User(SQLModel, table=True):
     # (their embedded `tv` no longer matches). The supported way to revoke a
     # leaked session is to reset the password.
     token_version: int = Field(default=0)
+    # Bumped on logout to invalidate every login cookie of this user (their
+    # embedded `sv` no longer matches). Cookie-only: API tokens ignore it.
+    session_version: int = Field(default=0)
     created_at: datetime = Field(default_factory=utcnow)
 
 

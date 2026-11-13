@@ -32,7 +32,7 @@ const openRoute: PublicRouteResponse = {
     node_count: 1,
     nodes: [
       {
-        id: 1, kind: "stop", position: 1, nights: null, notes: null, poi_id: null,
+        id: 1, kind: "stop", position: 1, nights: null,
         name: "Chamonix", lat: 45.9, lng: 6.87, arrive_date: null, depart_date: null,
         inbound_distance_m: null, inbound_duration_s: null, day_offset: null, role: "start",
       },

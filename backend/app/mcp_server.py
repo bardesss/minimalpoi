@@ -45,6 +45,31 @@ def _raise_for_tool(resp: httpx.Response) -> None:
     raise ValueError(f"{resp.status_code}: {detail or resp.text[:200]}")
 
 
+def _with_clears(fields: dict, clear: list[str] | None, model, update_schema) -> dict:
+    """Add an explicit null for each name in `clear`.
+
+    Only fields that are nullable on the table model may be cleared; the REST
+    PATCH 422s explicit null on the rest, so reject other names here with a
+    tool error that lists the allowed ones.
+    """
+    if not clear:
+        return fields
+    from .patching import required_fields
+
+    allowed = sorted(set(update_schema.model_fields) - required_fields(model))
+    unknown = [c for c in clear if c not in allowed]
+    if unknown:
+        raise ValueError(
+            f"Cannot clear {', '.join(unknown)}. Clearable fields: {', '.join(allowed)}."
+        )
+    merged = dict(fields)
+    for name in clear:
+        if name in merged:
+            raise ValueError(f"{name} is both set and listed in clear.")
+        merged[name] = None
+    return merged
+
+
 # Imported for their @mcp.tool registration side effects.
 from . import mcp_tools_pois  # noqa: E402,F401
 from . import mcp_tools_routes  # noqa: E402,F401

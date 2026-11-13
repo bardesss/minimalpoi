@@ -145,3 +145,70 @@ def test_delete_user_cascades_children(client):
         assert session.exec(select(Visit).where(Visit.user_id == bob_id)).all() == []
         assert session.exec(select(Comment).where(Comment.user_id == bob_id)).all() == []
         assert session.exec(select(TeamMember).where(TeamMember.user_id == bob_id)).all() == []
+
+
+def test_cannot_remove_last_active_admin_when_other_admin_disabled(client):
+    _setup_admin(client)
+    admin_id = client.get("/api/auth/me").json()["id"]
+    other = client.post("/api/users", json={"username": "boss", "password": "pw123456", "role": "admin"}).json()["id"]
+    assert client.patch(f"/api/users/{other}", json={"disabled": True}).status_code == 200
+    # The only other admin is disabled, so the first admin is the last active one.
+    assert client.patch(f"/api/users/{admin_id}", json={"role": "member"}).status_code == 400
+    assert client.patch(f"/api/users/{admin_id}", json={"disabled": True}).status_code == 400
+    assert client.delete(f"/api/users/{admin_id}").status_code == 400
+    # A disabled admin can still be deleted: it is not an active admin.
+    assert client.delete(f"/api/users/{other}").status_code == 204
+
+
+def test_password_72_chars_multibyte_is_422(client):
+    _setup_admin(client)
+    r = client.post("/api/users", json={"username": "bob", "password": "é" * 40})
+    assert r.status_code == 422
+    assert "too long" in r.text
+
+
+def test_username_case_insensitive_duplicate_is_409(client):
+    _setup_admin(client)
+    created = client.post("/api/users", json={"username": "  Bob ", "password": "pw123456"})
+    assert created.status_code == 201
+    assert created.json()["username"] == "bob"
+    assert client.post("/api/users", json={"username": "BOB", "password": "pw123456"}).status_code == 409
+
+
+def test_create_user_integrity_error_is_409(client, monkeypatch):
+    from sqlalchemy.exc import IntegrityError
+    from sqlmodel import Session
+
+    _setup_admin(client)
+    real_commit = Session.commit
+    calls = {"n": 0}
+
+    def flaky_commit(self):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise IntegrityError("stmt", {}, Exception("duplicate"))
+        return real_commit(self)
+
+    monkeypatch.setattr(Session, "commit", flaky_commit)
+    r = client.post("/api/users", json={"username": "bob", "password": "pw123456"})
+    assert r.status_code == 409
+
+
+def test_init_db_lowercases_usernames_and_skips_collisions(client):
+    from sqlmodel import Session, select
+
+    from app import db
+    from app.models import User
+    from app.security import hash_password
+
+    with Session(db.engine) as s:
+        for name in ("Alice", "Carol", "carol"):
+            s.add(User(username=name, password_hash=hash_password("pw123456")))
+        s.commit()
+    db.init_db()
+    db.init_db()  # idempotent
+    with Session(db.engine) as s:
+        names = {u.username for u in s.exec(select(User)).all()}
+    assert "alice" in names and "Alice" not in names
+    # "Carol" would collide with "carol": both stay as they were.
+    assert {"Carol", "carol"} <= names

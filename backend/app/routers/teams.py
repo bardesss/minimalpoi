@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep, require_owner_or_admin
-from ..models import SYSTEM_USERNAMES, Route, Team, TeamMember, User
+from ..models import SYSTEM_USERNAMES, Route, Team, TeamMember, User, Visit
 from ..schemas import TeamCandidate, TeamCreate, TeamRead
 
 router = APIRouter(prefix="/api/teams", tags=["teams"])
@@ -32,9 +32,15 @@ def _to_read(session: SessionDep, team: Team) -> TeamRead:
 
 
 def _set_members(session: SessionDep, team_id: int, member_ids: list[int]) -> None:
+    keep = set(member_ids)
     for row in session.exec(select(TeamMember).where(TeamMember.team_id == team_id)).all():
         session.delete(row)
-    for uid in set(member_ids):
+    # Removed members must not keep this team as their preferred team.
+    for u in session.exec(select(User).where(User.preferred_team_id == team_id)).all():
+        if u.id not in keep:
+            u.preferred_team_id = None
+            session.add(u)
+    for uid in keep:
         session.add(TeamMember(team_id=team_id, user_id=uid))
 
 
@@ -90,6 +96,12 @@ def delete_team(team_id: int, session: SessionDep, user: CurrentUser) -> Respons
     for route in session.exec(select(Route).where(Route.team_id == team_id)).all():
         route.team_id = None
         session.add(route)
+    for visit in session.exec(select(Visit).where(Visit.team_id == team_id)).all():
+        visit.team_id = None
+        session.add(visit)
+    for u in session.exec(select(User).where(User.preferred_team_id == team_id)).all():
+        u.preferred_team_id = None
+        session.add(u)
     session.delete(team)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
