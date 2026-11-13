@@ -62,3 +62,17 @@ def find_duplicate(
                 if _norm(poi.name) == target and haversine_m(lat, lng, poi.lat, poi.lng) <= PROXIMITY_THRESHOLD_M:
                     return poi
     return None
+
+
+def find_duplicate_in(pois: list[POI], name: str, lat: float | None, lng: float | None,
+                      source_url: str | None) -> POI | None:
+    """`find_duplicate` over POIs that are not in the database yet (e.g. rows
+    earlier in the same import), with the same matching rules."""
+    target = _norm(name)
+    for poi in pois:
+        if source_url and poi.source_url == source_url:
+            return poi
+        if (lat is not None and lng is not None and target and _norm(poi.name) == target
+                and haversine_m(lat, lng, poi.lat, poi.lng) <= PROXIMITY_THRESHOLD_M):
+            return poi
+    return None

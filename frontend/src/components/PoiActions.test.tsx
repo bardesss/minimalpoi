@@ -180,6 +180,16 @@ describe("PoiActions — review list and guarded mutations", () => {
     expect(await screen.findByLabelText(/rated 4/i)).toBeInTheDocument();
   });
 
+  it("names a rating-only reviewer from the visit's username", async () => {
+    server.use(
+      http.get("/api/pois/1/visits", () => HttpResponse.json([visit({ user_id: 2, rating: 4, username: "carol" })])),
+      http.get("/api/pois/1/comments", () => HttpResponse.json([])),
+    );
+    renderWithProviders(<PoiActions poiId={1} />);
+    expect(await screen.findByText("carol")).toBeInTheDocument();
+    expect(screen.queryByText("Someone")).not.toBeInTheDocument();
+  });
+
   it("admin delete removes all comments of that user", async () => {
     const deleted: string[] = [];
     let visitDeleted = false;

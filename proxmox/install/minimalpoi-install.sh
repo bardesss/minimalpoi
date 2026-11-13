@@ -73,6 +73,20 @@ PrivateTmp=yes
 [Install]
 WantedBy=multi-user.target
 EOF
+# ProtectSystem/PrivateTmp need mount namespaces. An unprivileged LXC without
+# nesting has none, and the unit would fail with 226/NAMESPACE: probe, and
+# fall back to a drop-in that turns both off.
+if systemd-run --wait --quiet -p ProtectSystem=strict -p PrivateTmp=yes /bin/true &>/dev/null; then
+  rm -f /etc/systemd/system/minimalpoi.service.d/no-namespace.conf
+else
+  mkdir -p /etc/systemd/system/minimalpoi.service.d
+  cat <<EOF >/etc/systemd/system/minimalpoi.service.d/no-namespace.conf
+[Service]
+ProtectSystem=no
+PrivateTmp=no
+EOF
+  echo "WARNING: no mount namespaces in this container (enable nesting to fix); MinimalPOI runs without ProtectSystem/PrivateTmp."
+fi
 systemctl daemon-reload
 systemctl enable -q --now minimalpoi
 msg_ok "Created Service"

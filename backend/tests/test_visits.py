@@ -51,3 +51,13 @@ def test_visit_rejects_non_member_team(client):
     # create a team the admin is NOT a member of (empty member list)
     team = client.post("/api/teams", json={"name": "others", "member_ids": []}).json()
     assert client.put(f"/api/pois/{poi_id}/visit", json={"team_id": team["id"]}).status_code == 403
+
+
+def test_poi_visits_list_includes_usernames(client):
+    poi_id = _setup(client)
+    client.put(f"/api/pois/{poi_id}/visit", json={"rating": 4})
+    client.post("/api/users", json={"username": "bob", "password": "pw123456"})
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
+    client.put(f"/api/pois/{poi_id}/visit", json={"rating": 2})
+    visits = client.get(f"/api/pois/{poi_id}/visits").json()
+    assert sorted((v["username"], v["rating"]) for v in visits) == [("admin", 4), ("bob", 2)]

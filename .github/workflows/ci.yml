@@ -69,14 +69,18 @@ jobs:
       # be meaningless (or fail) here, while these two are the branch's most
       # destructive path and only Postgres has both enforced foreign keys — the
       # reason `_retire_sync_account` reassigns before it deletes — and the
-      # native `syncstatus` enum type the purge has to drop. The full app suite
+      # native `syncstatus` enum type the purge has to drop. Also the suites
+      # whose fixes differ on Postgres: dangling-ref repair, session identity,
+      # username lower-casing / last-admin (test_users), the concurrent
+      # recompute (test_route_travel) and the API-token cap row lock
+      # (test_api_token_cap_race, Postgres-only). The full app suite
       # is NOT run here: many pre-existing tests assume SQLite's non-enforcement
       # of foreign keys (they insert rows with dangling created_by FKs) and an
       # empty shared database, so they can't pass unmodified against a single
       # Postgres instance. Widening this job to the whole suite is a separate
       # follow-up (FK-satisfying fixtures + universal per-test isolation).
       - name: Run dialect + delete-flow tests against Postgres
-        run: uv run --frozen python -m pytest -v tests/test_db_engine.py tests/test_migrate_sqlite_to_postgres.py tests/test_fk_ondelete.py tests/test_postgres_delete_flows.py tests/test_backup_postgres.py tests/test_route_start_end.py tests/test_db_migrate.py::test_init_db_purges_the_trip_sync_schema tests/test_db_migrate.py::test_trip_purge_is_a_no_op_on_a_clean_database
+        run: uv run --frozen python -m pytest -v tests/test_db_engine.py tests/test_migrate_sqlite_to_postgres.py tests/test_fk_ondelete.py tests/test_postgres_delete_flows.py tests/test_backup_postgres.py tests/test_route_start_end.py tests/test_db_migrate.py::test_init_db_purges_the_trip_sync_schema tests/test_db_migrate.py::test_trip_purge_is_a_no_op_on_a_clean_database tests/test_dangling_refs.py tests/test_session_identity.py tests/test_users.py tests/test_route_travel.py tests/test_api_token_cap_race.py
   frontend-tests:
     runs-on: ubuntu-latest
     defaults:

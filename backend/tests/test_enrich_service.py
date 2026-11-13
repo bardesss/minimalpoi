@@ -97,3 +97,25 @@ async def test_enrich_parses_once_in_threadpool(client, monkeypatch):
     await http.aclose()
     assert calls == [1]
     assert draft.name == "Café Modern"
+
+
+@pytest.mark.anyio
+async def test_enrich_truncates_fields_to_schema_limits(client):
+    from app.schemas import NAME_MAX, TEXT_MAX, URL_MAX, POICreate
+
+    long_title = "T" * (NAME_MAX + 50)
+    long_desc = "d" * (TEXT_MAX + 5)
+    long_img = "https://img.example/" + "a" * URL_MAX
+    html = (f'<html><head><meta property="og:title" content="{long_title}">'
+            f'<meta property="og:description" content="{long_desc}">'
+            f'<meta property="og:image" content="{long_img}"></head></html>')
+    http = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda r: httpx.Response(200, text=html, headers={"content-type": "text/html"})))
+    with Session(db.engine) as session:
+        draft = await enrich("https://long.example/p", session, client=http)
+    await http.aclose()
+    assert draft.name == "T" * NAME_MAX
+    assert len(draft.description) == TEXT_MAX
+    assert draft.image_url is None  # a cut URL would point elsewhere: dropped instead
+    # The draft now saves as-is.
+    POICreate.model_validate({"name": draft.name, "lat": 1, "lng": 1, "notes": draft.description})

@@ -2,16 +2,18 @@ import asyncio
 import json
 import queue as _queue
 import secrets
+import time
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from .. import attachments as att
 from .. import db
-from ..deps import CurrentUser, CurrentUserNoSession, SessionDep, is_team_member
+from ..deps import CurrentUser, CurrentUserNoSession, SessionDep, _authenticate, is_team_member
 from ..models import (
     POI,
     NodeRole,
@@ -247,11 +249,53 @@ def get_route(route_id: int, session: SessionDep, user: CurrentUser) -> RouteDet
     return _detail(session, _get_route_or_404(session, route_id), user)
 
 
-async def _route_event_stream(request: Request, hub: RouteEventHub, route_id: int):
+# SSE loop timing: poll the queue every SSE_POLL_SECONDS and send a keepalive
+# after SSE_KEEPALIVE_TICKS idle polls (20 s). Access is re-checked before any
+# frame once SSE_RECHECK_SECONDS of wall-clock time have passed since the last
+# check, so a busy route (events resetting the idle count) is re-checked too.
+SSE_POLL_SECONDS = 0.25
+SSE_KEEPALIVE_TICKS = 80
+SSE_RECHECK_SECONDS = 20.0
+
+
+def _stream_guard(route_id: int, access_token: str | None, authorization: str | None):
+    """An async check that the stream's caller may still watch the route: the
+    cookie or bearer token still authenticates (not logged out, disabled,
+    password-changed or revoked), routes are still enabled and the route still
+    exists. Runs in a short session off the event loop."""
+    def check() -> bool:
+        with Session(db.engine) as session:
+            try:
+                _authenticate(session, access_token, authorization)
+                require_routes_enabled(session)
+                _get_route_or_404(session, route_id)
+            except HTTPException:
+                return False
+        return True
+
+    async def still_allowed() -> bool:
+        return await run_in_threadpool(check)
+
+    return still_allowed
+
+
+async def _route_event_stream(request: Request, hub: RouteEventHub, route_id: int, still_allowed=None):
     """Async generator behind the SSE endpoint. Module-level (not a closure) so
     it can be driven directly in tests: this repo's sync TestClient drains the
-    whole ASGI response before returning, which would hang on an infinite stream."""
+    whole ASGI response before returning, which would hang on an infinite stream.
+    `still_allowed` (see _stream_guard) is re-checked before any frame once
+    SSE_RECHECK_SECONDS have passed since the last check; the stream ends once
+    it fails."""
     q = hub.subscribe(route_id)
+    last_check = time.monotonic()
+
+    async def allowed() -> bool:
+        nonlocal last_check
+        if still_allowed is None or time.monotonic() - last_check < SSE_RECHECK_SECONDS:
+            return True
+        last_check = time.monotonic()
+        return await still_allowed()
+
     try:
         yield ": connected\n\n"
         idle = 0
@@ -263,12 +307,16 @@ async def _route_event_stream(request: Request, hub: RouteEventHub, route_id: in
             except _queue.Empty:
                 event = None
             if event is not None:
+                if not await allowed():
+                    break
                 yield "data: " + json.dumps(event) + "\n\n"
                 idle = 0
                 continue
-            await asyncio.sleep(0.25)
+            await asyncio.sleep(SSE_POLL_SECONDS)
             idle += 1
-            if idle >= 80:
+            if idle >= SSE_KEEPALIVE_TICKS:
+                if not await allowed():
+                    break
                 yield ": keepalive\n\n"
                 idle = 0
     finally:
@@ -289,7 +337,8 @@ async def route_events(route_id: int, request: Request, _: CurrentUserNoSession)
     if hub is None:
         raise HTTPException(status_code=503, detail="Live updates unavailable")
     return StreamingResponse(
-        _route_event_stream(request, hub, route_id),
+        _route_event_stream(request, hub, route_id, _stream_guard(
+            route_id, request.cookies.get("access_token"), request.headers.get("authorization"))),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
     )
@@ -425,9 +474,11 @@ def _next_position(session, route_id: int) -> float:
     return (max(positions) + 1.0) if positions else 1.0
 
 
-def _sync_round_trip(session, route: Route) -> None:
+def _sync_round_trip(session, route: Route, *, retry: bool = True) -> None:
     """Keep an end node mirroring the start place while round_trip is on. No-op
-    when round_trip is off or there is no start yet. Idempotent."""
+    when round_trip is off or there is no start yet. Idempotent. If a
+    concurrent request created the end first (unique role index), re-read and
+    mirror onto that one."""
     if not route.round_trip:
         return
     nodes = session.exec(select(RouteNode).where(RouteNode.route_id == route.id)).all()
@@ -443,7 +494,13 @@ def _sync_round_trip(session, route: Route) -> None:
     end.lat = start.lat
     end.lng = start.lng
     session.add(end)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        if not retry:
+            raise
+        _sync_round_trip(session, route, retry=False)
 
 
 def _resolve_location(session, body: RouteNodeCreate | RouteNodeUpdate,
@@ -491,9 +548,12 @@ async def add_node(route_id: int, request: Request, body: RouteNodeCreate, sessi
     try:
         session.commit()
     except IntegrityError:
-        # Lost a race against a concurrent add of the same start/end role.
+        # Lost a race: a concurrent add of the same start/end role, or (Postgres)
+        # a foreign key, e.g. the POI was deleted meanwhile.
         session.rollback()
-        raise HTTPException(status_code=409, detail=f"Route already has a {body.role.value}") from None
+        detail = (f"Route already has a {body.role.value}" if body.role is not None
+                  else "The route changed meanwhile; reload and try again")
+        raise HTTPException(status_code=409, detail=detail) from None
     _sync_round_trip(session, route)
     await recompute_legs(session, route_id)
     return _detail_and_publish(request, session, route, user)
@@ -511,7 +571,10 @@ async def update_node(route_id: int, node_id: int, request: Request, body: Route
     # A location change (poi_id, or name+lat+lng) re-resolves the point and is set
     # atomically; nights/notes/position/day_offset keep the generic path.
     location_keys = {"poi_id", "name", "lat", "lng"}
-    if location_keys & data.keys():
+    if location_keys & data.keys() == {"name"}:
+        # A rename keeps the point, so it keeps its POI link too.
+        node.name = data.pop("name") or node.name
+    elif location_keys & data.keys():
         poi_id, name, lat, lng = _resolve_location(session, body, node)
         node.poi_id, node.name, node.lat, node.lng = poi_id, name, lat, lng
         for k in location_keys:

@@ -67,3 +67,18 @@ def test_rename_adhoc_node_name_only(client):
     node = next(n for n in res.json()["nodes"] if n["id"] == nid)
     assert node["name"] == "New" and node["lat"] == 1.0 and node["lng"] == 2.0
     assert node["poi_id"] is None
+
+
+def test_rename_poi_linked_node_keeps_poi_id(client):
+    _setup(client)
+    pid = client.post("/api/pois", json={"name": "Vondelpark", "lat": 52.36, "lng": 4.87}).json()["id"]
+    rid = _route(client)["id"]
+    node = _add(client, rid, kind="stay", poi_id=pid, nights=2)["nodes"][0]
+    assert node["poi_id"] == pid
+    renamed = next(n for n in _patch(client, rid, node["id"], name="Park hotel")["nodes"] if n["id"] == node["id"])
+    assert renamed["name"] == "Park hotel"
+    assert renamed["poi_id"] == pid
+    assert renamed["lat"] == 52.36 and renamed["lng"] == 4.87
+    # Moving the point does detach it from the POI.
+    moved = next(n for n in _patch(client, rid, node["id"], lat=50.0, lng=4.0)["nodes"] if n["id"] == node["id"])
+    assert moved["poi_id"] is None

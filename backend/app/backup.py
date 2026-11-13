@@ -30,8 +30,14 @@ from pathlib import Path
 from sqlalchemy import func
 from sqlmodel import Session, select
 
-from . import attachments
-from .db import reset_pg_sequences
+from . import attachments, config
+from .db import (
+    dedupe_role_rows,
+    log_username_collisions,
+    null_dangling_ref_rows,
+    plan_username_lowercasing,
+    reset_pg_sequences,
+)
 from .enrich.images import UnsupportedImageError, images_dir, process_image
 from .models import (
     POI,
@@ -56,10 +62,11 @@ from .models import (
 BACKUP_VERSION = 2
 SUPPORTED_VERSIONS = {1, 2}
 
-# Restore-time guards: a total decompressed budget (zip-bomb) and an image
-# extension allowlist. Restored image bytes are re-encoded through process_image
-# so a crafted archive can't drop e.g. evil.html/.svg into the public /images dir.
-ZIP_MAX_TOTAL_BYTES = 500 * 1024 * 1024
+# Restore-time guards: a total decompressed budget (zip-bomb;
+# config.restore_max_bytes, also enforced when a backup is built so every backup
+# can be restored) and an image extension allowlist. Restored image bytes are
+# re-encoded through process_image so a crafted archive can't drop e.g.
+# evil.html/.svg into the public /images dir.
 _IMAGE_EXTS = {".webp", ".jpg", ".jpeg", ".png"}
 # Route attachments can't be re-encoded (PDFs), so each file must instead have
 # an allowed extension, pass the magic-byte sniff, fit the upload size cap and
@@ -86,6 +93,14 @@ _TABLES = [
 # The sections a v1 (pre-routes) archive carries. Restoring one loads only
 # these and leaves the route tables cleared.
 _V1_KEYS = {"users", "teams", "team_members", "categories", "pois", "visits", "comments"}
+
+
+class BackupTooLargeError(ValueError):
+    """The archive's uncompressed size is over config.restore_max_bytes."""
+
+
+def _uncompressed_size(z: zipfile.ZipFile) -> int:
+    return sum(info.file_size for info in z.infolist())
 
 
 def build_backup(session: Session) -> dict:
@@ -141,6 +156,19 @@ def is_empty(session: Session) -> bool:
     return real_users <= 1
 
 
+def _normalise_rows(rows: dict[str, list[dict]]) -> None:
+    """Apply the boot-time pre-steps (db.init_db) to archive rows before they are
+    inserted, since restore happens after boot: lower-case usernames, clear the
+    role on duplicate start/end nodes, and null dangling team/POI references
+    (Postgres enforces the foreign keys an old SQLite backup may violate)."""
+    renames, collisions = plan_username_lowercasing([u["username"] for u in rows["users"]])
+    log_username_collisions(collisions)
+    for user in rows["users"]:
+        user["username"] = renames.get(user["username"], user["username"])
+    dedupe_role_rows(rows["route_nodes"])
+    null_dangling_ref_rows({model.__tablename__: rows[key] for key, model in _TABLES})
+
+
 def restore_backup(session: Session, data: dict) -> dict[str, int]:
     """Clear the target tables and load rows from `data`, preserving ids.
 
@@ -156,10 +184,11 @@ def restore_backup(session: Session, data: dict) -> dict[str, int]:
     # Build and validate every row from the (untrusted) archive FIRST. If any row
     # is malformed (bad datetime/enum, etc.) this raises before we touch existing
     # data, so a corrupt backup can never leave the instance wiped.
-    built: dict[str, list] = {
-        key: [_build_row(model, d) for d in (data.get(key) or [])] if key in keys else []
-        for key, model in _TABLES
+    rows: dict[str, list[dict]] = {
+        key: [dict(d) for d in (data.get(key) or [])] if key in keys else [] for key, _model in _TABLES
     }
+    _normalise_rows(rows)
+    built: dict[str, list] = {key: [_build_row(model, d) for d in rows[key]] for key, model in _TABLES}
     settings_obj = _build_row(Settings, data["settings"]) if data.get("settings") else None
 
     # Now clear and insert in a single transaction (one commit); a failure here
@@ -206,6 +235,9 @@ def build_backup_archive(session: Session) -> bytes:
             src = att_dir / name
             if src.is_file():
                 z.write(src, f"route_attachments/{name}")
+        # Refuse rather than hand out a backup that restore would reject.
+        if _uncompressed_size(z) > config.restore_max_bytes():
+            raise BackupTooLargeError(config.restore_limit_message("This backup"))
     return buf.getvalue()
 
 
@@ -236,8 +268,8 @@ def restore_from_archive(session: Session, raw: bytes) -> dict[str, int]:
     """Load a ZIP produced by build_backup_archive: restore the data, then
     write the image and route attachment files back."""
     with zipfile.ZipFile(io.BytesIO(raw)) as z:
-        if sum(info.file_size for info in z.infolist()) > ZIP_MAX_TOTAL_BYTES:
-            raise ValueError("backup archive is too large to restore")
+        if _uncompressed_size(z) > config.restore_max_bytes():
+            raise BackupTooLargeError(config.restore_limit_message("The unpacked backup"))
         data = json.loads(z.read("backup.json"))
         summary = restore_backup(session, data)
         img_dir = images_dir()

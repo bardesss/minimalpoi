@@ -117,6 +117,8 @@ export interface ImportResult {
   skipped: number;
   errors: ImportRowError[];
   created_ids: number[];
+  /** Rows saved without their remote image (per-import fetch cap). */
+  images_skipped?: number;
 }
 
 export interface Settings extends MapSettings {
@@ -201,6 +203,8 @@ export interface Visit {
   user_id: number;
   team_id: number | null;
   rating: number | null;
+  /** Set by the POI visits list; absent/null elsewhere. */
+  username?: string | null;
 }
 
 export interface VisitUpsert {

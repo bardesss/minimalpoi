@@ -1,11 +1,11 @@
 import json
 
-from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
 from pydantic import ValidationError
 from sqlalchemy import func
 from sqlmodel import select
 
-from ..dedup import find_duplicate
+from ..dedup import find_duplicate, find_duplicate_in
 from ..deps import CurrentUser, SessionDep, require_owner_or_admin
 from ..enrich.images import localize
 from ..ratelimit import ENRICH_LIMIT, IMPORT_LIMIT, WRITE_LIMIT, limiter, user_or_ip
@@ -27,6 +27,8 @@ router = APIRouter(prefix="/api/pois", tags=["pois"])
 
 # Cap import uploads so a single request can't exhaust memory.
 MAX_IMPORT_BYTES = 10 * 1024 * 1024  # 10 MiB
+# Remote image fetches per import; rows past the cap are saved without an image.
+IMPORT_MAX_REMOTE_IMAGES = 50
 
 
 @router.get("", response_model=list[POIRead])
@@ -90,11 +92,13 @@ async def import_pois(request: Request, session: SessionDep, user: CurrentUser, 
     cache: dict[str, int] = {
         c.name.strip().lower(): c.id for c in session.exec(select(Category)).all() if c.id is not None
     }
-    created = 0
     skipped = 0
     errors: list[ImportRowError] = []
-    new_pois: list[POI] = []
+    new_cats: dict[str, Category] = {}
+    # (POI without category_id, lower-cased category name or None)
+    pending: list[tuple[POI, str | None]] = []
 
+    # 1. Validate and de-duplicate every row. Reads only: nothing is written yet.
     for i, row in enumerate(rows, start=1):
         if not isinstance(row.get("name"), str) or not row["name"].strip():
             errors.append(ImportRowError(row=i, reason="missing name"))
@@ -118,41 +122,47 @@ async def import_pois(request: Request, session: SessionDep, user: CurrentUser, 
             errors.append(ImportRowError(row=i, reason="invalid category"))
             continue
 
-        poi_name = data["name"]
-        lat = data["lat"]
-        lng = data["lng"]
-        category_id: int | None = None
-        cat_name = (cat_raw or "").strip()
-        if cat_name:
-            key = cat_name.lower()
-            if key in cache:
-                category_id = cache[key]
-            else:
-                cat = Category(name=cat_name[:200], color="#4f46e5", created_by=user.id)
-                session.add(cat)
-                session.flush()
-                cache[key] = cat.id
-                category_id = cat.id
-
-        if find_duplicate(session, poi_name, lat, lng, data["source_url"]):
+        dup_args = (data["name"], data["lat"], data["lng"], data["source_url"])
+        if find_duplicate(session, *dup_args) or find_duplicate_in([p for p, _ in pending], *dup_args):
             skipped += 1
             continue
 
-        data["image_url"] = await localize(data["image_url"])
+        cat_name = (cat_raw or "").strip()
+        cat_key = cat_name.lower() if cat_name else None
+        if cat_key and cat_key not in cache and cat_key not in new_cats:
+            new_cats[cat_key] = Category(name=cat_name[:200], color="#4f46e5", created_by=user.id)
         data["phone"] = to_e164(data["phone"])
-        data["category_id"] = category_id
-        poi = POI(**data, created_by=user.id)
-        session.add(poi)
-        session.flush()
-        created += 1
-        new_pois.append(poi)
+        pending.append((POI(**data, created_by=user.id), cat_key))
 
+    # 2. Fetch remote images before any write, so a slow image host never holds
+    # the (SQLite: database-wide) write lock. Capped per import.
+    images_skipped = 0
+    remote_fetches = 0
+    for poi, _ in pending:
+        url = poi.image_url
+        if url and url.startswith(("http://", "https://")):
+            if remote_fetches >= IMPORT_MAX_REMOTE_IMAGES:
+                poi.image_url = None
+                images_skipped += 1
+                continue
+            remote_fetches += 1
+        poi.image_url = await localize(url)
+
+    # 3. Insert everything in one short transaction.
+    for cat in new_cats.values():
+        session.add(cat)
+    session.flush()
+    cache.update({key: cat.id for key, cat in new_cats.items()})
+    for poi, cat_key in pending:
+        poi.category_id = cache[cat_key] if cat_key else None
+        session.add(poi)
     session.commit()
     return ImportResult(
-        created=created,
+        created=len(pending),
         skipped=skipped,
         errors=errors,
-        created_ids=[p.id for p in new_pois],
+        created_ids=[p.id for p, _ in pending],
+        images_skipped=images_skipped,
     )
 
 
@@ -176,8 +186,27 @@ def get_poi(poi_id: int, session: SessionDep, _: CurrentUser) -> POI:
     return poi
 
 
-@router.patch("/{poi_id}", response_model=POIRead)
-@limiter.limit(ENRICH_LIMIT, key_func=user_or_ip)
+async def _flag_remote_image(request: Request) -> None:
+    """Note whether this PATCH makes the server fetch a remote image (see
+    localize), for the conditional ENRICH_LIMIT below. FastAPI has already read
+    and cached the JSON body by the time dependencies run."""
+    try:
+        body = await request.json()
+    except ValueError:
+        body = None
+    url = body.get("image_url") if isinstance(body, dict) else None
+    request.state.fetches_remote_image = isinstance(url, str) and url.startswith(("http://", "https://"))
+
+
+def _no_remote_image(request: Request) -> bool:
+    return not getattr(request.state, "fetches_remote_image", False)
+
+
+@router.patch("/{poi_id}", response_model=POIRead, dependencies=[Depends(_flag_remote_image)])
+@limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
+# Outbound fetch amplification: only a PATCH that sets a remote image_url
+# spends the enrich budget (slowapi skips a limit whose exempt_when is true).
+@limiter.limit(ENRICH_LIMIT, key_func=user_or_ip, exempt_when=_no_remote_image)
 async def update_poi(request: Request, poi_id: int, body: POIUpdate, session: SessionDep, user: CurrentUser) -> POI:
     poi = session.get(POI, poi_id)
     if not poi:

@@ -1,6 +1,7 @@
 import zipfile
 
 from fastapi import APIRouter, HTTPException, Response, UploadFile
+from sqlalchemy.exc import IntegrityError
 
 from .. import backup as backup_service
 from ..deps import AdminUser, SessionDep
@@ -11,7 +12,10 @@ router = APIRouter(prefix="/api", tags=["backup"])
 
 @router.get("/backup")
 def download_backup(session: SessionDep, _: AdminUser) -> Response:
-    raw = backup_service.build_backup_archive(session)
+    try:
+        raw = backup_service.build_backup_archive(session)
+    except backup_service.BackupTooLargeError as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
     return Response(
         content=raw,
         media_type="application/zip",
@@ -29,6 +33,15 @@ async def restore_backup(file: UploadFile, session: SessionDep, _: AdminUser) ->
     raw = await file.read()
     try:
         summary = backup_service.restore_from_archive(session, raw)
+    except backup_service.BackupTooLargeError as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
+    except IntegrityError as exc:
+        # Nothing was committed: the clear + insert run in one transaction.
+        session.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Backup data conflicts with itself (duplicate or inconsistent rows); nothing was restored.",
+        ) from exc
     except (ValueError, KeyError, zipfile.BadZipFile, UnicodeDecodeError) as exc:
         raise HTTPException(status_code=400, detail="Invalid or unsupported backup file.") from exc
     return {"restored": summary}

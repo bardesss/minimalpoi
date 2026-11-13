@@ -165,10 +165,38 @@ def _purge_orphan_route_attachments() -> None:
         logger.info("Purged %d orphaned route-level attachment(s)", len(orphans))
 
 
+def dedupe_role_rows(nodes: list[dict]) -> int:
+    """Row-level twin of `_dedupe_route_roles` for rows not yet in the database
+    (restore, the SQLite-to-Postgres copy): per (route_id, role) keep the
+    lowest-id node and clear `role` on the others. Mutates `nodes`; returns how
+    many roles were cleared."""
+    keep: dict[tuple, object] = {}
+    for node in nodes:
+        if node.get("role") is None:
+            continue
+        key = (node.get("route_id"), _role_key(node["role"]))
+        if key not in keep or node["id"] < keep[key]:
+            keep[key] = node["id"]
+    cleared = 0
+    for node in nodes:
+        if node.get("role") is None:
+            continue
+        if node["id"] != keep[(node.get("route_id"), _role_key(node["role"]))]:
+            node["role"] = None
+            cleared += 1
+    return cleared
+
+
+def _role_key(role) -> str:
+    # Archive rows carry "start"; ORM/Core rows may carry NodeRole.START.
+    return getattr(role, "value", role)
+
+
 def _dedupe_route_roles(engine) -> None:
     """One-off, idempotent: before the unique (route_id, role) index exists, a
     route may hold several start (or end) nodes. Keep the lowest-id one per role
-    and clear `role` on the extras so the index can be created."""
+    and clear `role` on the extras so the index can be created. Restore and the
+    Postgres migration apply the same rule through `dedupe_role_rows`."""
     if "routenode" not in inspect(engine).get_table_names():
         return
     with engine.begin() as conn:
@@ -236,14 +264,42 @@ def _retire_sync_account(engine) -> None:
         logger.info("Retired the %s account left by TRIP sync", _REMOVED_SYNC_USERNAME)
 
 
+def plan_username_lowercasing(usernames: list[str]) -> tuple[dict[str, str], list[tuple[str, str]]]:
+    """Usernames are matched case-insensitively, so they are stored lower-cased.
+    Returns ({old: new} renames, [(skipped, other)] collisions): a name whose
+    lower-cased form matches another account is left unchanged rather than
+    merged or renamed. System accounts are skipped. Shared by the boot pre-step
+    and restore."""
+    from .models import SYSTEM_USERNAMES
+
+    renames: dict[str, str] = {}
+    collisions: list[tuple[str, str]] = []
+    for name in usernames:
+        lowered = name.strip().lower()
+        if name in SYSTEM_USERNAMES or lowered == name:
+            continue
+        other = next((o for o in usernames if o != name and o.strip().lower() == lowered), None)
+        if other is not None:
+            collisions.append((name, other))
+            continue
+        renames[name] = lowered
+    return renames, collisions
+
+
+def log_username_collisions(collisions: list[tuple[str, str]]) -> None:
+    for name, other in collisions:
+        logger.warning(
+            "Username %r collides with %r after lower-casing; %r was left unchanged and can no "
+            "longer log in until an admin renames it", name, other, name,
+        )
+
+
 def _lowercase_usernames(engine) -> None:
-    """One-off, idempotent: usernames are matched case-insensitively, so store
-    them lower-cased. Users whose lower-cased name would collide with another
-    account are left unchanged (and logged) rather than merged or renamed.
-    System accounts are skipped."""
+    """One-off, idempotent: store usernames lower-cased, per
+    `plan_username_lowercasing`."""
     from sqlmodel import Session, select
 
-    from .models import SYSTEM_USERNAMES, User
+    from .models import User
 
     # The table may not exist yet if create_all ran before the models were
     # imported (init_db is called again once the app has loaded them).
@@ -251,41 +307,47 @@ def _lowercase_usernames(engine) -> None:
         return
     with Session(engine) as session:
         users = session.exec(select(User)).all()
-        taken = {u.username for u in users}
-        changed = False
+        renames, collisions = plan_username_lowercasing([u.username for u in users])
+        log_username_collisions(collisions)
         for user in users:
-            lowered = user.username.strip().lower()
-            if user.username in SYSTEM_USERNAMES or lowered == user.username:
-                continue
-            if lowered in taken or any(
-                o is not user and o.username.strip().lower() == lowered for o in users
-            ):
-                logger.warning("Username %r collides with another account after lower-casing; left unchanged",
-                               user.username)
-                continue
-            taken.discard(user.username)
-            taken.add(lowered)
-            user.username = lowered
-            session.add(user)
-            changed = True
-        if changed:
+            if user.username in renames:
+                user.username = renames[user.username]
+                session.add(user)
+        if renames:
             session.commit()
+
+
+# Nullable references that SQLite (foreign keys off, rowids reused) can leave
+# pointing at a deleted row: (table, column, target table).
+DANGLING_REFS = (
+    ("routenode", "poi_id", "poi"),
+    ("visit", "team_id", "team"),
+    ("route", "team_id", "team"),
+    ("user", "preferred_team_id", "team"),
+)
+
+
+def null_dangling_ref_rows(rows_by_table: dict[str, list[dict]]) -> int:
+    """Row-level twin of `_repair_dangling_refs` for rows not yet in the
+    database: null each DANGLING_REFS column whose target id is absent from
+    `rows_by_table`. Mutates the rows; returns how many were nulled."""
+    nulled = 0
+    for table, col, target in DANGLING_REFS:
+        ids = {r.get("id") for r in rows_by_table.get(target, [])}
+        for row in rows_by_table.get(table, []):
+            if row.get(col) is not None and row[col] not in ids:
+                row[col] = None
+                nulled += 1
+    return nulled
 
 
 def _repair_dangling_refs(engine) -> None:
     """One-off, idempotent: null references left pointing at deleted POIs/teams
     (SQLite runs with foreign keys off, and reuses rowids, so a stale id would
     silently attach to a brand-new row)."""
-    from sqlalchemy import text
-
     insp = inspect(engine)
-    stmts = (
-        ("routenode", "poi_id", "poi"),
-        ("visit", "team_id", "team"),
-        ("user", "preferred_team_id", "team"),
-    )
     with engine.begin() as conn:
-        for table, col, target in stmts:
+        for table, col, target in DANGLING_REFS:
             if not (insp.has_table(table) and insp.has_table(target)):
                 continue
             if col not in {c["name"] for c in insp.get_columns(table)}:

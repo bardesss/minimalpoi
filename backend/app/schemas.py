@@ -31,12 +31,25 @@ class RestoreResult(SQLModel):
 Lat = Annotated[float, PField(ge=-90, le=90, allow_inf_nan=False)]
 Lng = Annotated[float, PField(ge=-180, le=180, allow_inf_nan=False)]
 Finite = Annotated[float, PField(allow_inf_nan=False)]
-Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
-Text = Annotated[str, StringConstraints(max_length=10_000)]
-Url = Annotated[str, StringConstraints(max_length=2048)]
+# Length limits, also used to clip enrichment drafts so they save as-is.
+NAME_MAX = 200
+TEXT_MAX = 10_000
+URL_MAX = 2048
+SHORT_TEXT_MAX = 200
+ADDRESS_MAX = 1000
+COUNTRY_CODE_MAX = 8
+PHONE_MAX = 64
+EMAIL_MAX = 320
+Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=NAME_MAX)]
+Text = Annotated[str, StringConstraints(max_length=TEXT_MAX)]
+Url = Annotated[str, StringConstraints(max_length=URL_MAX)]
 Tag = Annotated[str, StringConstraints(max_length=50)]
 Tags = Annotated[list[Tag], PField(max_length=50)]
-ShortText = Annotated[str, StringConstraints(max_length=200)]
+ShortText = Annotated[str, StringConstraints(max_length=SHORT_TEXT_MAX)]
+Address = Annotated[str, StringConstraints(max_length=ADDRESS_MAX)]
+CountryCode = Annotated[str, StringConstraints(max_length=COUNTRY_CODE_MAX)]
+Phone = Annotated[str, StringConstraints(max_length=PHONE_MAX)]
+Email = Annotated[str, StringConstraints(max_length=EMAIL_MAX)]
 
 
 # Username is trimmed and must be non-blank. Password has a floor (basic
@@ -112,7 +125,7 @@ class UserUpdate(SQLModel):
 
 
 class ApiTokenCreate(SQLModel):
-    name: str
+    name: Name
 
 
 class ApiTokenRead(SQLModel):
@@ -162,16 +175,16 @@ class CategoryRead(SQLModel):
 
 class POICreate(SQLModel):
     name: Name
-    address: Annotated[str, StringConstraints(max_length=1000)] | None = None
+    address: Address | None = None
     city: ShortText | None = None
-    country_code: Annotated[str, StringConstraints(max_length=8)] | None = None
+    country_code: CountryCode | None = None
     lat: Lat
     lng: Lng
     category_id: int | None = None
     tags: Tags = []
     notes: Text | None = None
-    phone: Annotated[str, StringConstraints(max_length=64)] | None = None
-    email: Annotated[str, StringConstraints(max_length=320)] | None = None
+    phone: Phone | None = None
+    email: Email | None = None
     website: Url | None = None
     image_url: Url | None = None
     source_url: Url | None = None
@@ -179,16 +192,16 @@ class POICreate(SQLModel):
 
 class POIUpdate(SQLModel):
     name: Name | None = None
-    address: Annotated[str, StringConstraints(max_length=1000)] | None = None
+    address: Address | None = None
     city: ShortText | None = None
-    country_code: Annotated[str, StringConstraints(max_length=8)] | None = None
+    country_code: CountryCode | None = None
     lat: Lat | None = None
     lng: Lng | None = None
     category_id: int | None = None
     tags: Tags | None = None
     notes: Text | None = None
-    phone: Annotated[str, StringConstraints(max_length=64)] | None = None
-    email: Annotated[str, StringConstraints(max_length=320)] | None = None
+    phone: Phone | None = None
+    email: Email | None = None
     website: Url | None = None
     image_url: Url | None = None
     source_url: Url | None = None
@@ -219,10 +232,11 @@ class POIRead(SQLModel):
 
 
 class DuplicateCheck(SQLModel):
-    name: str
+    # Max only: the form may check before a name is typed.
+    name: Annotated[str, StringConstraints(max_length=NAME_MAX)]
     lat: Lat | None = None
     lng: Lng | None = None
-    source_url: str | None = None
+    source_url: Url | None = None
 
 
 class DuplicateResult(SQLModel):
@@ -239,6 +253,9 @@ class VisitRead(SQLModel):
     user_id: int
     team_id: int | None
     rating: int | None
+    # Filled by the POI visits list (so a rating-only reviewer has a name);
+    # None elsewhere.
+    username: str | None = None
 
 
 class PreferredTeamUpdate(SQLModel):
@@ -294,7 +311,7 @@ class SettingsUpdate(SQLModel):
 
 
 class EnrichRequest(SQLModel):
-    url: str
+    url: Url
 
 
 class PlaceSearchResult(SQLModel):
@@ -331,6 +348,8 @@ class ImportResult(SQLModel):
     skipped: int
     errors: list[ImportRowError] = []
     created_ids: list[int] = []
+    # Rows past pois.IMPORT_MAX_REMOTE_IMAGES were saved without their remote image.
+    images_skipped: int = 0
 
 
 class TagInfo(SQLModel):

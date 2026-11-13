@@ -21,6 +21,19 @@ describe("DataSection", () => {
     await waitFor(() => expect(screen.getByText(/3 added/i)).toBeInTheDocument());
     expect(screen.getByText(/1 skipped/i)).toBeInTheDocument();
     expect(screen.getByText(/row 2: missing name/i)).toBeInTheDocument();
+    expect(screen.queryByText(/without their image/i)).not.toBeInTheDocument();
+  });
+
+  it("says how many places were imported without their image", async () => {
+    server.use(
+      http.post("/api/pois/import", () =>
+        HttpResponse.json({ created: 60, skipped: 0, errors: [], created_ids: [], images_skipped: 10 }),
+      ),
+    );
+    renderWithProviders(<DataSection />);
+    const file = new File(["{}"], "places.geojson", { type: "application/geo+json" });
+    await userEvent.upload(screen.getByLabelText(/choose file/i), file);
+    expect(await screen.findByText(/10 places imported without their image/i)).toBeInTheDocument();
   });
 
   it("exports and triggers a download", async () => {
