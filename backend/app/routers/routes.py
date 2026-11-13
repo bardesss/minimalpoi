@@ -560,7 +560,10 @@ async def update_node(route_id: int, node_id: int, request: Request, body: Route
     # A location change (poi_id, or name+lat+lng) re-resolves the point and is set
     # atomically; nights/notes/position/day_offset keep the generic path.
     location_keys = {"poi_id", "name", "lat", "lng"}
-    if location_keys & data.keys():
+    if location_keys & data.keys() == {"name"}:
+        # A rename keeps the point, so it keeps its POI link too.
+        node.name = data.pop("name") or node.name
+    elif location_keys & data.keys():
         poi_id, name, lat, lng = _resolve_location(session, body, node)
         node.poi_id, node.name, node.lat, node.lng = poi_id, name, lat, lng
         for k in location_keys:
