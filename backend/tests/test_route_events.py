@@ -247,3 +247,74 @@ async def _plain_get(app, scope) -> int | None:
 
     await app(scope, receive, send)
     return status
+
+
+def _drive_until_end(gen, max_frames=10):
+    import asyncio
+
+    async def run():
+        frames = []
+        try:
+            for _ in range(max_frames):
+                frames.append(await gen.__anext__())
+        except StopAsyncIteration:
+            return frames, True
+        return frames, False
+
+    return asyncio.run(run())
+
+
+def _guarded_stream(monkeypatch, rid, cookie=None, authorization=None):
+    from app.routers import routes as routes_mod
+
+    monkeypatch.setattr(routes_mod, "SSE_POLL_SECONDS", 0)
+    monkeypatch.setattr(routes_mod, "SSE_KEEPALIVE_TICKS", 1)
+    guard = routes_mod._stream_guard(rid, cookie, authorization)
+    return routes_mod._route_event_stream(_FakeRequest(stop_after=10_000), RouteEventHub(), rid, guard)
+
+
+def test_event_stream_keeps_running_while_the_session_is_valid(client, monkeypatch):
+    rid = _make_route(client)
+    frames, ended = _drive_until_end(_guarded_stream(monkeypatch, rid, client.cookies.get("access_token")), 4)
+    assert not ended
+    assert frames[1:] == [": keepalive\n\n"] * 3
+
+
+def test_event_stream_ends_after_logout(client, monkeypatch):
+    rid = _make_route(client)
+    gen = _guarded_stream(monkeypatch, rid, client.cookies.get("access_token"))
+    client.post("/api/auth/logout")  # bumps session_version
+    frames, ended = _drive_until_end(gen)
+    assert ended
+    assert ": keepalive\n\n" not in frames
+
+
+def test_event_stream_ends_when_the_user_is_disabled(client, monkeypatch):
+    rid = _make_route(client)
+    assert client.post("/api/users", json={"username": "bob", "password": "pw123456"}).status_code == 201
+    admin_cookie = client.cookies.get("access_token")
+    client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
+    bob_cookie = client.cookies.get("access_token")
+    gen = _guarded_stream(monkeypatch, rid, bob_cookie)
+    client.cookies.set("access_token", admin_cookie)
+    bob_id = next(u["id"] for u in client.get("/api/users").json() if u["username"] == "bob")
+    assert client.patch(f"/api/users/{bob_id}", json={"disabled": True}).status_code == 200
+    _frames, ended = _drive_until_end(gen)
+    assert ended
+
+
+def test_event_stream_ends_when_the_route_is_deleted(client, monkeypatch):
+    rid = _make_route(client)
+    gen = _guarded_stream(monkeypatch, rid, client.cookies.get("access_token"))
+    assert client.delete(f"/api/routes/{rid}").status_code == 204
+    _frames, ended = _drive_until_end(gen)
+    assert ended
+
+
+def test_event_stream_rechecks_bearer_tokens(client, monkeypatch):
+    rid = _make_route(client)
+    tok = client.post("/api/tokens", json={"name": "sse"}).json()
+    gen = _guarded_stream(monkeypatch, rid, authorization=f"Bearer {tok['token']}")
+    assert client.delete(f"/api/tokens/{tok['id']}").status_code == 204
+    _frames, ended = _drive_until_end(gen)
+    assert ended

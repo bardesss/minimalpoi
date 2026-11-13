@@ -6,12 +6,13 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from .. import attachments as att
 from .. import db
-from ..deps import CurrentUser, CurrentUserNoSession, SessionDep, is_team_member
+from ..deps import CurrentUser, CurrentUserNoSession, SessionDep, _authenticate, is_team_member
 from ..models import (
     POI,
     NodeRole,
@@ -247,10 +248,39 @@ def get_route(route_id: int, session: SessionDep, user: CurrentUser) -> RouteDet
     return _detail(session, _get_route_or_404(session, route_id), user)
 
 
-async def _route_event_stream(request: Request, hub: RouteEventHub, route_id: int):
+# SSE loop timing: poll the queue every SSE_POLL_SECONDS; after
+# SSE_KEEPALIVE_TICKS idle polls (20 s) re-check access and send a keepalive.
+SSE_POLL_SECONDS = 0.25
+SSE_KEEPALIVE_TICKS = 80
+
+
+def _stream_guard(route_id: int, access_token: str | None, authorization: str | None):
+    """An async check that the stream's caller may still watch the route: the
+    cookie or bearer token still authenticates (not logged out, disabled,
+    password-changed or revoked), routes are still enabled and the route still
+    exists. Runs in a short session off the event loop."""
+    def check() -> bool:
+        with Session(db.engine) as session:
+            try:
+                _authenticate(session, access_token, authorization)
+                require_routes_enabled(session)
+                _get_route_or_404(session, route_id)
+            except HTTPException:
+                return False
+        return True
+
+    async def still_allowed() -> bool:
+        return await run_in_threadpool(check)
+
+    return still_allowed
+
+
+async def _route_event_stream(request: Request, hub: RouteEventHub, route_id: int, still_allowed=None):
     """Async generator behind the SSE endpoint. Module-level (not a closure) so
     it can be driven directly in tests: this repo's sync TestClient drains the
-    whole ASGI response before returning, which would hang on an infinite stream."""
+    whole ASGI response before returning, which would hang on an infinite stream.
+    `still_allowed` (see _stream_guard) is re-checked on every keepalive tick;
+    the stream ends once it fails."""
     q = hub.subscribe(route_id)
     try:
         yield ": connected\n\n"
@@ -266,9 +296,11 @@ async def _route_event_stream(request: Request, hub: RouteEventHub, route_id: in
                 yield "data: " + json.dumps(event) + "\n\n"
                 idle = 0
                 continue
-            await asyncio.sleep(0.25)
+            await asyncio.sleep(SSE_POLL_SECONDS)
             idle += 1
-            if idle >= 80:
+            if idle >= SSE_KEEPALIVE_TICKS:
+                if still_allowed is not None and not await still_allowed():
+                    break
                 yield ": keepalive\n\n"
                 idle = 0
     finally:
@@ -289,7 +321,8 @@ async def route_events(route_id: int, request: Request, _: CurrentUserNoSession)
     if hub is None:
         raise HTTPException(status_code=503, detail="Live updates unavailable")
     return StreamingResponse(
-        _route_event_stream(request, hub, route_id),
+        _route_event_stream(request, hub, route_id, _stream_guard(
+            route_id, request.cookies.get("access_token"), request.headers.get("authorization"))),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
     )
