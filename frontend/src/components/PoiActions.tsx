@@ -68,7 +68,9 @@ export default function PoiActions({ poiId }: { poiId: number }) {
     };
     for (const v of visits) {
       if (v.user_id === meId) continue;
-      entry(v.user_id).rating = v.rating;
+      const e = entry(v.user_id);
+      e.rating = v.rating;
+      if (v.username) e.username = v.username;
     }
     for (const c of comments) {
       if (c.user_id === meId) continue;

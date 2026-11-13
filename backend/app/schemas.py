@@ -252,6 +252,9 @@ class VisitRead(SQLModel):
     user_id: int
     team_id: int | None
     rating: int | None
+    # Filled by the POI visits list (so a rating-only reviewer has a name);
+    # None elsewhere.
+    username: str | None = None
 
 
 class PreferredTeamUpdate(SQLModel):

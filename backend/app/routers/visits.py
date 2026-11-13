@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlmodel import select
 
 from ..deps import CurrentUser, SessionDep, is_team_member, require_team_member
-from ..models import POI, Visit
+from ..models import POI, User, Visit
 from ..ratelimit import WRITE_LIMIT, limiter, user_or_ip
 from ..schemas import VisitRead, VisitUpsert
 
@@ -50,10 +50,14 @@ def upsert_visit(poi_id: int, request: Request, body: VisitUpsert, session: Sess
 
 
 @router.get("/{poi_id}/visits", response_model=list[VisitRead])
-def list_visits(poi_id: int, session: SessionDep, _: CurrentUser) -> list[Visit]:
+def list_visits(poi_id: int, session: SessionDep, _: CurrentUser) -> list[VisitRead]:
     if not session.get(POI, poi_id):
         raise HTTPException(status_code=404, detail="Not found")
-    return session.exec(select(Visit).where(Visit.poi_id == poi_id)).all()
+    visits = session.exec(select(Visit).where(Visit.poi_id == poi_id)).all()
+    user_ids = {v.user_id for v in visits}
+    names = {u.id: u.username for u in session.exec(select(User).where(User.id.in_(user_ids))).all()}
+    return [VisitRead(poi_id=v.poi_id, user_id=v.user_id, team_id=v.team_id, rating=v.rating,
+                      username=names.get(v.user_id, "(deleted)")) for v in visits]
 
 
 @router.delete("/{poi_id}/visit", status_code=status.HTTP_204_NO_CONTENT)

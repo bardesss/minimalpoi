@@ -201,6 +201,8 @@ export interface Visit {
   user_id: number;
   team_id: number | null;
   rating: number | null;
+  /** Set by the POI visits list; absent/null elsewhere. */
+  username?: string | null;
 }
 
 export interface VisitUpsert {
