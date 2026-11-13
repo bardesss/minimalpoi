@@ -212,3 +212,22 @@ def test_init_db_lowercases_usernames_and_skips_collisions(client):
     assert "alice" in names and "Alice" not in names
     # "Carol" would collide with "carol": both stay as they were.
     assert {"Carol", "carol"} <= names
+
+
+def test_lowercase_collision_warning_names_both_accounts(client, caplog):
+    import logging
+
+    from sqlmodel import Session
+
+    from app import db
+    from app.models import User
+
+    with Session(db.engine) as s:
+        for name in ("Carol", "carol"):
+            s.add(User(username=name, password_hash="x"))
+        s.commit()
+    with caplog.at_level(logging.WARNING, logger="app.db"):
+        db.init_db()
+    msg = next(r.getMessage() for r in caplog.records if "collides" in r.getMessage())
+    assert "'Carol'" in msg and "'carol'" in msg
+    assert "can no longer log in" in msg

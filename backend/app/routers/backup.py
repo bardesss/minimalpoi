@@ -1,6 +1,7 @@
 import zipfile
 
 from fastapi import APIRouter, HTTPException, Response, UploadFile
+from sqlalchemy.exc import IntegrityError
 
 from .. import backup as backup_service
 from ..deps import AdminUser, SessionDep
@@ -29,6 +30,13 @@ async def restore_backup(file: UploadFile, session: SessionDep, _: AdminUser) ->
     raw = await file.read()
     try:
         summary = backup_service.restore_from_archive(session, raw)
+    except IntegrityError as exc:
+        # Nothing was committed: the clear + insert run in one transaction.
+        session.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Backup data conflicts with itself (duplicate or inconsistent rows); nothing was restored.",
+        ) from exc
     except (ValueError, KeyError, zipfile.BadZipFile, UnicodeDecodeError) as exc:
         raise HTTPException(status_code=400, detail="Invalid or unsupported backup file.") from exc
     return {"restored": summary}

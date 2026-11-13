@@ -31,7 +31,13 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from . import attachments
-from .db import reset_pg_sequences
+from .db import (
+    dedupe_role_rows,
+    log_username_collisions,
+    null_dangling_ref_rows,
+    plan_username_lowercasing,
+    reset_pg_sequences,
+)
 from .enrich.images import UnsupportedImageError, images_dir, process_image
 from .models import (
     POI,
@@ -141,6 +147,19 @@ def is_empty(session: Session) -> bool:
     return real_users <= 1
 
 
+def _normalise_rows(rows: dict[str, list[dict]]) -> None:
+    """Apply the boot-time pre-steps (db.init_db) to archive rows before they are
+    inserted, since restore happens after boot: lower-case usernames, clear the
+    role on duplicate start/end nodes, and null dangling team/POI references
+    (Postgres enforces the foreign keys an old SQLite backup may violate)."""
+    renames, collisions = plan_username_lowercasing([u["username"] for u in rows["users"]])
+    log_username_collisions(collisions)
+    for user in rows["users"]:
+        user["username"] = renames.get(user["username"], user["username"])
+    dedupe_role_rows(rows["route_nodes"])
+    null_dangling_ref_rows({model.__tablename__: rows[key] for key, model in _TABLES})
+
+
 def restore_backup(session: Session, data: dict) -> dict[str, int]:
     """Clear the target tables and load rows from `data`, preserving ids.
 
@@ -156,10 +175,11 @@ def restore_backup(session: Session, data: dict) -> dict[str, int]:
     # Build and validate every row from the (untrusted) archive FIRST. If any row
     # is malformed (bad datetime/enum, etc.) this raises before we touch existing
     # data, so a corrupt backup can never leave the instance wiped.
-    built: dict[str, list] = {
-        key: [_build_row(model, d) for d in (data.get(key) or [])] if key in keys else []
-        for key, model in _TABLES
+    rows: dict[str, list[dict]] = {
+        key: [dict(d) for d in (data.get(key) or [])] if key in keys else [] for key, _model in _TABLES
     }
+    _normalise_rows(rows)
+    built: dict[str, list] = {key: [_build_row(model, d) for d in rows[key]] for key, model in _TABLES}
     settings_obj = _build_row(Settings, data["settings"]) if data.get("settings") else None
 
     # Now clear and insert in a single transaction (one commit); a failure here

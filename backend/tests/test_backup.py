@@ -456,3 +456,93 @@ def test_restore_skips_unsafe_attachment_members(data_dir):
     assert not (d / "orphan.pdf").exists()
     assert not (d / "evil.pdf").exists()
     assert not (d.parent / "evil.pdf").exists()
+
+
+# ---- restore applies the boot-time normalisations ----
+
+def _restore_via_api(client, data):
+    return client.post("/api/restore", files={"file": ("b.zip", _zip(data), "application/zip")})
+
+
+def test_restore_lowercases_usernames_so_login_works_immediately(client):
+    from app.security import hash_password
+
+    _setup_admin(client)
+    users = [{**_v1_users()[0], "username": "Admin", "password_hash": hash_password("secret123")}]
+    data = {"version": 1, "users": users, "teams": [], "team_members": [], "categories": [],
+            "pois": [], "visits": [], "comments": [], "settings": None}
+    res = _restore_via_api(client, data)
+    assert res.status_code == 200, res.text
+    client.cookies.clear()
+    login = client.post("/api/auth/login", json={"username": "Admin", "password": "secret123"})
+    assert login.status_code == 200, login.text
+    assert login.json()["username"] == "admin"
+
+
+def test_restore_keeps_colliding_username_unchanged(client):
+    from app.models import User
+
+    _setup_admin(client)
+    users = [_v1_users()[0], {**_v1_users()[0], "id": 2, "username": "Admin", "role": "member"}]
+    data = {"version": 2, "users": users, "settings": None}
+    assert _restore_via_api(client, data).status_code == 200
+    with _session() as s:
+        assert {u.username for u in s.exec(select(User)).all()} >= {"admin", "Admin"}
+
+
+def test_restore_dedupes_duplicate_role_nodes(client):
+    from app.models import NodeRole, RouteNode
+
+    _setup_admin(client)
+    node = {"route_id": 1, "kind": "stop", "name": "X", "lat": 52.0, "lng": 5.0}
+    data = {
+        "version": 2, "users": _v1_users(), "settings": None,
+        "routes": [{"id": 1, "name": "NL", "start_date": "2026-07-14", "created_by": 1}],
+        "route_nodes": [
+            {**node, "id": 5, "position": 1.0, "role": "start"},
+            {**node, "id": 3, "position": 2.0, "role": "start"},
+            {**node, "id": 7, "position": 3.0, "role": "end"},
+        ],
+    }
+    res = _restore_via_api(client, data)
+    assert res.status_code == 200, res.text
+    with _session() as s:
+        roles = {n.id: n.role for n in s.exec(select(RouteNode)).all()}
+    assert roles == {3: NodeRole.START, 5: None, 7: NodeRole.END}
+
+
+def test_restore_nulls_dangling_team_and_poi_refs(client):
+    from app.models import RouteNode, User, Visit
+
+    _setup_admin(client)
+    users = [{**_v1_users()[0], "preferred_team_id": 42}]
+    data = {
+        "version": 2, "users": users, "settings": None,
+        "pois": [{"id": 9, "name": "Vondel", "lat": 52.0, "lng": 4.0, "tags": [], "created_by": 1}],
+        "visits": [{"id": 1, "poi_id": 9, "user_id": 1, "team_id": 42, "rating": 4}],
+        "routes": [{"id": 1, "name": "NL", "start_date": "2026-07-14", "created_by": 1, "team_id": 42}],
+        "route_nodes": [{"id": 1, "route_id": 1, "position": 1.0, "kind": "stop", "name": "X",
+                         "lat": 52.0, "lng": 5.0, "poi_id": 77}],
+    }
+    res = _restore_via_api(client, data)
+    assert res.status_code == 200, res.text
+    with _session() as s:
+        assert s.get(User, 1).preferred_team_id is None
+        assert s.get(Visit, 1).team_id is None
+        assert s.get(RouteNode, 1).poi_id is None
+        from app.models import Route
+        assert s.get(Route, 1).team_id is None
+
+
+def test_restore_integrity_error_is_400_and_rolls_back(client):
+    from app.models import User
+
+    _setup_admin(client)
+    users = [_v1_users()[0], {**_v1_users()[0], "id": 2}]  # same username twice
+    res = _restore_via_api(client, {"version": 2, "users": users, "settings": None})
+    assert res.status_code == 400
+    assert "conflict" in res.json()["detail"].lower()
+    with _session() as s:
+        # All-or-nothing: the bootstrap admin is still the only user.
+        assert [u.username for u in s.exec(select(User)).all()] == ["admin"]
+        assert s.exec(select(User)).one().created_at.year >= 2026
