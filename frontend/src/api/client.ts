@@ -31,11 +31,34 @@ function notifyIfSessionLost(path: string, status: number): void {
   unauthorizedHandler?.();
 }
 
+interface ValidationItem {
+  loc?: unknown[];
+  msg?: unknown;
+}
+
+/** The message to show for an error body: a string `detail`; for a pydantic
+ * 422 list, "<field>: <msg>" of the first item plus " (+N more)"; slowapi's
+ * 429 `error`; otherwise null (the caller falls back to statusText). */
+function errorMessage(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const { detail, error } = data as { detail?: unknown; error?: unknown };
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0] as ValidationItem;
+    if (typeof first?.msg === "string") {
+      const field = Array.isArray(first.loc) && first.loc.length > 0 ? String(first.loc[first.loc.length - 1]) : "";
+      const more = detail.length > 1 ? ` (+${detail.length - 1} more)` : "";
+      return `${field ? `${field}: ` : ""}${first.msg}${more}`;
+    }
+  }
+  if (typeof error === "string") return error;
+  return null;
+}
+
 async function toApiError(path: string, res: Response): Promise<ApiError> {
   let detail = res.statusText;
   try {
-    const data = await res.json();
-    if (data && typeof data.detail === "string") detail = data.detail;
+    detail = errorMessage(await res.json()) ?? detail;
   } catch {
     // non-JSON error body; keep statusText
   }

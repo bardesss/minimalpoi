@@ -106,3 +106,40 @@ test("fetchBlob shares the unauthorized path", async () => {
   await expect(fetchBlob("/api/backup")).rejects.toMatchObject({ status: 401 });
   expect(onUnauthorized).toHaveBeenCalledTimes(1);
 });
+
+test("a pydantic 422 list shows the first field and message, plus how many more", async () => {
+  mockFetch(422, {
+    detail: [
+      { loc: ["body", "name"], msg: "String should have at most 200 characters", type: "string_too_long" },
+      { loc: ["body", "lat"], msg: "Input should be less than or equal to 90", type: "less_than_equal" },
+      { loc: ["body", "lng"], msg: "Input should be a valid number", type: "float_parsing" },
+    ],
+  });
+  await expect(apiFetch("/api/pois", { method: "POST", body: "{}" })).rejects.toMatchObject({
+    status: 422,
+    message: "name: String should have at most 200 characters (+2 more)",
+  });
+});
+
+test("a single-item 422 list has no '+N more' suffix", async () => {
+  mockFetch(422, { detail: [{ loc: ["body", "url"], msg: "Field required", type: "missing" }] });
+  await expect(apiFetch("/api/enrich", { method: "POST", body: "{}" })).rejects.toMatchObject({
+    message: "url: Field required",
+  });
+});
+
+test("a slowapi 429 shows its error field", async () => {
+  mockFetch(429, { error: "Rate limit exceeded: 20 per 1 minute" });
+  await expect(apiFetch("/api/enrich", { method: "POST", body: "{}" })).rejects.toMatchObject({
+    status: 429,
+    message: "Rate limit exceeded: 20 per 1 minute",
+  });
+});
+
+test("a plain string detail is shown as-is", async () => {
+  mockFetch(409, { detail: "Token limit reached" });
+  await expect(apiFetch("/api/tokens", { method: "POST", body: "{}" })).rejects.toMatchObject({
+    status: 409,
+    message: "Token limit reached",
+  });
+});
