@@ -1,8 +1,9 @@
-import type { CSSProperties, PointerEvent, ReactNode } from "react";
+import type { CSSProperties, KeyboardEvent, PointerEvent, ReactNode } from "react";
 import { theme } from "../theme";
 import { useSheetDrag } from "./useSheetDrag";
 import type { Snap } from "./useSheetDrag";
 import { useMapInset } from "../map/useMapInsets";
+import { SheetRaiseContext } from "./sheetContext";
 
 // Header slots are centred by stretching them over the row, not with a
 // transform: a transform would make each slot a stacking context and the
@@ -11,6 +12,8 @@ const slot: CSSProperties = { position: "absolute", top: 0, bottom: 0, display: 
 
 // Presses inside a slot (a menu backdrop, padding, a count badge) never start a
 // drag or a tap-to-cycle; only the row around the grip does.
+const SNAP_INDEX: Record<Snap, number> = { peek: 0, half: 1, full: 2 };
+
 const stopDrag = (e: PointerEvent) => e.stopPropagation();
 
 /**
@@ -39,7 +42,15 @@ export default function BottomSheet({
   hidden?: boolean;
   handleLabel?: string;
 }) {
-  const { translate, restTranslate, dragging, handlers } = useSheetDrag(initial);
+  const { translate, restTranslate, dragging, handlers, snap, raiseTo, cycle, step } = useSheetDrag(initial);
+
+  function onGripKeyDown(e: KeyboardEvent) {
+    if (e.key === "Enter") cycle();
+    else if (e.key === "ArrowUp") step(1);
+    else if (e.key === "ArrowDown") step(-1);
+    else return;
+    e.preventDefault();
+  }
 
   // The sheet is a full-height element pushed DOWN by `translate`, so the part
   // on screen is only `viewport - translate`. Size the content area to exactly
@@ -107,12 +118,25 @@ export default function BottomSheet({
         {headerLeft && (
           <span onPointerDown={stopDrag} style={{ ...slot, left: 16 }}>{headerLeft}</span>
         )}
-        <div role="separator" aria-label={handleLabel} style={{ width: 40, height: 5, borderRadius: 999, background: theme.color.borderStd }} />
+        <div
+          role="separator"
+          aria-label={handleLabel}
+          aria-orientation="horizontal"
+          aria-valuemin={0}
+          aria-valuemax={2}
+          aria-valuenow={SNAP_INDEX[snap]}
+          aria-valuetext={snap}
+          tabIndex={0}
+          onKeyDown={onGripKeyDown}
+          style={{ width: 40, height: 5, borderRadius: 999, background: theme.color.borderStd }}
+        />
         {headerRight && (
           <span onPointerDown={stopDrag} style={{ ...slot, right: 16 }}>{headerRight}</span>
         )}
       </div>
-      <div style={{ height: contentHeight, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>{children}</div>
+      <SheetRaiseContext.Provider value={raiseTo}>
+        <div style={{ height: contentHeight, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>{children}</div>
+      </SheetRaiseContext.Provider>
     </section>
   );
 }

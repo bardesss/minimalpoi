@@ -109,9 +109,10 @@ describe("useRouteEvents", () => {
     expect(qc.getQueryData<RouteDetail>(["routes", 1])!.node_count).toBe(0);
   });
 
-  it("buffers while suspended and flushes the latest on resume", () => {
+  it("flush after suspension invalidates instead of applying stale payload", () => {
     const qc = new QueryClient();
     qc.setQueryData(["routes", 1], detail({ node_count: 0 }));
+    const spy = vi.spyOn(qc, "invalidateQueries");
     const { rerender } = renderHook(
       ({ s }: { s: boolean }) => useRouteEvents(1, { suspended: s }),
       { wrapper: wrapper(qc), initialProps: { s: true } },
@@ -122,9 +123,26 @@ describe("useRouteEvents", () => {
       MockEventSource.instances[0].emit(JSON.stringify({ type: "update", client_id: "o", route: detail({ node_count: 2 }) }));
     });
     expect(qc.getQueryData<RouteDetail>(["routes", 1])!.node_count).toBe(0); // buffered, not applied
+    spy.mockClear();
 
     act(() => rerender({ s: false }));
-    expect(qc.getQueryData<RouteDetail>(["routes", 1])!.node_count).toBe(2); // only the latest flushed
+    expect(qc.getQueryData<RouteDetail>(["routes", 1])!.node_count).toBe(0); // stale payload dropped
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["routes", 1] });
+  });
+
+  it("live update keeps prev.share", () => {
+    const qc = new QueryClient();
+    const share = { token: "t" } as never;
+    qc.setQueryData(["routes", 1], detail({ share }));
+    renderHook(() => useRouteEvents(1), { wrapper: wrapper(qc) });
+    act(() => {
+      MockEventSource.instances[0].emit(JSON.stringify({
+        type: "update", client_id: "other", route: detail({ node_count: 3, share: null }),
+      }));
+    });
+    const cached = qc.getQueryData<RouteDetail>(["routes", 1])!;
+    expect(cached.node_count).toBe(3);
+    expect(cached.share).toBe(share);
   });
 
   it("clears the cache and calls onDeleted on a deleted event", () => {
@@ -141,7 +159,7 @@ describe("useRouteEvents", () => {
     expect(onDeleted).toHaveBeenCalledOnce();
   });
 
-  it("invalidates the route detail on reconnect but not on the first open", () => {
+  it("invalidates the route detail on every open, including the first", () => {
     const qc = new QueryClient();
     const spy = vi.spyOn(qc, "invalidateQueries");
     const detailKey = (c: unknown[]) =>
@@ -149,11 +167,11 @@ describe("useRouteEvents", () => {
     renderHook(() => useRouteEvents(1), { wrapper: wrapper(qc) });
     const es = MockEventSource.instances[0];
 
-    act(() => es.open());   // first open — must NOT invalidate the detail key
-    expect(spy.mock.calls.filter(detailKey)).toHaveLength(0);
-
-    act(() => es.open());   // reconnect — must invalidate the detail key once
+    act(() => es.open());   // first open — reconciles
     expect(spy.mock.calls.filter(detailKey)).toHaveLength(1);
+
+    act(() => es.open());   // reconnect — reconciles again
+    expect(spy.mock.calls.filter(detailKey)).toHaveLength(2);
   });
 
   it("drops a buffered update when routeId changes while suspended (no cross-route clobber)", () => {

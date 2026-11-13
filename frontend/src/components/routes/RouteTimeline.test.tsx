@@ -276,6 +276,31 @@ describe("RouteTimeline navigate", () => {
   });
 });
 
+describe("RouteTimeline navigate modal vs live updates", () => {
+  const mk = (n: number): RouteDetail => ({
+    ...route,
+    nodes: Array.from({ length: n }, (_, i) => ({
+      ...node(i + 1, "stay", i + 1), name: `Stay${i + 1}`,
+      arrive_date: `2026-07-${14 + i}`, depart_date: `2026-07-${15 + i}`, nights: 1,
+    })),
+    legs: [],
+  });
+
+  it("navigate modal closes when its day disappears", async () => {
+    const qc = new QueryClient();
+    const ui = (r: RouteDetail) => (
+      <QueryClientProvider client={qc}><RouteTimeline route={r} canEdit={false} /></QueryClientProvider>
+    );
+    const { rerender } = render(ui(mk(3)));
+    const buttons = screen.getAllByRole("button", { name: /navigate/i });
+    await userEvent.click(buttons[buttons.length - 1]);
+    expect(screen.getByRole("button", { name: /open in google maps/i })).toBeInTheDocument();
+
+    expect(() => rerender(ui(mk(1)))).not.toThrow();
+    expect(screen.queryByRole("button", { name: /open in google maps/i })).not.toBeInTheDocument();
+  });
+});
+
 describe("drag a stop into another day (handler math)", () => {
   // Hotel X 2 nights (14→16). S1 sits on the arrival day (offset 0); S2 on the
   // departure day (offset null → 16).

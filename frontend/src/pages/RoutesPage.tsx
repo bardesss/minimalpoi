@@ -22,6 +22,7 @@ import { dayIndexByNode as computeDayIndexByNode } from "../lib/routeDays";
 import { exportRoute, type RouteExportFormat } from "../api/routes";
 import { triggerDownload } from "../lib/download";
 import { useRouteEvents } from "../queries/useRouteEvents";
+import { ApiError } from "../api/client";
 import { useToast } from "../components/Toast";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
@@ -105,7 +106,11 @@ export default function RoutesPage() {
 
   async function onExport(format: RouteExportFormat) {
     if (!detail) return;
-    triggerDownload(await exportRoute(detail.id, format), `${detail.name}.${format}`);
+    try {
+      triggerDownload(await exportRoute(detail.id, format), `${detail.name}.${format}`);
+    } catch (err) {
+      toast.notify(err instanceof ApiError ? err.message : "Export failed", "error");
+    }
   }
 
   const shareItems: MenuItem[] = detail

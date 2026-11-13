@@ -9,7 +9,7 @@ import MenuButton from "../MenuButton";
  * Containers key this by place id so an armed confirmation never carries over
  * to another place.
  */
-export default function DetailControls({ onEdit, onDelete, layout, trailing }: { onEdit: () => void; onDelete: () => void; layout: "footer" | "header"; trailing?: ReactNode }) {
+export default function DetailControls({ onEdit, onDelete, layout, trailing, canModify = true }: { onEdit: () => void; onDelete: () => void | Promise<void>; layout: "footer" | "header"; trailing?: ReactNode; canModify?: boolean }) {
   const [confirming, setConfirming] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const cancelRef = useRef<HTMLButtonElement | null>(null);
@@ -43,12 +43,25 @@ export default function DetailControls({ onEdit, onDelete, layout, trailing }: {
     }
   }
 
+  // Whether or not the delete succeeds, the confirm bar goes away; on success
+  // the container unmounts this (keyed by place id) anyway.
+  async function confirmDelete() {
+    try {
+      await onDelete();
+    } finally {
+      returnFocusRef.current = true;
+      setConfirming(false);
+    }
+  }
+
+  if (!canModify) return <>{trailing}</>;
+
   if (confirming) {
     return (
       <div role="group" aria-label="Confirm delete" data-dialog-escape="ignore" onKeyDown={onConfirmKeyDown} style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
         <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: theme.color.dangerText }}>Delete this place?</span>
         <button ref={cancelRef} type="button" onClick={cancel} style={{ ...ghostButtonStyle, ...small }}>Cancel</button>
-        <button type="button" onClick={onDelete} style={{ ...dangerButtonStyle, ...small }}>Delete</button>
+        <button type="button" onClick={confirmDelete} style={{ ...dangerButtonStyle, ...small }}>Delete</button>
       </div>
     );
   }

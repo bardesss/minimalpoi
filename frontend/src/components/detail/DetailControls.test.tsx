@@ -67,4 +67,20 @@ describe("DetailControls", () => {
     expect(screen.getByRole("button", { name: /cancel/i }).style.minHeight).toBe("44px");
     expect(screen.getByRole("button", { name: /^delete$/i }).style.minHeight).toBe("44px");
   });
+
+  it("shows no Edit or Delete when the user cannot modify the place", () => {
+    render(<DetailControls layout="header" canModify={false} onEdit={() => {}} onDelete={() => {}} trailing={<button>Close</button>} />);
+    expect(screen.queryByRole("button", { name: /edit place|edit/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /more actions/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
+  });
+
+  it("resets the confirm bar when delete fails", async () => {
+    const onDelete = vi.fn().mockRejectedValue(new Error("403"));
+    render(<DetailControls layout="footer" onEdit={() => {}} onDelete={() => onDelete().catch(() => {})} />);
+    await armConfirm();
+    await userEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+    expect(await screen.findByRole("button", { name: /edit place/i })).toBeInTheDocument();
+    expect(screen.queryByText(/delete this place\?/i)).not.toBeInTheDocument();
+  });
 });

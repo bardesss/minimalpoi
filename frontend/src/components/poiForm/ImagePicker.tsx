@@ -18,11 +18,13 @@ export function ImagePicker({
   onImageUrl,
   onUploadImage,
   mobile,
+  onUploadingChange,
 }: {
   imageUrl: string | null;
   onImageUrl: (url: string | null) => void;
   onUploadImage?: (file: File) => Promise<{ url: string }>;
   mobile?: boolean;
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -33,6 +35,7 @@ export function ImagePicker({
     e.target.value = ""; // allow re-picking the same file later
     if (!file || !onUploadImage) return;
     setUploading(true);
+    onUploadingChange?.(true);
     setUploadError(null);
     try {
       const { url } = await onUploadImage(file);
@@ -41,6 +44,7 @@ export function ImagePicker({
       setUploadError(err instanceof ApiError ? err.message : "Upload failed — try a different image.");
     } finally {
       setUploading(false);
+      onUploadingChange?.(false);
     }
   }
 

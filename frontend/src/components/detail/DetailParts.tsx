@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { Category, Poi } from "../../types/api";
 import { theme, tintFromColor } from "../../theme";
-import { safeImageCss, safeLinkHref } from "../../lib/safeUrl";
+import { safeImageCss, safeLinkHref, safeMailtoHref } from "../../lib/safeUrl";
 import { formatPhoneDisplay, telHref } from "../../lib/phone";
 import { CategoryIcon } from "../../lib/categoryIcon";
 import { useIsCoarsePointer } from "../../lib/useMediaQuery";
@@ -79,6 +79,7 @@ export function DetailSummary({ poi, compact = false }: { poi: Poi; compact?: bo
 /** Coordinates, contact details, tags, notes and reviews. */
 export function DetailBody({ poi }: { poi: Poi }) {
   const websiteHref = safeLinkHref(poi.website);
+  const mailtoHref = safeMailtoHref(poi.email);
   const tel = telHref(poi.phone);
   return (
     <div style={{ padding: "0 20px 20px" }}>
@@ -92,7 +93,9 @@ export function DetailBody({ poi }: { poi: Poi }) {
           {poi.website && (websiteHref
             ? <a href={websiteHref} target="_blank" rel="noreferrer" style={{ display: "block", padding: "11px 14px", fontSize: 13, fontWeight: 600, color: theme.color.link, textDecoration: "none" }}>{poi.website.replace(/^https?:\/\//, "")}</a>
             : <div style={{ padding: "11px 14px", fontSize: 13, fontWeight: 600, color: theme.color.textBody }}>{poi.website.replace(/^https?:\/\//, "")}</div>)}
-          {poi.email && <a href={`mailto:${poi.email}`} style={{ display: "block", padding: "11px 14px", fontSize: 13, fontWeight: 500, color: theme.color.textBody, textDecoration: "none" }}>{poi.email}</a>}
+          {poi.email && (mailtoHref
+            ? <a href={mailtoHref} style={{ display: "block", padding: "11px 14px", fontSize: 13, fontWeight: 500, color: theme.color.textBody, textDecoration: "none" }}>{poi.email}</a>
+            : <div style={{ padding: "11px 14px", fontSize: 13, fontWeight: 500 }}>{poi.email}</div>)}
         </div>
       )}
 
@@ -110,7 +113,7 @@ export function DetailBody({ poi }: { poi: Poi }) {
       {poi.notes && (
         <div>
           <p style={sectionLabel}>Notes</p>
-          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: theme.color.textBody }}>{poi.notes}</p>
+          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: theme.color.textBody, whiteSpace: "pre-wrap" }}>{poi.notes}</p>
         </div>
       )}
 

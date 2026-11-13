@@ -40,6 +40,28 @@ describe("DataSection", () => {
     expect(createUrl).toHaveBeenCalledOnce();
   });
 
+  it("shows the server message when export fails", async () => {
+    server.use(http.get("/api/pois/export", () => HttpResponse.json({ detail: "Export is unavailable" }, { status: 500 })));
+    renderWithProviders(<DataSection />);
+    await userEvent.click(screen.getByRole("button", { name: /export geojson/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/export is unavailable/i);
+  });
+
+  it("shows the server message when an import is rejected", async () => {
+    server.use(http.post("/api/pois/import", () => HttpResponse.json({ detail: "File too large" }, { status: 413 })));
+    renderWithProviders(<DataSection />);
+    await userEvent.upload(screen.getByLabelText(/choose file/i), new File(["x"], "p.csv", { type: "text/csv" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/file too large/i);
+  });
+
+  it("keeps the import input focusable (visually hidden, not display:none)", () => {
+    renderWithProviders(<DataSection />);
+    const input = screen.getByLabelText(/choose file/i);
+    expect(input.style.display).not.toBe("none");
+    input.focus();
+    expect(input).toHaveFocus();
+  });
+
   it("downloads a full backup (admin)", async () => {
     vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:fake");
     vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});

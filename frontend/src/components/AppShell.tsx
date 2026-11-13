@@ -2,6 +2,8 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
+import { canModify } from "../auth/permissions";
+import { useToast } from "./Toast";
 import { useCategories, useCreatePoi, useDeletePoi, useEnrich, useMyVisits, usePlaceDraft, usePois, useSearchPlaces, useSettings, useTags, useUpdatePoi, useUploadImage, useCheckDuplicate, useVersion } from "../queries/hooks";
 import { filterPois, UNCATEGORIZED_ID } from "../lib/filterPois";
 import type { Category, Poi, PoiCreate, VisitedFilter } from "../types/api";
@@ -28,6 +30,7 @@ const SettingsModal = lazy(() => import("./SettingsModal"));
 
 export default function AppShell() {
   const { user, signOut } = useAuth();
+  const { notify } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const isNarrow = useIsNarrowDesktop();
@@ -245,7 +248,12 @@ export default function AppShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered, mapViewMode]);
 
+  // Bumped on every check and whenever a form opens/closes, so a response from
+  // an earlier check (or a closed form) can never set the banner.
+  const dupSeqRef = useRef(0);
+
   function openAdd() {
+    ++dupSeqRef.current;
     const c = mapRef.current?.getCenter();
     setDuplicateId(null);
     setAddCoords(c ? { lng: c.lng, lat: c.lat } : null);
@@ -253,6 +261,7 @@ export default function AppShell() {
   }
 
   function openEdit(poi: Poi) {
+    ++dupSeqRef.current;
     setDuplicateId(null);
     setAddCoords(null);
     setFormState({
@@ -263,6 +272,7 @@ export default function AppShell() {
   }
 
   function closeForm() {
+    ++dupSeqRef.current;
     setFormState(null);
     setAddCoords(null);
     setDraftPin(null);
@@ -281,15 +291,25 @@ export default function AppShell() {
     setFlyRequest((r) => ({ id: created.id, seq: (r?.seq ?? 0) + 1, center: [created.lng, created.lat] }));
   }
 
-  async function runDuplicateCheck(body: { name: string; lat: number; lng: number }) {
-    const res = await checkDuplicate.mutateAsync(body);
-    setDuplicateId(res.duplicate_id);
+  // Only the latest check may set the banner; an older, slower response is dropped.
+  async function runDuplicateCheck(body: { name: string; lat: number; lng: number; source_url?: string | null }) {
+    const seq = ++dupSeqRef.current;
+    try {
+      const res = await checkDuplicate.mutateAsync(body);
+      if (seq === dupSeqRef.current) setDuplicateId(res.duplicate_id);
+    } catch {
+      // Advisory only: a failed check just leaves the banner as it was.
+    }
   }
 
   async function confirmDelete() {
     if (selectedId == null) return;
-    await deletePoi.mutateAsync(selectedId);
-    setSelectedId(null);
+    try {
+      await deletePoi.mutateAsync(selectedId);
+      setSelectedId(null);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Delete failed", "error");
+    }
   }
 
   const sidebarContent = (
@@ -337,6 +357,7 @@ export default function AppShell() {
         onClose: () => setSelectedId(null),
         onEdit: () => openEdit(selectedPoi),
         onDelete: confirmDelete,
+        canModify: canModify(user, selectedPoi.created_by),
       }
     : null;
   const layoutDetail =

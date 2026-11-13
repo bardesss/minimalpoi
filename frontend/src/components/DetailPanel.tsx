@@ -15,12 +15,14 @@ export default function DetailPanel({
   onClose,
   onEdit,
   onDelete,
+  canModify = true,
 }: {
   poi: Poi;
   category: Category | undefined;
   onClose: () => void;
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete: () => void | Promise<void>;
+  canModify?: boolean;
 }) {
   // Not a backdrop modal: Escape/back/return-focus always apply. The panel is
   // non-modal (it sits beside the list/map), so no focus trap.
@@ -31,9 +33,9 @@ export default function DetailPanel({
   useResetScrollOn(scrollRef, poi.id);
 
   const close = <CloseButton onClick={onClose} style={{ position: "absolute", top: 14, right: 14 }} />;
-  const footer = (
+  const footer = !canModify ? null : (
     <div style={{ display: "flex", gap: 9, padding: "14px 18px", paddingBottom: 14, borderTop: `1px solid ${theme.color.borderSubtle}`, background: "#fff", flex: "none" }}>
-      <DetailControls key={poi.id} layout="footer" onEdit={onEdit} onDelete={onDelete} />
+      <DetailControls key={poi.id} layout="footer" onEdit={onEdit} onDelete={onDelete} canModify={canModify} />
     </div>
   );
   const content = (

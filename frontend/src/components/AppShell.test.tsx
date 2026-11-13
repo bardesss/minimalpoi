@@ -145,6 +145,29 @@ describe("AppShell", () => {
     expect(screen.queryByRole("heading", { name: "Café Modern" })).not.toBeInTheDocument();
   });
 
+  it("shows a toast and resets the confirm bar when delete is rejected", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.delete("/api/pois/:id", () => HttpResponse.json({ detail: "Not allowed" }, { status: 403 })),
+    );
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    await screen.findByRole("button", { name: /edit place/i });
+    await user.click(screen.getByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("menuitem", { name: /delete place/i }));
+    await user.click(screen.getByRole("button", { name: /^delete$/i }));
+    expect(await screen.findByText(/not allowed/i)).toBeInTheDocument();
+    expect(screen.queryByText(/delete this place\?/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /edit place/i })).toBeInTheDocument();
+  });
+
+  it("member sees no Edit/Delete on others' POI", async () => {
+    server.use(http.get("/api/auth/me", () => HttpResponse.json({ id: 2, username: "mem", role: "member", preferred_team_id: null, disabled: false, created_at: "2026-06-23T00:00:00Z" })));
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    expect(await screen.findByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /edit place/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /more actions/i })).not.toBeInTheDocument();
+  });
+
   it("preselects a POI from the ?place= deep-link", async () => {
     renderWithProviders(<AppShell />, { route: "/?place=1" });
     // DetailPanel is unique in exposing an "Edit place" button; the sidebar card also shows the name, so assert on the panel-only control.
@@ -399,5 +422,61 @@ describe("AppShell Slice C", () => {
     renderWithProviders(<AppShell />, { route: "/?place=1" });
     await screen.findByRole("button", { name: /edit place/i });
     expect(screen.queryByRole("button", { name: /add place/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("AppShell duplicate check (Task 20)", () => {
+  function deferredDuplicateHandler() {
+    const resolvers: Array<(id: number | null) => void> = [];
+    server.use(
+      http.post("/api/pois/check-duplicate", () =>
+        new Promise((resolve) => {
+          resolvers.push((id) => resolve(HttpResponse.json({ duplicate_id: id })));
+        }),
+      ),
+    );
+    return resolvers;
+  }
+  const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 150)); });
+
+  it("stale duplicate response ignored", async () => {
+    const user = userEvent.setup();
+    const resolvers = deferredDuplicateHandler();
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    await user.click(screen.getByRole("button", { name: /add place/i }));
+    await user.type(screen.getByLabelText(/latitude/i), "52.37");
+    await user.type(screen.getByLabelText(/longitude/i), "4.9");
+    await user.type(screen.getByLabelText(/^name$/i), "Dup");
+    await user.tab(); // check 1 (older)
+    await user.click(screen.getByLabelText(/^name$/i));
+    await user.tab(); // check 2 (newer)
+    await waitFor(() => expect(resolvers.length).toBe(2));
+    await act(async () => { resolvers[1](7); }); // newer: duplicate found
+    expect(await screen.findByText(/possible duplicate/i)).toBeInTheDocument();
+    await act(async () => { resolvers[0](null); }); // stale "no duplicate" arrives last
+    await settle();
+    expect(screen.getByText(/possible duplicate/i)).toBeInTheDocument();
+  });
+
+  it("a check from a closed form does not show on the next form", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const resolvers = deferredDuplicateHandler();
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    await user.click(screen.getByRole("button", { name: /add place/i }));
+    await user.type(screen.getByLabelText(/latitude/i), "52.37");
+    await user.type(screen.getByLabelText(/longitude/i), "4.9");
+    await user.type(screen.getByLabelText(/^name$/i), "Dup");
+    await user.tab();
+    await waitFor(() => expect(resolvers.length).toBe(1));
+    await user.click(screen.getByRole("button", { name: /^close$/i }));
+    await user.click(screen.getByRole("button", { name: /add place/i }));
+    await screen.findByLabelText(/^name$/i);
+    await act(async () => { resolvers[0](5); });
+    await settle();
+    expect(screen.queryByText(/possible duplicate/i)).not.toBeInTheDocument();
+    vi.restoreAllMocks();
   });
 });

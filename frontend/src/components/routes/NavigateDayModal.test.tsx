@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import NavigateDayModal from "./NavigateDayModal";
 import type { Waypoint } from "../../lib/routeNav";
@@ -84,5 +84,21 @@ describe("NavigateDayModal", () => {
     const backdrop = screen.getByTestId("navmodal-backdrop");
     expect(container.contains(backdrop)).toBe(false);
     expect(document.body.contains(backdrop)).toBe(true);
+  });
+
+  it("does not revoke the GPX object URL synchronously", async () => {
+    vi.useFakeTimers();
+    const revoke = vi.fn();
+    URL.createObjectURL = vi.fn(() => "blob:x");
+    URL.revokeObjectURL = revoke;
+    try {
+      render(<NavigateDayModal dayLabel="THU 16 JUL" waypoints={waypoints} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole("button", { name: /gpx/i }));
+      expect(revoke).not.toHaveBeenCalled();
+      await vi.runAllTimersAsync();
+      expect(revoke).toHaveBeenCalledWith("blob:x");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

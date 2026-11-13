@@ -9,6 +9,10 @@ import type { ImportResult } from "../../types/api";
 import { ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../../theme";
 
 const rowLabel = { fontSize: 13, fontWeight: 800, letterSpacing: "-.01em" } as const;
+// Visually hidden but still focusable (same recipe as ImagePicker), so the
+// keyboard can reach the file input; index.css outlines the sibling label.
+const hiddenInputStyle = { position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" } as const;
+
 const rowHint = { margin: "2px 0 0", fontSize: 12, color: theme.color.textSecondary } as const;
 
 export default function DataSection() {
@@ -20,6 +24,8 @@ export default function DataSection() {
   const [importError, setImportError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [backingUp, setBackingUp] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [backupError, setBackupError] = useState<string | null>(null);
 
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [confirmText, setConfirmText] = useState("");
@@ -34,15 +40,18 @@ export default function DataSection() {
     setResult(null);
     try {
       setResult(await importPois.mutateAsync(file));
-    } catch {
-      setImportError("Couldn't read this file. Use a .csv, .json, or .geojson export.");
+    } catch (err) {
+      setImportError(err instanceof ApiError ? err.message : "Couldn't read this file. Use a .csv, .json, or .geojson export.");
     }
   }
 
   async function onExport() {
     setExporting(true);
+    setExportError(null);
     try {
       triggerDownload(await exportPois(), "minimalpoi-places.geojson");
+    } catch (err) {
+      setExportError(err instanceof ApiError ? err.message : "Export failed. Try again.");
     } finally {
       setExporting(false);
     }
@@ -50,8 +59,11 @@ export default function DataSection() {
 
   async function onDownloadBackup() {
     setBackingUp(true);
+    setBackupError(null);
     try {
       triggerDownload(await downloadBackup(), "minimalpoi-backup.zip");
+    } catch (err) {
+      setBackupError(err instanceof ApiError ? err.message : "Backup failed. Try again.");
     } finally {
       setBackingUp(false);
     }
@@ -83,7 +95,7 @@ export default function DataSection() {
       <div>
         <div style={rowLabel}>Import places</div>
         <p style={rowHint}>Upload a GeoJSON or CSV file. Likely duplicates are skipped.</p>
-        <input id="data-import-file" type="file" accept=".json,.geojson,.csv" onChange={onFile} style={{ display: "none" }} />
+        <input id="data-import-file" type="file" accept=".json,.geojson,.csv" onChange={onFile} style={hiddenInputStyle} className="photo-file-input" />
         <label htmlFor="data-import-file" style={{ ...ghostButtonStyle, display: "inline-block", marginTop: 8 }}>
           {importPois.isPending ? "Importing…" : "Choose file"}
         </label>
@@ -105,6 +117,7 @@ export default function DataSection() {
         <button type="button" onClick={onExport} disabled={exporting} style={{ ...primaryButtonStyle, marginTop: 10, opacity: exporting ? 0.6 : 1 }}>
           {exporting ? "Exporting…" : "Export GeoJSON"}
         </button>
+        {exportError && <div role="alert" style={{ fontSize: 12.5, color: theme.color.dangerText, marginTop: 8 }}>{exportError}</div>}
       </div>
 
       {isAdmin && (
@@ -118,6 +131,7 @@ export default function DataSection() {
             <button type="button" onClick={onDownloadBackup} disabled={backingUp} style={{ ...primaryButtonStyle, marginTop: 10, opacity: backingUp ? 0.6 : 1 }}>
               {backingUp ? "Preparing…" : "Download backup"}
             </button>
+            {backupError && <div role="alert" style={{ fontSize: 12.5, color: theme.color.dangerText, marginTop: 8 }}>{backupError}</div>}
           </div>
           <div>
             <div style={rowLabel}>Restore from backup</div>

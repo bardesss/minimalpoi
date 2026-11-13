@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
   useAddComment, useComments, useDeleteComment, useDeleteVisit,
   useUpdateComment, useUpsertVisit, useVisits,
 } from "../queries/hooks";
-import { dangerButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
+import { useToast } from "./Toast";
+import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme } from "../theme";
 
 const sectionLabel = { fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: theme.color.textPlaceholder, margin: "0 0 8px" } as const;
 
@@ -50,21 +51,33 @@ export default function PoiActions({ poiId }: { poiId: number }) {
 
   const visits = useVisits(poiId).data ?? [];
   const myVisit = visits.find((v) => v.user_id === meId);
-  const ratingByUser = new Map(visits.filter((v) => v.rating != null).map((v) => [v.user_id, v.rating as number]));
-
   const comments = useComments(poiId).data ?? [];
   const myComments = comments.filter((c) => c.user_id === meId);
   const myComment = myComments[0];
-  // One review per person: each other user's first comment anchors their review.
+  // One review per person, from the union of ratings and comments, so a
+  // rating without a comment is still listed.
   const otherReviews = (() => {
-    const seen = new Set<number>();
-    const out: typeof comments = [];
-    for (const c of comments) {
-      if (c.user_id === meId || seen.has(c.user_id)) continue;
-      seen.add(c.user_id);
-      out.push(c);
+    const byUser = new Map<number, { userId: number; username: string; rating: number | null; comments: typeof comments }>();
+    const entry = (userId: number) => {
+      let e = byUser.get(userId);
+      if (!e) {
+        e = { userId, username: "", rating: null, comments: [] };
+        byUser.set(userId, e);
+      }
+      return e;
+    };
+    for (const v of visits) {
+      if (v.user_id === meId) continue;
+      entry(v.user_id).rating = v.rating;
     }
-    return out;
+    for (const c of comments) {
+      if (c.user_id === meId) continue;
+      const e = entry(c.user_id);
+      e.comments.push(c);
+      e.username = c.username;
+    }
+    return [...byUser.values()].filter((e) => e.rating != null || e.comments.length > 0)
+      .map((e) => ({ ...e, username: e.username || "Someone" }));
   })();
 
   const upsertVisit = useUpsertVisit(poiId);
@@ -76,6 +89,11 @@ export default function PoiActions({ poiId }: { poiId: number }) {
   const [editing, setEditing] = useState(false);
   const [rating, setRating] = useState(0);
   const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  // Which delete is awaiting inline confirmation: "me" or another user's id.
+  const [confirming, setConfirming] = useState<"me" | number | null>(null);
+  const { notify } = useToast();
 
   // This component is reused as you click between places (only `poiId` changes),
   // so reset the draft when the place changes — otherwise the rating/comment you
@@ -86,6 +104,7 @@ export default function PoiActions({ poiId }: { poiId: number }) {
     setEditing(false);
     setRating(0);
     setText("");
+    setConfirming(null);
   }
 
   // Show the editor while you have no review, or while editing an existing one.
@@ -97,22 +116,63 @@ export default function PoiActions({ poiId }: { poiId: number }) {
     setEditing(true);
   }
 
-  function saveReview() {
-    if (rating < 1) return;
-    upsertVisit.mutate({ rating });
-    const t = text.trim();
-    if (myComment) {
-      if (t === "") deleteComment.mutate(myComment.id);
-      else if (t !== myComment.text) updateComment.mutate({ commentId: myComment.id, text: t });
-    } else if (t !== "") {
-      addComment.mutate({ text: t });
+  // Runs one guarded mutation sequence: ignores re-entry (double clicks),
+  // disables the controls while pending, and toasts on failure. Returns success.
+  async function guarded(action: () => Promise<unknown>, failure: string): Promise<boolean> {
+    if (busyRef.current) return false;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      await action();
+      return true;
+    } catch {
+      notify(failure, "error");
+      return false;
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
     }
-    setEditing(false);
   }
 
-  function deleteMyReview() {
-    deleteVisit.mutate();
-    for (const c of myComments) deleteComment.mutate(c.id);
+  async function saveReview() {
+    if (rating < 1) return;
+    const t = text.trim();
+    const ok = await guarded(async () => {
+      await upsertVisit.mutateAsync({ rating });
+      if (myComment) {
+        if (t === "") await Promise.all(myComments.map((c) => deleteComment.mutateAsync(c.id)));
+        else if (t !== myComment.text) await updateComment.mutateAsync({ commentId: myComment.id, text: t });
+      } else if (t !== "") {
+        await addComment.mutateAsync({ text: t });
+      }
+    }, "Could not save your review");
+    if (ok) setEditing(false);
+  }
+
+  async function deleteMyReview() {
+    const ok = await guarded(
+      () => Promise.all([deleteVisit.mutateAsync(), ...myComments.map((c) => deleteComment.mutateAsync(c.id))]),
+      "Could not delete your review",
+    );
+    if (ok) setConfirming(null);
+  }
+
+  async function deleteOtherReview(userComments: { id: number }[]) {
+    const ok = await guarded(
+      () => Promise.all(userComments.map((c) => deleteComment.mutateAsync(c.id))),
+      "Could not delete the review",
+    );
+    if (ok) setConfirming(null);
+  }
+
+  function confirmBar(onConfirm: () => void, label: string) {
+    return (
+      <span role="group" aria-label="Confirm delete" data-dialog-escape="ignore" onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setConfirming(null); } }} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: theme.color.dangerText }}>{label}</span>
+        <button type="button" autoFocus onClick={() => setConfirming(null)} disabled={busy} style={{ ...ghostButtonStyle, padding: "1px 8px", fontSize: 11 }}>Cancel</button>
+        <button type="button" onClick={onConfirm} disabled={busy} style={{ ...dangerButtonStyle, padding: "1px 8px", fontSize: 11 }}>Delete</button>
+      </span>
+    );
   }
 
   return (
@@ -134,14 +194,14 @@ export default function PoiActions({ poiId }: { poiId: number }) {
               <button
                 type="button"
                 onClick={saveReview}
-                disabled={rating < 1}
+                disabled={rating < 1 || busy}
                 aria-label="Save review"
-                style={{ ...primaryButtonStyle, flex: 1, opacity: rating < 1 ? 0.45 : 1, cursor: rating < 1 ? "not-allowed" : "pointer" }}
+                style={{ ...primaryButtonStyle, flex: 1, opacity: rating < 1 || busy ? 0.45 : 1, cursor: rating < 1 || busy ? "not-allowed" : "pointer" }}
               >
                 {rating < 1 ? "Tap a star to rate" : "Save review"}
               </button>
               {editing && (
-                <button type="button" onClick={() => setEditing(false)} style={{ border: "none", background: "none", padding: "0 6px", cursor: "pointer", fontSize: 12, fontWeight: 700, color: theme.color.textPlaceholder }}>
+                <button type="button" disabled={busy} onClick={() => setEditing(false)} style={{ border: "none", background: "none", padding: "0 6px", cursor: "pointer", fontSize: 12, fontWeight: 700, color: theme.color.textPlaceholder }}>
                   Cancel
                 </button>
               )}
@@ -152,36 +212,34 @@ export default function PoiActions({ poiId }: { poiId: number }) {
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontWeight: 700 }}>{user?.username}</span>
               {myVisit?.rating != null && <RatingStars value={myVisit.rating} />}
+              {confirming === "me" ? confirmBar(deleteMyReview, "Delete your review?") : (<>
               <button type="button" aria-label="Edit review" onClick={openEdit} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: 11, fontWeight: 700, color: theme.color.primary }}>
                 Edit
               </button>
-              <button type="button" aria-label="Delete review" onClick={deleteMyReview} style={{ ...dangerButtonStyle, padding: "1px 8px", fontSize: 11 }}>
+              <button type="button" aria-label="Delete review" onClick={() => setConfirming("me")} style={{ ...dangerButtonStyle, padding: "1px 8px", fontSize: 11 }}>
                 Delete
-              </button>
+              </button></>)}
             </div>
-            {myComment?.text && <div style={{ color: theme.color.textBody }}>{myComment.text}</div>}
+            {myComment?.text && <div style={{ color: theme.color.textBody, whiteSpace: "pre-wrap" }}>{myComment.text}</div>}
           </div>
         )}
 
         {/* Everyone else's reviews — read-only (admins may delete). */}
-        {otherReviews.map((c) => {
-          const stars = ratingByUser.get(c.user_id);
-          return (
-            <div key={c.id} style={{ fontSize: 13, lineHeight: 1.45 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ fontWeight: 700 }}>{c.username}</span>
-                {stars != null && <RatingStars value={stars} />}
-                <span style={{ color: theme.color.textPlaceholder }}>· {new Date(c.created_at).toLocaleDateString()}</span>
-                {isAdmin && (
-                  <button type="button" aria-label={`Delete ${c.username}'s review`} onClick={() => deleteComment.mutate(c.id)} style={{ ...dangerButtonStyle, padding: "1px 8px", fontSize: 11 }}>
-                    Delete
-                  </button>
-                )}
-              </div>
-              <div style={{ color: theme.color.textBody }}>{c.text}</div>
+        {otherReviews.map((r) => (
+          <div key={r.userId} style={{ fontSize: 13, lineHeight: 1.45 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontWeight: 700 }}>{r.username}</span>
+              {r.rating != null && <RatingStars value={r.rating} />}
+              {r.comments[0] && <span style={{ color: theme.color.textPlaceholder }}>· {new Date(r.comments[0].created_at).toLocaleDateString()}</span>}
+              {isAdmin && r.comments.length > 0 && (confirming === r.userId ? confirmBar(() => deleteOtherReview(r.comments), `Delete ${r.username}'s review?`) : (
+                <button type="button" aria-label={`Delete ${r.username}'s review`} onClick={() => setConfirming(r.userId)} style={{ ...dangerButtonStyle, padding: "1px 8px", fontSize: 11 }}>
+                  Delete
+                </button>
+              ))}
             </div>
-          );
-        })}
+            {r.comments.map((c) => <div key={c.id} style={{ color: theme.color.textBody, whiteSpace: "pre-wrap" }}>{c.text}</div>)}
+          </div>
+        ))}
       </div>
     </div>
   );

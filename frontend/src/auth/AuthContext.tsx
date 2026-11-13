@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ApiError, setUnauthorizedHandler } from "../api/client";
 import { SessionNotPersistedError } from "./errors";
 import { getMe, login as loginRequest, logout as logoutRequest } from "../api/auth";
@@ -15,6 +16,7 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const qc = useQueryClient();
   const [user, setUser] = useState<UserRead | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -43,9 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // the UI still believes. Drop the user so RequireAuth sends them to the login
   // page, instead of rendering a signed-in shell whose every query fails.
   useEffect(() => {
-    setUnauthorizedHandler(() => setUser(null));
+    setUnauthorizedHandler(() => {
+      // Drop cached data too, so the next identity never sees this one's.
+      qc.clear();
+      setUser(null);
+    });
     return () => setUnauthorizedHandler(null);
-  }, []);
+  }, [qc]);
 
   const signIn = async (username: string, password: string) => {
     const loggedIn = await loginRequest(username, password);
@@ -60,11 +66,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (err instanceof ApiError && err.status === 401) throw new SessionNotPersistedError();
       throw err;
     }
+    qc.clear();
     setUser(loggedIn);
   };
 
   const signOut = async () => {
     await logoutRequest();
+    qc.clear();
     setUser(null);
   };
 

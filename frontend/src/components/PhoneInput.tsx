@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   type CountryCode,
   getCountryCallingCode,
@@ -42,8 +42,14 @@ export default function PhoneInput({
   const [national, setNational] = useState(init.national);
   const [invalid, setInvalid] = useState(false);
 
+  // The last value this component pushed to the parent. Echoes of it must not
+  // re-parse the field (that would drop the warning and the user's raw input).
+  const lastEmittedRef = useRef(value);
+
   // Sync when the value changes externally (e.g. enrichment fills the field).
   useEffect(() => {
+    if (value === lastEmittedRef.current) return;
+    lastEmittedRef.current = value;
     const next = parseInitial(value);
     setCountry(next.country);
     setNational(next.national);
@@ -54,7 +60,10 @@ export default function PhoneInput({
     const digits = rawNational.replace(/[^\d]/g, "");
     if (!digits) {
       setInvalid(false);
-      if (value !== "") onChange("");
+      if (lastEmittedRef.current !== "") {
+        lastEmittedRef.current = "";
+        onChange("");
+      }
       return;
     }
     const full = `+${getCountryCallingCode(nextCountry)}${digits}`;
@@ -62,6 +71,7 @@ export default function PhoneInput({
       const p = parsePhoneNumber(full);
       if (p && p.isValid()) {
         setInvalid(false);
+        lastEmittedRef.current = p.number;
         onChange(p.number);
         return;
       }
@@ -69,6 +79,7 @@ export default function PhoneInput({
       // not valid yet
     }
     setInvalid(true);
+    lastEmittedRef.current = full;
     onChange(full);
   }
 
@@ -88,8 +99,10 @@ export default function PhoneInput({
           inputMode="tel"
           placeholder="20 308 0090"
           value={national}
-          onChange={(e) => setNational(e.target.value)}
-          onBlur={() => emit(country, national)}
+          onChange={(e) => {
+            setNational(e.target.value);
+            emit(country, e.target.value);
+          }}
           style={{ ...inputStyle, flex: 1, borderColor: invalid ? theme.color.dangerText : undefined }}
         />
       </div>

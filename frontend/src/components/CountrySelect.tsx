@@ -57,7 +57,7 @@ export default function CountrySelect({
   }
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} style={{ position: "relative" }} data-dialog-escape={open ? "ignore" : undefined}>
       <button
         type="button"
         aria-label={`Country: ${current?.name ?? value}`}

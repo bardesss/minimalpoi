@@ -103,8 +103,13 @@ export default function RouteTimeline({ route, canEdit, onHoverNode, onInteracti
   // Tell the page when an edit surface (the add-place modal) is open, so live
   // sync can buffer remote changes instead of reshuffling under the modal.
   useEffect(() => {
-    onInteractingChange?.(addTarget != null);
-  }, [addTarget, onInteractingChange]);
+    onInteractingChange?.(addTarget != null || navIndex != null);
+  }, [addTarget, navIndex, onInteractingChange]);
+
+  // A live update can remove the day the navigate modal is showing.
+  useEffect(() => {
+    if (navIndex !== null && !dayGroups[navIndex]) setNavIndex(null);
+  }, [navIndex, dayGroups]);
 
   function submitDay(body: RouteNodeCreate, gi: number) {
     const { position, day_offset } = placeInDay(route, dayGroups, gi);
@@ -316,7 +321,7 @@ export default function RouteTimeline({ route, canEdit, onHoverNode, onInteracti
         </SortableContext>
       </DndContext>
 
-      {navIndex !== null && (
+      {navIndex !== null && dayGroups[navIndex] && (
         <NavigateDayModal
           dayLabel={formatDayLabel(dayGroups[navIndex].dayKey)}
           waypoints={dayWaypoints(dayGroups, navIndex)}

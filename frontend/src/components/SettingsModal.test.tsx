@@ -32,3 +32,14 @@ it("hides admin-only sections from members", async () => {
   expect(screen.queryByRole("button", { name: "Connections" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Map" })).not.toBeInTheDocument();
 });
+
+it("hides the Tags section from members but shows it to admins", async () => {
+  server.use(http.get("/api/auth/me", () => HttpResponse.json({ id: 2, username: "mem", role: "member", preferred_team_id: null, disabled: false, created_at: "2026-06-23T00:00:00Z" })));
+  const { unmount } = renderWithProviders(<SettingsModal onClose={() => {}} />);
+  expect(await screen.findByRole("button", { name: "Data & backups" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Tags" })).not.toBeInTheDocument();
+  unmount();
+  server.use(http.get("/api/auth/me", () => HttpResponse.json({ id: 1, username: "ada", role: "admin", preferred_team_id: null, disabled: false, created_at: "2026-06-23T00:00:00Z" })));
+  renderWithProviders(<SettingsModal onClose={() => {}} />);
+  expect(await screen.findByRole("button", { name: "Tags" })).toBeInTheDocument();
+});

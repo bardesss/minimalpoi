@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "../test/msw";
@@ -142,6 +142,7 @@ describe("PoiActions — after a review exists", () => {
     );
     renderWithProviders(<PoiActions poiId={1} />);
     await userEvent.click(await screen.findByRole("button", { name: /^delete review$/i }));
+    await userEvent.click(within(screen.getByRole("group", { name: /confirm delete/i })).getByRole("button", { name: /^delete$/i }));
     await waitFor(() => expect(visitDeleted).toBe(true));
     await waitFor(() => expect(commentDeleted).toBe(true));
   });
@@ -157,5 +158,73 @@ describe("PoiActions — after a review exists", () => {
     // bob's review has no Edit button (not mine)
     expect(screen.queryByRole("button", { name: /edit review/i })).toBeInTheDocument(); // mine has Edit
     expect(screen.getByRole("button", { name: /delete bob's review/i })).toBeInTheDocument();
+  });
+});
+
+describe("PoiActions — review list and guarded mutations", () => {
+  it("keeps line breaks in other people's comments", async () => {
+    server.use(
+      http.get("/api/pois/1/visits", () => HttpResponse.json([visit({ user_id: 2, rating: 4 })])),
+      http.get("/api/pois/1/comments", () => HttpResponse.json([comment({ id: 5, user_id: 2, username: "bob", text: "line one\nline two" })])),
+    );
+    renderWithProviders(<PoiActions poiId={1} />);
+    expect((await screen.findByText(/line one/)).style.whiteSpace).toBe("pre-wrap");
+  });
+
+  it("rating-only review from another user is listed", async () => {
+    server.use(
+      http.get("/api/pois/1/visits", () => HttpResponse.json([visit({ user_id: 2, rating: 4 })])),
+      http.get("/api/pois/1/comments", () => HttpResponse.json([])),
+    );
+    renderWithProviders(<PoiActions poiId={1} />);
+    expect(await screen.findByLabelText(/rated 4/i)).toBeInTheDocument();
+  });
+
+  it("admin delete removes all comments of that user", async () => {
+    const deleted: string[] = [];
+    let visitDeleted = false;
+    server.use(
+      http.get("/api/pois/1/visits", () => HttpResponse.json([visit({ user_id: 2, rating: 4 })])),
+      http.get("/api/pois/1/comments", () => HttpResponse.json([
+        comment({ id: 5, user_id: 2, username: "bob", text: "one" }),
+        comment({ id: 6, user_id: 2, username: "bob", text: "two" }),
+      ])),
+      http.delete("/api/pois/1/comments/:id", ({ params }) => { deleted.push(String(params.id)); return new HttpResponse(null, { status: 204 }); }),
+      http.delete("/api/pois/1/visit", () => { visitDeleted = true; return new HttpResponse(null, { status: 204 }); }),
+    );
+    renderWithProviders(<PoiActions poiId={1} />);
+    await userEvent.click(await screen.findByRole("button", { name: /delete bob's review/i }));
+    await userEvent.click(within(screen.getByRole("group", { name: /confirm delete/i })).getByRole("button", { name: /^delete$/i }));
+    await waitFor(() => expect(deleted.sort()).toEqual(["5", "6"]));
+    expect(visitDeleted).toBe(false);
+  });
+
+  it("double click save posts once", async () => {
+    let puts = 0;
+    server.use(
+      http.get("/api/pois/1/visits", () => HttpResponse.json([])),
+      http.get("/api/pois/1/comments", () => HttpResponse.json([])),
+      http.put("/api/pois/1/visit", async () => { puts += 1; await new Promise((r) => setTimeout(r, 100)); return HttpResponse.json(visit({ rating: 4 })); }),
+    );
+    renderWithProviders(<PoiActions poiId={1} />);
+    await userEvent.click(await screen.findByRole("button", { name: /rate 4/i }));
+    const save = screen.getByRole("button", { name: /save review/i });
+    await userEvent.dblClick(save);
+    await waitFor(() => expect(puts).toBeGreaterThan(0));
+    await new Promise((r) => setTimeout(r, 200));
+    expect(puts).toBe(1);
+  });
+
+  it("failed save keeps editor open and shows toast", async () => {
+    server.use(
+      http.get("/api/pois/1/visits", () => HttpResponse.json([])),
+      http.get("/api/pois/1/comments", () => HttpResponse.json([])),
+      http.put("/api/pois/1/visit", () => HttpResponse.json({ detail: "boom" }, { status: 500 })),
+    );
+    renderWithProviders(<PoiActions poiId={1} />);
+    await userEvent.click(await screen.findByRole("button", { name: /rate 4/i }));
+    await userEvent.click(screen.getByRole("button", { name: /save review/i }));
+    expect(await screen.findByRole("status")).toHaveTextContent(/could not save/i);
+    expect(screen.getByRole("button", { name: /save review/i })).toBeInTheDocument();
   });
 });

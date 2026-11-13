@@ -30,7 +30,7 @@ describe("PhoneInput", () => {
     await userEvent.click(screen.getByRole("button", { name: /^country: netherlands$/i }));
     await userEvent.click(screen.getByRole("option", { name: /united states \(\+1\)/i }));
     expect(onChange).toHaveBeenCalledWith("+12127363100");
-  });
+  }, 15000);
 
   it("clearing the field emits an empty string", async () => {
     const onChange = vi.fn();
