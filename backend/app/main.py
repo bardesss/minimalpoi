@@ -2,8 +2,9 @@ import mimetypes
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -119,6 +120,16 @@ app = FastAPI(title="MinimalPOI", lifespan=lifespan)
 app.add_middleware(MaxBodySizeMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+async def _validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # The default handler echoes each offending `input` (and `ctx`) back, which
+    # cannot be JSON-encoded for NaN/Infinity and would turn a 422 into a 500.
+    errors = [{k: v for k, v in e.items() if k not in ("input", "ctx")} for e in exc.errors()]
+    return JSONResponse(status_code=422, content={"detail": errors})
+
+
+app.add_exception_handler(RequestValidationError, _validation_error_handler)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(teams.router)

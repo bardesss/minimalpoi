@@ -1,6 +1,7 @@
 import json
 
 from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile, status
+from pydantic import ValidationError
 from sqlalchemy import func
 from sqlmodel import select
 
@@ -95,49 +96,52 @@ async def import_pois(request: Request, session: SessionDep, user: CurrentUser, 
     new_pois: list[POI] = []
 
     for i, row in enumerate(rows, start=1):
-        poi_name = (row.get("name") or "").strip()
-        if not poi_name:
+        if not isinstance(row.get("name"), str) or not row["name"].strip():
             errors.append(ImportRowError(row=i, reason="missing name"))
             continue
+        # Imported properties are untrusted: validate types, ranges and lengths
+        # with the same schema the REST API uses. A bad row never aborts the import.
         try:
-            lat = float(row["lat"])
-            lng = float(row["lng"])
-        except (TypeError, ValueError, KeyError):
-            errors.append(ImportRowError(row=i, reason="invalid coordinates"))
+            data = POICreate.model_validate({
+                k: row.get(k)
+                for k in ("name", "address", "lat", "lng", "tags", "notes", "phone",
+                          "email", "website", "image_url", "source_url")
+            }).model_dump()
+        except ValidationError as exc:
+            first = exc.errors()[0]
+            field = ".".join(str(x) for x in first["loc"])
+            reason = "invalid coordinates" if field in ("lat", "lng") else f"invalid {field}: {first['msg']}"
+            errors.append(ImportRowError(row=i, reason=reason))
+            continue
+        cat_raw = row.get("category")
+        if cat_raw is not None and not isinstance(cat_raw, str):
+            errors.append(ImportRowError(row=i, reason="invalid category"))
             continue
 
+        poi_name = data["name"]
+        lat = data["lat"]
+        lng = data["lng"]
         category_id: int | None = None
-        cat_name = (row.get("category") or "").strip()
+        cat_name = (cat_raw or "").strip()
         if cat_name:
             key = cat_name.lower()
             if key in cache:
                 category_id = cache[key]
             else:
-                cat = Category(name=cat_name, color="#4f46e5", created_by=user.id)
+                cat = Category(name=cat_name[:200], color="#4f46e5", created_by=user.id)
                 session.add(cat)
                 session.flush()
                 cache[key] = cat.id
                 category_id = cat.id
 
-        if find_duplicate(session, poi_name, lat, lng, row.get("source_url")):
+        if find_duplicate(session, poi_name, lat, lng, data["source_url"]):
             skipped += 1
             continue
 
-        poi = POI(
-            name=poi_name,
-            address=row.get("address"),
-            lat=lat,
-            lng=lng,
-            category_id=category_id,
-            tags=row.get("tags") or [],
-            notes=row.get("notes"),
-            phone=to_e164(row.get("phone")),
-            email=row.get("email"),
-            website=row.get("website"),
-            image_url=row.get("image_url"),
-            source_url=row.get("source_url"),
-            created_by=user.id,
-        )
+        data["image_url"] = await localize(data["image_url"])
+        data["phone"] = to_e164(data["phone"])
+        data["category_id"] = category_id
+        poi = POI(**data, created_by=user.id)
         session.add(poi)
         session.flush()
         created += 1

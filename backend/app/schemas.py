@@ -2,6 +2,7 @@ from datetime import date, datetime
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, StringConstraints, field_validator
+from pydantic import Field as PField
 from sqlmodel import Field, SQLModel
 
 from .models import LegSource, NodeRole, Role, RouteNodeKind, as_utc
@@ -23,6 +24,19 @@ class ImageUploadResult(SQLModel):
 
 class RestoreResult(SQLModel):
     restored: dict[str, int]
+
+
+# Request-side constraints only (Create/Update schemas). Read schemas stay
+# unconstrained so rows stored before these limits existed remain readable.
+Lat = Annotated[float, PField(ge=-90, le=90, allow_inf_nan=False)]
+Lng = Annotated[float, PField(ge=-180, le=180, allow_inf_nan=False)]
+Finite = Annotated[float, PField(allow_inf_nan=False)]
+Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+Text = Annotated[str, StringConstraints(max_length=10_000)]
+Url = Annotated[str, StringConstraints(max_length=2048)]
+Tag = Annotated[str, StringConstraints(max_length=50)]
+Tags = Annotated[list[Tag], PField(max_length=50)]
+ShortText = Annotated[str, StringConstraints(max_length=200)]
 
 
 # Username is trimmed and must be non-blank. Password has a floor (basic
@@ -115,7 +129,7 @@ class ApiTokenCreated(ApiTokenRead):
 
 
 class TeamCreate(SQLModel):
-    name: str
+    name: Name
     member_ids: list[int] = []
 
 
@@ -127,13 +141,13 @@ class TeamRead(SQLModel):
 
 
 class CategoryCreate(SQLModel):
-    name: str
+    name: Name
     color: str = "#4f46e5"
     icon: str | None = None
 
 
 class CategoryUpdate(SQLModel):
-    name: str | None = None
+    name: Name | None = None
     color: str | None = None
     icon: str | None = None
 
@@ -147,37 +161,37 @@ class CategoryRead(SQLModel):
 
 
 class POICreate(SQLModel):
-    name: str
-    address: str | None = None
-    city: str | None = None
-    country_code: str | None = None
-    lat: float
-    lng: float
+    name: Name
+    address: ShortText | None = None
+    city: ShortText | None = None
+    country_code: Annotated[str, StringConstraints(max_length=8)] | None = None
+    lat: Lat
+    lng: Lng
     category_id: int | None = None
-    tags: list[str] = []
-    notes: str | None = None
-    phone: str | None = None
-    email: str | None = None
-    website: str | None = None
-    image_url: str | None = None
-    source_url: str | None = None
+    tags: Tags = []
+    notes: Text | None = None
+    phone: Annotated[str, StringConstraints(max_length=64)] | None = None
+    email: ShortText | None = None
+    website: Url | None = None
+    image_url: Url | None = None
+    source_url: Url | None = None
 
 
 class POIUpdate(SQLModel):
-    name: str | None = None
-    address: str | None = None
-    city: str | None = None
-    country_code: str | None = None
-    lat: float | None = None
-    lng: float | None = None
+    name: Name | None = None
+    address: ShortText | None = None
+    city: ShortText | None = None
+    country_code: Annotated[str, StringConstraints(max_length=8)] | None = None
+    lat: Lat | None = None
+    lng: Lng | None = None
     category_id: int | None = None
-    tags: list[str] | None = None
-    notes: str | None = None
-    phone: str | None = None
-    email: str | None = None
-    website: str | None = None
-    image_url: str | None = None
-    source_url: str | None = None
+    tags: Tags | None = None
+    notes: Text | None = None
+    phone: Annotated[str, StringConstraints(max_length=64)] | None = None
+    email: ShortText | None = None
+    website: Url | None = None
+    image_url: Url | None = None
+    source_url: Url | None = None
 
 
 class POIRead(SQLModel):
@@ -206,8 +220,8 @@ class POIRead(SQLModel):
 
 class DuplicateCheck(SQLModel):
     name: str
-    lat: float | None = None
-    lng: float | None = None
+    lat: Lat | None = None
+    lng: Lng | None = None
     source_url: str | None = None
 
 
@@ -232,11 +246,11 @@ class PreferredTeamUpdate(SQLModel):
 
 
 class CommentCreate(SQLModel):
-    text: str
+    text: Text
 
 
 class CommentUpdate(SQLModel):
-    text: str
+    text: Text
 
 
 class CommentRead(SQLModel):
@@ -272,9 +286,9 @@ class SettingsUpdate(SQLModel):
     google_api_key: str | None = None
     nominatim_url: str | None = None
     map_tile_url: str | None = None
-    default_map_center_lat: float | None = None
-    default_map_center_lng: float | None = None
-    default_map_zoom: float | None = None
+    default_map_center_lat: Lat | None = None
+    default_map_center_lng: Lng | None = None
+    default_map_zoom: Finite | None = None
     cookie_secure: bool | None = None
     routes_enabled: bool | None = None
 
@@ -335,7 +349,7 @@ class TeamCandidate(SQLModel):
 
 
 class RouteCreate(SQLModel):
-    name: str
+    name: Name
     start_date: date
     end_date: date | None = None
     round_trip: bool = False
@@ -343,7 +357,7 @@ class RouteCreate(SQLModel):
 
 
 class RouteUpdate(SQLModel):
-    name: str | None = None
+    name: Name | None = None
     start_date: date | None = None
     end_date: date | None = None
     round_trip: bool | None = None
@@ -412,24 +426,24 @@ class RouteNodeCreate(SQLModel):
     kind: RouteNodeKind
     role: NodeRole | None = None
     poi_id: int | None = None
-    name: str | None = None
-    lat: float | None = None
-    lng: float | None = None
-    nights: int | None = None
+    name: Name | None = None
+    lat: Lat | None = None
+    lng: Lng | None = None
+    nights: int | None = Field(default=None, ge=0, le=365)
     day_offset: int | None = None
-    notes: str | None = None
-    position: float | None = None
+    notes: Text | None = None
+    position: Finite | None = None
 
 
 class RouteNodeUpdate(SQLModel):
-    nights: int | None = None
+    nights: int | None = Field(default=None, ge=0, le=365)
     day_offset: int | None = None
-    notes: str | None = None
-    position: float | None = None
+    notes: Text | None = None
+    position: Finite | None = None
     poi_id: int | None = None
-    name: str | None = None
-    lat: float | None = None
-    lng: float | None = None
+    name: Name | None = None
+    lat: Lat | None = None
+    lng: Lng | None = None
 
 
 class RouteAttachmentRead(SQLModel):
