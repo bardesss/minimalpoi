@@ -4,10 +4,16 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import RoutesPage from "./RoutesPage";
 import type { RouteDetail } from "../types/api";
+import { ApiError } from "../api/client";
 import { ToastProvider } from "../components/Toast";
 
 const createPlanAsync = vi.fn().mockResolvedValue({ id: 5 });
 const deleteAsync = vi.fn().mockResolvedValue(undefined);
+const exportRouteMock = vi.fn();
+vi.mock("../api/routes", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../api/routes")>()),
+  exportRoute: (...a: unknown[]) => exportRouteMock(...a),
+}));
 const detail: RouteDetail = {
   id: 5, name: "NL trip", start_date: "2026-07-14", end_date: "2026-07-20",
   scheduled_end_date: "2026-07-16", node_count: 0,
@@ -199,6 +205,15 @@ describe("RoutesPage", () => {
     for (const name of [/export geojson/i, /export gpx/i, /export kml/i]) {
       expect(within(menu).getByRole("menuitem", { name })).toBeInTheDocument();
     }
+  });
+
+  it("export failure shows toast", async () => {
+    exportRouteMock.mockRejectedValue(new ApiError(429, "Too many requests"));
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /NL trip/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /share/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /export gpx/i }));
+    expect(await screen.findByText("Too many requests")).toBeInTheDocument();
   });
 
   it("offers Public link to editors only", async () => {

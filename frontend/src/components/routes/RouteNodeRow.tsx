@@ -72,7 +72,7 @@ function RouteNodeRow({
   };
 
   function setNights(next: number) {
-    updateNode.mutate({ nodeId: node.id, body: { nights: Math.max(0, next) } });
+    updateNode.mutate({ nodeId: node.id, body: { nights: Math.min(365, Math.max(0, next)) } });
   }
 
   const dragHandleProps = draggable
@@ -172,11 +172,11 @@ function RouteNodeRow({
             )}
             <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: theme.color.textSecondary }}>
               {canEdit && (
-                <button type="button" aria-label="One fewer night" style={iconBtn} onClick={() => setNights((node.nights ?? 0) - 1)}>−</button>
+                <button type="button" aria-label="One fewer night" style={iconBtn} disabled={updateNode.isPending} onClick={() => setNights((node.nights ?? 0) - 1)}>−</button>
               )}
               <span>{node.nights ?? 0} {(node.nights ?? 0) === 1 ? "night" : "nights"}</span>
               {canEdit && (
-                <button type="button" aria-label="One more night" style={iconBtn} onClick={() => setNights((node.nights ?? 0) + 1)}>+</button>
+                <button type="button" aria-label="One more night" style={iconBtn} disabled={updateNode.isPending} onClick={() => setNights((node.nights ?? 0) + 1)}>+</button>
               )}
             </span>
           </div>

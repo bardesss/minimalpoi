@@ -1,6 +1,7 @@
 import { Navigation } from "lucide-react";
 import { ghostButtonStyle, theme } from "../../theme";
 import { appleMapsUrl, coordsText, googleMapsDirUrl, toGpx, type Waypoint } from "../../lib/routeNav";
+import { triggerDownload } from "../../lib/download";
 import ModalShell from "./ModalShell";
 
 // Fallback picker when the OS share sheet is unavailable (desktop). Reuses the
@@ -17,12 +18,7 @@ export default function NavigateDayModal({ dayLabel, waypoints, onClose }: {
 
   function downloadGpx() {
     const blob = new Blob([toGpx(waypoints, dayLabel)], { type: "application/gpx+xml" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${dayLabel.replace(/\s+/g, "-").toLowerCase()}.gpx`;
-    a.click();
-    URL.revokeObjectURL(url);
+    triggerDownload(blob, `${dayLabel.replace(/\s+/g, "-").toLowerCase()}.gpx`);
     onClose();
   }
 

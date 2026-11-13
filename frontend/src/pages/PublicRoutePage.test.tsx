@@ -8,6 +8,12 @@ import type { PublicRouteResponse } from "../api/public";
 
 const getPublicRoute = vi.fn();
 const unlockPublicRoute = vi.fn();
+const mobile = { value: false };
+
+vi.mock("../lib/useMediaQuery", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/useMediaQuery")>()),
+  useIsMobile: () => mobile.value,
+}));
 
 vi.mock("../api/public", () => ({
   getPublicRoute: (...args: unknown[]) => getPublicRoute(...args),
@@ -60,6 +66,7 @@ function renderPage() {
 beforeEach(() => {
   getPublicRoute.mockReset();
   unlockPublicRoute.mockReset();
+  mobile.value = false;
 });
 
 describe("PublicRoutePage", () => {
@@ -107,5 +114,28 @@ describe("PublicRoutePage", () => {
     getPublicRoute.mockRejectedValue(new ApiError(404, "Not found"));
     renderPage();
     expect(await screen.findByText(/isn't available/i)).toBeInTheDocument();
+  });
+
+  it("stacks the map above the itinerary on mobile", async () => {
+    mobile.value = true;
+    getPublicRoute.mockResolvedValue(openRoute);
+    renderPage();
+    await screen.findByText("Chamonix");
+    const body = screen.getByTestId("public-route-body");
+    expect(body.style.flexDirection).toBe("column");
+    const mapBox = screen.getByTestId("public-route-map");
+    expect(mapBox.style.height).toBe("50dvh");
+    expect(mapBox.style.flex).not.toContain("1 1 0");
+    const side = screen.getByTestId("public-route-itinerary");
+    expect(side.style.width).toBe("");
+    expect(body.firstElementChild).toBe(mapBox);
+  });
+
+  it("keeps the side-by-side layout on desktop", async () => {
+    getPublicRoute.mockResolvedValue(openRoute);
+    renderPage();
+    await screen.findByText("Chamonix");
+    expect(screen.getByTestId("public-route-body").style.flexDirection).toBe("");
+    expect(screen.getByTestId("public-route-itinerary").style.width).toBe("380px");
   });
 });

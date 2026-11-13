@@ -6,6 +6,7 @@ import { ApiError } from "../api/client";
 import type { RouteDetail } from "../types/api";
 import RouteMap from "../components/routes/RouteMap";
 import RouteTimeline from "../components/routes/RouteTimeline";
+import { useIsMobile } from "../lib/useMediaQuery";
 import { theme } from "../theme";
 import { formatDateRange } from "../lib/formatDate";
 import { dayIndexByNode } from "../lib/routeDays";
@@ -98,6 +99,7 @@ function PasswordGate({ token, onUnlocked }: { token: string; onUnlocked: (route
 export default function PublicRoutePage() {
   const { token = "" } = useParams();
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
   const queryKey = ["public-route", token];
   const { data, isLoading, error } = useQuery({
     queryKey,
@@ -146,8 +148,16 @@ export default function PublicRoutePage() {
         </p>
       </header>
 
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
+      <div
+        data-testid="public-route-body"
+        style={{ display: "flex", flex: 1, minHeight: 0, ...(isMobile ? { flexDirection: "column", overflowY: "auto" } : {}) }}
+      >
+        <div
+          data-testid="public-route-map"
+          style={isMobile
+            ? { position: "relative", height: "50dvh", flex: "none" }
+            : { position: "relative", flex: 1, minHeight: 0 }}
+        >
           {/* Public/anonymous view: no full POI list is fetched and there's no
              app shell to navigate into, so on-route pins fall back to the
              name-only mini card and "Open" is unavailable. */}
@@ -166,7 +176,12 @@ export default function PublicRoutePage() {
             onOpenPoi={() => {}}
           />
         </div>
-        <div style={{ width: 380, flex: "none", overflowY: "auto", padding: 16, borderLeft: `1px solid ${theme.color.borderSubtle}`, background: theme.color.surface0 }}>
+        <div
+          data-testid="public-route-itinerary"
+          style={isMobile
+            ? { flex: "none", padding: 16, borderTop: `1px solid ${theme.color.borderSubtle}`, background: theme.color.surface0 }
+            : { width: 380, flex: "none", overflowY: "auto", padding: 16, borderLeft: `1px solid ${theme.color.borderSubtle}`, background: theme.color.surface0 }}
+        >
           <RouteTimeline route={detail ?? routeDetailFromPublic(route)} canEdit={false} />
         </div>
       </div>

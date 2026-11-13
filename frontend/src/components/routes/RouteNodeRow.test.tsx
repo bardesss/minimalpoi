@@ -5,12 +5,13 @@ import type { RouteNode } from "../../types/api";
 
 const update = vi.fn();
 const del = vi.fn();
+const pending = { value: false };
 vi.mock("../../queries/hooks", () => ({
-  useUpdateNode: () => ({ mutate: update, isPending: false }),
+  useUpdateNode: () => ({ mutate: update, isPending: pending.value }),
   useDeleteNode: () => ({ mutate: del, isPending: false }),
 }));
 
-beforeEach(() => { update.mockClear(); del.mockClear(); });
+beforeEach(() => { update.mockClear(); del.mockClear(); pending.value = false; });
 
 const stay: RouteNode = {
   id: 5, kind: "stay", position: 1, nights: 2, notes: null, poi_id: null,
@@ -97,5 +98,20 @@ describe("hover highlight", () => {
     expect(onHover).toHaveBeenCalledWith(5);
     fireEvent.mouseLeave(row);
     expect(onHover).toHaveBeenCalledWith(null);
+  });
+});
+
+describe("nights stepper guards", () => {
+  it("stepper disabled while pending", () => {
+    pending.value = true;
+    render(<RouteNodeRow node={stay} routeId={1} canEdit />);
+    expect(screen.getByRole("button", { name: /one more night/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /one fewer night/i })).toBeDisabled();
+  });
+
+  it("stepper never goes above 365 nights", () => {
+    render(<RouteNodeRow node={{ ...stay, nights: 365 }} routeId={1} canEdit />);
+    fireEvent.click(screen.getByRole("button", { name: /one more night/i }));
+    expect(update).toHaveBeenCalledWith({ nodeId: 5, body: { nights: 365 } });
   });
 });

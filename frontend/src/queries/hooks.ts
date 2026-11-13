@@ -364,11 +364,18 @@ export function useCreateRoutePlan() {
   return useMutation({
     mutationFn: async ({ route, start, end }: RoutePlan): Promise<RouteDetail> => {
       const created = await createRoute({ ...route, round_trip: false });
-      await addNode(created.id, start);
-      if (end) return addNode(created.id, end);
-      return updateRoute(created.id, { round_trip: true });
+      try {
+        await addNode(created.id, start);
+        if (end) return await addNode(created.id, end);
+        return await updateRoute(created.id, { round_trip: true });
+      } catch (err) {
+        // Don't leave a half-built route behind; best-effort, then surface the original error.
+        try { await deleteRoute(created.id); } catch { /* rollback is best-effort */ }
+        throw err;
+      }
     },
-    onSuccess: (r) => { qc.setQueryData(["routes", r.id], r); qc.invalidateQueries({ queryKey: ["routes"] }); },
+    onSuccess: (r) => { qc.setQueryData(["routes", r.id], r); },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["routes"] }),
   });
 }
 export interface RouteEditPlan {
@@ -405,7 +412,8 @@ export function useUpdateRoutePlan() {
       }
       return detail;
     },
-    onSuccess: (r) => { qc.setQueryData(["routes", r.id], r); qc.invalidateQueries({ queryKey: ["routes"] }); },
+    onSuccess: (r) => { qc.setQueryData(["routes", r.id], r); },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["routes"] }),
   });
 }
 export function useDeleteRoute() {

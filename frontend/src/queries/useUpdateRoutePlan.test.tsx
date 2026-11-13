@@ -1,16 +1,20 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useUpdateRoutePlan } from "./hooks";
+import { useCreateRoutePlan, useUpdateRoutePlan } from "./hooks";
 
 const updateRoute = vi.fn();
 const updateNode = vi.fn();
 const addNode = vi.fn();
+const createRoute = vi.fn();
+const deleteRoute = vi.fn();
 vi.mock("../api/routes", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/routes")>()),
   updateRoute: (...a: unknown[]) => updateRoute(...a),
   updateNode: (...a: unknown[]) => updateNode(...a),
   addNode: (...a: unknown[]) => addNode(...a),
+  createRoute: (...a: unknown[]) => createRoute(...a),
+  deleteRoute: (...a: unknown[]) => deleteRoute(...a),
 }));
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -18,7 +22,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
   return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
 }
 
-beforeEach(() => { updateRoute.mockReset(); updateNode.mockReset(); addNode.mockReset(); });
+beforeEach(() => { updateRoute.mockReset(); updateNode.mockReset(); addNode.mockReset(); createRoute.mockReset(); deleteRoute.mockReset(); });
 
 describe("useUpdateRoutePlan", () => {
   it("patches the route and relocates an existing start and end (round trip off)", async () => {
@@ -57,5 +61,37 @@ describe("useUpdateRoutePlan", () => {
     });
     await waitFor(() => expect(addNode).toHaveBeenCalledWith(1, { kind: "stop", poi_id: 7, role: "start" }));
     expect(updateNode).not.toHaveBeenCalled();
+  });
+});
+
+describe("useCreateRoutePlan", () => {
+  const plan = {
+    route: { name: "Trip", start_date: "2026-07-14" },
+    start: { kind: "stop" as const, poi_id: 7 },
+    end: null,
+  };
+
+  it("create route rolls back when addNode fails", async () => {
+    createRoute.mockResolvedValue({ id: 42, nodes: [] });
+    addNode.mockRejectedValue(new Error("429"));
+    deleteRoute.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useCreateRoutePlan(), { wrapper });
+    await expect(result.current.mutateAsync(plan)).rejects.toThrow("429");
+    expect(deleteRoute).toHaveBeenCalledWith(42);
+  });
+
+  it("rethrows the original error even when the rollback delete fails", async () => {
+    createRoute.mockResolvedValue({ id: 42, nodes: [] });
+    addNode.mockRejectedValue(new Error("429"));
+    deleteRoute.mockRejectedValue(new Error("boom"));
+    const { result } = renderHook(() => useCreateRoutePlan(), { wrapper });
+    await expect(result.current.mutateAsync(plan)).rejects.toThrow("429");
+  });
+
+  it("does not delete anything when createRoute itself fails", async () => {
+    createRoute.mockRejectedValue(new Error("nope"));
+    const { result } = renderHook(() => useCreateRoutePlan(), { wrapper });
+    await expect(result.current.mutateAsync(plan)).rejects.toThrow("nope");
+    expect(deleteRoute).not.toHaveBeenCalled();
   });
 });
