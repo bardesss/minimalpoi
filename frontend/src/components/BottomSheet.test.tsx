@@ -165,4 +165,21 @@ describe("BottomSheet", () => {
     fireEvent.pointerUp(row, { clientY: 300, pointerId: 1 });
     expect(out.get!().bottom).not.toBe(before);
   });
+
+  it("grip is focusable and ArrowUp/ArrowDown/Enter move the snap", () => {
+    render(<BottomSheet label="Places" initial="half"><div>CONTENT</div></BottomSheet>);
+    const grip = screen.getByRole("separator");
+    expect(grip).toHaveAttribute("tabindex", "0");
+    expect(grip).toHaveAttribute("aria-valuetext", "half");
+    fireEvent.keyDown(grip, { key: "ArrowUp" });
+    expect(grip).toHaveAttribute("aria-valuetext", "full");
+    fireEvent.keyDown(grip, { key: "ArrowUp" });
+    expect(grip).toHaveAttribute("aria-valuetext", "full"); // clamped
+    fireEvent.keyDown(grip, { key: "ArrowDown" });
+    expect(grip).toHaveAttribute("aria-valuetext", "half");
+    fireEvent.keyDown(grip, { key: "Enter" });
+    expect(grip).toHaveAttribute("aria-valuetext", "full");
+    fireEvent.keyDown(grip, { key: "Enter" });
+    expect(grip).toHaveAttribute("aria-valuetext", "peek");
+  });
 });

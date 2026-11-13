@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Globe, Mail, Navigation, Phone, Share2 } from "lucide-react";
 import type { Poi } from "../../types/api";
 import { theme } from "../../theme";
-import { safeLinkHref } from "../../lib/safeUrl";
+import { safeLinkHref, safeMailtoHref } from "../../lib/safeUrl";
 import { telHref } from "../../lib/phone";
 import { directionsUrl } from "../../lib/placeLinks";
 import { useToast } from "../Toast";
@@ -46,6 +46,7 @@ export default function PlaceActionRow({ poi }: { poi: Poi }) {
   const directions = directionsUrl(poi.lat, poi.lng);
   const tel = telHref(poi.phone);
   const website = safeLinkHref(poi.website);
+  const mailto = safeMailtoHref(poi.email);
 
   async function copyLink() {
     const text = [poi.name, poi.address, directions].filter(Boolean).join(" — ");
@@ -78,7 +79,7 @@ export default function PlaceActionRow({ poi }: { poi: Poi }) {
         <Share2 size={18} aria-hidden />
         Share
       </button>
-      {poi.email && <ActionLink href={`mailto:${poi.email}`} icon={<Mail size={18} aria-hidden />} label="Email" />}
+      {mailto && <ActionLink href={mailto} icon={<Mail size={18} aria-hidden />} label="Email" />}
       {website && <ActionLink href={website} icon={<Globe size={18} aria-hidden />} label="Website" external />}
     </div>
   );

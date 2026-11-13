@@ -89,6 +89,20 @@ function addPoiLayers(map: MlMap, color: ReturnType<typeof categoryColorExpressi
   });
 }
 
+/** Adds the clustered POI source and its layers. Safe to call again after a
+ * style swap (which drops every custom source/layer); a no-op if already there. */
+function addPoiSourceAndLayers(map: MlMap, pois: Poi[], visited: Set<number>, categories: Category[], selectedId: number | null, highlightId: number | null) {
+  if (map.getSource("pois")) return;
+  map.addSource("pois", {
+    type: "geojson",
+    data: toFeatureCollection(pois, visited),
+    cluster: true,
+    clusterMaxZoom: 13,
+    clusterRadius: 50,
+  });
+  addPoiLayers(map, categoryColorExpression(categories), selectedId, highlightId);
+}
+
 export default function MapView({ pois, categories, settings, selectedId, onSelect, onMapClick, addMode, visitedPoiIds, mapRef, onMoveEnd, onUserLocate, highlightId = null, draftPin = null, onDraftPinMove }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Keep latest callbacks/flags in refs so the load handler closure stays current.
@@ -145,14 +159,7 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
     });
 
     map.on("load", () => {
-      map.addSource("pois", {
-        type: "geojson",
-        data: toFeatureCollection(poisRef.current, visitedRef.current),
-        cluster: true,
-        clusterMaxZoom: 13,
-        clusterRadius: 50,
-      });
-      addPoiLayers(map, categoryColorExpression(categoriesRef.current), selectedIdRef.current, highlightIdRef.current);
+      addPoiSourceAndLayers(map, poisRef.current, visitedRef.current, categoriesRef.current, selectedIdRef.current, highlightIdRef.current);
     });
 
     // Which marker's hover mini-card is currently shown, so we rebuild the DOM
@@ -269,6 +276,36 @@ export default function MapView({ pois, categories, settings, selectedId, onSele
     const src = map.getSource("pois") as GeoJSONSource | undefined;
     if (src) src.setData(toFeatureCollection(pois, visitedPoiIds));
   }, [pois, visitedPoiIds, mapRef]);
+
+  // Recolour the pins when categories change after the layers were added
+  // (e.g. a category colour edit). Skips the first run: the load handler
+  // already paints with the current categories.
+  const lastCategoriesRef = useRef(categories);
+  useEffect(() => {
+    if (lastCategoriesRef.current === categories) return;
+    lastCategoriesRef.current = categories;
+    const map = mapRef.current;
+    if (!map) return;
+    const color = categoryColorExpression(categories);
+    for (const id of ["unclustered", "poi-selected"]) {
+      if (map.getLayer(id)) map.setPaintProperty(id, "circle-color", color as never);
+    }
+  }, [categories, mapRef]);
+
+  // Swap the basemap when the tile URL setting changes. setStyle drops our
+  // source and layers, so re-add them once the new style has loaded.
+  const lastTileUrlRef = useRef(settings.map_tile_url);
+  useEffect(() => {
+    if (lastTileUrlRef.current === settings.map_tile_url) return;
+    lastTileUrlRef.current = settings.map_tile_url;
+    const map = mapRef.current;
+    if (!map) return;
+    map.setStyle(resolveMapStyle(settings), { diff: false });
+    map.once("style.load", () => {
+      addPoiSourceAndLayers(map, poisRef.current, visitedRef.current, categoriesRef.current, selectedIdRef.current, highlightIdRef.current);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.map_tile_url, mapRef]);
 
   // Update selection ring.
   useEffect(() => {

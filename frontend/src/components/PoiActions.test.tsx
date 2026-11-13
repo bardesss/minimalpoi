@@ -162,6 +162,15 @@ describe("PoiActions — after a review exists", () => {
 });
 
 describe("PoiActions — review list and guarded mutations", () => {
+  it("keeps line breaks in other people's comments", async () => {
+    server.use(
+      http.get("/api/pois/1/visits", () => HttpResponse.json([visit({ user_id: 2, rating: 4 })])),
+      http.get("/api/pois/1/comments", () => HttpResponse.json([comment({ id: 5, user_id: 2, username: "bob", text: "line one\nline two" })])),
+    );
+    renderWithProviders(<PoiActions poiId={1} />);
+    expect((await screen.findByText(/line one/)).style.whiteSpace).toBe("pre-wrap");
+  });
+
   it("rating-only review from another user is listed", async () => {
     server.use(
       http.get("/api/pois/1/visits", () => HttpResponse.json([visit({ user_id: 2, rating: 4 })])),

@@ -220,7 +220,7 @@ export default function PoiActions({ poiId }: { poiId: number }) {
                 Delete
               </button></>)}
             </div>
-            {myComment?.text && <div style={{ color: theme.color.textBody }}>{myComment.text}</div>}
+            {myComment?.text && <div style={{ color: theme.color.textBody, whiteSpace: "pre-wrap" }}>{myComment.text}</div>}
           </div>
         )}
 
@@ -237,7 +237,7 @@ export default function PoiActions({ poiId }: { poiId: number }) {
                 </button>
               ))}
             </div>
-            {r.comments.map((c) => <div key={c.id} style={{ color: theme.color.textBody }}>{c.text}</div>)}
+            {r.comments.map((c) => <div key={c.id} style={{ color: theme.color.textBody, whiteSpace: "pre-wrap" }}>{c.text}</div>)}
           </div>
         ))}
       </div>

@@ -32,6 +32,11 @@ describe("PlaceActionRow", () => {
     expect(screen.getByRole("link", { name: /directions/i })).toBeInTheDocument();
   });
 
+  it("omits the mailto link for an email with query characters", () => {
+    renderWithProviders(<PlaceActionRow poi={{ ...poi, email: "a@b.nl?cc=evil@x.com" }} />);
+    expect(screen.queryByRole("link", { name: /email/i })).not.toBeInTheDocument();
+  });
+
   it("shares via the Web Share API when available", async () => {
     const share = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "share", { value: share, configurable: true });

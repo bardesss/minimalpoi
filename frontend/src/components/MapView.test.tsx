@@ -38,6 +38,8 @@ const { handlers, mapInstance, MapMock, state, GeolocateControlMock, PopupMock, 
     getSource: vi.fn(() => (state.sourceAdded ? { setData: vi.fn(), getClusterExpansionZoom: vi.fn() } : undefined)),
     getLayer: vi.fn(() => true),
     setFilter: vi.fn(),
+    setPaintProperty: vi.fn(),
+    setStyle: vi.fn(),
     setData: vi.fn(),
     remove: vi.fn(),
     resize: vi.fn(),
@@ -250,6 +252,36 @@ describe("MapView", () => {
     await act(async () => {});
     expect(mapInstance.setPadding).toHaveBeenCalledWith({ top: 0, right: 0, bottom: 400, left: 0 });
     expect(mapInstance.easeTo).not.toHaveBeenCalled();
+  });
+
+  it("recolours the pins when categories change, but not on first mount", () => {
+    const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+    const props = { pois, settings, selectedId: null, onSelect: () => {}, onMapClick: () => {}, addMode: false, visitedPoiIds: new Set<number>(), mapRef };
+    const { rerender } = render(<MapView categories={categories} {...props} />);
+    handlers.load();
+    expect(mapInstance.setPaintProperty).not.toHaveBeenCalled();
+    rerender(<MapView categories={[{ ...categories[0], color: "#00ff00" }]} {...props} />);
+    const ids = mapInstance.setPaintProperty.mock.calls.map((c) => c[0]);
+    expect(ids).toEqual(["unclustered", "poi-selected"]);
+    expect(mapInstance.setPaintProperty).toHaveBeenCalledWith("unclustered", "circle-color", expect.anything());
+  });
+
+  it("swaps the style when the tile URL changes and re-adds the layers on style.load", () => {
+    const mapRef = createRef<MlMap | null>() as { current: MlMap | null };
+    const props = { pois, categories, selectedId: null, onSelect: () => {}, onMapClick: () => {}, addMode: false, visitedPoiIds: new Set<number>(), mapRef };
+    const { rerender } = render(<MapView settings={settings} {...props} />);
+    handlers.load();
+    expect(mapInstance.setStyle).not.toHaveBeenCalled();
+    mapInstance.addLayer.mockClear();
+    mapInstance.addSource.mockClear();
+    state.sourceAdded = false; // setStyle drops our source
+    mapInstance.once.mockClear();
+    rerender(<MapView settings={{ ...settings, map_tile_url: "https://tiles.example/{z}/{x}/{y}.png" }} {...props} />);
+    expect(mapInstance.setStyle).toHaveBeenCalledTimes(1);
+    expect(mapInstance.once).toHaveBeenCalledWith("style.load", expect.any(Function));
+    (mapInstance.once.mock.calls[0][1] as () => void)();
+    expect(mapInstance.addSource).toHaveBeenCalledWith("pois", expect.anything());
+    expect(mapInstance.addLayer.mock.calls.map((c) => (c[0] as { id: string }).id)).toContain("unclustered");
   });
 
   it("adds a hover layer and filters it to highlightId", () => {

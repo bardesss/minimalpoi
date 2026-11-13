@@ -31,6 +31,14 @@ export interface SheetDrag {
   /** Translate of the current snap — changes only when a snap settles or the viewport resizes. */
   restTranslate: number;
   dragging: boolean;
+  /** Current settled snap. */
+  snap: Snap;
+  /** Jump to a snap programmatically (keyboard, popovers). */
+  snapTo: (snap: Snap) => void;
+  /** Cycle peek -> half -> full -> peek. */
+  cycle: () => void;
+  /** Move one snap more open (+1) or less open (-1), clamped. */
+  step: (dir: 1 | -1) => void;
   handlers: {
     onPointerDown: (e: React.PointerEvent) => void;
     onPointerMove: (e: React.PointerEvent) => void;
@@ -137,8 +145,18 @@ export function useSheetDrag(initial: Snap): SheetDrag {
     setSnap(best);
   }, [translate]);
 
+  const snapTo = useCallback((next: Snap) => setSnap(next), []);
+  const cycle = useCallback(() => setSnap((s) => (s === "full" ? "peek" : ORDER[ORDER.indexOf(s) + 1])), []);
+  const step = useCallback((dir: 1 | -1) => {
+    setSnap((s) => ORDER[Math.min(Math.max(ORDER.indexOf(s) + dir, 0), ORDER.length - 1)]);
+  }, []);
+
   return {
     translate,
+    snap,
+    snapTo,
+    cycle,
+    step,
     restTranslate: vh(DEFAULT_HIDE[snap]),
     dragging,
     handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },

@@ -7,6 +7,7 @@ import type { SortMode } from "../../lib/sortPref";
 import type { ListDensity } from "../../lib/listDensityPref";
 import type { VisitedFilter } from "../../types/api";
 import FilterControls from "./FilterControls";
+import { useSheetSnapTo } from "../sheetContext";
 
 /** Icon-button that collapses the visited / sort / map-view controls behind a popover (mobile). */
 export default function FilterPopover({
@@ -35,6 +36,20 @@ export default function FilterPopover({
   const active = visited !== "any";
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const snapTo = useSheetSnapTo();
+
+  // At peek the sheet clips the panel; opening lifts it to half. A press
+  // anywhere outside the popover closes it (the backdrop only covers the sheet).
+  useEffect(() => {
+    if (!open) return;
+    snapTo("half");
+    function onDown(e: PointerEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open, snapTo]);
 
   // Move focus into the panel whenever it opens (mirrors MenuButton's focus
   // handling), so Escape (handled on the panel) actually receives the key.
@@ -61,7 +76,7 @@ export default function FilterPopover({
   }
 
   return (
-    <div style={{ position: "relative" }}>
+    <div ref={rootRef} style={{ position: "relative" }}>
       <button
         ref={triggerRef}
         type="button"
