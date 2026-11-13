@@ -4,7 +4,7 @@ from sqlmodel import select
 
 from ..apitokens import generate_api_token
 from ..deps import CookieUser, SessionDep
-from ..models import ApiToken
+from ..models import ApiToken, User
 from ..ratelimit import limiter, user_or_ip
 from ..schemas import ApiTokenCreate, ApiTokenCreated, ApiTokenRead
 
@@ -25,6 +25,9 @@ def list_tokens(session: SessionDep, user: CookieUser) -> list[ApiToken]:
 def create_token(
     request: Request, body: ApiTokenCreate, session: SessionDep, user: CookieUser
 ) -> ApiTokenCreated:
+    # Lock the user row so two concurrent mints can't both pass the cap check
+    # (Postgres; SQLite ignores FOR UPDATE and serialises writers itself).
+    session.exec(select(User.id).where(User.id == user.id).with_for_update()).one()
     count = session.exec(
         select(func.count()).select_from(ApiToken).where(ApiToken.user_id == user.id)
     ).one()
