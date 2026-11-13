@@ -55,3 +55,15 @@ def test_relocate_and_reposition_in_one_patch(client):
     moved = next(n for n in detail["nodes"] if n["id"] == m["id"])
     assert moved["name"] == "M2" and moved["lat"] == 5.0 and moved["lng"] == 6.0
     assert moved["position"] == 9.0
+
+
+def test_rename_adhoc_node_name_only(client):
+    _setup(client)
+    rid = _route(client)["id"]
+    detail = _add(client, rid, kind="stop", name="Old", lat=1.0, lng=2.0)
+    nid = detail["nodes"][0]["id"]
+    res = client.patch(f"/api/routes/{rid}/nodes/{nid}", json={"name": "New"})
+    assert res.status_code == 200, res.text
+    node = next(n for n in res.json()["nodes"] if n["id"] == nid)
+    assert node["name"] == "New" and node["lat"] == 1.0 and node["lng"] == 2.0
+    assert node["poi_id"] is None

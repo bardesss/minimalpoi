@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from enum import Enum
 
-from sqlalchemy import JSON, Column, UniqueConstraint
+from sqlalchemy import JSON, Column, Index, UniqueConstraint, text
 from sqlmodel import Field, SQLModel, select
 
 
@@ -126,6 +126,12 @@ class Route(SQLModel, table=True):
 
 
 class RouteNode(SQLModel, table=True):
+    # At most one start and one end per route, enforced by the database so two
+    # concurrent adds cannot both pass the app-level check.
+    __table_args__ = (
+        Index("uq_routenode_role", "route_id", "role", unique=True,
+              sqlite_where=text("role IS NOT NULL"), postgresql_where=text("role IS NOT NULL")),
+    )
     id: int | None = Field(default=None, primary_key=True)
     route_id: int = Field(foreign_key="route.id", index=True, ondelete="CASCADE")
     position: float  # fractional ordering key; insert between as (a+b)/2

@@ -32,7 +32,9 @@ def _engine_config(database_url: str | None, data_dir: Path) -> tuple[str, dict]
     url = _normalize_db_url(database_url)
     if url.startswith("sqlite"):
         return url, {"check_same_thread": False}
-    return url, {}
+    # Naive datetimes are stored as UTC; pin the session zone so a server set to
+    # another timezone cannot shift them.
+    return url, {"options": "-c timezone=utc"}
 
 
 def reset_engine() -> None:
@@ -136,31 +138,18 @@ def _add_missing_indexes(engine) -> None:
                 logger.warning("Could not create index %s on %s: %s", index.name, table.name, exc)
 
 
-def _purge_orphan_route_attachments() -> None:
-    """Route-level attachments (node_id NULL) are unreachable now that documents
-    attach to a stop or stay. Delete any leftovers — rows and their files — once.
-    Idempotent: a no-op after the first run leaves nothing to purge."""
-    from sqlmodel import Session, select
-
-    from . import attachments as att
-    from .models import RouteAttachment
-
-    # The table may not exist yet if create_all ran before the models were
-    # imported (e.g. in a fresh test process); nothing to purge in that case.
-    if "routeattachment" not in inspect(engine).get_table_names():
+def _dedupe_route_roles(engine) -> None:
+    """One-off, idempotent: before the unique (route_id, role) index exists, a
+    route may hold several start (or end) nodes. Keep the lowest-id one per role
+    and clear `role` on the extras so the index can be created."""
+    if "routenode" not in inspect(engine).get_table_names():
         return
-
-    with Session(engine) as session:
-        orphans = session.exec(
-            select(RouteAttachment).where(RouteAttachment.node_id.is_(None))
-        ).all()
-        if not orphans:
-            return
-        for a in orphans:
-            att.remove(a.stored_filename)
-            session.delete(a)
-        session.commit()
-        logger.info("Purged %d orphaned route-level attachment(s)", len(orphans))
+    with engine.begin() as conn:
+        result = conn.execute(text(
+            "UPDATE routenode SET role = NULL WHERE role IS NOT NULL AND id NOT IN "
+            "(SELECT MIN(id) FROM routenode WHERE role IS NOT NULL GROUP BY route_id, role)"))
+        if result.rowcount:
+            logger.info("Cleared role on %d duplicate start/end node(s)", result.rowcount)
 
 
 # Schema left behind by the removed TRIP sync feature. Dropped once, on the
@@ -385,11 +374,11 @@ def init_db() -> None:
         reset_engine()
     SQLModel.metadata.create_all(engine)
     _add_missing_columns(engine)
+    _dedupe_route_roles(engine)
     _add_missing_indexes(engine)
     _drop_removed_trip_columns(engine)
     _lowercase_usernames(engine)
     _repair_dangling_refs(engine)
-    _purge_orphan_route_attachments()
 
 
 def get_session() -> Iterator[Session]:

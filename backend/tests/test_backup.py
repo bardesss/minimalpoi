@@ -310,7 +310,9 @@ def test_backup_round_trip_includes_routes(client):
         assert client.post(f"/api/routes/{rid}/nodes",
                            json={"kind": "stop", "name": name, "lat": lat, "lng": 5.0}).status_code == 201
     share_token = client.put(f"/api/routes/{rid}/share", json={}).json()["token"]
-    up = client.post(f"/api/routes/{rid}/attachments",
+    with _session() as s:
+        att_node = s.exec(select(RouteNode)).first().id
+    up = client.post(f"/api/routes/{rid}/attachments", data={"node_id": str(att_node)},
                      files={"file": ("hotel.pdf", io.BytesIO(PDF), "application/pdf")})
     assert up.status_code == 201
     with _session() as s:
@@ -339,7 +341,9 @@ def test_backup_round_trip_includes_routes(client):
         assert s.get(Route, rid).name == "NL"
         assert sorted((n.name, n.position) for n in s.exec(select(RouteNode)).all()) == before_nodes
         assert s.exec(select(RouteShare)).one().token == share_token
-        assert s.exec(select(RouteAttachment)).one().stored_filename == stored
+        restored = s.exec(select(RouteAttachment)).one()
+        assert restored.stored_filename == stored
+        assert restored.node_id == att_node
     path = attachments.attachments_dir() / stored
     assert path.is_file() and path.read_bytes() == PDF
 
