@@ -66,6 +66,12 @@ describe("FilterPopover", () => {
     expect(screen.queryByLabelText(/sort places/i)).not.toBeInTheDocument();
   });
 
+  it("does not shrink a full sheet when opened", async () => {
+    render(<BottomSheet label="Places" initial="full"><FilterPopover {...base} /></BottomSheet>);
+    await userEvent.click(screen.getByRole("button", { name: /filters/i }));
+    expect(screen.getByRole("separator")).toHaveAttribute("aria-valuetext", "full");
+  });
+
   it("lifts the surrounding sheet from peek to half when opened", async () => {
     render(
       <BottomSheet label="Places" initial="peek"><FilterPopover {...base} /></BottomSheet>,

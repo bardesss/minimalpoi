@@ -263,7 +263,7 @@ describe("MapView", () => {
     rerender(<MapView categories={[{ ...categories[0], color: "#00ff00" }]} {...props} />);
     const ids = mapInstance.setPaintProperty.mock.calls.map((c) => c[0]);
     expect(ids).toEqual(["unclustered", "poi-selected"]);
-    expect(mapInstance.setPaintProperty).toHaveBeenCalledWith("unclustered", "circle-color", expect.anything());
+    for (const c of mapInstance.setPaintProperty.mock.calls) expect(JSON.stringify(c[2])).toContain("#00ff00");
   });
 
   it("swaps the style when the tile URL changes and re-adds the layers on style.load", () => {

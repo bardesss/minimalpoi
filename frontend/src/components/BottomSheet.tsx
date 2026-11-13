@@ -3,7 +3,7 @@ import { theme } from "../theme";
 import { useSheetDrag } from "./useSheetDrag";
 import type { Snap } from "./useSheetDrag";
 import { useMapInset } from "../map/useMapInsets";
-import { SheetSnapContext } from "./sheetContext";
+import { SheetRaiseContext } from "./sheetContext";
 
 // Header slots are centred by stretching them over the row, not with a
 // transform: a transform would make each slot a stacking context and the
@@ -42,7 +42,7 @@ export default function BottomSheet({
   hidden?: boolean;
   handleLabel?: string;
 }) {
-  const { translate, restTranslate, dragging, handlers, snap, snapTo, cycle, step } = useSheetDrag(initial);
+  const { translate, restTranslate, dragging, handlers, snap, raiseTo, cycle, step } = useSheetDrag(initial);
 
   function onGripKeyDown(e: KeyboardEvent) {
     if (e.key === "Enter") cycle();
@@ -134,9 +134,9 @@ export default function BottomSheet({
           <span onPointerDown={stopDrag} style={{ ...slot, right: 16 }}>{headerRight}</span>
         )}
       </div>
-      <SheetSnapContext.Provider value={snapTo}>
+      <SheetRaiseContext.Provider value={raiseTo}>
         <div style={{ height: contentHeight, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>{children}</div>
-      </SheetSnapContext.Provider>
+      </SheetRaiseContext.Provider>
     </section>
   );
 }

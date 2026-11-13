@@ -1,7 +1,7 @@
 import { createContext, useContext } from "react";
 import type { Snap } from "./useSheetDrag";
 
-/** Lets content inside a BottomSheet move the sheet (e.g. open it to half). No-op outside a sheet. */
-export const SheetSnapContext = createContext<(snap: Snap) => void>(() => {});
+/** Lets content inside a BottomSheet open it to at least a snap, never shrinking it. No-op outside a sheet. */
+export const SheetRaiseContext = createContext<(snap: Snap) => void>(() => {});
 
-export const useSheetSnapTo = () => useContext(SheetSnapContext);
+export const useSheetRaiseTo = () => useContext(SheetRaiseContext);

@@ -33,8 +33,8 @@ export interface SheetDrag {
   dragging: boolean;
   /** Current settled snap. */
   snap: Snap;
-  /** Jump to a snap programmatically (keyboard, popovers). */
-  snapTo: (snap: Snap) => void;
+  /** Open the sheet to at least this snap; never shrinks it. */
+  raiseTo: (snap: Snap) => void;
   /** Cycle peek -> half -> full -> peek. */
   cycle: () => void;
   /** Move one snap more open (+1) or less open (-1), clamped. */
@@ -145,7 +145,7 @@ export function useSheetDrag(initial: Snap): SheetDrag {
     setSnap(best);
   }, [translate]);
 
-  const snapTo = useCallback((next: Snap) => setSnap(next), []);
+  const raiseTo = useCallback((target: Snap) => setSnap((s) => (ORDER.indexOf(s) < ORDER.indexOf(target) ? target : s)), []);
   const cycle = useCallback(() => setSnap((s) => (s === "full" ? "peek" : ORDER[ORDER.indexOf(s) + 1])), []);
   const step = useCallback((dir: 1 | -1) => {
     setSnap((s) => ORDER[Math.min(Math.max(ORDER.indexOf(s) + dir, 0), ORDER.length - 1)]);
@@ -154,7 +154,7 @@ export function useSheetDrag(initial: Snap): SheetDrag {
   return {
     translate,
     snap,
-    snapTo,
+    raiseTo,
     cycle,
     step,
     restTranslate: vh(DEFAULT_HIDE[snap]),
