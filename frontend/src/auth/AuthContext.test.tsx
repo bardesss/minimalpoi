@@ -1,11 +1,20 @@
 import { expect, test, vi } from "vitest";
 import { http, HttpResponse } from "msw";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { server } from "../test/msw";
 import { apiFetch } from "../api/client";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { SessionNotPersistedError } from "./errors";
+
+let qc: QueryClient;
+
+function render(ui: ReactElement) {
+  qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
 
 function Probe() {
   const { user, loading, signIn, signOut } = useAuth();
@@ -122,4 +131,65 @@ test("signIn refuses to report success when the browser dropped the session cook
   await userEvent.click(screen.getByRole("button", { name: "sign in" }));
   await waitFor(() => expect(onError).toHaveBeenCalledWith(expect.any(SessionNotPersistedError)));
   await waitFor(() => expect(screen.getByText("user: none")).toBeInTheDocument());
+});
+
+function useAuthedMocks() {
+  let signedIn = false;
+  server.use(
+    http.get("/api/auth/me", () =>
+      signedIn
+        ? HttpResponse.json({ id: 1, username: "ada", role: "admin" })
+        : HttpResponse.json({ detail: "Not authenticated" }, { status: 401 }),
+    ),
+    http.post("/api/auth/login", () => {
+      signedIn = true;
+      return HttpResponse.json({ id: 1, username: "ada", role: "admin" });
+    }),
+    http.post("/api/auth/logout", () => {
+      signedIn = false;
+      return HttpResponse.json({ status: "ok" });
+    }),
+  );
+}
+
+test("signOut clears cached queries", async () => {
+  render(
+    <AuthProvider>
+      <Probe />
+    </AuthProvider>,
+  );
+  await waitFor(() => expect(screen.getByText("user: admin")).toBeInTheDocument());
+  qc.setQueryData(["routes", 1], [{ id: 1 }]);
+  await userEvent.click(screen.getByRole("button", { name: "sign out" }));
+  await waitFor(() => expect(qc.getQueryData(["routes", 1])).toBeUndefined());
+});
+
+test("signIn clears cached queries", async () => {
+  useAuthedMocks();
+  render(
+    <AuthProvider>
+      <Probe />
+    </AuthProvider>,
+  );
+  await waitFor(() => expect(screen.getByText("user: none")).toBeInTheDocument());
+  qc.setQueryData(["routes", 1], [{ id: 1 }]);
+  await userEvent.click(screen.getByRole("button", { name: "sign in" }));
+  await waitFor(() => expect(screen.getByText("user: ada")).toBeInTheDocument());
+  expect(qc.getQueryData(["routes", 1])).toBeUndefined();
+});
+
+test("a 401 from a data endpoint clears cached queries", async () => {
+  server.use(
+    http.get("/api/pois", () => HttpResponse.json({ detail: "Not authenticated" }, { status: 401 })),
+  );
+  render(
+    <AuthProvider>
+      <DataProbe />
+    </AuthProvider>,
+  );
+  await waitFor(() => expect(screen.getByText("user: admin")).toBeInTheDocument());
+  qc.setQueryData(["routes", 1], [{ id: 1 }]);
+  await userEvent.click(screen.getByRole("button", { name: "load places" }));
+  await waitFor(() => expect(screen.getByText("user: none")).toBeInTheDocument());
+  expect(qc.getQueryData(["routes", 1])).toBeUndefined();
 });
