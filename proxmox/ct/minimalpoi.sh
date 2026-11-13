@@ -45,6 +45,10 @@ function update_script() {
 
     msg_info "Updating Python Environment"
     cd /opt/minimalpoi/backend
+    # Keep the managed interpreter readable by the service user (not under /root).
+    # Drop the old venv: installs from before may point into /root.
+    export UV_PYTHON_INSTALL_DIR=/opt/minimalpoi/python
+    rm -rf .venv
     $STD uv sync --locked --no-editable --no-install-project --python 3.14
     msg_ok "Updated Python Environment"
 
@@ -75,6 +79,7 @@ Group=minimalpoi
 WorkingDirectory=/opt/minimalpoi/backend
 EnvironmentFile=/opt/minimalpoi.env
 EnvironmentFile=-/opt/minimalpoi/version.env
+Environment=HOME=/data
 ExecStart=/opt/minimalpoi/backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 7676 --workers 1
 Restart=on-failure
 RestartSec=5
