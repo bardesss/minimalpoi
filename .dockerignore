@@ -11,3 +11,6 @@ data
 docs
 reference
 *.tsbuildinfo
+**/.env*
+backend/tests
+frontend/**/*.test.*

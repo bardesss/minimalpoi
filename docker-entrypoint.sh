@@ -16,11 +16,12 @@ PUID="${PUID:-10001}"
 PGID="${PGID:-10001}"
 
 # Reverse-proxy support: when TRUST_PROXY is set, tell uvicorn to honor
-# X-Forwarded-* from the given proxy IPs (real client IP + scheme). Behind a
-# single trusted proxy, FORWARDED_ALLOW_IPS="*" is the common setting; scope it
-# to the proxy's IP for stricter setups.
+# X-Forwarded-* from the given proxy IPs/CIDRs (real client IP + scheme). The
+# default trusts loopback and the private ranges a Docker/LAN proxy sits in, not
+# every address. A value you set, including "*", wins; scope it to your proxy's
+# IP for stricter setups.
 if [ -n "${TRUST_PROXY:-}" ]; then
-    set -- "$@" --proxy-headers --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-*}"
+    set -- "$@" --proxy-headers --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7}"
 fi
 
 if [ "$(id -u)" = "0" ]; then

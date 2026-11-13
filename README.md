@@ -179,7 +179,7 @@ proxy's IP and run `systemctl restart minimalpoi`.
 | `NOMINATIM_ALLOW_PRIVATE` | unset | Set to `1` to let the Nominatim URL from Settings point at a private/LAN address (a self-hosted Nominatim). Only that host is exempt from the private-address block. |
 | `MAX_BODY_MB` | `50` | Largest request body accepted, in MiB (413 above it). Backup restore (`/api/restore`) is exempt and accepts archives up to 500 MiB. |
 | `TRUST_PROXY` | unset | Honor `X-Forwarded-*` from a reverse proxy (real client IP + scheme). Set to `1` when running behind nginx/Caddy/Traefik/etc. |
-| `FORWARDED_ALLOW_IPS` | `*` | Trusted proxy IPs when `TRUST_PROXY` is set. Defaults to trusting any proxy; scope it to your proxy's IP for stricter setups. |
+| `FORWARDED_ALLOW_IPS` | `127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7` | Trusted proxy IPs/CIDR ranges when `TRUST_PROXY` is set. Defaults to loopback and private networks. Set it to your proxy's IP for stricter setups, or `*` to trust any sender (only if the port is unreachable except via the proxy). |
 
 ### Using Postgres
 
@@ -222,7 +222,7 @@ It refuses to run against a non-empty target. Image files and the encryption key
 
 If you put MinimalPOI behind a TLS-terminating reverse proxy at a (sub)domain
 root (e.g. `poi.example.com` → the container's `:7676`), set `TRUST_PROXY=1`
-(and optionally `FORWARDED_ALLOW_IPS` to your proxy's IP) so the app sees the
+(and optionally `FORWARDED_ALLOW_IPS` to your proxy's IP; the default trusts private ranges only) so the app sees the
 real client IP for rate-limiting and the correct `https` scheme for the
 **`Secure`** login cookie and the public **share URL** (`/s/<token>`) — without
 it, everything looks like it's coming from the proxy over plain HTTP.
@@ -235,7 +235,10 @@ it, everything looks like it's coming from the proxy over plain HTTP.
 > `X-Forwarded-Proto` to defeat IP rate-limiting or fake an `https` scheme.
 > Either don't publish the port to untrusted networks (bind it to
 > `127.0.0.1` or drop the host mapping once the proxy is the only path in),
-> or set `FORWARDED_ALLOW_IPS` to your proxy's specific IP instead of `*`.
+> or set `FORWARDED_ALLOW_IPS` to your proxy's specific IP. By default only
+> loopback and private ranges (`10/8`, `172.16/12`, `192.168/16`, `fc00::/7`) are
+> trusted; a proxy on a public IP needs `FORWARDED_ALLOW_IPS` set explicitly.
+> Avoid `*`.
 
 **nginx**
 

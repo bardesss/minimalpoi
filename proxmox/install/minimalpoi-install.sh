@@ -20,6 +20,8 @@ fetch_and_deploy_gh_release "minimalpoi" "bardesss/minimalpoi" "tarball"
 
 msg_info "Setting up Python Environment"
 cd /opt/minimalpoi/backend
+# Keep the managed interpreter readable by the service user (not under /root).
+export UV_PYTHON_INSTALL_DIR=/opt/minimalpoi/python
 $STD uv sync --locked --no-editable --no-install-project --python 3.14
 msg_ok "Set up Python Environment"
 
@@ -44,6 +46,8 @@ EOF
 msg_ok "Configured MinimalPOI"
 
 msg_info "Creating Service"
+id -u minimalpoi &>/dev/null || useradd --system --home /opt/minimalpoi --shell /usr/sbin/nologin minimalpoi
+chown -R minimalpoi: /data /opt/minimalpoi
 cat <<EOF >/etc/systemd/system/minimalpoi.service
 [Unit]
 Description=MinimalPOI
@@ -52,17 +56,24 @@ After=network-online.target
 
 [Service]
 Type=simple
-User=root
+User=minimalpoi
+Group=minimalpoi
 WorkingDirectory=/opt/minimalpoi/backend
 EnvironmentFile=/opt/minimalpoi.env
 EnvironmentFile=-/opt/minimalpoi/version.env
+Environment=HOME=/data
 ExecStart=/opt/minimalpoi/backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 7676 --workers 1
 Restart=on-failure
 RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/data
+PrivateTmp=yes
 
 [Install]
 WantedBy=multi-user.target
 EOF
+systemctl daemon-reload
 systemctl enable -q --now minimalpoi
 msg_ok "Created Service"
 

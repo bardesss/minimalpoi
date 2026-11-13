@@ -142,3 +142,28 @@ def test_compose_has_no_empty_environment_key():
             j += 1  # skip blank/comment lines to the first real line
         has_child = j < len(lines) and (len(lines[j]) - len(lines[j].lstrip())) > indent
         assert has_child, f"empty environment: block at docker-compose.yml line {i + 1}"
+
+
+def test_entrypoint_default_forwarded_ips_not_wildcard():
+    # TRUST_PROXY=1 must not trust X-Forwarded-* from every address by default:
+    # a client reaching uvicorn directly could spoof its IP and scheme. The default
+    # is loopback plus the private ranges a Docker/LAN proxy sits in; an explicit
+    # FORWARDED_ALLOW_IPS (including "*") still wins.
+    entrypoint = (ROOT / "docker-entrypoint.sh").read_text(encoding="utf-8")
+    m = re.search(r"--forwarded-allow-ips\s+\"\$\{FORWARDED_ALLOW_IPS:-([^}]*)\}\"", entrypoint)
+    assert m, "entrypoint must pass --forwarded-allow-ips with a FORWARDED_ALLOW_IPS default"
+    default = m[1]
+    assert default != "*" and "*" not in default
+    assert set(default.split(",")) == {
+        "127.0.0.1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7",
+    }
+
+
+def test_dockerignore_excludes_env_and_tests():
+    lines = {
+        ln.strip()
+        for ln in (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()
+        if ln.strip() and not ln.lstrip().startswith("#")
+    }
+    for pattern in ("**/.env*", "backend/tests", "frontend/**/*.test.*"):
+        assert pattern in lines, f".dockerignore must exclude {pattern}"
