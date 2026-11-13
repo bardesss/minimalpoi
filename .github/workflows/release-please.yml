@@ -21,31 +21,49 @@ jobs:
     steps:
       - id: release
         if: github.event_name == 'push'
-        uses: googleapis/release-please-action@v5
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       # Decide whether to publish and which version + ref to build, from either
       # a freshly-cut release (push) or a manual re-publish (workflow_dispatch).
       - id: meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          RELEASE_CREATED: ${{ steps.release.outputs.release_created }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            v="${{ inputs.version }}"
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-            echo "ref=v$v" >> "$GITHUB_OUTPUT"
-          elif [ "${{ steps.release.outputs.release_created }}" = "true" ]; then
-            v="${{ steps.release.outputs.version }}"
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-            echo "ref=" >> "$GITHUB_OUTPUT"
-          else
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            v=""
+          v=""
+          floating=false
+          publish=false
+          ref=""
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            # The input is free text: validate before it reaches a tag, a ref
+            # or a build arg. A manual re-publish of an old version must not
+            # move the floating tags (latest, major, major.minor) backwards.
+            [[ "$INPUT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+              echo "::error::version must look like 1.2.3"
+              exit 1
+            }
+            v="$INPUT_VERSION"
+            publish=true
+            ref="v$v"
+          elif [ "$RELEASE_CREATED" = "true" ]; then
+            v="$RELEASE_VERSION"
+            publish=true
+            floating=true
           fi
-          if [ -n "$v" ]; then
-            echo "version=$v" >> "$GITHUB_OUTPUT"
-            echo "major=${v%%.*}" >> "$GITHUB_OUTPUT"
-            echo "minor=$(printf '%s' "$v" | cut -d. -f2)" >> "$GITHUB_OUTPUT"
-          fi
+          {
+            echo "publish=$publish"
+            echo "ref=$ref"
+            echo "floating=$floating"
+            if [ -n "$v" ]; then
+              echo "version=$v"
+              echo "major=${v%%.*}"
+              echo "minor=$(printf '%s' "$v" | cut -d. -f2)"
+            fi
+          } >> "$GITHUB_OUTPUT"
 
       # Publish the image in this same job. A separate workflow triggered on
       # `release: published` would NOT fire, because the release is created by
@@ -53,21 +71,21 @@ jobs:
       # token-authored events). On push we build the freshly-released HEAD; on
       # a manual re-publish we check out the release tag so the image matches
       # exactly what was released.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.meta.outputs.publish == 'true'
         with:
           ref: ${{ steps.meta.outputs.ref }}
-      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
         if: steps.meta.outputs.publish == 'true'
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         if: steps.meta.outputs.publish == 'true'
-      - uses: docker/login-action@v4
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         if: steps.meta.outputs.publish == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v7
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         if: steps.meta.outputs.publish == 'true'
         with:
           context: .
@@ -76,9 +94,9 @@ jobs:
           push: true
           tags: |
             ghcr.io/bardesss/minimalpoi:${{ steps.meta.outputs.version }}
-            ghcr.io/bardesss/minimalpoi:${{ steps.meta.outputs.major }}.${{ steps.meta.outputs.minor }}
-            ghcr.io/bardesss/minimalpoi:${{ steps.meta.outputs.major }}
-            ghcr.io/bardesss/minimalpoi:latest
+            ${{ steps.meta.outputs.floating == 'true' && format('ghcr.io/bardesss/minimalpoi:{0}.{1}', steps.meta.outputs.major, steps.meta.outputs.minor) || '' }}
+            ${{ steps.meta.outputs.floating == 'true' && format('ghcr.io/bardesss/minimalpoi:{0}', steps.meta.outputs.major) || '' }}
+            ${{ steps.meta.outputs.floating == 'true' && 'ghcr.io/bardesss/minimalpoi:latest' || '' }}
           build-args: |
             VERSION=${{ steps.meta.outputs.version }}
           cache-from: type=gha
