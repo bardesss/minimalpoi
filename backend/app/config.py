@@ -56,6 +56,29 @@ def max_body_bytes() -> int:
     return mb * 1024 * 1024
 
 
+DEFAULT_RESTORE_MAX_BYTES = 500 * 1024 * 1024
+
+
+def restore_max_bytes() -> int:
+    """Size cap for a backup archive (RESTORE_MAX_BYTES, bytes): the restore
+    upload body, the archive's total uncompressed size on restore (zip-bomb
+    guard), and the largest backup /api/backup will produce. Read fresh each
+    call; missing, non-numeric or non-positive values fall back to 500 MiB."""
+    raw = os.environ.get("RESTORE_MAX_BYTES")
+    try:
+        value = int(raw) if raw is not None else DEFAULT_RESTORE_MAX_BYTES
+    except ValueError:
+        return DEFAULT_RESTORE_MAX_BYTES
+    return value if value > 0 else DEFAULT_RESTORE_MAX_BYTES
+
+
+def restore_limit_message(what: str) -> str:
+    limit = restore_max_bytes()
+    mib = 1024 * 1024
+    shown = f"{limit // mib} MiB" if limit % mib == 0 else f"{limit} bytes"
+    return f"{what} exceeds the backup size limit of {shown}. Raise RESTORE_MAX_BYTES to allow it."
+
+
 def nominatim_allow_private() -> bool:
     """NOMINATIM_ALLOW_PRIVATE=1 lets the configured Nominatim host resolve to a
     private/LAN address (self-hosted Nominatim). Read fresh each call."""

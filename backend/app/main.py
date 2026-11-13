@@ -1,3 +1,4 @@
+import json
 import mimetypes
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -9,7 +10,6 @@ from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from . import backup as backup_service
 from . import config, db
 from .enrich.images import images_dir
 from .mcp_auth import BearerAuthMiddleware
@@ -53,14 +53,20 @@ class MaxBodySizeMiddleware:
 
     def _limit(self, path: str) -> int:
         if path == self.RESTORE_PATH:
-            return backup_service.ZIP_MAX_TOTAL_BYTES
+            return config.restore_max_bytes()
         return config.max_body_bytes()
+
+    def _detail(self, path: str) -> str:
+        if path == self.RESTORE_PATH:
+            return config.restore_limit_message("The uploaded backup")
+        return "Request body too large"
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
         limit = self._limit(scope["path"])
+        detail = self._detail(scope["path"])
         for name, value in scope["headers"]:
             if name == b"content-length":
                 try:
@@ -68,7 +74,7 @@ class MaxBodySizeMiddleware:
                 except ValueError:
                     too_big = False
                 if too_big:
-                    await self._reject(send)
+                    await self._reject(send, detail)
                     return
                 break
 
@@ -87,7 +93,7 @@ class MaxBodySizeMiddleware:
                     # told the client went away and its own reply is dropped.
                     rejected = True
                     if not started:
-                        await self._reject(send)
+                        await self._reject(send, detail)
                     return {"type": "http.disconnect"}
             return message
 
@@ -106,8 +112,8 @@ class MaxBodySizeMiddleware:
                 raise
 
     @staticmethod
-    async def _reject(send):
-        body = b'{"detail":"Request body too large"}'
+    async def _reject(send, detail: str):
+        body = json.dumps({"detail": detail}).encode()
         await send({
             "type": "http.response.start",
             "status": 413,

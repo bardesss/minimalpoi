@@ -12,7 +12,10 @@ router = APIRouter(prefix="/api", tags=["backup"])
 
 @router.get("/backup")
 def download_backup(session: SessionDep, _: AdminUser) -> Response:
-    raw = backup_service.build_backup_archive(session)
+    try:
+        raw = backup_service.build_backup_archive(session)
+    except backup_service.BackupTooLargeError as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
     return Response(
         content=raw,
         media_type="application/zip",
@@ -30,6 +33,8 @@ async def restore_backup(file: UploadFile, session: SessionDep, _: AdminUser) ->
     raw = await file.read()
     try:
         summary = backup_service.restore_from_archive(session, raw)
+    except backup_service.BackupTooLargeError as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
     except IntegrityError as exc:
         # Nothing was committed: the clear + insert run in one transaction.
         session.rollback()
