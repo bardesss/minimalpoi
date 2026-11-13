@@ -9,12 +9,12 @@ from .safety import UnsafeURLError, safe_get
 
 async def _nominatim_get(client: httpx.AsyncClient, url: str, base_url: str) -> httpx.Response:
     """SSRF-guarded GET, except that with NOMINATIM_ALLOW_PRIVATE set the
-    configured Nominatim host alone skips the is_global check. No redirects are
-    followed on that path, so it can't be bounced to another host."""
+    configured Nominatim host alone skips the is_global check. safe_get still
+    applies the scheme check, size cap, deadline and IP pinning, and a redirect
+    off that host gets the full public-IP check."""
     host = urlparse(url).hostname
-    if nominatim_allow_private() and host and host == urlparse(base_url).hostname:
-        return await client.get(url, follow_redirects=False)
-    return await safe_get(client, url)
+    allow_private = bool(nominatim_allow_private() and host and host == urlparse(base_url).hostname)
+    return await safe_get(client, url, allow_private=allow_private)
 
 
 async def nominatim_geocode(

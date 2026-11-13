@@ -14,7 +14,9 @@ def anyio_backend():
 async def test_safe_get_caps_oversized_body(monkeypatch):
     from app.enrich import safety
 
-    monkeypatch.setattr(safety, "_resolve_ips", lambda host: ["93.184.216.34"])
+    async def resolve(host):
+        return ["93.184.216.34"]
+    monkeypatch.setattr(safety, "_resolve_ips", resolve)
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=b"x" * 5000)
@@ -29,7 +31,9 @@ async def test_safe_get_caps_oversized_body(monkeypatch):
 async def test_safe_get_returns_small_body(monkeypatch):
     from app.enrich import safety
 
-    monkeypatch.setattr(safety, "_resolve_ips", lambda host: ["93.184.216.34"])
+    async def resolve(host):
+        return ["93.184.216.34"]
+    monkeypatch.setattr(safety, "_resolve_ips", resolve)
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, text="hello", headers={"content-type": "text/plain"})

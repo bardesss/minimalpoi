@@ -3,7 +3,9 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _safe_resolver(monkeypatch):
-    monkeypatch.setattr("app.enrich.safety._resolve_ips", lambda host: ["93.184.216.34"])
+    async def resolve(host):
+        return ["93.184.216.34"]
+    monkeypatch.setattr("app.enrich.safety._resolve_ips", resolve)
 
 
 @pytest.fixture
