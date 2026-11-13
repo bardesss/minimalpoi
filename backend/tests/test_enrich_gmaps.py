@@ -244,3 +244,13 @@ async def test_resolve_photo_url_reads_redirect_without_following():
     out = await gmaps.resolve_photo_url("PHOTOREF", api_key="k", client=client)
     await client.aclose()
     assert out == "https://lh3.googleusercontent.com/p/AF1"
+
+
+@pytest.mark.anyio
+async def test_gmaps_non_dict_json_ignored():
+    client = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=[1, 2])))
+    assert await gmaps.places_lookup("q", "k", client=client) is None
+    assert await gmaps.place_search("q", "k", client=client) == []
+    assert await gmaps.place_by_id("p", "k", client=client) is None
+    assert await gmaps.place_details("p", "k", client=client) is None
+    await client.aclose()

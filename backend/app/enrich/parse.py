@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass, field
 from html.parser import HTMLParser
 
 _RELEVANT_TYPES = {
@@ -15,6 +16,8 @@ class _MetaScriptParser(HTMLParser):
         self.twitter: dict[str, str] = {}
         self.place: dict[str, str] = {}
         self._ld_scripts: list[str] = []
+        self.title_parts: list[str] = []
+        self._in_title = False
         self._in_ld = False
         self._current: list[str] = []
 
@@ -31,11 +34,15 @@ class _MetaScriptParser(HTMLParser):
                     self.place[prop] = content
                 if name.startswith("twitter:"):
                     self.twitter[name[8:]] = content
+        if tag == "title":
+            self._in_title = True
         if tag == "script" and a.get("type") == "application/ld+json":
             self._in_ld = True
             self._current = []
 
     def handle_endtag(self, tag):
+        if tag == "title":
+            self._in_title = False
         if tag == "script" and self._in_ld:
             if self._current:
                 self._ld_scripts.append("".join(self._current))
@@ -45,39 +52,15 @@ class _MetaScriptParser(HTMLParser):
     def handle_data(self, data):
         if self._in_ld:
             self._current.append(data)
-
-
-def _parse(html: str) -> _MetaScriptParser:
-    p = _MetaScriptParser()
-    p.feed(html)
-    return p
-
-
-def parse_opengraph(html: str) -> dict[str, str]:
-    return _parse(html).og
-
-
-def parse_twitter(html: str) -> dict[str, str]:
-    return _parse(html).twitter
-
-
-def parse_geo(html: str) -> dict:
-    p = _parse(html)
-    lat = p.og.get("latitude") or p.place.get("place:location:latitude")
-    lng = p.og.get("longitude") or p.place.get("place:location:longitude")
-    try:
-        if lat is not None and lng is not None:
-            return {"lat": float(lat), "lng": float(lng)}
-    except (TypeError, ValueError):
-        pass
-    return {}
+        elif self._in_title:
+            self.title_parts.append(data)
 
 
 def _iter_ld_objects(scripts: list[str]):
     for raw in scripts:
         try:
             obj = json.loads(raw)
-        except (ValueError, TypeError):
+        except (ValueError, RecursionError):
             continue
         items = obj if isinstance(obj, list) else [obj]
         # @graph wrapper
@@ -91,7 +74,11 @@ def _iter_ld_objects(scripts: list[str]):
 
 def _types(item: dict) -> set[str]:
     t = item.get("@type", "")
-    return set(t) if isinstance(t, list) else {t}
+    if isinstance(t, str):
+        return {t}
+    if isinstance(t, list):
+        return {x for x in t if isinstance(x, str)}
+    return set()
 
 
 def _address_str(addr) -> str | None:
@@ -105,8 +92,7 @@ def _address_str(addr) -> str | None:
     return None
 
 
-def parse_jsonld(html: str) -> dict:
-    scripts = _parse(html)._ld_scripts
+def _jsonld_from_scripts(scripts: list[str]) -> dict:
     for item in _iter_ld_objects(scripts):
         if not (_types(item) & _RELEVANT_TYPES):
             continue
@@ -137,3 +123,54 @@ def parse_jsonld(html: str) -> dict:
         if out:
             return out
     return {}
+
+
+def _geo_from(og: dict[str, str], place: dict[str, str]) -> dict:
+    lat = og.get("latitude") or place.get("place:location:latitude")
+    lng = og.get("longitude") or place.get("place:location:longitude")
+    try:
+        if lat is not None and lng is not None:
+            return {"lat": float(lat), "lng": float(lng)}
+    except (TypeError, ValueError):
+        pass
+    return {}
+
+
+@dataclass
+class ParsedPage:
+    og: dict[str, str] = field(default_factory=dict)
+    twitter: dict[str, str] = field(default_factory=dict)
+    jsonld: dict = field(default_factory=dict)
+    geo: dict = field(default_factory=dict)
+    title: str | None = None
+
+
+def parse_document(html: str) -> ParsedPage:
+    """Single html.parser pass producing everything enrichment needs."""
+    p = _MetaScriptParser()
+    p.feed(html)
+    title = "".join(p.title_parts).strip() or None
+    return ParsedPage(
+        og=p.og,
+        twitter=p.twitter,
+        jsonld=_jsonld_from_scripts(p._ld_scripts),
+        geo=_geo_from(p.og, p.place),
+        title=title,
+    )
+
+
+# Thin wrappers kept for existing callers/tests.
+def parse_opengraph(html: str) -> dict[str, str]:
+    return parse_document(html).og
+
+
+def parse_twitter(html: str) -> dict[str, str]:
+    return parse_document(html).twitter
+
+
+def parse_geo(html: str) -> dict:
+    return parse_document(html).geo
+
+
+def parse_jsonld(html: str) -> dict:
+    return parse_document(html).jsonld

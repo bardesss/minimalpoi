@@ -106,3 +106,18 @@ async def test_nominatim_lookup_tolerates_malformed_address():
     assert d is not None
     assert d.name == "Rijksmuseum"
     assert d.city is None
+
+
+@pytest.mark.anyio
+async def test_private_nominatim_allowed_when_flag_set(monkeypatch):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[{"lat": "1.5", "lon": "2.5"}])
+
+    monkeypatch.setattr("app.enrich.safety._resolve_ips", lambda host: ["10.0.0.5"])
+    base = "http://nominatim.lan:8080"
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    monkeypatch.delenv("NOMINATIM_ALLOW_PRIVATE", raising=False)
+    assert await nominatim_geocode("x", base, client=client) is None
+    monkeypatch.setenv("NOMINATIM_ALLOW_PRIVATE", "1")
+    assert await nominatim_geocode("x", base, client=client) == (1.5, 2.5)
+    await client.aclose()

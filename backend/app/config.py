@@ -37,6 +37,12 @@ def get_session_lifetime_days() -> int:
     return days if days > 0 else DEFAULT_SESSION_LIFETIME_DAYS
 
 
+def nominatim_allow_private() -> bool:
+    """NOMINATIM_ALLOW_PRIVATE=1 lets the configured Nominatim host resolve to a
+    private/LAN address (self-hosted Nominatim). Read fresh each call."""
+    return os.environ.get("NOMINATIM_ALLOW_PRIVATE", "").strip().lower() in ("1", "true", "yes")
+
+
 @lru_cache(maxsize=1)
 def get_secret_key() -> str:
     env = os.environ.get("SECRET_KEY")

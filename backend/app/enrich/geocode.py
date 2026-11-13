@@ -1,7 +1,20 @@
+from urllib.parse import urlparse
+
 import httpx
 
+from ..config import nominatim_allow_private
 from .fetch import USER_AGENT
 from .safety import UnsafeURLError, safe_get
+
+
+async def _nominatim_get(client: httpx.AsyncClient, url: str, base_url: str) -> httpx.Response:
+    """SSRF-guarded GET, except that with NOMINATIM_ALLOW_PRIVATE set the
+    configured Nominatim host alone skips the is_global check. No redirects are
+    followed on that path, so it can't be bounced to another host."""
+    host = urlparse(url).hostname
+    if nominatim_allow_private() and host and host == urlparse(base_url).hostname:
+        return await client.get(url, follow_redirects=False)
+    return await safe_get(client, url)
 
 
 async def nominatim_geocode(
@@ -17,14 +30,14 @@ async def nominatim_geocode(
     try:
         # Route through the SSRF guard too — the nominatim URL is admin-set but
         # still attacker-influenceable if an admin account is compromised.
-        resp = await safe_get(client, url)
+        resp = await _nominatim_get(client, url, base_url)
         data = resp.json()
     except (httpx.HTTPError, UnsafeURLError, ValueError):
         return None
     finally:
         if owns:
             await client.aclose()
-    if not data:
+    if not data or not isinstance(data, list) or not isinstance(data[0], dict):
         return None
     try:
         return (float(data[0]["lat"]), float(data[0]["lon"]))
@@ -57,7 +70,7 @@ async def nominatim_search(query: str, base_url: str, client: httpx.AsyncClient 
     url = str(httpx.URL(base_url.rstrip("/") + "/search",
                         params={"q": query, "format": "jsonv2", "addressdetails": 1, "limit": limit}))
     try:
-        resp = await safe_get(client, url)
+        resp = await _nominatim_get(client, url, base_url)
         data = resp.json() if resp.status_code == 200 else []
     except (httpx.HTTPError, UnsafeURLError, ValueError):
         return []
@@ -95,7 +108,7 @@ async def nominatim_lookup(osm_id: str, base_url: str, client: httpx.AsyncClient
     url = str(httpx.URL(base_url.rstrip("/") + "/lookup",
                         params={"osm_ids": osm_id, "format": "jsonv2", "addressdetails": 1}))
     try:
-        resp = await safe_get(client, url)
+        resp = await _nominatim_get(client, url, base_url)
         data = resp.json() if resp.status_code == 200 else []
     except (httpx.HTTPError, UnsafeURLError, ValueError):
         return None
