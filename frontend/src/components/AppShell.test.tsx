@@ -85,7 +85,7 @@ describe("AppShell", () => {
     await user.click(screen.getByRole("button", { name: /^add place$/i })); // submit
     // After creation the invalidated GET returns "Created Place"; it appears in sidebar + detail panel
     expect((await screen.findAllByText("Created Place")).length).toBeGreaterThan(0);
-  });
+  }, 15_000); // types three fields char by char; ~5s on a loaded machine
 
   it("hides the Routes nav when routes_enabled is false", async () => {
     renderWithProviders(<AppShell />);
