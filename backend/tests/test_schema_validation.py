@@ -111,3 +111,13 @@ def test_import_non_http_image_url_not_stored(client):
     r = _upload(client, "x.csv", "name,lat,lng,image_url\nA,1,2,javascript:alert(1)\n")
     assert r.json()["created"] == 1
     assert client.get("/api/pois").json()[0]["image_url"] is None
+
+
+def test_long_address_create_and_update(client):
+    _setup(client)
+    addr = "a" * 600
+    r = client.post("/api/pois", json={"name": "A", "lat": 1, "lng": 2, "address": addr})
+    assert r.status_code == 201
+    pid = r.json()["id"]
+    r = client.patch(f"/api/pois/{pid}", json={"address": addr + "b"})
+    assert r.status_code == 200

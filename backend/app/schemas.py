@@ -162,7 +162,7 @@ class CategoryRead(SQLModel):
 
 class POICreate(SQLModel):
     name: Name
-    address: ShortText | None = None
+    address: Annotated[str, StringConstraints(max_length=1000)] | None = None
     city: ShortText | None = None
     country_code: Annotated[str, StringConstraints(max_length=8)] | None = None
     lat: Lat
@@ -171,7 +171,7 @@ class POICreate(SQLModel):
     tags: Tags = []
     notes: Text | None = None
     phone: Annotated[str, StringConstraints(max_length=64)] | None = None
-    email: ShortText | None = None
+    email: Annotated[str, StringConstraints(max_length=320)] | None = None
     website: Url | None = None
     image_url: Url | None = None
     source_url: Url | None = None
@@ -179,7 +179,7 @@ class POICreate(SQLModel):
 
 class POIUpdate(SQLModel):
     name: Name | None = None
-    address: ShortText | None = None
+    address: Annotated[str, StringConstraints(max_length=1000)] | None = None
     city: ShortText | None = None
     country_code: Annotated[str, StringConstraints(max_length=8)] | None = None
     lat: Lat | None = None
@@ -188,7 +188,7 @@ class POIUpdate(SQLModel):
     tags: Tags | None = None
     notes: Text | None = None
     phone: Annotated[str, StringConstraints(max_length=64)] | None = None
-    email: ShortText | None = None
+    email: Annotated[str, StringConstraints(max_length=320)] | None = None
     website: Url | None = None
     image_url: Url | None = None
     source_url: Url | None = None
@@ -340,7 +340,7 @@ class TagInfo(SQLModel):
 
 class TagRename(SQLModel):
     old: str
-    new: str
+    new: Tag
 
 
 class TeamCandidate(SQLModel):
