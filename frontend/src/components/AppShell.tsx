@@ -2,6 +2,8 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Map as MlMap } from "maplibre-gl";
 import { useAuth } from "../auth/AuthContext";
+import { canModify } from "../auth/permissions";
+import { useToast } from "./Toast";
 import { useCategories, useCreatePoi, useDeletePoi, useEnrich, useMyVisits, usePlaceDraft, usePois, useSearchPlaces, useSettings, useTags, useUpdatePoi, useUploadImage, useCheckDuplicate, useVersion } from "../queries/hooks";
 import { filterPois, UNCATEGORIZED_ID } from "../lib/filterPois";
 import type { Category, Poi, PoiCreate, VisitedFilter } from "../types/api";
@@ -28,6 +30,7 @@ const SettingsModal = lazy(() => import("./SettingsModal"));
 
 export default function AppShell() {
   const { user, signOut } = useAuth();
+  const { notify } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const isNarrow = useIsNarrowDesktop();
@@ -288,8 +291,12 @@ export default function AppShell() {
 
   async function confirmDelete() {
     if (selectedId == null) return;
-    await deletePoi.mutateAsync(selectedId);
-    setSelectedId(null);
+    try {
+      await deletePoi.mutateAsync(selectedId);
+      setSelectedId(null);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Delete failed", "error");
+    }
   }
 
   const sidebarContent = (
@@ -337,6 +344,7 @@ export default function AppShell() {
         onClose: () => setSelectedId(null),
         onEdit: () => openEdit(selectedPoi),
         onDelete: confirmDelete,
+        canModify: canModify(user, selectedPoi.created_by),
       }
     : null;
   const layoutDetail =

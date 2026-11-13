@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useCategories, useCreateCategory, useDeleteCategory, useUpdateCategory } from "../../queries/hooks";
 import { useToast } from "../Toast";
+import { useAuth } from "../../auth/AuthContext";
+import { canModify } from "../../auth/permissions";
 import { CATEGORY_ICONS, CategoryIcon } from "../../lib/categoryIcon";
 import type { Category } from "../../types/api";
 import { dangerButtonStyle, ghostButtonStyle, inputStyle, primaryButtonStyle, theme, fieldLabelStyle } from "../../theme";
@@ -16,6 +18,7 @@ export default function CategoriesSection() {
   const updateCat = useUpdateCategory();
   const deleteCat = useDeleteCategory();
   const { notify } = useToast();
+  const { user } = useAuth();
   const [draft, setDraft] = useState<Draft | null>(null);
 
   function startAdd() { setDraft({ ...EMPTY }); }
@@ -51,8 +54,12 @@ export default function CategoriesSection() {
               <CategoryIcon name={c.icon} size={14} color="#fff" />
             </span>
             <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700 }}>{c.name}</span>
-            <button type="button" onClick={() => startEdit(c)} style={{ ...ghostButtonStyle, padding: "6px 12px" }}>Edit</button>
-            <button type="button" aria-label={`Delete ${c.name}`} onClick={() => remove(c)} style={{ ...dangerButtonStyle, padding: "6px 12px" }}>Delete</button>
+            {canModify(user, c.created_by) && (
+              <>
+                <button type="button" onClick={() => startEdit(c)} style={{ ...ghostButtonStyle, padding: "6px 12px" }}>Edit</button>
+                <button type="button" aria-label={`Delete ${c.name}`} onClick={() => remove(c)} style={{ ...dangerButtonStyle, padding: "6px 12px" }}>Delete</button>
+              </>
+            )}
           </div>
         ))}
       </div>

@@ -145,6 +145,29 @@ describe("AppShell", () => {
     expect(screen.queryByRole("heading", { name: "Café Modern" })).not.toBeInTheDocument();
   });
 
+  it("shows a toast and resets the confirm bar when delete is rejected", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.delete("/api/pois/:id", () => HttpResponse.json({ detail: "Not allowed" }, { status: 403 })),
+    );
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    await screen.findByRole("button", { name: /edit place/i });
+    await user.click(screen.getByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("menuitem", { name: /delete place/i }));
+    await user.click(screen.getByRole("button", { name: /^delete$/i }));
+    expect(await screen.findByText(/not allowed/i)).toBeInTheDocument();
+    expect(screen.queryByText(/delete this place\?/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /edit place/i })).toBeInTheDocument();
+  });
+
+  it("member sees no Edit/Delete on others' POI", async () => {
+    server.use(http.get("/api/auth/me", () => HttpResponse.json({ id: 2, username: "mem", role: "member", preferred_team_id: null, disabled: false, created_at: "2026-06-23T00:00:00Z" })));
+    renderWithProviders(<AppShell />, { route: "/?place=1" });
+    expect(await screen.findByRole("heading", { name: "Café Modern" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /edit place/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /more actions/i })).not.toBeInTheDocument();
+  });
+
   it("preselects a POI from the ?place= deep-link", async () => {
     renderWithProviders(<AppShell />, { route: "/?place=1" });
     // DetailPanel is unique in exposing an "Edit place" button; the sidebar card also shows the name, so assert on the panel-only control.

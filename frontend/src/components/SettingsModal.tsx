@@ -29,7 +29,7 @@ const SECTIONS: SectionDef[] = [
   { key: "users", label: "Users", adminOnly: true, Component: UsersSection },
   { key: "teams", label: "Teams", adminOnly: false, Component: TeamsSection },
   { key: "categories", label: "Categories", adminOnly: false, Component: CategoriesSection },
-  { key: "tags", label: "Tags", adminOnly: false, Component: TagsSection },
+  { key: "tags", label: "Tags", adminOnly: true, Component: TagsSection },
   { key: "data", label: "Data & backups", adminOnly: false, Component: DataSection },
   { key: "apitokens", label: "API access", adminOnly: false, Component: ApiTokensSection },
   { key: "about", label: "About", adminOnly: false, Component: AboutSection },

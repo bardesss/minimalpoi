@@ -11,7 +11,7 @@ import { useResetScrollOn } from "./useResetScrollOn";
  * of the list, so the map keeps its full width. "Back to list" returns to the
  * list, which stayed mounted (scroll position intact).
  */
-export default function SidebarDetail({ poi, category, onClose, onEdit, onDelete }: { poi: Poi; category: Category | undefined; onClose: () => void; onEdit: () => void; onDelete: () => void }) {
+export default function SidebarDetail({ poi, category, onClose, onEdit, onDelete, canModify = true }: { poi: Poi; category: Category | undefined; onClose: () => void; onEdit: () => void; onDelete: () => void | Promise<void>; canModify?: boolean }) {
   const { dialogRef } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop: false, trapFocus: false });
   const scrollRef = useRef<HTMLDivElement | null>(null);
   useResetScrollOn(scrollRef, poi.id);
@@ -25,9 +25,9 @@ export default function SidebarDetail({ poi, category, onClose, onEdit, onDelete
         <DetailSummary poi={poi} />
         <DetailBody poi={poi} />
       </div>
-      <div style={{ display: "flex", padding: "14px 18px", borderTop: `1px solid ${theme.color.borderSubtle}`, flex: "none" }}>
+      {canModify && <div style={{ display: "flex", padding: "14px 18px", borderTop: `1px solid ${theme.color.borderSubtle}`, flex: "none" }}>
         <DetailControls key={poi.id} layout="footer" onEdit={onEdit} onDelete={onDelete} />
-      </div>
+      </div>}
     </div>
   );
 }
