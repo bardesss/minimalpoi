@@ -4,7 +4,16 @@ from starlette.concurrency import run_in_threadpool
 from ..crypto import DecryptError, decrypt
 from ..models import get_or_create_settings
 from ..phone import to_e164
-from ..schemas import POIDraft
+from ..schemas import (
+    ADDRESS_MAX,
+    COUNTRY_CODE_MAX,
+    NAME_MAX,
+    PHONE_MAX,
+    SHORT_TEXT_MAX,
+    TEXT_MAX,
+    URL_MAX,
+    POIDraft,
+)
 from . import gmaps
 from .fetch import fetch_url
 from .geocode import nominatim_geocode
@@ -16,6 +25,26 @@ def _set(draft: POIDraft, field: str, value, source: str) -> None:
         return
     setattr(draft, field, value)
     draft.field_sources[field] = source
+
+
+# Draft text is clipped to the POI schema limits so a long og:title or
+# description still saves. A URL or phone number cut short would point
+# somewhere else, so an over-long one is dropped instead.
+_CLIP = {"name": NAME_MAX, "address": ADDRESS_MAX, "city": SHORT_TEXT_MAX,
+         "country_code": COUNTRY_CODE_MAX, "description": TEXT_MAX}
+_DROP = {"image_url": URL_MAX, "website": URL_MAX, "source_url": URL_MAX, "phone": PHONE_MAX}
+
+
+def _fit_limits(draft: POIDraft) -> None:
+    for field, limit in _CLIP.items():
+        value = getattr(draft, field)
+        if isinstance(value, str):
+            setattr(draft, field, value.strip()[:limit])
+    for field, limit in _DROP.items():
+        value = getattr(draft, field)
+        if isinstance(value, str) and len(value) > limit:
+            setattr(draft, field, None)
+            draft.field_sources.pop(field, None)
 
 
 def _google_key(settings) -> str | None:
@@ -122,4 +151,5 @@ async def _finalize(draft: POIDraft, settings, session: Session, client) -> POID
             if coords:
                 _set(draft, "lat", coords[0], "nominatim")
                 _set(draft, "lng", coords[1], "nominatim")
+    _fit_limits(draft)
     return draft
