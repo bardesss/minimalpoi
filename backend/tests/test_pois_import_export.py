@@ -103,3 +103,83 @@ def test_export_empty_db(client):
     _setup(client)
     fc = client.get("/api/pois/export").json()
     assert fc == {"type": "FeatureCollection", "features": []}
+
+
+def _geojson(rows):
+    return json.dumps({"type": "FeatureCollection", "features": [
+        {"type": "Feature", "geometry": {"type": "Point", "coordinates": [lng, lat]},
+         "properties": {"name": name, **props}}
+        for name, lat, lng, props in rows
+    ]})
+
+
+def test_import_caps_remote_image_fetches(client, monkeypatch):
+    from app.routers import pois as pois_router
+
+    fetched = []
+
+    async def fake_localize(url):
+        fetched.append(url)
+        return "/images/x.webp" if url and url.startswith("http") else url
+
+    monkeypatch.setattr(pois_router, "localize", fake_localize)
+    monkeypatch.setattr(pois_router, "IMPORT_MAX_REMOTE_IMAGES", 2)
+    _setup(client)
+    rows = [(f"P{i}", 50 + i, 4.0, {"image_url": f"https://img.example/{i}.jpg"}) for i in range(4)]
+    rows.append(("Local", 60.0, 4.0, {"image_url": "/images/keep.webp"}))
+    r = _upload(client, "p.geojson", _geojson(rows))
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["created"] == 5
+    assert body["images_skipped"] == 2
+    assert [u for u in fetched if u.startswith("http")] == ["https://img.example/0.jpg", "https://img.example/1.jpg"]
+    images = {p["name"]: p["image_url"] for p in client.get("/api/pois").json()}
+    assert images == {"P0": "/images/x.webp", "P1": "/images/x.webp", "P2": None, "P3": None,
+                      "Local": "/images/keep.webp"}
+
+
+def test_import_fetches_images_before_any_write(client, monkeypatch):
+    from sqlalchemy import event
+    from sqlmodel import Session
+
+    from app import db
+    from app.models import Category
+    from app.routers import pois as pois_router
+
+    log = []
+
+    def on_flush(session, ctx):
+        if not session.info.get("probe"):
+            log.append("flush")
+
+    async def fake_localize(url):
+        log.append("localize")
+        # A concurrent writer must not be blocked by the import (SQLite would
+        # raise "database is locked" if the import already held the write lock).
+        with Session(db.engine) as other:
+            other.info["probe"] = True
+            other.add(Category(name=f"probe-{len(log)}", created_by=1))
+            other.commit()
+        return "/images/x.webp"
+
+    monkeypatch.setattr(pois_router, "localize", fake_localize)
+    _setup(client)
+    event.listen(Session, "after_flush", on_flush)
+    try:
+        rows = [(f"P{i}", 50 + i, 4.0, {"image_url": f"https://img.example/{i}.jpg", "category": "New"})
+                for i in range(2)]
+        r = _upload(client, "p.geojson", _geojson(rows))
+    finally:
+        event.remove(Session, "after_flush", on_flush)
+    assert r.status_code == 200, r.text
+    assert r.json()["created"] == 2
+    assert log.count("localize") == 2
+    assert "flush" in log
+    assert log.index("flush") > max(i for i, e in enumerate(log) if e == "localize")
+
+
+def test_import_skips_duplicates_within_the_same_file(client):
+    _setup(client)
+    rows = [("Cafe", 52.37, 4.9, {}), ("Cafe", 52.37, 4.9, {})]
+    body = _upload(client, "p.geojson", _geojson(rows)).json()
+    assert body["created"] == 1 and body["skipped"] == 1

@@ -331,6 +331,8 @@ class ImportResult(SQLModel):
     skipped: int
     errors: list[ImportRowError] = []
     created_ids: list[int] = []
+    # Rows past pois.IMPORT_MAX_REMOTE_IMAGES were saved without their remote image.
+    images_skipped: int = 0
 
 
 class TagInfo(SQLModel):
