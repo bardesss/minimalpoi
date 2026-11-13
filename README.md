@@ -21,6 +21,7 @@ Drop a pin or paste a link to auto-fill the details, rate the spots you've been,
   - [Behind a reverse proxy](#behind-a-reverse-proxy)
   - [Live route collaboration](#live-route-collaboration)
   - [🤖 MCP / AI access](#-mcp--ai-access)
+- [⬆️ Upgrading to this release](#-upgrading-to-this-release)
 - [🔄 Releases](#-releases)
 - [🛠️ Development](#-development)
 - [🧰 Tech stack](#-tech-stack)
@@ -177,7 +178,8 @@ proxy's IP and run `systemctl restart minimalpoi`.
 | `SECRET_KEY` | auto-generated in `/data/secret.key` | Signing key for login cookies — set it yourself only if you'd rather manage it. |
 | `SESSION_LIFETIME_DAYS` | `30` | How long a login stays valid before you have to sign in again. |
 | `NOMINATIM_ALLOW_PRIVATE` | unset | Set to `1` to let the Nominatim URL from Settings point at a private/LAN address (a self-hosted Nominatim). Only that host is exempt from the private-address block. |
-| `MAX_BODY_MB` | `50` | Largest request body accepted, in MiB (413 above it). Backup restore (`/api/restore`) is exempt and accepts archives up to 500 MiB. |
+| `MAX_BODY_MB` | `50` | Largest request body accepted, in MiB (413 above it). Backup restore (`/api/restore`) is exempt and uses `RESTORE_MAX_BYTES` instead. |
+| `RESTORE_MAX_BYTES` | `524288000` (500 MiB) | Largest backup, in bytes: the restore upload, the archive's unpacked size on restore, and the largest backup **Download backup** will produce (it refuses with a 413 rather than hand out a file restore would reject). Raise it on both the old and the new instance if your images and attachments outgrow it. |
 | `TRUST_PROXY` | unset | Honor `X-Forwarded-*` from a reverse proxy (real client IP + scheme). Set to `1` when running behind nginx/Caddy/Traefik/etc. |
 | `FORWARDED_ALLOW_IPS` | `127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7` | Trusted proxy IPs/CIDR ranges when `TRUST_PROXY` is set. Defaults to loopback and private networks. Set it to your proxy's IP for stricter setups, or `*` to trust any sender (only if the port is unreachable except via the proxy). |
 
@@ -344,6 +346,33 @@ MinimalPOI runs an [MCP](https://modelcontextprotocol.io) server so AI clients
 - **Reference data:** read-only categories and tags.
 
 Edits and deletes follow the app's ownership rules: a place's creator or an admin can edit/delete it; only the route editor can modify routes; you can edit/delete only your own visits, and add/edit only your own comments — admins can additionally delete (but not edit) anyone's comment.
+
+---
+
+## ⬆️ Upgrading to this release
+
+- **Everyone signs in once more.** Login cookies now identify users by id, so
+  cookies issued by earlier versions are rejected and the app shows the login page.
+- **Enrichment ignores `HTTP_PROXY` / `HTTPS_PROXY`.** Link and image fetches pin the
+  resolved IP to block SSRF, which a proxy would bypass, so they now always connect
+  directly. Allow outbound HTTP(S) from the app if you relied on a proxy.
+- **Reverse proxies outside the private ranges must be listed.** With `TRUST_PROXY=1`,
+  `X-Forwarded-*` is only honored from `FORWARDED_ALLOW_IPS`, which defaults to loopback
+  and the RFC 1918 / ULA ranges. A proxy on another address, including Tailscale's
+  `100.64.0.0/10`, must be added there (for example
+  `FORWARDED_ALLOW_IPS=127.0.0.1,100.64.0.0/10`), or every request appears to come from
+  the proxy and shares its rate-limit bucket.
+- **Postgres connections set `timezone=utc` as a startup option** (`options=-c timezone=utc`).
+  PgBouncer rejects startup parameters it doesn't know: let `options` through, or set the
+  database server's time zone to UTC (if PgBouncer is set to ignore `options`, the server's
+  zone is what applies).
+- **New `RESTORE_MAX_BYTES`** (default 500 MiB) caps backup size. An oversize restore or
+  backup now fails with a message naming the variable; see [Configuration](#-configuration).
+- **Proxmox LXC without nesting:** the service unit hardening (`ProtectSystem`,
+  `PrivateTmp`) needs mount namespaces. When the container has none, the install and
+  update scripts write `/etc/systemd/system/minimalpoi.service.d/no-namespace.conf`
+  turning both off and print a warning. Enable nesting on the container and re-run the
+  update to get the hardening back.
 
 ---
 
