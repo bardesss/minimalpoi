@@ -8,7 +8,10 @@ constructing an MCP Context.
 """
 from mcp.server.mcpserver import Context
 
-from .mcp_server import _bearer, _client, _raise_for_tool, mcp
+from .models import Route
+from .schemas import RouteUpdate
+
+from .mcp_server import _bearer, _client, _raise_for_tool, _with_clears, mcp
 
 
 async def _list_routes(auth: str) -> list[dict]:
@@ -146,12 +149,15 @@ async def _set_role_node(auth: str, route_id: int, role: str, fields: dict) -> d
 @mcp.tool()
 async def update_route(route_id: int, ctx: Context, name: str | None = None,
                        start_date: str | None = None, end_date: str | None = None,
-                       round_trip: bool | None = None, team_id: int | None = None) -> dict:
-    """Update a route's name, dates (ISO YYYY-MM-DD), round-trip flag, or team. Editor-only."""
+                       round_trip: bool | None = None, team_id: int | None = None,
+                       clear: list[str] | None = None) -> dict:
+    """Update a route's name, dates (ISO YYYY-MM-DD), round-trip flag, or team. Editor-only.
+    To empty a field (e.g. team_id, end_date), list its name in `clear`."""
     fields = {k: v for k, v in {
         "name": name, "start_date": start_date, "end_date": end_date,
         "round_trip": round_trip, "team_id": team_id,
     }.items() if v is not None}
+    fields = _with_clears(fields, clear, Route, RouteUpdate)
     return await _update_route(_bearer(ctx), route_id, fields)
 
 

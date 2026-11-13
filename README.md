@@ -303,6 +303,13 @@ In every case:
   as a single process — see [Live route collaboration](#live-route-collaboration)
   below; a reverse proxy in front doesn't change that.
 
+### Public route share links
+
+A route's share link (`/s/<token>`) shows viewers the route name, dates, stops, legs and
+totals. Per-stop notes and linked place ids are not included. The map needs your tile
+server, so the configured map tile URL, **including any API key embedded in it**, is
+visible to anyone with the link. Use a tile key that is restricted by referrer or domain.
+
 ### Live route collaboration
 
 Team members editing a shared route see each other's changes live (Server-Sent

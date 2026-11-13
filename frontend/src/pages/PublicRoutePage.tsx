@@ -34,7 +34,8 @@ function routeDetailFromPublic(view: PublicRouteView): RouteDetail {
     team_name: null,
     round_trip: view.round_trip,
     can_edit: false,
-    nodes: view.nodes,
+    // The server omits notes and poi_id from the public view; the shared route components expect them.
+    nodes: view.nodes.map((n) => ({ ...n, notes: null, poi_id: null })),
     legs: view.legs,
     attachments: [],
     total_distance_m: view.total_distance_m,
@@ -151,7 +152,7 @@ export default function PublicRoutePage() {
              app shell to navigate into, so on-route pins fall back to the
              name-only mini card and "Open" is unavailable. */}
           <RouteMap
-            nodes={route.nodes}
+            nodes={(detail ?? routeDetailFromPublic(route)).nodes}
             legs={route.legs}
             pois={[]}
             categories={[]}

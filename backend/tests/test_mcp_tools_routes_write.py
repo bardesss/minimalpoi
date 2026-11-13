@@ -169,3 +169,21 @@ async def test_non_editor_cannot_set_a_route_start(client):
     with pytest.raises(ValueError) as e:
         await _set_role_node(other, rid, "start", {"name": "Hijacked", "lat": 1.0, "lng": 2.0})
     assert "403" in str(e.value) or "404" in str(e.value)
+
+
+@pytest.mark.anyio
+async def test_mcp_update_route_clear_team(client):
+    auth = _auth(client)
+    _enable_routes()
+    team_id = client.post("/api/teams", json={"name": "Crew"}, headers={"Authorization": auth}).json()["id"]
+    rid = client.post("/api/routes", json={"name": "NL", "start_date": "2026-07-14", "team_id": team_id},
+                      headers={"Authorization": auth}).json()["id"]
+    from app.mcp_tools_routes import update_route
+    from tests.test_mcp_tools_pois_write import _Ctx
+    ctx = _Ctx(auth)
+
+    cleared = await update_route(rid, ctx, clear=["team_id"])
+    assert cleared["team_id"] is None and cleared["name"] == "NL"
+
+    with pytest.raises(ValueError, match=r"Cannot clear name\. Clearable fields:.*team_id"):
+        await update_route(rid, ctx, clear=["name"])

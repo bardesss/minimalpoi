@@ -382,6 +382,23 @@ class RouteNodeRead(SQLModel):
     inbound_duration_s: int | None = None
 
 
+class PublicRouteNode(SQLModel):
+    """RouteNodeRead minus notes and poi_id, which share-link viewers must not see."""
+    id: int
+    kind: RouteNodeKind
+    role: NodeRole | None = None
+    position: float
+    nights: int | None
+    name: str
+    lat: float
+    lng: float
+    day_offset: int | None = None
+    arrive_date: date | None = None
+    depart_date: date | None = None
+    inbound_distance_m: int | None = None
+    inbound_duration_s: int | None = None
+
+
 class RouteLegRead(SQLModel):
     from_node_id: int
     to_node_id: int
@@ -457,7 +474,7 @@ class PublicRouteView(SQLModel):
     round_trip: bool = False
     scheduled_end_date: date
     node_count: int
-    nodes: list[RouteNodeRead] = []
+    nodes: list[PublicRouteNode] = []
     legs: list[RouteLegRead] = []
     total_distance_m: int = 0
     total_duration_s: int = 0

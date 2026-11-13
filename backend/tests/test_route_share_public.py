@@ -96,3 +96,15 @@ def test_unlock_is_rate_limited_more_strictly_than_the_page_load(rl_client):
         assert r.status_code == 401
     blocked = anon.post(f"/api/public/routes/{tok}/unlock", json={"password": "wrong"})
     assert blocked.status_code == 429
+
+
+def test_public_view_omits_notes_and_poi_id(client):
+    _setup(client)
+    rid = client.post("/api/routes", json={"name": "NL", "start_date": "2026-07-14"}).json()["id"]
+    client.post(f"/api/routes/{rid}/nodes", json={"kind": "stop", "name": "A", "lat": 1.0, "lng": 2.0,
+                                                  "notes": "private door code 1234"})
+    tok = client.put(f"/api/routes/{rid}/share", json={}).json()["token"]
+    r = _anon(client).get(f"/api/public/routes/{tok}")
+    node = r.json()["route"]["nodes"][0]
+    assert "notes" not in node and "poi_id" not in node
+    assert "private door code" not in r.text

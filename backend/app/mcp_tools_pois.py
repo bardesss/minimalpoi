@@ -8,7 +8,10 @@ constructing an MCP Context.
 """
 from mcp.server.mcpserver import Context
 
-from .mcp_server import _bearer, _client, _raise_for_tool, mcp
+from .models import POI
+from .schemas import POIUpdate
+
+from .mcp_server import _bearer, _client, _raise_for_tool, _with_clears, mcp
 
 
 async def _list_pois(auth: str) -> list[dict]:
@@ -235,14 +238,17 @@ async def update_poi(
     website: str | None = None,
     image_url: str | None = None,
     source_url: str | None = None,
+    clear: list[str] | None = None,
 ) -> dict:
-    """Update fields of a place you created (admins: any place). Only the fields you pass change."""
+    """Update fields of a place you created (admins: any place). Only the fields you pass change.
+    To empty a field (e.g. notes, category_id), list its name in `clear`."""
     fields = {k: v for k, v in {
         "name": name, "address": address, "city": city, "country_code": country_code,
         "lat": lat, "lng": lng, "category_id": category_id, "tags": tags, "notes": notes,
         "phone": phone, "email": email, "website": website, "image_url": image_url,
         "source_url": source_url,
     }.items() if v is not None}
+    fields = _with_clears(fields, clear, POI, POIUpdate)
     return await _update_poi(_bearer(ctx), poi_id, fields)
 
 

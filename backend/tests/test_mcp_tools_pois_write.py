@@ -60,3 +60,30 @@ async def test_non_owner_cannot_delete_poi(client):
     with pytest.raises(ValueError) as e:
         await _delete_poi(other, poi_id)
     assert "403" in str(e.value)
+
+
+class _Ctx:
+    """Minimal stand-in for mcp Context: only what _bearer reads."""
+    def __init__(self, auth):
+        class _Req:
+            headers = {"authorization": auth}
+        class _RC:
+            request = _Req()
+        self.request_context = _RC()
+
+
+@pytest.mark.anyio
+async def test_mcp_update_poi_clear_notes(client):
+    auth = _first_admin_token(client)
+    poi_id = client.post("/api/pois", json={"name": "Cafe", "lat": 52.1, "lng": 4.1, "notes": "great"},
+                         headers={"Authorization": auth}).json()["id"]
+    from app.mcp_tools_pois import update_poi
+    ctx = _Ctx(auth)
+
+    cleared = await update_poi(poi_id, ctx, clear=["notes"])
+    assert cleared["notes"] is None and cleared["name"] == "Cafe"
+
+    with pytest.raises(ValueError, match=r"Cannot clear name\. Clearable fields:.*notes"):
+        await update_poi(poi_id, ctx, clear=["name"])
+    with pytest.raises(ValueError, match="Clearable fields"):
+        await update_poi(poi_id, ctx, clear=["bogus"])

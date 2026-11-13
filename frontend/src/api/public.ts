@@ -1,4 +1,7 @@
 import type { MapSettings, RouteLeg, RouteNode } from "../types/api";
+
+// Share-link viewers never receive a stop's notes or linked place id.
+export type PublicRouteNode = Omit<RouteNode, "notes" | "poi_id">;
 import { apiFetch } from "./client";
 
 export interface PublicRouteView {
@@ -8,7 +11,7 @@ export interface PublicRouteView {
   round_trip: boolean;
   scheduled_end_date: string;
   node_count: number;
-  nodes: RouteNode[];
+  nodes: PublicRouteNode[];
   legs: RouteLeg[];
   total_distance_m: number;
   total_duration_s: number;
