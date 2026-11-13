@@ -154,9 +154,10 @@ def test_poi_patch_is_rate_limited(client):
     app.state.limiter.reset()
     app.state.limiter.enabled = True
     try:
-        codes = [client.patch(f"/api/pois/{pid}", json={"name": f"n{i}"}).status_code for i in range(21)]
-        assert codes[:20] == [200] * 20
-        assert codes[20] == 429
+        # Without a remote image_url a PATCH spends only WRITE_LIMIT (60/min).
+        codes = [client.patch(f"/api/pois/{pid}", json={"name": f"n{i}"}).status_code for i in range(61)]
+        assert codes[:60] == [200] * 60
+        assert codes[60] == 429
     finally:
         app.state.limiter.enabled = False
         app.state.limiter.reset()

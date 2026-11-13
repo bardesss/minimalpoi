@@ -1,6 +1,6 @@
 import json
 
-from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
 from pydantic import ValidationError
 from sqlalchemy import func
 from sqlmodel import select
@@ -186,8 +186,27 @@ def get_poi(poi_id: int, session: SessionDep, _: CurrentUser) -> POI:
     return poi
 
 
-@router.patch("/{poi_id}", response_model=POIRead)
-@limiter.limit(ENRICH_LIMIT, key_func=user_or_ip)
+async def _flag_remote_image(request: Request) -> None:
+    """Note whether this PATCH makes the server fetch a remote image (see
+    localize), for the conditional ENRICH_LIMIT below. FastAPI has already read
+    and cached the JSON body by the time dependencies run."""
+    try:
+        body = await request.json()
+    except ValueError:
+        body = None
+    url = body.get("image_url") if isinstance(body, dict) else None
+    request.state.fetches_remote_image = isinstance(url, str) and url.startswith(("http://", "https://"))
+
+
+def _no_remote_image(request: Request) -> bool:
+    return not getattr(request.state, "fetches_remote_image", False)
+
+
+@router.patch("/{poi_id}", response_model=POIRead, dependencies=[Depends(_flag_remote_image)])
+@limiter.limit(WRITE_LIMIT, key_func=user_or_ip)
+# Outbound fetch amplification: only a PATCH that sets a remote image_url
+# spends the enrich budget (slowapi skips a limit whose exempt_when is true).
+@limiter.limit(ENRICH_LIMIT, key_func=user_or_ip, exempt_when=_no_remote_image)
 async def update_poi(request: Request, poi_id: int, body: POIUpdate, session: SessionDep, user: CurrentUser) -> POI:
     poi = session.get(POI, poi_id)
     if not poi:

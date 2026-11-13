@@ -135,3 +135,27 @@ def test_cookie_sessions_are_keyed_by_user_id(data_dir):
 
     token = create_access_token(User(id=42, username="alice", password_hash="!"))
     assert user_or_ip(_request(cookies={"access_token": token})) == "user:42"
+
+
+def test_poi_patch_without_remote_image_uses_the_write_limit(rl_client):
+    # ENRICH_LIMIT (20/min) must only charge PATCHes that fetch a remote image.
+    rl_client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
+    pid = rl_client.post("/api/pois", json={"name": "X", "lat": 1.0, "lng": 2.0}).json()["id"]
+    for i in range(25):
+        r = rl_client.patch(f"/api/pois/{pid}", json={"notes": f"n{i}", "image_url": "/images/a.webp"})
+        assert r.status_code == 200, (i, r.text)
+
+
+def test_poi_patch_with_remote_image_is_held_to_the_enrich_limit(rl_client, monkeypatch):
+    from app.routers import pois as pois_router
+
+    async def fake_localize(url):
+        return None
+
+    monkeypatch.setattr(pois_router, "localize", fake_localize)
+    rl_client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
+    pid = rl_client.post("/api/pois", json={"name": "X", "lat": 1.0, "lng": 2.0}).json()["id"]
+    codes = [rl_client.patch(f"/api/pois/{pid}", json={"image_url": f"https://img.example/{i}.jpg"}).status_code
+             for i in range(21)]
+    assert codes[:20] == [200] * 20
+    assert codes[20] == 429
