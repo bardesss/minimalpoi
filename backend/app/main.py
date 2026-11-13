@@ -8,7 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from . import db
+from . import backup as backup_service
+from . import config, db
 from .enrich.images import images_dir
 from .mcp_auth import BearerAuthMiddleware
 from .mcp_server import mcp_app, run_mcp_session
@@ -36,7 +37,86 @@ async def lifespan(app: FastAPI):
         yield
 
 
+class MaxBodySizeMiddleware:
+    """Reject request bodies over the cap with 413 (pure ASGI).
+
+    Checks Content-Length up front and counts streamed bytes for chunked
+    bodies. Backup restore legitimately uploads big archives, so that one path
+    gets its own (larger) limit instead of config.max_body_bytes().
+    """
+
+    RESTORE_PATH = "/api/restore"
+
+    def __init__(self, app):
+        self.app = app
+
+    def _limit(self, path: str) -> int:
+        if path == self.RESTORE_PATH:
+            return backup_service.ZIP_MAX_TOTAL_BYTES
+        return config.max_body_bytes()
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        limit = self._limit(scope["path"])
+        for name, value in scope["headers"]:
+            if name == b"content-length":
+                try:
+                    too_big = int(value) > limit
+                except ValueError:
+                    too_big = False
+                if too_big:
+                    await self._reject(send)
+                    return
+                break
+
+        received = 0
+        started = False
+        rejected = False
+
+        async def counting_receive():
+            nonlocal received, rejected
+            message = await receive()
+            if message["type"] == "http.request" and not rejected:
+                received += len(message.get("body", b""))
+                if received > limit:
+                    # Answer 413 ourselves rather than raising into the app:
+                    # FastAPI turns body-read errors into a 400. The app is
+                    # told the client went away and its own reply is dropped.
+                    rejected = True
+                    if not started:
+                        await self._reject(send)
+                    return {"type": "http.disconnect"}
+            return message
+
+        async def tracking_send(message):
+            nonlocal started
+            if rejected:
+                return
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, counting_receive, tracking_send)
+        except Exception:
+            if not rejected:
+                raise
+
+    @staticmethod
+    async def _reject(send):
+        body = b'{"detail":"Request body too large"}'
+        await send({
+            "type": "http.response.start",
+            "status": 413,
+            "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())],
+        })
+        await send({"type": "http.response.body", "body": body})
+
+
 app = FastAPI(title="MinimalPOI", lifespan=lifespan)
+app.add_middleware(MaxBodySizeMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.include_router(auth.router)

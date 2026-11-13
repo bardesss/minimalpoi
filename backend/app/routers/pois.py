@@ -7,7 +7,7 @@ from sqlmodel import select
 from ..dedup import find_duplicate
 from ..deps import CurrentUser, SessionDep, require_owner_or_admin
 from ..enrich.images import localize
-from ..ratelimit import IMPORT_LIMIT, WRITE_LIMIT, limiter, user_or_ip
+from ..ratelimit import ENRICH_LIMIT, IMPORT_LIMIT, WRITE_LIMIT, limiter, user_or_ip
 from ..models import POI, Category, Comment, RouteNode, Visit, utcnow
 from ..patching import apply_patch, required_fields
 from ..phone import to_e164
@@ -173,7 +173,8 @@ def get_poi(poi_id: int, session: SessionDep, _: CurrentUser) -> POI:
 
 
 @router.patch("/{poi_id}", response_model=POIRead)
-async def update_poi(poi_id: int, body: POIUpdate, session: SessionDep, user: CurrentUser) -> POI:
+@limiter.limit(ENRICH_LIMIT, key_func=user_or_ip)
+async def update_poi(request: Request, poi_id: int, body: POIUpdate, session: SessionDep, user: CurrentUser) -> POI:
     poi = session.get(POI, poi_id)
     if not poi:
         raise HTTPException(status_code=404, detail="Not found")

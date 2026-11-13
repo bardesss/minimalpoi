@@ -37,6 +37,25 @@ def get_session_lifetime_days() -> int:
     return days if days > 0 else DEFAULT_SESSION_LIFETIME_DAYS
 
 
+DEFAULT_MAX_BODY_MB = 50
+
+
+def max_body_bytes() -> int:
+    """Request-body cap for every route except backup restore (MAX_BODY_MB, MiB).
+
+    Read fresh each call. Missing, non-numeric or non-positive values fall back
+    to the default.
+    """
+    raw = os.environ.get("MAX_BODY_MB")
+    try:
+        mb = int(raw) if raw is not None else DEFAULT_MAX_BODY_MB
+    except ValueError:
+        mb = DEFAULT_MAX_BODY_MB
+    if mb <= 0:
+        mb = DEFAULT_MAX_BODY_MB
+    return mb * 1024 * 1024
+
+
 def nominatim_allow_private() -> bool:
     """NOMINATIM_ALLOW_PRIVATE=1 lets the configured Nominatim host resolve to a
     private/LAN address (self-hosted Nominatim). Read fresh each call."""

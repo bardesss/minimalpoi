@@ -118,3 +118,45 @@ def test_list_pois_includes_average_rating(client):
     # An unrated visit leaves the place with no average.
     assert by_id[unrated]["avg_rating"] is None
     assert by_id[unrated]["rating_count"] == 0
+
+
+def _poi_client(client):
+    client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
+    return client.post("/api/pois", json={"name": "P", "lat": 1.0, "lng": 2.0}).json()["id"]
+
+
+def test_javascript_image_url_stored_as_null(client):
+    pid = _poi_client(client)
+    r = client.patch(f"/api/pois/{pid}", json={"image_url": "javascript:alert(1)"})
+    assert r.status_code == 200
+    assert r.json()["image_url"] is None
+    r = client.post("/api/pois", json={"name": "Q", "lat": 1.0, "lng": 2.0, "image_url": "javascript:alert(1)"})
+    assert r.json()["image_url"] is None
+
+
+def test_failed_localize_stores_null(client, monkeypatch):
+    from app.enrich import images
+
+    async def fail(*a, **k):
+        raise images.UnsafeURLError("blocked")
+
+    monkeypatch.setattr(images, "safe_get", fail)
+    pid = _poi_client(client)
+    r = client.patch(f"/api/pois/{pid}", json={"image_url": "https://img.example/x.jpg"})
+    assert r.status_code == 200
+    assert r.json()["image_url"] is None
+
+
+def test_poi_patch_is_rate_limited(client):
+    from app.main import app
+
+    pid = _poi_client(client)
+    app.state.limiter.reset()
+    app.state.limiter.enabled = True
+    try:
+        codes = [client.patch(f"/api/pois/{pid}", json={"name": f"n{i}"}).status_code for i in range(21)]
+        assert codes[:20] == [200] * 20
+        assert codes[20] == 429
+    finally:
+        app.state.limiter.enabled = False
+        app.state.limiter.reset()
