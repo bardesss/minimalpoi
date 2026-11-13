@@ -474,9 +474,11 @@ def _next_position(session, route_id: int) -> float:
     return (max(positions) + 1.0) if positions else 1.0
 
 
-def _sync_round_trip(session, route: Route) -> None:
+def _sync_round_trip(session, route: Route, *, retry: bool = True) -> None:
     """Keep an end node mirroring the start place while round_trip is on. No-op
-    when round_trip is off or there is no start yet. Idempotent."""
+    when round_trip is off or there is no start yet. Idempotent. If a
+    concurrent request created the end first (unique role index), re-read and
+    mirror onto that one."""
     if not route.round_trip:
         return
     nodes = session.exec(select(RouteNode).where(RouteNode.route_id == route.id)).all()
@@ -492,7 +494,13 @@ def _sync_round_trip(session, route: Route) -> None:
     end.lat = start.lat
     end.lng = start.lng
     session.add(end)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        if not retry:
+            raise
+        _sync_round_trip(session, route, retry=False)
 
 
 def _resolve_location(session, body: RouteNodeCreate | RouteNodeUpdate,
@@ -540,9 +548,12 @@ async def add_node(route_id: int, request: Request, body: RouteNodeCreate, sessi
     try:
         session.commit()
     except IntegrityError:
-        # Lost a race against a concurrent add of the same start/end role.
+        # Lost a race: a concurrent add of the same start/end role, or (Postgres)
+        # a foreign key, e.g. the POI was deleted meanwhile.
         session.rollback()
-        raise HTTPException(status_code=409, detail=f"Route already has a {body.role.value}") from None
+        detail = (f"Route already has a {body.role.value}" if body.role is not None
+                  else "The route changed meanwhile; reload and try again")
+        raise HTTPException(status_code=409, detail=detail) from None
     _sync_round_trip(session, route)
     await recompute_legs(session, route_id)
     return _detail_and_publish(request, session, route, user)

@@ -142,3 +142,58 @@ def test_init_db_dedupes_roles_before_creating_unique_index(tmp_path):
     assert [r[1] for r in rows] == ["start", None, "end", None, None, None]
     assert "uq_routenode_role" in {ix["name"] for ix in inspect(engine).get_indexes("routenode")}
     engine.dispose()
+
+
+def test_add_node_integrity_error_without_role_is_409_not_500(client, monkeypatch):
+    from sqlalchemy.exc import IntegrityError
+    from sqlmodel import Session
+
+    _setup(client)
+    rid = _route(client)["id"]
+    real_commit = Session.commit
+    calls = {"n": 0}
+
+    def failing_commit(self):
+        calls["n"] += 1
+        if calls["n"] == 1:  # the node insert, e.g. a POI deleted concurrently (FK)
+            raise IntegrityError("INSERT", {}, Exception("fk violation"))
+        return real_commit(self)
+
+    monkeypatch.setattr(Session, "commit", failing_commit)
+    r = client.post(f"/api/routes/{rid}/nodes", json={"kind": "stop", "name": "X", "lat": 1.0, "lng": 1.0})
+    assert r.status_code == 409
+
+
+def test_round_trip_sync_survives_a_concurrent_end_insert(client, monkeypatch):
+    # Two concurrent start adds on a round trip both try to create the end;
+    # the loser hits the unique role index and must re-read, not 500.
+    from sqlmodel import Session, select
+
+    from app import db
+    from app.models import NodeRole, RouteNode, RouteNodeKind
+    from app.routers import routes as routes_mod
+
+    _setup(client)
+    rid = _route(client, round_trip=True)["id"]
+    real_next = routes_mod._next_position
+    calls = {"n": 0}
+
+    def racing_next_position(session, route_id):
+        calls["n"] += 1
+        if calls["n"] == 1:  # add_node's own call; the race is in _sync_round_trip
+            return real_next(session, route_id)
+        with Session(db.engine) as other:
+            if other.exec(select(RouteNode).where(RouteNode.route_id == route_id,
+                                                  RouteNode.role == NodeRole.END)).first() is None:
+                other.add(RouteNode(route_id=route_id, kind=RouteNodeKind.STOP, role=NodeRole.END,
+                                    position=99.0, name="Other", lat=9.0, lng=9.0))
+                other.commit()
+        return real_next(session, route_id)
+
+    monkeypatch.setattr(routes_mod, "_next_position", racing_next_position)
+    r = client.post(f"/api/routes/{rid}/nodes",
+                    json={"kind": "stop", "role": "start", "name": "Home", "lat": 1.0, "lng": 1.0})
+    assert r.status_code == 201, r.text
+    ends = [n for n in r.json()["nodes"] if n["role"] == "end"]
+    assert len(ends) == 1
+    assert (ends[0]["name"], ends[0]["lat"]) == ("Home", 1.0)  # re-mirrored onto the existing end
