@@ -190,3 +190,36 @@ def test_clean_migration_does_not_add_sentinel_user(tmp_path):
     SQLModel.metadata.drop_all(target)
     source.dispose()
     target.dispose()
+
+
+@pytest.mark.skipif(POSTGRES_URL is None, reason="needs a real Postgres (set TEST_POSTGRES_URL)")
+def test_migration_dedupes_duplicate_role_nodes(tmp_path):
+    # A pre-index SQLite database may hold two start nodes on one route; the
+    # target has the unique (route_id, role) index, so keep the lowest id only.
+    from sqlalchemy import text
+    from sqlmodel import select as sm_select
+
+    from app.db import _normalize_db_url, _add_missing_columns
+    import app.models as m
+
+    source = _sqlite(tmp_path / "src.db")
+    _seed_source(source)
+    with source.begin() as conn:
+        conn.execute(text("DROP INDEX uq_routenode_role"))
+    with Session(source) as s:
+        route = s.exec(sm_select(m.Route)).first()
+        for pos in (2.0, 3.0):
+            s.add(m.RouteNode(route_id=route.id, kind="stop", role="start", position=pos,
+                              name=f"S{pos}", lat=1.0, lng=2.0))
+        s.commit()
+
+    target = create_engine(_normalize_db_url(POSTGRES_URL))
+    SQLModel.metadata.drop_all(target); SQLModel.metadata.create_all(target); _add_missing_columns(target)
+    migrate(source, target)                      # must NOT raise
+    with Session(target) as s:
+        starts = s.exec(sm_select(m.RouteNode).where(m.RouteNode.role == m.NodeRole.START)).all()
+        assert [n.name for n in starts] == ["S2.0"]
+        assert len(s.exec(sm_select(m.RouteNode)).all()) == 3
+    SQLModel.metadata.drop_all(target)
+    source.dispose()
+    target.dispose()

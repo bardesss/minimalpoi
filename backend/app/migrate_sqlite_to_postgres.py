@@ -14,7 +14,7 @@ from sqlmodel import SQLModel, create_engine
 
 from . import models  # noqa: F401 — importing registers every table on SQLModel.metadata
 from .config import get_data_dir
-from .db import _add_missing_columns, _engine_config, reset_pg_sequences
+from .db import _add_missing_columns, _engine_config, dedupe_role_rows, reset_pg_sequences
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +169,11 @@ def migrate(source_engine, target_engine) -> dict[str, int]:
     repairs = _repair_orphans(rows_by_table)
     for table_name, n in repairs.items():
         logger.warning("migration: repaired %d orphaned FK reference(s) in '%s'", n, table_name)
+    # A pre-index source may hold several start/end nodes per route; the target
+    # has the unique (route_id, role) index. Same rule as the boot pre-step.
+    cleared = dedupe_role_rows(rows_by_table.get("routenode", []))
+    if cleared:
+        logger.warning("migration: cleared role on %d duplicate start/end node(s)", cleared)
 
     counts: dict[str, int] = {}
     with target_engine.begin() as dst:
