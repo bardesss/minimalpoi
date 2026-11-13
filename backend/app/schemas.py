@@ -125,7 +125,7 @@ class UserUpdate(SQLModel):
 
 
 class ApiTokenCreate(SQLModel):
-    name: str
+    name: Name
 
 
 class ApiTokenRead(SQLModel):
@@ -232,10 +232,11 @@ class POIRead(SQLModel):
 
 
 class DuplicateCheck(SQLModel):
-    name: str
+    # Max only: the form may check before a name is typed.
+    name: Annotated[str, StringConstraints(max_length=NAME_MAX)]
     lat: Lat | None = None
     lng: Lng | None = None
-    source_url: str | None = None
+    source_url: Url | None = None
 
 
 class DuplicateResult(SQLModel):
@@ -310,7 +311,7 @@ class SettingsUpdate(SQLModel):
 
 
 class EnrichRequest(SQLModel):
-    url: str
+    url: Url
 
 
 class PlaceSearchResult(SQLModel):

@@ -121,3 +121,26 @@ def test_long_address_create_and_update(client):
     pid = r.json()["id"]
     r = client.patch(f"/api/pois/{pid}", json={"address": addr + "b"})
     assert r.status_code == 200
+
+
+@pytest.mark.parametrize("model,field,value", [
+    ("ApiTokenCreate", "name", "x" * 201),
+    ("ApiTokenCreate", "name", "   "),
+    ("DuplicateCheck", "name", "x" * 201),
+    ("EnrichRequest", "url", "https://e.example/" + "a" * 2048),
+], ids=["token-long", "token-blank", "dup-long", "enrich-long"])
+def test_request_string_length_limits(model, field, value):
+    from pydantic import ValidationError
+
+    from app import schemas
+
+    with pytest.raises(ValidationError):
+        getattr(schemas, model).model_validate({field: value})
+
+
+def test_request_string_limits_allow_normal_values():
+    from app import schemas
+
+    assert schemas.ApiTokenCreate.model_validate({"name": " ci "}).name == "ci"
+    assert schemas.DuplicateCheck.model_validate({"name": "Cafe"}).name == "Cafe"
+    assert schemas.EnrichRequest.model_validate({"url": "https://e.example/x"}).url
