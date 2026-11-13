@@ -103,6 +103,11 @@ export default function DataSection() {
         {result && (
           <div role="status" style={{ fontSize: 12.5, color: theme.color.textBody, marginTop: 8 }}>
             <div style={{ fontWeight: 700 }}>{result.created} added · {result.skipped} skipped (duplicates)</div>
+            {(result.images_skipped ?? 0) > 0 && (
+              <div style={{ marginTop: 4, color: theme.color.textSecondary }}>
+                {result.images_skipped} places imported without their image (remote image limit per import reached).
+              </div>
+            )}
             {result.errors.length > 0 && (
               <ul style={{ margin: "8px 0 0", paddingLeft: 18, color: theme.color.textSecondary }}>
                 {result.errors.map((er) => <li key={er.row}>row {er.row}: {er.reason}</li>)}

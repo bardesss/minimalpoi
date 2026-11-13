@@ -117,6 +117,8 @@ export interface ImportResult {
   skipped: number;
   errors: ImportRowError[];
   created_ids: number[];
+  /** Rows saved without their remote image (per-import fetch cap). */
+  images_skipped?: number;
 }
 
 export interface Settings extends MapSettings {
