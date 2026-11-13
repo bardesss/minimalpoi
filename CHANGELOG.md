@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.7.2](https://github.com/bardesss/minimalpoi/compare/v4.7.1...v4.7.2) (2026-11-13)
+
+
+### Bug Fixes
+
+* **docker:** pin the image back to python:3.14-slim ([18c088a](https://github.com/bardesss/minimalpoi/commit/18c088a41af1972bce607025fb4b6c93f4eed5a1))
+* **docker:** pin the image back to python:3.14-slim ([16396d4](https://github.com/bardesss/minimalpoi/commit/16396d43e5e8990625b47002d8d21de79ae8a6e2))
+
 ## [4.7.1](https://github.com/bardesss/minimalpoi/compare/v4.7.0...v4.7.1) (2026-11-13)
 
 
