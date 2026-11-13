@@ -59,6 +59,36 @@ function update_script() {
 MINIMALPOI_VERSION=$(cat ~/.minimalpoi)
 EOF
 
+    msg_info "Applying Service Hardening"
+    id -u minimalpoi &>/dev/null || useradd --system --home /opt/minimalpoi --shell /usr/sbin/nologin minimalpoi
+    chown -R minimalpoi: /data /opt/minimalpoi
+    cat <<EOF >/etc/systemd/system/minimalpoi.service
+[Unit]
+Description=MinimalPOI
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=minimalpoi
+Group=minimalpoi
+WorkingDirectory=/opt/minimalpoi/backend
+EnvironmentFile=/opt/minimalpoi.env
+EnvironmentFile=-/opt/minimalpoi/version.env
+ExecStart=/opt/minimalpoi/backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 7676 --workers 1
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/data
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl daemon-reload
+    msg_ok "Applied Service Hardening"
+
     msg_info "Starting Service"
     systemctl start minimalpoi
     msg_ok "Started Service"
