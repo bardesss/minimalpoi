@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import Cookie, Depends, Header, HTTPException, status
 from sqlmodel import Session, select
 
+from . import db
 from .db import get_session
 from .models import Role, TeamMember, User
 
@@ -43,10 +44,8 @@ def user_from_access_token(session: Session, token: str) -> User | None:
     return user
 
 
-def get_current_user(
-    session: SessionDep,
-    access_token: Annotated[str | None, Cookie()] = None,
-    authorization: Annotated[str | None, Header()] = None,
+def _authenticate(
+    session: Session, access_token: str | None, authorization: str | None
 ) -> User:
     credentials_error = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
@@ -71,7 +70,34 @@ def get_current_user(
     return user
 
 
+def get_current_user(
+    session: SessionDep,
+    access_token: Annotated[str | None, Cookie()] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> User:
+    return _authenticate(session, access_token, authorization)
+
+
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def get_current_user_no_session(
+    access_token: Annotated[str | None, Cookie()] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> User:
+    """get_current_user for long-lived responses (SSE). Authenticates in its own
+    short session and returns a detached User, so no pooled connection stays
+    checked out for the life of the stream (a SessionDep's teardown only runs
+    once the response finishes)."""
+    # expire_on_commit=False: the bearer path commits last_used_at, which would
+    # otherwise expire the user's attributes before it is detached.
+    with Session(db.engine, expire_on_commit=False) as session:
+        user = _authenticate(session, access_token, authorization)
+        session.expunge(user)
+    return user
+
+
+CurrentUserNoSession = Annotated[User, Depends(get_current_user_no_session)]
 
 
 def get_cookie_user(

@@ -6,10 +6,11 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
-from sqlmodel import select
+from sqlmodel import Session, select
 
 from .. import attachments as att
-from ..deps import CurrentUser, SessionDep, is_team_member
+from .. import db
+from ..deps import CurrentUser, CurrentUserNoSession, SessionDep, is_team_member
 from ..models import (
     POI,
     NodeRole,
@@ -54,6 +55,16 @@ def require_routes_enabled(session: SessionDep) -> None:
 
 
 Gate = Depends(require_routes_enabled)
+
+
+def require_routes_enabled_no_session() -> None:
+    """Gate for long-lived responses (SSE): checks in its own short session so
+    no pooled connection is held for the life of the stream."""
+    with Session(db.engine) as session:
+        require_routes_enabled(session)
+
+
+GateNoSession = Depends(require_routes_enabled_no_session)
 
 
 def _username(session, user_id: int) -> str:
@@ -263,11 +274,16 @@ async def _route_event_stream(request: Request, hub: RouteEventHub, route_id: in
         hub.unsubscribe(route_id, q)
 
 
-@router.get("/{route_id}/events", dependencies=[Gate])
-async def route_events(route_id: int, request: Request, session: SessionDep, _: CurrentUser):
+@router.get("/{route_id}/events", dependencies=[GateNoSession])
+async def route_events(route_id: int, request: Request, _: CurrentUserNoSession):
     """SSE stream of live route updates. Readable by any authenticated user
-    (mirrors get_route). Emits JSON envelopes: {type, client_id, route}."""
-    _get_route_or_404(session, route_id)
+    (mirrors get_route). Emits JSON envelopes: {type, client_id, route}.
+
+    Takes no SessionDep: a yield dependency is torn down only after the response
+    ends, so each open stream would pin a pooled DB connection. Every DB check
+    here uses a short session that closes before streaming starts."""
+    with Session(db.engine) as session:
+        _get_route_or_404(session, route_id)
     hub = route_hub(request)
     if hub is None:
         raise HTTPException(status_code=503, detail="Live updates unavailable")
