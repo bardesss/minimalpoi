@@ -1,3 +1,9 @@
+# Import models at collection time so every table is registered on
+# SQLModel.metadata before the `client` fixture's drop_all runs on Postgres
+# (same convention as test_backup_postgres.py).
+from app import models  # noqa: F401
+
+
 def _setup_admin(client):
     client.post("/api/auth/setup", json={"username": "admin", "password": "pw123456"})
 
