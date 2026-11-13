@@ -138,6 +138,33 @@ def _add_missing_indexes(engine) -> None:
                 logger.warning("Could not create index %s on %s: %s", index.name, table.name, exc)
 
 
+def _purge_orphan_route_attachments() -> None:
+    """Route-level attachments (node_id NULL) are unreachable now that documents
+    attach to a stop or stay. Delete any leftovers — rows and their files — once.
+    Idempotent: a no-op after the first run leaves nothing to purge."""
+    from sqlmodel import Session, select
+
+    from . import attachments as att
+    from .models import RouteAttachment
+
+    # The table may not exist yet if create_all ran before the models were
+    # imported (e.g. in a fresh test process); nothing to purge in that case.
+    if "routeattachment" not in inspect(engine).get_table_names():
+        return
+
+    with Session(engine) as session:
+        orphans = session.exec(
+            select(RouteAttachment).where(RouteAttachment.node_id.is_(None))
+        ).all()
+        if not orphans:
+            return
+        for a in orphans:
+            att.remove(a.stored_filename)
+            session.delete(a)
+        session.commit()
+        logger.info("Purged %d orphaned route-level attachment(s)", len(orphans))
+
+
 def _dedupe_route_roles(engine) -> None:
     """One-off, idempotent: before the unique (route_id, role) index exists, a
     route may hold several start (or end) nodes. Keep the lowest-id one per role
@@ -379,6 +406,7 @@ def init_db() -> None:
     _drop_removed_trip_columns(engine)
     _lowercase_usernames(engine)
     _repair_dangling_refs(engine)
+    _purge_orphan_route_attachments()
 
 
 def get_session() -> Iterator[Session]:

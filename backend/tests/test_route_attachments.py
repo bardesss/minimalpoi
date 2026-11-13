@@ -123,8 +123,9 @@ def test_team_member_sees_and_downloads_attachments(client):
     assert got.status_code == 200 and got.content == PDF
 
 
-def test_route_level_attachments_survive_init_db(client):
-    """Legacy route-level (node_id NULL) rows must not be deleted on restart."""
+def test_purge_orphan_route_level_attachments(client):
+    """Route-level (node_id NULL) attachments are unreachable now; init-time
+    purge deletes them and their files, keeping node-scoped ones."""
     from sqlmodel import Session, select
 
     from app import attachments as att
@@ -132,15 +133,24 @@ def test_route_level_attachments_survive_init_db(client):
     from app.models import RouteAttachment
 
     rid = _route(client)
+    node = client.post(f"/api/routes/{rid}/nodes",
+                       json={"kind": "stop", "name": "B", "lat": 1, "lng": 2}).json()["nodes"][0]["id"]
+    # A node-scoped attachment that must survive the purge.
+    kept = client.post(f"/api/routes/{rid}/attachments",
+                       files={"file": ("keep.pdf", io.BytesIO(PDF), "application/pdf")},
+                       data={"node_id": str(node)}).json()["id"]
+
+    # Inject a route-level orphan (row + file) directly.
     stored = att.save(PDF, ".pdf")
     with Session(db.engine) as s:
-        s.add(RouteAttachment(route_id=rid, node_id=None, filename="legacy.pdf",
+        s.add(RouteAttachment(route_id=rid, node_id=None, filename="orphan.pdf",
                               stored_filename=stored, content_type="application/pdf",
                               size=len(PDF), uploaded_by=1))
         s.commit()
 
-    db.init_db()
+    db._purge_orphan_route_attachments()
 
     with Session(db.engine) as s:
-        assert len(s.exec(select(RouteAttachment)).all()) == 1
-    assert (att.attachments_dir() / stored).exists()
+        rows = s.exec(select(RouteAttachment)).all()
+    assert [r.id for r in rows] == [kept]                       # orphan gone, node one kept
+    assert not (att.attachments_dir() / stored).exists()        # its file removed
