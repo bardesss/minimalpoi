@@ -2,6 +2,7 @@ import asyncio
 import json
 import queue as _queue
 import secrets
+import time
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
@@ -248,10 +249,13 @@ def get_route(route_id: int, session: SessionDep, user: CurrentUser) -> RouteDet
     return _detail(session, _get_route_or_404(session, route_id), user)
 
 
-# SSE loop timing: poll the queue every SSE_POLL_SECONDS; after
-# SSE_KEEPALIVE_TICKS idle polls (20 s) re-check access and send a keepalive.
+# SSE loop timing: poll the queue every SSE_POLL_SECONDS and send a keepalive
+# after SSE_KEEPALIVE_TICKS idle polls (20 s). Access is re-checked before any
+# frame once SSE_RECHECK_SECONDS of wall-clock time have passed since the last
+# check, so a busy route (events resetting the idle count) is re-checked too.
 SSE_POLL_SECONDS = 0.25
 SSE_KEEPALIVE_TICKS = 80
+SSE_RECHECK_SECONDS = 20.0
 
 
 def _stream_guard(route_id: int, access_token: str | None, authorization: str | None):
@@ -279,9 +283,19 @@ async def _route_event_stream(request: Request, hub: RouteEventHub, route_id: in
     """Async generator behind the SSE endpoint. Module-level (not a closure) so
     it can be driven directly in tests: this repo's sync TestClient drains the
     whole ASGI response before returning, which would hang on an infinite stream.
-    `still_allowed` (see _stream_guard) is re-checked on every keepalive tick;
-    the stream ends once it fails."""
+    `still_allowed` (see _stream_guard) is re-checked before any frame once
+    SSE_RECHECK_SECONDS have passed since the last check; the stream ends once
+    it fails."""
     q = hub.subscribe(route_id)
+    last_check = time.monotonic()
+
+    async def allowed() -> bool:
+        nonlocal last_check
+        if still_allowed is None or time.monotonic() - last_check < SSE_RECHECK_SECONDS:
+            return True
+        last_check = time.monotonic()
+        return await still_allowed()
+
     try:
         yield ": connected\n\n"
         idle = 0
@@ -293,13 +307,15 @@ async def _route_event_stream(request: Request, hub: RouteEventHub, route_id: in
             except _queue.Empty:
                 event = None
             if event is not None:
+                if not await allowed():
+                    break
                 yield "data: " + json.dumps(event) + "\n\n"
                 idle = 0
                 continue
             await asyncio.sleep(SSE_POLL_SECONDS)
             idle += 1
             if idle >= SSE_KEEPALIVE_TICKS:
-                if still_allowed is not None and not await still_allowed():
+                if not await allowed():
                     break
                 yield ": keepalive\n\n"
                 idle = 0
