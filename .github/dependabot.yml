@@ -57,6 +57,13 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      # Python 3.15 is held back: httptools, pydantic-core and uvloop have no
+      # cp315 wheels yet and fail to compile in the slim image, so the image
+      # build breaks (CI doesn't build it, so CI stays green). Lift once they
+      # ship 3.15 wheels; the Proxmox scripts pin 3.14 as well.
+      - dependency-name: "python"
+        versions: [">=3.15"]
 
   # docker-compose.yml pins the postgres image (postgres:16-alpine), which the
   # `docker` ecosystem above does not look at.
