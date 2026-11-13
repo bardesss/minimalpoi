@@ -16,7 +16,7 @@ function applyUpdate(qc: QueryClient, routeId: number, incoming: RouteDetail) {
     // broadcast's can_edit — it's the mutating editor's — nor its empty
     // attachments; force safe defaults until the refetch below settles the truth.
     prev
-      ? { ...incoming, can_edit: prev.can_edit, attachments: prev.attachments }
+      ? { ...incoming, can_edit: prev.can_edit, attachments: prev.attachments, share: prev.share }
       : { ...incoming, can_edit: false, attachments: [] },
   );
   qc.invalidateQueries({ queryKey: ["routes"] });
@@ -46,20 +46,19 @@ export function useRouteEvents(
     if (buffered && buffered.forRouteId !== routeId) {
       bufferRef.current = null;                 // buffer belongs to a route we left — drop it
     } else if (!suspended && buffered && routeId != null) {
-      // `routeId != null` only narrows routeId to a number for applyUpdate; it's always true here.
-      applyUpdate(qc, routeId, buffered.route);
+      // The buffered payload predates whatever the user just saved; applying it
+      // would visibly revert their edit. Drop it and refetch the truth instead.
       bufferRef.current = null;
+      qc.invalidateQueries({ queryKey: ["routes", routeId] });
     }
   }, [suspended, qc, routeId]);
 
   useEffect(() => {
     if (routeId == null) return;
     const es = new EventSource(`/api/routes/${routeId}/events`, { withCredentials: true });
-    let hasConnected = false;
 
     es.onopen = () => {
-      if (hasConnected) qc.invalidateQueries({ queryKey: ["routes", routeId] }); // reconcile after a gap
-      hasConnected = true;
+      qc.invalidateQueries({ queryKey: ["routes", routeId] }); // reconcile on every open, incl. the first
     };
     es.onmessage = (e) => {
       let msg: RouteEventEnvelope;
