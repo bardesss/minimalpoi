@@ -670,3 +670,105 @@ describe("PoiFormModal docked desktop form (Task 2)", () => {
     expect(screen.queryByText(/click anywhere on the map/i)).not.toBeInTheDocument();
   });
 });
+
+describe("PoiFormModal correctness (Task 20)", () => {
+  const props = { categories: cats, onSubmit: () => {}, onClose: () => {}, onCheckDuplicate: () => {}, duplicateId: null };
+
+  it("escape in open tag suggestions does not close form", async () => {
+    const onClose = vi.fn();
+    render(<PoiFormModal mode="add" initial={null} coords={{ lng: 4.9, lat: 52.37 }} {...props} onClose={onClose} tagSuggestions={[{ tag: "cafe", count: 3 }]} />);
+    await userEvent.click(screen.getByLabelText(/^tags$/i));
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    // A second Escape (list closed) now closes the pristine form.
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("escape on dirty form asks to confirm", async () => {
+    const onClose = vi.fn();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<PoiFormModal mode="add" initial={null} coords={null} {...props} onClose={onClose} />);
+    await userEvent.type(screen.getByLabelText(/^name$/i), "Draft");
+    await userEvent.keyboard("{Escape}");
+    expect(confirm).toHaveBeenCalledWith("Discard changes?");
+    expect(onClose).not.toHaveBeenCalled();
+    confirm.mockReturnValue(true);
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+    confirm.mockRestore();
+  });
+
+  it("closes a pristine form without confirming", async () => {
+    const onClose = vi.fn();
+    const confirm = vi.spyOn(window, "confirm");
+    render(<PoiFormModal mode="add" initial={null} coords={null} {...props} onClose={onClose} />);
+    await userEvent.click(screen.getByRole("button", { name: /^close$/i }));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  it("invalid phone warning persists", async () => {
+    render(<PoiFormModal mode="add" initial={null} coords={null} {...props} />);
+    await userEvent.type(screen.getByPlaceholderText("20 308 0090"), "12");
+    expect(screen.getByText(/not a valid number yet/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("20 308 0090")).toHaveValue("12");
+  });
+
+  it("enter submits current phone value", async () => {
+    const onSubmit = vi.fn();
+    render(<PoiFormModal mode="add" initial={null} coords={{ lng: 4.9, lat: 52.37 }} {...props} onSubmit={onSubmit} />);
+    await userEvent.type(screen.getByLabelText(/^name$/i), "Phone Spot");
+    await userEvent.type(screen.getByPlaceholderText("20 308 0090"), "203080090{Enter}");
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ phone: "+31203080090" }));
+  });
+
+  it("applying draft without image keeps uploaded photo", async () => {
+    const onUploadImage = vi.fn().mockResolvedValue({ url: "/images/up.webp" });
+    const onEnrich = vi.fn().mockResolvedValue({ ...draft, image_url: null });
+    const onSubmit = vi.fn();
+    render(<PoiFormModal mode="add" initial={null} coords={null} {...props} onSubmit={onSubmit} onUploadImage={onUploadImage} onEnrich={onEnrich} />);
+    await userEvent.upload(screen.getByLabelText(/add photo/i), new File(["x"], "p.png", { type: "image/png" }));
+    await screen.findByLabelText(/image preview/i);
+    await userEvent.type(screen.getByLabelText(/enrich from url/i), "https://e.example");
+    await userEvent.click(screen.getByRole("button", { name: /^enrich$/i }));
+    await screen.findByDisplayValue("Enriched Spot");
+    await userEvent.click(screen.getByRole("button", { name: /add place/i }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ image_url: "/images/up.webp" }));
+  });
+
+  it("source_url sent on create", async () => {
+    const onEnrich = vi.fn().mockResolvedValue(draft);
+    const onSubmit = vi.fn();
+    render(<PoiFormModal mode="add" initial={null} coords={null} {...props} onSubmit={onSubmit} onEnrich={onEnrich} />);
+    await userEvent.type(screen.getByLabelText(/enrich from url/i), "https://e.example");
+    await userEvent.click(screen.getByRole("button", { name: /^enrich$/i }));
+    await screen.findByDisplayValue("Enriched Spot");
+    await userEvent.click(screen.getByRole("button", { name: /add place/i }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ source_url: "https://e.example" }));
+  });
+
+  it("submit disabled during upload", async () => {
+    let resolveUpload: (v: { url: string }) => void = () => {};
+    const onUploadImage = vi.fn().mockReturnValue(new Promise<{ url: string }>((r) => { resolveUpload = r; }));
+    render(<PoiFormModal mode="add" initial={null} coords={{ lng: 4.9, lat: 52.37 }} {...props} onUploadImage={onUploadImage} />);
+    await userEvent.upload(screen.getByLabelText(/add photo/i), new File(["x"], "p.png", { type: "image/png" }));
+    expect(screen.getByRole("button", { name: /add place/i })).toBeDisabled();
+    resolveUpload({ url: "/images/up.webp" });
+    await screen.findByLabelText(/image preview/i);
+    expect(screen.getByRole("button", { name: /add place/i })).toBeEnabled();
+  });
+
+  it("duplicate check parses comma decimals", async () => {
+    const onCheckDuplicate = vi.fn();
+    render(<PoiFormModal mode="add" initial={null} coords={null} {...props} onCheckDuplicate={onCheckDuplicate} />);
+    await userEvent.type(screen.getByLabelText(/latitude/i), "52,37");
+    await userEvent.type(screen.getByLabelText(/longitude/i), "4,9");
+    await userEvent.type(screen.getByLabelText(/^name$/i), "Comma");
+    await userEvent.tab();
+    expect(onCheckDuplicate).toHaveBeenLastCalledWith(expect.objectContaining({ name: "Comma", lat: 52.37, lng: 4.9 }));
+  });
+});

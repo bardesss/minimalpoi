@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { ApiError } from "../../api/client";
 import { safeImageCss } from "../../lib/safeUrl";
 import { ghostButtonStyle, theme, fieldLabelStyle } from "../../theme";
@@ -18,14 +18,21 @@ export function ImagePicker({
   onImageUrl,
   onUploadImage,
   mobile,
+  onUploadingChange,
 }: {
   imageUrl: string | null;
   onImageUrl: (url: string | null) => void;
   onUploadImage?: (file: File) => Promise<{ url: string }>;
   mobile?: boolean;
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const onUploadingChangeRef = useRef(onUploadingChange);
+  onUploadingChangeRef.current = onUploadingChange;
+  useEffect(() => {
+    onUploadingChangeRef.current?.(uploading);
+  }, [uploading]);
   const safeImage = safeImageCss(imageUrl);
 
   async function onPickFile(e: ChangeEvent<HTMLInputElement>) {

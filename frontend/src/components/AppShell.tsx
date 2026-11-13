@@ -284,9 +284,16 @@ export default function AppShell() {
     setFlyRequest((r) => ({ id: created.id, seq: (r?.seq ?? 0) + 1, center: [created.lng, created.lat] }));
   }
 
-  async function runDuplicateCheck(body: { name: string; lat: number; lng: number }) {
-    const res = await checkDuplicate.mutateAsync(body);
-    setDuplicateId(res.duplicate_id);
+  // Only the latest check may set the banner; an older, slower response is dropped.
+  const dupSeqRef = useRef(0);
+  async function runDuplicateCheck(body: { name: string; lat: number; lng: number; source_url?: string | null }) {
+    const seq = ++dupSeqRef.current;
+    try {
+      const res = await checkDuplicate.mutateAsync(body);
+      if (seq === dupSeqRef.current) setDuplicateId(res.duplicate_id);
+    } catch {
+      // Advisory only: a failed check just leaves the banner as it was.
+    }
   }
 
   async function confirmDelete() {

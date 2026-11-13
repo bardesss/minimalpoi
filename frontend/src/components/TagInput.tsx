@@ -181,7 +181,7 @@ export default function TagInput({
   const activeId = highlight >= 0 && filtered[highlight] ? `${listId}-opt-${highlight}` : undefined;
 
   return (
-    <div style={{ position: "relative" }}>
+    <div style={{ position: "relative" }} data-dialog-escape={open && filtered.length > 0 ? "ignore" : undefined}>
       <div style={boxStyle} onClick={() => document.getElementById(inputId ?? "")?.focus()}>
         {value.map((tag, i) => (
           <span key={`${tag}-${i}`} style={chipStyle}>

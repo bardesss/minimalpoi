@@ -82,7 +82,7 @@ export default function PoiFormModal({
   coords: { lng: number; lat: number } | null;
   onSubmit: (payload: PoiCreate) => void | Promise<void>;
   onClose: () => void;
-  onCheckDuplicate: (body: { name: string; lat: number; lng: number }) => void;
+  onCheckDuplicate: (body: { name: string; lat: number; lng: number; source_url?: string | null }) => void | Promise<void>;
   duplicateId: number | null;
   onEnrich?: (url: string) => Promise<PoiDraft>;
   onSearchPlaces?: (query: string) => Promise<PlaceSearchResult[]>;
@@ -111,6 +111,9 @@ export default function PoiFormModal({
   const [notes, setNotes] = useState(initial?.notes ?? "");
 
   const [imageUrl, setImageUrl] = useState<string | null>(initial?.image_url ?? null);
+  // Set by enrichment / place search drafts; sent on create and the duplicate check.
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [fieldSources, setFieldSources] = useState<Record<string, string>>({});
   const [enrichHost, setEnrichHost] = useState<string | null>(null);
   const [filledCount, setFilledCount] = useState(0);
@@ -194,7 +197,20 @@ export default function PoiFormModal({
   // backdrop-close and no focus trap. Mobile: add is a non-modal click-through
   // sheet (pick-on-map); edit is a true modal sheet with a backdrop.
   const modal = isMobile && !isAdd;
-  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(onClose, { closeOnBackdrop: modal, trapFocus: modal });
+
+  // Dirty = any user-visible field differs from what the form opened with. In
+  // add mode lat/lng are excluded: they are seeded/updated by map clicks and
+  // aren't something the user typed.
+  const signature = JSON.stringify([
+    name, categoryId, tags, address, city, countryCode, isAdd ? null : [lat, lng], phone, email, website, notes, imageUrl, sourceUrl,
+  ]);
+  const baselineRef = useRef(signature);
+  const isDirty = signature !== baselineRef.current;
+  const requestClose = () => {
+    if (isDirty && !window.confirm("Discard changes?")) return;
+    onClose();
+  };
+  const { dialogRef, onBackdropClick } = useDialog<HTMLDivElement>(requestClose, { closeOnBackdrop: modal, trapFocus: modal });
   // On desktop the docked panel covers the map's left edge only when the
   // sidebar it replaces is collapsed (`coversMap`); otherwise it sits beside
   // the sidebar and the map needs no extra inset.
@@ -210,7 +226,8 @@ export default function PoiFormModal({
     if (draft.phone != null) setPhone(draft.phone);
     if (draft.website != null) setWebsite(draft.website);
     if (draft.description != null) setNotes(draft.description);
-    setImageUrl(draft.image_url);
+    if (draft.image_url != null) setImageUrl(draft.image_url);
+    if (draft.source_url != null) setSourceUrl(draft.source_url);
     setFieldSources(draft.field_sources);
     setFilledCount(Object.keys(draft.field_sources).length);
     setEnrichHost(source);
@@ -222,6 +239,7 @@ export default function PoiFormModal({
     ) : null;
 
   async function submit() {
+    if (uploading) return;
     const latNum = parseCoord(lat);
     const lngNum = parseCoord(lng);
     if (name.trim() === "") {
@@ -252,6 +270,7 @@ export default function PoiFormModal({
       email: nn(email),
       website: nn(website),
       image_url: imageUrl,
+      ...(sourceUrl ? { source_url: sourceUrl } : {}),
     };
     setSaving(true);
     setSaveError(null);
@@ -269,10 +288,11 @@ export default function PoiFormModal({
   // check duplicates against the new coordinates instead of the stale ones.
   function maybeCheckDuplicate(explicit?: { lat: number; lng: number }) {
     if (mode !== "add" || !name.trim()) return;
-    const latNum = explicit ? explicit.lat : lat !== "" ? Number(lat) : null;
-    const lngNum = explicit ? explicit.lng : lng !== "" ? Number(lng) : null;
+    const latNum = explicit ? explicit.lat : parseCoord(lat);
+    const lngNum = explicit ? explicit.lng : parseCoord(lng);
     if (latNum === null || lngNum === null) return;
-    onCheckDuplicate({ name: name.trim(), lat: latNum, lng: lngNum });
+    // The check is advisory: a failure must not surface as an unhandled rejection.
+    Promise.resolve(onCheckDuplicate({ name: name.trim(), lat: latNum, lng: lngNum, ...(sourceUrl ? { source_url: sourceUrl } : {}) })).catch(() => {});
   }
 
   function confirmPick() {
@@ -359,7 +379,7 @@ export default function PoiFormModal({
         <>
         <div style={{ position: "sticky", top: 0, background: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 24px 16px", zIndex: 2 }}>
           <h2 id="poi-form-title" style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: "-.02em" }}>{mode === "add" ? "Add a new place" : "Edit place"}</h2>
-          <button type="button" aria-label="Close" onClick={onClose} style={{ width: isMobile ? 44 : 30, height: isMobile ? 44 : 30, fontSize: isMobile ? 20 : 14, borderRadius: theme.radius.icon, border: "none", background: "#f5f4f2", color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
+          <button type="button" aria-label="Close" onClick={requestClose} style={{ width: isMobile ? 44 : 30, height: isMobile ? 44 : 30, fontSize: isMobile ? 20 : 14, borderRadius: theme.radius.icon, border: "none", background: "#f5f4f2", color: theme.color.textSecondary, cursor: "pointer" }}>×</button>
         </div>
 
         <form noValidate onSubmit={(e) => { e.preventDefault(); submit(); }}>
@@ -372,7 +392,7 @@ export default function PoiFormModal({
             <EnrichSection onEnrich={onEnrich} onApplyDraft={applyDraft} filledCount={filledCount} enrichHost={enrichHost} />
           )}
 
-          <ImagePicker imageUrl={imageUrl} onImageUrl={setImageUrl} onUploadImage={onUploadImage} mobile={isMobile} />
+          <ImagePicker imageUrl={imageUrl} onImageUrl={setImageUrl} onUploadingChange={setUploading} onUploadImage={onUploadImage} mobile={isMobile} />
 
           {duplicateId != null && (
             <div role="status" style={{ padding: "10px 12px", borderRadius: theme.radius.input, background: theme.color.tintBg, border: `1px solid ${theme.color.tintBorder}`, color: theme.color.deepIndigoText, fontSize: 12.5 }}>
@@ -512,8 +532,8 @@ export default function PoiFormModal({
             <div role="alert" style={{ fontSize: 12.5, color: theme.color.dangerText, textAlign: "right" }}>{saveError}</div>
           )}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <button type="button" onClick={onClose} style={ghostButtonStyle}>Cancel</button>
-            <button type="submit" disabled={saving} style={primaryButtonStyle}>{saving ? "Saving…" : mode === "add" ? "Add place" : "Save changes"}</button>
+            <button type="button" onClick={requestClose} style={ghostButtonStyle}>Cancel</button>
+            <button type="submit" disabled={saving || uploading} style={primaryButtonStyle}>{saving ? "Saving…" : mode === "add" ? "Add place" : "Save changes"}</button>
           </div>
         </div>
         </form>

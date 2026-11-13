@@ -424,3 +424,30 @@ describe("AppShell Slice C", () => {
     expect(screen.queryByRole("button", { name: /add place/i })).not.toBeInTheDocument();
   });
 });
+
+describe("AppShell duplicate check (Task 20)", () => {
+  it("stale duplicate response ignored", async () => {
+    const user = userEvent.setup();
+    const resolvers: Array<(id: number | null) => void> = [];
+    server.use(
+      http.post("/api/pois/check-duplicate", () =>
+        new Promise((resolve) => {
+          resolvers.push((id) => resolve(HttpResponse.json({ duplicate_id: id })));
+        }),
+      ),
+    );
+    renderWithProviders(<AppShell />);
+    await screen.findByText("Café Modern");
+    await user.click(screen.getByRole("button", { name: /add place/i }));
+    await user.type(screen.getByLabelText(/latitude/i), "52.37");
+    await user.type(screen.getByLabelText(/longitude/i), "4.9");
+    await user.type(screen.getByLabelText(/^name$/i), "Dup");
+    await user.tab(); // check 1 (slow)
+    await user.click(screen.getByLabelText(/^name$/i));
+    await user.tab(); // check 2 (newer)
+    await waitFor(() => expect(resolvers.length).toBe(2));
+    await act(async () => { resolvers[1](null); });
+    await act(async () => { resolvers[0](5); }); // stale answer arrives last
+    expect(screen.queryByText(/possible duplicate/i)).not.toBeInTheDocument();
+  });
+});
