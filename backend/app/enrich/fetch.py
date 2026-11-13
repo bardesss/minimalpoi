@@ -5,6 +5,10 @@ from .safety import UnsafeURLError, safe_get
 
 USER_AGENT = "MinimalPOI/0.1 (+https://github.com/Bardesss/minimalpoi)"
 TIMEOUT_SECONDS = 10.0
+# Decoded HTML is truncated (not rejected) to this size so a head-first page
+# with og/JSON-LD metadata still parses while parse cost stays bounded.
+MAX_HTML_BYTES = 2 * 1024 * 1024
+_HTML_TYPES = {"text/html", "application/xhtml+xml"}
 
 
 class FetchResult(SQLModel):
@@ -18,6 +22,7 @@ async def fetch_url(url: str, client: httpx.AsyncClient | None = None) -> FetchR
     owns_client = client is None
     if client is None:
         client = httpx.AsyncClient(
+            trust_env=False,  # safe_get pins IPs; a proxy would get the IP as SNI
             follow_redirects=False,
             timeout=TIMEOUT_SECONDS,
             headers={"User-Agent": USER_AGENT},
@@ -29,9 +34,12 @@ async def fetch_url(url: str, client: httpx.AsyncClient | None = None) -> FetchR
     finally:
         if owns_client:
             await client.aclose()
+    content_type = resp.headers.get("content-type", "")
+    if content_type.split(";")[0].strip().lower() not in _HTML_TYPES:
+        return None
     return FetchResult(
         final_url=str(resp.url),
         status_code=resp.status_code,
-        content_type=resp.headers.get("content-type", ""),
-        text=resp.text,
+        content_type=content_type,
+        text=resp.text[:MAX_HTML_BYTES],
     )

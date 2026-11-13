@@ -57,13 +57,13 @@ async def test_localize_downloads_remote(data_dir):
 
 
 @pytest.mark.anyio
-async def test_localize_keeps_remote_url_for_gif(data_dir):
+async def test_localize_returns_none_for_gif(data_dir):
     gif = _img_bytes("GIF", 50, 50, mode="P")
     http = httpx.AsyncClient(transport=httpx.MockTransport(
         lambda r: httpx.Response(200, content=gif, headers={"content-type": "image/gif"})))
     out = await images.localize("https://img.example/anim.gif", client=http)
     await http.aclose()
-    assert out == "https://img.example/anim.gif"
+    assert out is None
 
 
 @pytest.mark.anyio
@@ -105,15 +105,15 @@ async def test_localize_rejects_oversized(data_dir):
         lambda r: httpx.Response(200, content=b"x", headers={"content-type": "image/jpeg", "content-length": str(50 * 1024 * 1024)})))
     out = await images.localize("https://img.example/huge.jpg", client=big)
     await big.aclose()
-    assert out == "https://img.example/huge.jpg"
+    assert out is None
 
 
 @pytest.mark.anyio
-async def test_localize_returns_original_on_http_error(data_dir):
+async def test_localize_returns_none_on_http_error(data_dir):
     http = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(500, text="err")))
     out = await images.localize("https://img.example/missing.jpg", client=http)
     await http.aclose()
-    assert out == "https://img.example/missing.jpg"
+    assert out is None
 
 
 def test_process_image_downscales_and_reencodes_webp():
@@ -223,3 +223,34 @@ def test_upload_offloads_processing_to_threadpool(client, monkeypatch):
     assert resp.json()["url"].endswith(".webp")
     assert "process_image" in called
     assert "save_bytes" in called
+
+
+def test_tiff_rejected_without_full_decode(monkeypatch):
+    buf = io.BytesIO()
+    Image.new("RGB", (20, 20), (1, 2, 3)).save(buf, format="TIFF")
+
+    def boom(self, *a, **k):
+        pytest.fail("load() must not run for a disallowed format")
+
+    monkeypatch.setattr(Image.Image, "load", boom)
+    with pytest.raises(images.UnsupportedImageError):
+        images.process_image(buf.getvalue())
+
+
+def test_pixel_cap_is_25_megapixels():
+    assert images.MAX_IMAGE_PIXELS == 25_000_000
+    assert Image.MAX_IMAGE_PIXELS == 25_000_000
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("url", ["javascript:alert(1)", "data:image/png;base64,AAAA", "ftp://x/y.png"])
+async def test_localize_rejects_non_http_scheme(url):
+    assert await images.localize(url) is None
+
+
+@pytest.mark.anyio
+async def test_localize_returns_none_on_fetch_failure(data_dir):
+    http = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(500)))
+    out = await images.localize("https://img.example/x.jpg", client=http)
+    await http.aclose()
+    assert out is None

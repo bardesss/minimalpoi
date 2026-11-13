@@ -6,10 +6,12 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
-from sqlmodel import select
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import Session, select
 
 from .. import attachments as att
-from ..deps import CurrentUser, SessionDep, is_team_member
+from .. import db
+from ..deps import CurrentUser, CurrentUserNoSession, SessionDep, is_team_member
 from ..models import (
     POI,
     NodeRole,
@@ -54,6 +56,16 @@ def require_routes_enabled(session: SessionDep) -> None:
 
 
 Gate = Depends(require_routes_enabled)
+
+
+def require_routes_enabled_no_session() -> None:
+    """Gate for long-lived responses (SSE): checks in its own short session so
+    no pooled connection is held for the life of the stream."""
+    with Session(db.engine) as session:
+        require_routes_enabled(session)
+
+
+GateNoSession = Depends(require_routes_enabled_no_session)
 
 
 def _username(session, user_id: int) -> str:
@@ -263,11 +275,16 @@ async def _route_event_stream(request: Request, hub: RouteEventHub, route_id: in
         hub.unsubscribe(route_id, q)
 
 
-@router.get("/{route_id}/events", dependencies=[Gate])
-async def route_events(route_id: int, request: Request, session: SessionDep, _: CurrentUser):
+@router.get("/{route_id}/events", dependencies=[GateNoSession])
+async def route_events(route_id: int, request: Request, _: CurrentUserNoSession):
     """SSE stream of live route updates. Readable by any authenticated user
-    (mirrors get_route). Emits JSON envelopes: {type, client_id, route}."""
-    _get_route_or_404(session, route_id)
+    (mirrors get_route). Emits JSON envelopes: {type, client_id, route}.
+
+    Takes no SessionDep: a yield dependency is torn down only after the response
+    ends, so each open stream would pin a pooled DB connection. Every DB check
+    here uses a short session that closes before streaming starts."""
+    with Session(db.engine) as session:
+        _get_route_or_404(session, route_id)
     hub = route_hub(request)
     if hub is None:
         raise HTTPException(status_code=503, detail="Live updates unavailable")
@@ -429,16 +446,23 @@ def _sync_round_trip(session, route: Route) -> None:
     session.commit()
 
 
-def _resolve_location(session, body: RouteNodeCreate) -> tuple[int | None, str, float, float]:
+def _resolve_location(session, body: RouteNodeCreate | RouteNodeUpdate,
+                      existing: RouteNode | None = None) -> tuple[int | None, str, float, float]:
     """A node is either a POI reference (snapshot its name/lat/lng) or an ad-hoc
-    point (name+lat+lng required)."""
+    point (name+lat+lng required). On an update, fields the body omits are taken
+    from the existing node, so a partial edit (e.g. a rename) is valid."""
     if body.poi_id is not None:
         poi = session.get(POI, body.poi_id)
         if not poi:
             raise HTTPException(status_code=400, detail="Unknown poi_id")
         return poi.id, poi.name, poi.lat, poi.lng
-    if body.name and body.lat is not None and body.lng is not None:
-        return None, body.name, body.lat, body.lng
+    name, lat, lng = body.name, body.lat, body.lng
+    if existing is not None:
+        name = name or existing.name
+        lat = existing.lat if lat is None else lat
+        lng = existing.lng if lng is None else lng
+    if name and lat is not None and lng is not None:
+        return None, name, lat, lng
     raise HTTPException(status_code=400, detail="Provide poi_id or name+lat+lng")
 
 
@@ -464,7 +488,12 @@ async def add_node(route_id: int, request: Request, body: RouteNodeCreate, sessi
         position=body.position if body.position is not None else _next_position(session, route_id),
     )
     session.add(node)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        # Lost a race against a concurrent add of the same start/end role.
+        session.rollback()
+        raise HTTPException(status_code=409, detail=f"Route already has a {body.role.value}") from None
     _sync_round_trip(session, route)
     await recompute_legs(session, route_id)
     return _detail_and_publish(request, session, route, user)
@@ -483,7 +512,7 @@ async def update_node(route_id: int, node_id: int, request: Request, body: Route
     # atomically; nights/notes/position/day_offset keep the generic path.
     location_keys = {"poi_id", "name", "lat", "lng"}
     if location_keys & data.keys():
-        poi_id, name, lat, lng = _resolve_location(session, body)
+        poi_id, name, lat, lng = _resolve_location(session, body, node)
         node.poi_id, node.name, node.lat, node.lng = poi_id, name, lat, lng
         for k in location_keys:
             data.pop(k, None)
@@ -535,7 +564,7 @@ def _attach_read(a: RouteAttachment) -> RouteAttachmentRead:
 @router.post("/{route_id}/attachments", response_model=RouteAttachmentRead, status_code=201, dependencies=[Gate])
 @limiter.limit(UPLOAD_LIMIT, key_func=user_or_ip)
 async def upload_attachment(route_id: int, request: Request, session: SessionDep, user: CurrentUser,
-                            file: UploadFile = File(...), node_id: int | None = Form(default=None)) -> RouteAttachmentRead:
+                            file: UploadFile = File(...), node_id: int = Form(...)) -> RouteAttachmentRead:
     route = _get_route_or_404(session, route_id)
     require_route_editor(session, route, user)
     # Read at most one byte past the limit so an oversized upload is rejected
@@ -546,10 +575,9 @@ async def upload_attachment(route_id: int, request: Request, session: SessionDep
     mime = att.sniff(data)
     if mime is None:
         raise HTTPException(status_code=415, detail="Unsupported file (PDF, PNG, JPEG, WebP only)")
-    if node_id is not None:
-        node = session.get(RouteNode, node_id)
-        if not node or node.route_id != route_id:
-            raise HTTPException(status_code=400, detail="Unknown node_id")
+    node = session.get(RouteNode, node_id)
+    if not node or node.route_id != route_id:
+        raise HTTPException(status_code=400, detail="Unknown node_id")
     stored = att.save(data, att.ALLOWED[mime])
     row = RouteAttachment(route_id=route_id, node_id=node_id, filename=file.filename or "file",
                           stored_filename=stored, content_type=mime, size=len(data), uploaded_by=user.id)

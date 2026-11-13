@@ -10,10 +10,11 @@ from ..config import get_data_dir
 from .safety import UnsafeURLError, safe_get
 
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
-MAX_IMAGE_PIXELS = 50_000_000  # reject images that would decode to a huge bitmap (DoS guard)
+MAX_IMAGE_PIXELS = 25_000_000  # reject images that would decode to a huge bitmap (DoS guard)
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS  # Pillow warns at this, errors at 2x
 MAX_DIMENSION = 1280
 WEBP_QUALITY = 72
-_ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
+_ALLOWED_FORMATS = ["JPEG", "PNG", "WEBP"]
 
 
 class UnsupportedImageError(Exception):
@@ -26,17 +27,19 @@ def process_image(data: bytes) -> bytes:
     Accepts only static JPEG/PNG/WebP; raises UnsupportedImageError otherwise.
     """
     try:
-        img = Image.open(io.BytesIO(data))
+        # formats= limits which plugins may identify/decode: TIFF, ICO, etc.
+        # are rejected here, before any pixel data is decoded.
+        img = Image.open(io.BytesIO(data), formats=_ALLOWED_FORMATS)
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
         raise UnsupportedImageError("not a decodable image") from exc
     if img.width * img.height > MAX_IMAGE_PIXELS:
         raise UnsupportedImageError(f"image exceeds {MAX_IMAGE_PIXELS} pixels")
+    if img.format not in _ALLOWED_FORMATS or getattr(img, "is_animated", False):
+        raise UnsupportedImageError(f"unsupported image format: {img.format}")
     try:
         img.load()
     except (OSError, Image.DecompressionBombError) as exc:
         raise UnsupportedImageError("not a decodable image") from exc
-    if img.format not in _ALLOWED_FORMATS or getattr(img, "is_animated", False):
-        raise UnsupportedImageError(f"unsupported image format: {img.format}")
     img = ImageOps.exif_transpose(img)
     if img.mode in ("RGBA", "LA") or "transparency" in img.info:
         img = img.convert("RGBA")
@@ -65,23 +68,24 @@ async def localize(image_url: str | None, client: httpx.AsyncClient | None = Non
     if not image_url or image_url.startswith("/images/"):
         return image_url
     if not image_url.startswith(("http://", "https://")):
-        return image_url
+        return None  # javascript:, data:, file:, ... are never stored
     owns = client is None
     if client is None:
-        client = httpx.AsyncClient(follow_redirects=False, timeout=10.0)
+        # trust_env=False: safe_get pins IPs; a proxy would get the IP as SNI.
+        client = httpx.AsyncClient(follow_redirects=False, timeout=10.0, trust_env=False)
     try:
         # safe_get streams with a hard MAX_IMAGE_BYTES ceiling; an over-cap body
-        # raises (ResponseTooLargeError ⊂ UnsafeURLError) and we keep the URL.
+        # raises (ResponseTooLargeError ⊂ UnsafeURLError) and we store nothing.
         resp = await safe_get(client, image_url, max_bytes=MAX_IMAGE_BYTES)
         resp.raise_for_status()
         content = resp.content
     except (httpx.HTTPError, UnsafeURLError):
-        return image_url  # non-fatal: keep the remote URL
+        return None  # non-fatal: the POI is saved without an image
     finally:
         if owns:
             await client.aclose()
     try:
         webp = await run_in_threadpool(process_image, content)
     except UnsupportedImageError:
-        return image_url  # unsupported/animated/non-image: keep the remote URL
+        return None  # unsupported/animated/non-image
     return await run_in_threadpool(save_bytes, webp, ".webp")

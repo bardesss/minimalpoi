@@ -45,7 +45,12 @@ def test_engine_config_defaults_to_sqlite_when_unset(tmp_path):
 def test_engine_config_postgres_has_no_check_same_thread(tmp_path):
     url, connect_args = _engine_config("postgres://u:p@h/db", tmp_path)
     assert url == "postgresql+psycopg://u:p@h/db"
-    assert connect_args == {}
+    assert "check_same_thread" not in connect_args
+
+
+def test_pg_connect_args_force_utc(tmp_path):
+    _, connect_args = _engine_config("postgres://u:p@h/db", tmp_path)
+    assert connect_args == {"options": "-c timezone=utc"}
 
 
 def test_engine_config_explicit_sqlite_keeps_check_same_thread(tmp_path):

@@ -80,3 +80,20 @@ async def test_enrich_og_place_geo_coords(client):
     await http.aclose()
     assert draft.lat == 48.8566 and draft.lng == 2.3522
     assert draft.field_sources["lat"] == "og"
+
+
+@pytest.mark.anyio
+async def test_enrich_parses_once_in_threadpool(client, monkeypatch):
+    from app.enrich import service
+
+    calls = []
+    real = service.parse_document
+    monkeypatch.setattr(service, "parse_document", lambda h: (calls.append(1), real(h))[1])
+    html = (FIX / "tripadvisor_restaurant.html").read_text(encoding="utf-8")
+    http = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda r: httpx.Response(200, text=html, headers={"content-type": "text/html"})))
+    with Session(db.engine) as session:
+        draft = await enrich("https://tripadvisor.example/r/cafe", session, client=http)
+    await http.aclose()
+    assert calls == [1]
+    assert draft.name == "Café Modern"

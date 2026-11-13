@@ -1,4 +1,5 @@
 import asyncio
+from collections import defaultdict
 from datetime import date, timedelta
 
 import httpx
@@ -15,7 +16,7 @@ from ..models import (
     Settings,
     get_or_create_settings,
 )
-from .calc import HaversineCalc
+from .calc import HaversineCalc, Leg
 from .google import GoogleCalc
 
 
@@ -45,23 +46,42 @@ def legs_for(session: Session, route_id: int) -> list[RouteLeg]:
     return list(session.exec(select(RouteLeg).where(RouteLeg.route_id == route_id)).all())
 
 
+# One lock per route, so overlapping recomputes (two edits landing while a slow
+# Google call is in flight) run one after another instead of interleaving their
+# delete-then-insert. Process-local: it serialises within one worker only.
+_route_locks: defaultdict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
+
+
 async def recompute_legs(session: Session, route_id: int) -> None:
     """Replace the route's cached legs. Google per leg when available; haversine
-    fallback on any miss. Runs after any node add/edit/delete/reorder."""
-    nodes = ordered_nodes(session, route_id)
-    # Per-row delete to match house style (the codebase never bulk-deletes via
-    # sqlmodel.delete).
-    for old in session.exec(select(RouteLeg).where(RouteLeg.route_id == route_id)).all():
-        session.delete(old)
-    if len(nodes) < 2:
+    fallback on any miss. Runs after any node add/edit/delete/reorder.
+
+    The whole read-compute-replace runs under the route's lock, and the old legs
+    are deleted and the new ones inserted only after every await, in a single
+    commit, so no write transaction stays open across a network call."""
+    async with _route_locks[route_id]:
+        nodes = ordered_nodes(session, route_id)
+        pairs = list(zip(nodes, nodes[1:]))
+        computed = await _compute_legs(session, pairs) if pairs else []
+        # Per-row delete to match house style (the codebase never bulk-deletes
+        # via sqlmodel.delete).
+        for old in session.exec(select(RouteLeg).where(RouteLeg.route_id == route_id)).all():
+            session.delete(old)
+        for (a, b), leg in zip(pairs, computed):
+            session.add(RouteLeg(
+                route_id=route_id, from_node_id=a.id, to_node_id=b.id,
+                distance_m=leg.distance_m, duration_s=leg.duration_s,
+                source=LegSource(leg.source), geometry=leg.geometry,
+            ))
         session.commit()
-        return
+
+
+async def _compute_legs(session: Session, pairs: list[tuple[RouteNode, RouteNode]]) -> list[Leg]:
     settings = get_or_create_settings(session)
     google, haversine = resolve_calc(settings)
     client = httpx.AsyncClient(timeout=10.0) if google else None
-    pairs = list(zip(nodes, nodes[1:]))
 
-    async def _compute(a: RouteNode, b: RouteNode):
+    async def _compute(a: RouteNode, b: RouteNode) -> Leg:
         leg = None
         if google:
             leg = await google.leg(a.lat, a.lng, b.lat, b.lng)
@@ -73,18 +93,11 @@ async def recompute_legs(session: Session, route_id: int) -> None:
         if google:
             google.client = client
         # Issue every leg concurrently; gather preserves input order so the
-        # zip below still pairs each Leg with the right nodes.
-        computed = await asyncio.gather(*(_compute(a, b) for a, b in pairs))
+        # caller's zip still pairs each Leg with the right nodes.
+        return list(await asyncio.gather(*(_compute(a, b) for a, b in pairs)))
     finally:
         if client:
             await client.aclose()
-    for (a, b), leg in zip(pairs, computed):
-        session.add(RouteLeg(
-            route_id=route_id, from_node_id=a.id, to_node_id=b.id,
-            distance_m=leg.distance_m, duration_s=leg.duration_s,
-            source=LegSource(leg.source), geometry=leg.geometry,
-        ))
-    session.commit()
 
 
 def derive(nodes: list[RouteNode], legs: list[RouteLeg], start_date: date) -> dict:

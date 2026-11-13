@@ -148,3 +148,102 @@ def test_deleting_a_route_publishes_a_deleted_event(client):
     event = q.get_nowait()
     assert event["type"] == "deleted"
     assert event["route"] is None
+
+
+def test_sse_does_not_hold_db_session(client):
+    """Open SSE streams must not pin pooled DB connections: with a pool of 2
+    (no overflow) and 20 live streams, a normal GET still gets a connection.
+
+    Starlette's TestClient (`client.stream` included) waits for the ASGI app to
+    finish before returning, so it can't hold an infinite stream open. The
+    streams are driven straight through the ASGI app instead, keeping each one
+    connected until the normal GET has completed."""
+    import asyncio
+
+    from sqlalchemy.pool import QueuePool
+    from sqlmodel import create_engine
+
+    from app import db
+    from app.main import app
+
+    rid = _make_route(client)
+    cookie = "; ".join(f"{k}={v}" for k, v in client.cookies.items()).encode()
+
+    url = db.engine.url
+    db.engine.dispose()
+    db.engine = create_engine(
+        url, connect_args={"check_same_thread": False} if url.get_backend_name() == "sqlite" else {},
+        poolclass=QueuePool, pool_size=2, max_overflow=0, pool_timeout=1,
+    )
+
+    def scope(path):
+        return {
+            "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
+            "method": "GET", "scheme": "http", "path": path, "raw_path": path.encode(),
+            "query_string": b"", "root_path": "", "server": ("testserver", 80),
+            "client": ("testclient", 50000),
+            "headers": [(b"host", b"testserver"), (b"cookie", cookie)],
+        }
+
+    async def scenario():
+        disconnect = asyncio.Event()
+
+        async def call(path, connected: asyncio.Event | None):
+            sent_request = False
+            status = None
+
+            async def receive():
+                nonlocal sent_request
+                if not sent_request:
+                    sent_request = True
+                    return {"type": "http.request", "body": b"", "more_body": False}
+                await disconnect.wait()
+                return {"type": "http.disconnect"}
+
+            async def send(message):
+                nonlocal status
+                if message["type"] == "http.response.start":
+                    status = message["status"]
+                elif message["type"] == "http.response.body" and connected is not None:
+                    if b": connected" in message.get("body", b""):
+                        connected.set()
+
+            await app(scope(path), receive, send)
+            return status
+
+        connected = [asyncio.Event() for _ in range(20)]
+        streams = [asyncio.create_task(call(f"/api/routes/{rid}/events", ev)) for ev in connected]
+        try:
+            await asyncio.wait_for(asyncio.gather(*(ev.wait() for ev in connected)), timeout=10)
+            # A plain endpoint call: its own receive never disconnects early.
+            get_status = await asyncio.wait_for(
+                asyncio.create_task(_plain_get(app, scope(f"/api/routes/{rid}"))), timeout=10,
+            )
+        finally:
+            disconnect.set()
+            stream_statuses = await asyncio.gather(*streams, return_exceptions=True)
+        return get_status, stream_statuses
+
+    get_status, stream_statuses = asyncio.run(scenario())
+    assert stream_statuses == [200] * 20
+    assert get_status == 200
+
+
+async def _plain_get(app, scope) -> int | None:
+    status = None
+    sent = False
+
+    async def receive():
+        nonlocal sent
+        if not sent:
+            sent = True
+            return {"type": "http.request", "body": b"", "more_body": False}
+        return {"type": "http.disconnect"}
+
+    async def send(message):
+        nonlocal status
+        if message["type"] == "http.response.start":
+            status = message["status"]
+
+    await app(scope, receive, send)
+    return status

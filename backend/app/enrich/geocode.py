@@ -1,7 +1,20 @@
+from urllib.parse import urlparse
+
 import httpx
 
+from ..config import nominatim_allow_private
 from .fetch import USER_AGENT
 from .safety import UnsafeURLError, safe_get
+
+
+async def _nominatim_get(client: httpx.AsyncClient, url: str, base_url: str) -> httpx.Response:
+    """SSRF-guarded GET, except that with NOMINATIM_ALLOW_PRIVATE set the
+    configured Nominatim host alone skips the is_global check. safe_get still
+    applies the scheme check, size cap, deadline and IP pinning, and a redirect
+    off that host gets the full public-IP check."""
+    host = urlparse(url).hostname
+    allow_private = bool(nominatim_allow_private() and host and host == urlparse(base_url).hostname)
+    return await safe_get(client, url, allow_private=allow_private)
 
 
 async def nominatim_geocode(
@@ -11,20 +24,21 @@ async def nominatim_geocode(
         return None
     owns = client is None
     if client is None:
-        client = httpx.AsyncClient(timeout=10.0, headers={"User-Agent": USER_AGENT})
+        # trust_env=False: safe_get pins IPs; a proxy would get the IP as SNI.
+        client = httpx.AsyncClient(timeout=10.0, headers={"User-Agent": USER_AGENT}, trust_env=False)
     base = base_url.rstrip("/") + "/search"
     url = str(httpx.URL(base, params={"q": query, "format": "json", "limit": 1}))
     try:
         # Route through the SSRF guard too — the nominatim URL is admin-set but
         # still attacker-influenceable if an admin account is compromised.
-        resp = await safe_get(client, url)
+        resp = await _nominatim_get(client, url, base_url)
         data = resp.json()
     except (httpx.HTTPError, UnsafeURLError, ValueError):
         return None
     finally:
         if owns:
             await client.aclose()
-    if not data:
+    if not data or not isinstance(data, list) or not isinstance(data[0], dict):
         return None
     try:
         return (float(data[0]["lat"]), float(data[0]["lon"]))
@@ -38,7 +52,8 @@ _OSM_TYPES = {"node": "N", "way": "W", "relation": "R"}
 def _client(client: httpx.AsyncClient | None) -> tuple[httpx.AsyncClient, bool]:
     if client is not None:
         return client, False
-    return httpx.AsyncClient(timeout=10.0, headers={"User-Agent": USER_AGENT}), True
+    # trust_env=False: safe_get pins IPs; a proxy would get the IP as SNI.
+    return httpx.AsyncClient(timeout=10.0, headers={"User-Agent": USER_AGENT}, trust_env=False), True
 
 
 def _city(address: dict) -> str | None:
@@ -57,7 +72,7 @@ async def nominatim_search(query: str, base_url: str, client: httpx.AsyncClient 
     url = str(httpx.URL(base_url.rstrip("/") + "/search",
                         params={"q": query, "format": "jsonv2", "addressdetails": 1, "limit": limit}))
     try:
-        resp = await safe_get(client, url)
+        resp = await _nominatim_get(client, url, base_url)
         data = resp.json() if resp.status_code == 200 else []
     except (httpx.HTTPError, UnsafeURLError, ValueError):
         return []
@@ -95,7 +110,7 @@ async def nominatim_lookup(osm_id: str, base_url: str, client: httpx.AsyncClient
     url = str(httpx.URL(base_url.rstrip("/") + "/lookup",
                         params={"osm_ids": osm_id, "format": "jsonv2", "addressdetails": 1}))
     try:
-        resp = await safe_get(client, url)
+        resp = await _nominatim_get(client, url, base_url)
         data = resp.json() if resp.status_code == 200 else []
     except (httpx.HTTPError, UnsafeURLError, ValueError):
         return None

@@ -9,9 +9,22 @@ def _route(client):
     return client.post("/api/routes", json={"name": "NL", "start_date": "2026-07-14"}).json()["id"]
 
 
+def _node(client, rid):
+    return client.post(f"/api/routes/{rid}/nodes",
+                       json={"kind": "stop", "name": "S", "lat": 1.0, "lng": 1.0}).json()["nodes"][0]["id"]
+
+
+def test_upload_without_node_id_422(client):
+    rid = _route(client)
+    res = client.post(f"/api/routes/{rid}/attachments",
+                      files={"file": ("hotel.pdf", io.BytesIO(PDF), "application/pdf")})
+    assert res.status_code == 422
+
+
 def test_upload_download_delete_pdf(client):
     rid = _route(client)
-    up = client.post(f"/api/routes/{rid}/attachments",
+    nid = _node(client, rid)
+    up = client.post(f"/api/routes/{rid}/attachments", data={"node_id": str(nid)},
                      files={"file": ("hotel.pdf", io.BytesIO(PDF), "application/pdf")})
     assert up.status_code == 201
     aid = up.json()["id"]
@@ -26,18 +39,20 @@ def test_upload_download_delete_pdf(client):
 
 def test_route_detail_lists_attachments(client):
     rid = _route(client)
-    client.post(f"/api/routes/{rid}/attachments",
+    nid = _node(client, rid)
+    client.post(f"/api/routes/{rid}/attachments", data={"node_id": str(nid)},
                 files={"file": ("hotel.pdf", io.BytesIO(PDF), "application/pdf")})
     detail = client.get(f"/api/routes/{rid}").json()
     assert len(detail["attachments"]) == 1
     assert detail["attachments"][0]["filename"] == "hotel.pdf"
-    assert detail["attachments"][0]["node_id"] is None
+    assert detail["attachments"][0]["node_id"] == nid
 
 
 def test_reject_disallowed_type_by_magic_bytes(client):
     rid = _route(client)
+    nid = _node(client, rid)
     # An HTML payload mislabeled as PDF is rejected on content sniff.
-    bad = client.post(f"/api/routes/{rid}/attachments",
+    bad = client.post(f"/api/routes/{rid}/attachments", data={"node_id": str(nid)},
                       files={"file": ("x.pdf", io.BytesIO(b"<html>nope</html>"), "application/pdf")})
     assert bad.status_code == 415
 
@@ -66,10 +81,11 @@ def test_delete_node_removes_its_attachments(client):
 
 def test_upload_requires_owner(client):
     rid = _route(client)
+    nid = _node(client, rid)
     client.post("/api/users", json={"username": "bob", "password": "pw123456"})
     client.post("/api/auth/logout")
     client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})
-    r = client.post(f"/api/routes/{rid}/attachments",
+    r = client.post(f"/api/routes/{rid}/attachments", data={"node_id": str(nid)},
                     files={"file": ("h.pdf", io.BytesIO(PDF), "application/pdf")})
     assert r.status_code == 403
 
@@ -78,7 +94,8 @@ def test_attachments_hidden_from_non_team_members(client):
     """A non-member can see the shared route but not its attachments (list is
     empty) and cannot download them."""
     rid = _route(client)  # admin owns it, no team
-    aid = client.post(f"/api/routes/{rid}/attachments",
+    nid = _node(client, rid)
+    aid = client.post(f"/api/routes/{rid}/attachments", data={"node_id": str(nid)},
                       files={"file": ("hotel.pdf", io.BytesIO(PDF), "application/pdf")}).json()["id"]
     client.post("/api/users", json={"username": "bob", "password": "pw123456"})
     client.post("/api/auth/logout")
@@ -95,7 +112,8 @@ def test_team_member_sees_and_downloads_attachments(client):
     team = client.post("/api/teams", json={"name": "Crew", "member_ids": [bob["id"]]}).json()
     rid = client.post("/api/routes",
                       json={"name": "T", "start_date": "2026-07-14", "team_id": team["id"]}).json()["id"]
-    aid = client.post(f"/api/routes/{rid}/attachments",
+    nid = _node(client, rid)
+    aid = client.post(f"/api/routes/{rid}/attachments", data={"node_id": str(nid)},
                       files={"file": ("hotel.pdf", io.BytesIO(PDF), "application/pdf")}).json()["id"]
     client.post("/api/auth/logout")
     client.post("/api/auth/login", json={"username": "bob", "password": "pw123456"})

@@ -32,7 +32,9 @@ def _engine_config(database_url: str | None, data_dir: Path) -> tuple[str, dict]
     url = _normalize_db_url(database_url)
     if url.startswith("sqlite"):
         return url, {"check_same_thread": False}
-    return url, {}
+    # Naive datetimes are stored as UTC; pin the session zone so a server set to
+    # another timezone cannot shift them.
+    return url, {"options": "-c timezone=utc"}
 
 
 def reset_engine() -> None:
@@ -161,6 +163,20 @@ def _purge_orphan_route_attachments() -> None:
             session.delete(a)
         session.commit()
         logger.info("Purged %d orphaned route-level attachment(s)", len(orphans))
+
+
+def _dedupe_route_roles(engine) -> None:
+    """One-off, idempotent: before the unique (route_id, role) index exists, a
+    route may hold several start (or end) nodes. Keep the lowest-id one per role
+    and clear `role` on the extras so the index can be created."""
+    if "routenode" not in inspect(engine).get_table_names():
+        return
+    with engine.begin() as conn:
+        result = conn.execute(text(
+            "UPDATE routenode SET role = NULL WHERE role IS NOT NULL AND id NOT IN "
+            "(SELECT MIN(id) FROM routenode WHERE role IS NOT NULL GROUP BY route_id, role)"))
+        if result.rowcount:
+            logger.info("Cleared role on %d duplicate start/end node(s)", result.rowcount)
 
 
 # Schema left behind by the removed TRIP sync feature. Dropped once, on the
@@ -385,6 +401,7 @@ def init_db() -> None:
         reset_engine()
     SQLModel.metadata.create_all(engine)
     _add_missing_columns(engine)
+    _dedupe_route_roles(engine)
     _add_missing_indexes(engine)
     _drop_removed_trip_columns(engine)
     _lowercase_usernames(engine)

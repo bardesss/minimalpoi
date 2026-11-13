@@ -58,7 +58,7 @@ def test_extract_place_name_consent_double_encoded():
 @pytest.mark.anyio
 async def test_resolve_shortlink_unwraps_consent_gate():
     def handler(request: httpx.Request) -> httpx.Response:
-        if "maps.app.goo.gl" in str(request.url):
+        if request.headers["host"] == "maps.app.goo.gl":
             return httpx.Response(307, headers={"location": (
                 "https://consent.google.com/ml?continue="
                 "https://www.google.com/maps/place/TACO%2BLINDO%2BWest/@52.38,4.85,3z"
@@ -75,7 +75,7 @@ async def test_resolve_shortlink_unwraps_consent_gate():
 @pytest.mark.anyio
 async def test_resolve_shortlink_follows_redirect():
     def handler(request: httpx.Request) -> httpx.Response:
-        if "maps.app.goo.gl" in str(request.url):
+        if request.headers["host"] == "maps.app.goo.gl":
             return httpx.Response(307, headers={"location": "https://www.google.com/maps/place/X/@1.0,2.0,17z"})
         else:
             return httpx.Response(200, request=request)
@@ -244,3 +244,13 @@ async def test_resolve_photo_url_reads_redirect_without_following():
     out = await gmaps.resolve_photo_url("PHOTOREF", api_key="k", client=client)
     await client.aclose()
     assert out == "https://lh3.googleusercontent.com/p/AF1"
+
+
+@pytest.mark.anyio
+async def test_gmaps_non_dict_json_ignored():
+    client = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=[1, 2])))
+    assert await gmaps.places_lookup("q", "k", client=client) is None
+    assert await gmaps.place_search("q", "k", client=client) == []
+    assert await gmaps.place_by_id("p", "k", client=client) is None
+    assert await gmaps.place_details("p", "k", client=client) is None
+    await client.aclose()

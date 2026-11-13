@@ -75,3 +75,28 @@ def test_jsonld_recognizes_museum_type():
     assert data["name"] == "City Museum"
     assert data["lat"] == 52.0
     assert data["lng"] == 4.0
+
+
+def test_jsonld_type_object_is_ignored():
+    html = '<script type="application/ld+json">{"@type": {"a": 1}, "name": "X"}</script>'
+    assert parse_jsonld(html) == {}
+    html = '<script type="application/ld+json">{"@type": [{"a": 1}, "Restaurant"], "name": "X"}</script>'
+    assert parse_jsonld(html) == {"name": "X"}
+
+
+def test_jsonld_deep_nesting_is_ignored():
+    html = '<script type="application/ld+json">' + "[" * 200_000 + "</script>"
+    assert parse_jsonld(html) == {}
+
+
+def test_parse_document_single_pass(monkeypatch):
+    from html.parser import HTMLParser
+
+    from app.enrich.parse import parse_document
+
+    calls = []
+    real = HTMLParser.feed
+    monkeypatch.setattr(HTMLParser, "feed", lambda self, data: (calls.append(1), real(self, data))[1])
+    page = parse_document(_read("generic_og.html"))
+    assert len(calls) == 1
+    assert page.og["title"] == "Some Place"

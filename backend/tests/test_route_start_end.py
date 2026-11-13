@@ -90,3 +90,55 @@ def test_toggling_round_trip_on_generates_end_from_existing_start(client):
     detail = client.patch(f"/api/routes/{rid}", json={"round_trip": True}).json()
     assert detail["nodes"][-1]["role"] == "end"
     assert detail["nodes"][-1]["name"] == "Home"
+
+
+def test_second_start_node_409(client):
+    _setup(client)
+    rid = _route(client)["id"]
+    r1 = client.post(f"/api/routes/{rid}/nodes", json={"kind": "stop", "role": "start", "name": "A", "lat": 1.0, "lng": 1.0})
+    assert r1.status_code == 201
+    r2 = client.post(f"/api/routes/{rid}/nodes", json={"kind": "stop", "role": "start", "name": "B", "lat": 2.0, "lng": 2.0})
+    assert r2.status_code == 409
+
+
+def test_unique_role_index_rejects_duplicate_at_db_level(client):
+    import pytest
+    from sqlalchemy.exc import IntegrityError
+    from sqlmodel import Session
+
+    from app import db
+    from app.models import RouteNode
+
+    _setup(client)
+    rid = _route(client)["id"]
+    _add(client, rid, kind="stop", role="start", name="A", lat=1.0, lng=1.0)
+    with Session(db.engine) as s:
+        s.add(RouteNode(route_id=rid, position=9.0, kind="stop", role="start", name="B", lat=2.0, lng=2.0))
+        with pytest.raises(IntegrityError):
+            s.commit()
+
+
+def test_init_db_dedupes_roles_before_creating_unique_index(tmp_path):
+    from sqlalchemy import create_engine, inspect, text
+    from sqlmodel import SQLModel
+
+    import app.db as dbmod
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'old.db'}")
+    SQLModel.metadata.create_all(engine)
+    with engine.begin() as conn:
+        conn.execute(text("DROP INDEX uq_routenode_role"))
+        for i, role in enumerate(["start", "start", "end", "end", "end", None], start=1):
+            conn.execute(text(
+                "INSERT INTO routenode (route_id, position, kind, role, name, lat, lng) "
+                "VALUES (1, :p, 'stop', :r, 'n', 0, 0)"), {"p": float(i), "r": role})
+
+    dbmod._dedupe_route_roles(engine)
+    dbmod._dedupe_route_roles(engine)  # idempotent
+    dbmod._add_missing_indexes(engine)
+
+    with engine.connect() as conn:
+        rows = conn.execute(text("SELECT id, role FROM routenode ORDER BY id")).all()
+    assert [r[1] for r in rows] == ["start", None, "end", None, None, None]
+    assert "uq_routenode_role" in {ix["name"] for ix in inspect(engine).get_indexes("routenode")}
+    engine.dispose()

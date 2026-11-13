@@ -176,6 +176,8 @@ proxy's IP and run `systemctl restart minimalpoi`.
 | `PGID` | `10001` | Group ID the app runs as. Pair with `PUID`. |
 | `SECRET_KEY` | auto-generated in `/data/secret.key` | Signing key for login cookies — set it yourself only if you'd rather manage it. |
 | `SESSION_LIFETIME_DAYS` | `30` | How long a login stays valid before you have to sign in again. |
+| `NOMINATIM_ALLOW_PRIVATE` | unset | Set to `1` to let the Nominatim URL from Settings point at a private/LAN address (a self-hosted Nominatim). Only that host is exempt from the private-address block. |
+| `MAX_BODY_MB` | `50` | Largest request body accepted, in MiB (413 above it). Backup restore (`/api/restore`) is exempt and accepts archives up to 500 MiB. |
 | `TRUST_PROXY` | unset | Honor `X-Forwarded-*` from a reverse proxy (real client IP + scheme). Set to `1` when running behind nginx/Caddy/Traefik/etc. |
 | `FORWARDED_ALLOW_IPS` | `*` | Trusted proxy IPs when `TRUST_PROXY` is set. Defaults to trusting any proxy; scope it to your proxy's IP for stricter setups. |
 

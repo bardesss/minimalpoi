@@ -1,4 +1,5 @@
 from sqlmodel import Session
+from starlette.concurrency import run_in_threadpool
 
 from ..crypto import DecryptError, decrypt
 from ..models import get_or_create_settings
@@ -7,7 +8,7 @@ from ..schemas import POIDraft
 from . import gmaps
 from .fetch import fetch_url
 from .geocode import nominatim_geocode
-from .parse import parse_geo, parse_jsonld, parse_opengraph, parse_twitter
+from .parse import parse_document
 
 
 def _set(draft: POIDraft, field: str, value, source: str) -> None:
@@ -66,8 +67,8 @@ async def enrich(url: str, session: Session, client=None) -> POIDraft:
     else:
         result = await fetch_url(target, client=client)
         if result and result.text:
-            ld = parse_jsonld(result.text)
-            og = parse_opengraph(result.text)
+            page = await run_in_threadpool(parse_document, result.text)
+            ld, og, tw, geo = page.jsonld, page.og, page.twitter, page.geo
             _set(draft, "name", ld.get("name"), "jsonld")
             _set(draft, "address", ld.get("address"), "jsonld")
             _set(draft, "lat", ld.get("lat"), "jsonld")
@@ -79,11 +80,9 @@ async def enrich(url: str, session: Session, client=None) -> POIDraft:
             _set(draft, "name", og.get("title"), "opengraph")
             _set(draft, "image_url", og.get("image"), "opengraph")
             _set(draft, "description", og.get("description"), "opengraph")
-            tw = parse_twitter(result.text)
             _set(draft, "name", tw.get("title"), "twitter")
             _set(draft, "image_url", tw.get("image"), "twitter")
             _set(draft, "description", tw.get("description"), "twitter")
-            geo = parse_geo(result.text)
             _set(draft, "lat", geo.get("lat"), "og")
             _set(draft, "lng", geo.get("lng"), "og")
 

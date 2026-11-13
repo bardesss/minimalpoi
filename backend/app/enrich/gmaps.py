@@ -65,7 +65,8 @@ def extract_place_name(url: str) -> str | None:
 async def resolve_shortlink(url: str, client: httpx.AsyncClient | None = None) -> str:
     owns = client is None
     if client is None:
-        client = httpx.AsyncClient(follow_redirects=False, timeout=10.0)
+        # trust_env=False: safe_get pins IPs; a proxy would get the IP as SNI.
+        client = httpx.AsyncClient(follow_redirects=False, timeout=10.0, trust_env=False)
     try:
         resp = await safe_get(client, url)
         return unwrap_consent(str(resp.url))
@@ -88,8 +89,10 @@ async def places_lookup(query: str, api_key: str, client: httpx.AsyncClient | No
     finally:
         if owns:
             await client.aclose()
+    if not isinstance(data, dict):
+        return None
     results = data.get("results") or []
-    if not results:
+    if not results or not isinstance(results[0], dict):
         return None
     first = results[0]
     out: dict = {}
@@ -123,9 +126,11 @@ async def place_search(query: str, api_key: str, client: httpx.AsyncClient | Non
     finally:
         if owns:
             await client.aclose()
+    if not isinstance(data, dict):
+        return []
     out: list[dict] = []
     for first in (data.get("results") or [])[:limit]:
-        if not isinstance(first.get("place_id"), str) or not isinstance(first.get("name"), str):
+        if not isinstance(first, dict) or not isinstance(first.get("place_id"), str) or not isinstance(first.get("name"), str):
             continue
         cand: dict = {"place_id": first["place_id"], "name": first["name"]}
         if isinstance(first.get("formatted_address"), str):
@@ -163,6 +168,8 @@ async def place_by_id(place_id: str, api_key: str, client: httpx.AsyncClient | N
     finally:
         if owns:
             await client.aclose()
+    if not isinstance(data, dict):
+        return None
     result = data.get("result") or {}
     out: dict = {}
     if isinstance(result.get("name"), str):
@@ -212,6 +219,8 @@ async def place_details(place_id: str, api_key: str, client: httpx.AsyncClient |
     finally:
         if owns:
             await client.aclose()
+    if not isinstance(data, dict):
+        return None
     result = data.get("result") or {}
     out: dict = {}
     phone = result.get("international_phone_number") or result.get("formatted_phone_number")
