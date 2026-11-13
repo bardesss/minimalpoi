@@ -65,7 +65,8 @@ def extract_place_name(url: str) -> str | None:
 async def resolve_shortlink(url: str, client: httpx.AsyncClient | None = None) -> str:
     owns = client is None
     if client is None:
-        client = httpx.AsyncClient(follow_redirects=False, timeout=10.0)
+        # trust_env=False: safe_get pins IPs; a proxy would get the IP as SNI.
+        client = httpx.AsyncClient(follow_redirects=False, timeout=10.0, trust_env=False)
     try:
         resp = await safe_get(client, url)
         return unwrap_consent(str(resp.url))

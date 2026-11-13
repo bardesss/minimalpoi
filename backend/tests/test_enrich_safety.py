@@ -180,3 +180,70 @@ async def test_allow_private_does_not_extend_to_redirect_targets(monkeypatch):
     with pytest.raises(UnsafeURLError):
         await safe_get(client, "http://nominatim.lan/search", allow_private=True)
     await client.aclose()
+
+
+@pytest.mark.anyio
+async def test_pinned_hops_send_connection_close(monkeypatch):
+    # A pooled TLS connection is matched on (scheme, IP, port) only and SNI is
+    # read at connect time, so a reused connection would skip B's cert check.
+    seen: list[httpx.Request] = []
+
+    def handler(request):
+        seen.append(request)
+        if request.headers["host"] == "a.example":
+            return httpx.Response(302, headers={"location": "https://b.example/"})
+        return httpx.Response(200, text="b")
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    await safe_get(client, "https://a.example/")
+    await client.aclose()
+    assert [r.headers["connection"] for r in seen] == ["close", "close"]
+
+
+@pytest.mark.anyio
+async def test_redirect_to_same_ip_does_not_reuse_connection(monkeypatch):
+    # Real httpcore pool against a local server: A (IP X) redirects to B (IP X);
+    # the second hop must open a fresh connection.
+    import asyncio
+
+    connections = 0
+
+    async def serve(reader, writer):
+        nonlocal connections
+        connections += 1
+        while True:
+            try:
+                head = await reader.readuntil(b"\r\n\r\n")
+            except asyncio.IncompleteReadError:
+                break  # client closed an idle keep-alive connection
+            if b"host: a.example" in head.lower():
+                body, status = b"", b"302 Found\r\nLocation: http://b.example:%d/" % port
+            else:
+                body, status = b"b", b"200 OK"
+            writer.write(b"HTTP/1.1 " + status + b"\r\nContent-Length: %d\r\n\r\n" % len(body) + body)
+            await writer.drain()
+            if b"connection: close" in head.lower():
+                break
+        writer.close()
+
+    server = await asyncio.start_server(serve, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    monkeypatch.setattr(safety, "_resolve_ips", _async_resolver(["127.0.0.1"]))
+    monkeypatch.setattr(safety, "_is_public", lambda ip: True)
+    async with httpx.AsyncClient(timeout=5) as client:
+        resp = await safe_get(client, f"http://a.example:{port}/")
+        assert resp.text == "b"
+        await safe_get(client, f"http://b.example:{port}/")  # reused client across calls
+    server.close()
+    await server.wait_closed()
+    assert connections == 3
+
+
+def test_internal_clients_ignore_env_proxies():
+    # httpcore's proxy path would use the pinned IP as server_hostname.
+    import inspect
+
+    from app.enrich import fetch, geocode, gmaps, images
+    for src in (inspect.getsource(fetch.fetch_url), inspect.getsource(gmaps.resolve_shortlink),
+                inspect.getsource(geocode.nominatim_geocode), inspect.getsource(geocode._client),
+                inspect.getsource(images.localize)):
+        assert "trust_env=False" in src

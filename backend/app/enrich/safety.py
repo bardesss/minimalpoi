@@ -110,8 +110,11 @@ async def _get(client: httpx.AsyncClient, url: str, max_bytes: int, allow_privat
         ips = await assert_safe_url(current, allow_private=allow_private and target.raw_host == origin_host)
         pinned = target.copy_with(host=ips[0])  # httpx brackets IPv6 literals
         extensions = {"sni_hostname": target.raw_host.decode("ascii")} if target.scheme == "https" else {}
+        # Connection: close makes every pinned connection single-use. httpcore
+        # pools on (scheme, IP, port) and only applies sni_hostname at connect
+        # time, so a reused TLS connection would skip this host's cert check.
         async with client.stream(
-            "GET", pinned, headers={"Host": target.netloc.decode("ascii")},
+            "GET", pinned, headers={"Host": target.netloc.decode("ascii"), "Connection": "close"},
             extensions=extensions, follow_redirects=False,
         ) as resp:
             if resp.is_redirect and "location" in resp.headers:

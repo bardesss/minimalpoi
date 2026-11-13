@@ -22,6 +22,7 @@ async def fetch_url(url: str, client: httpx.AsyncClient | None = None) -> FetchR
     owns_client = client is None
     if client is None:
         client = httpx.AsyncClient(
+            trust_env=False,  # safe_get pins IPs; a proxy would get the IP as SNI
             follow_redirects=False,
             timeout=TIMEOUT_SECONDS,
             headers={"User-Agent": USER_AGENT},

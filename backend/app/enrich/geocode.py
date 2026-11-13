@@ -24,7 +24,8 @@ async def nominatim_geocode(
         return None
     owns = client is None
     if client is None:
-        client = httpx.AsyncClient(timeout=10.0, headers={"User-Agent": USER_AGENT})
+        # trust_env=False: safe_get pins IPs; a proxy would get the IP as SNI.
+        client = httpx.AsyncClient(timeout=10.0, headers={"User-Agent": USER_AGENT}, trust_env=False)
     base = base_url.rstrip("/") + "/search"
     url = str(httpx.URL(base, params={"q": query, "format": "json", "limit": 1}))
     try:
@@ -51,7 +52,8 @@ _OSM_TYPES = {"node": "N", "way": "W", "relation": "R"}
 def _client(client: httpx.AsyncClient | None) -> tuple[httpx.AsyncClient, bool]:
     if client is not None:
         return client, False
-    return httpx.AsyncClient(timeout=10.0, headers={"User-Agent": USER_AGENT}), True
+    # trust_env=False: safe_get pins IPs; a proxy would get the IP as SNI.
+    return httpx.AsyncClient(timeout=10.0, headers={"User-Agent": USER_AGENT}, trust_env=False), True
 
 
 def _city(address: dict) -> str | None:

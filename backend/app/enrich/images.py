@@ -68,7 +68,8 @@ async def localize(image_url: str | None, client: httpx.AsyncClient | None = Non
         return image_url
     owns = client is None
     if client is None:
-        client = httpx.AsyncClient(follow_redirects=False, timeout=10.0)
+        # trust_env=False: safe_get pins IPs; a proxy would get the IP as SNI.
+        client = httpx.AsyncClient(follow_redirects=False, timeout=10.0, trust_env=False)
     try:
         # safe_get streams with a hard MAX_IMAGE_BYTES ceiling; an over-cap body
         # raises (ResponseTooLargeError ⊂ UnsafeURLError) and we keep the URL.
