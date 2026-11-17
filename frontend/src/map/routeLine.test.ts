@@ -82,6 +82,33 @@ describe("routeLine", () => {
     expect(line.features.map((f) => f.properties!.day)).toEqual([0, 1]);
   });
 
+  it("carries a formatted travel label and the raw numbers on a segment", () => {
+    const legs = [{ from_node_id: 1, to_node_id: 2, distance_m: 163000, duration_s: 9900, geometry: null }] as any;
+    const { line } = routeLine(nodes, legs);
+    expect(line.features[0].properties).toMatchObject({
+      distance_m: 163000,
+      duration_s: 9900,
+      label: "163 km · 2 h 45 min",
+    });
+  });
+
+  it("flags a haversine-estimated leg in its label", () => {
+    const legs = [{ from_node_id: 1, to_node_id: 2, distance_m: 163000, duration_s: 9900, source: "estimate", geometry: null }] as any;
+    const { line } = routeLine(nodes, legs);
+    expect(line.features[0].properties!.label).toBe("163 km · 2 h 45 min · est.");
+  });
+
+  it("omits the label when there is no leg for the pair", () => {
+    const { line } = routeLine(nodes);
+    expect(line.features[0].properties).not.toHaveProperty("label");
+  });
+
+  it("omits the label rather than formatting a leg with no numbers", () => {
+    const legs = [{ from_node_id: 1, to_node_id: 2, geometry: null }] as any;
+    const { line } = routeLine(nodes, legs);
+    expect(line.features[0].properties).not.toHaveProperty("label");
+  });
+
   it("defaults the day to 0 when no day map is given", () => {
     const mkNode = (id: number, lat: number, lng: number) =>
       ({ id, kind: "stop", role: null, position: id, nights: null, notes: null, poi_id: null,
