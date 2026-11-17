@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.8.0](https://github.com/bardesss/minimalpoi/compare/v4.7.2...v4.8.0) (2026-11-17)
+
+
+### Features
+
+* **routes:** draw leg distance and time on the map line ([9718c85](https://github.com/bardesss/minimalpoi/commit/9718c856f6b6320c488d324b9cfc72dd626f9142))
+* **routes:** draw leg distance and time on the map line ([c017a3f](https://github.com/bardesss/minimalpoi/commit/c017a3f642d60ad852cb31d396ac9382a679b201))
+
 ## [4.7.2](https://github.com/bardesss/minimalpoi/compare/v4.7.1...v4.7.2) (2026-11-13)
 
 
