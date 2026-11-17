@@ -1,4 +1,5 @@
 import type { RouteLeg, RouteNode } from "../types/api";
+import { formatTravel } from "../lib/formatTravel";
 import { decodePolyline } from "./polyline";
 
 export function routeLine(
@@ -40,10 +41,25 @@ export function routeLine(
     const coordinates: [number, number][] = leg?.geometry
       ? decodePolyline(leg.geometry)
       : [[a.lng, a.lat], [b.lng, b.lat]];
+    const properties: Record<string, unknown> = {
+      passed: passedNodeIds.has(b.id),
+      day: dayIndexByNode.get(b.id) ?? 0,
+    };
+    // The travel label the map draws along the segment, mirroring the
+    // itinerary's LegRow. Formatted here rather than in a MapLibre expression so
+    // the km/minute rounding keeps one home. A leg carrying no usable numbers
+    // gets no `label` key at all — that absence is what the layer's
+    // ["has", "label"] filter selects on, so it can never render "NaN km".
+    if (leg && Number.isFinite(leg.distance_m) && Number.isFinite(leg.duration_s)) {
+      properties.distance_m = leg.distance_m;
+      properties.duration_s = leg.duration_s;
+      properties.label =
+        formatTravel(leg.distance_m, leg.duration_s) + (leg.source === "estimate" ? " · est." : "");
+    }
     segments.push({
       type: "Feature",
       geometry: { type: "LineString", coordinates },
-      properties: { passed: passedNodeIds.has(b.id), day: dayIndexByNode.get(b.id) ?? 0 },
+      properties,
     });
   }
 

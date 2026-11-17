@@ -79,6 +79,35 @@ function addRouteLayers(map: MlMap) {
       "line-opacity": ["case", ["get", "passed"], 0.35, 0.85],
     },
   });
+  // Each hop's distance/time, drawn along the segment it belongs to — the same
+  // number the itinerary's LegRow shows, where you're actually looking. Added
+  // before the point layers so a numbered pin always wins the overlap.
+  //
+  // A white halo rather than Google's filled pill: a pill needs an SDF sprite to
+  // back `text-background`, and a halo reads cleanly over every basemap for free.
+  map.addLayer({
+    id: "route-leg-labels",
+    type: "symbol",
+    source: "route-line",
+    filter: ["has", "label"],
+    layout: {
+      "symbol-placement": "line-center",
+      "text-field": ["get", "label"],
+      "text-font": MAP_FONT,
+      "text-size": 11,
+      "text-padding": 6,
+      // Cull on collision instead of overlapping: on a dense multi-day route the
+      // labels that survive are the ones with room, which stays readable.
+      // Overlapping them turns the line into noise.
+      "text-allow-overlap": false,
+    },
+    paint: {
+      "text-color": ["case", ["get", "passed"], PASSED_COLOR, DAY_COLOR_EXPRESSION as never],
+      "text-halo-color": "#ffffff",
+      "text-halo-width": 1.5,
+      "text-opacity": ["case", ["get", "passed"], 0.5, 1],
+    },
+  });
   // Stays get a filled dot; stops a hollow one, both numbered by order, both
   // coloured by the day they belong to.
   map.addLayer({
